@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Aparte Admin",
-  description: "The official admin console of Aparte",
+  description: "The official admin console of Aparte NG",
   icons: ["/svg/logo.svg"],
 };
 
