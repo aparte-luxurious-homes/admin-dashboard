@@ -1,12 +1,13 @@
 import { JSX } from "react";
 import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon } from "../components/icons";
+import { PAGE_ROUTES } from "./page_routes";
 
 export const NAV_LINKS = [
     {
         key: 1,
         name: 'Dashboard',
-        pathName: 'dashboard',
-        link: '/user-management',
+        pathName: '',
+        link: PAGE_ROUTES.dashboard.base,
         icon: <TilesIcon className={"w-5"} color={"white"} />,
         secondary: false,
         children: undefined,
@@ -23,19 +24,19 @@ export const NAV_LINKS = [
                 key: 1,
                 name: 'Guests',
                 pathName: 'guests',
-                link: '/user-management/guests',
+                link: PAGE_ROUTES.dashboard.userManagement.guests.base,
             },
             {
                 key: 2,
-                name: 'Owner',
-                pathName: 'owner',
-                link: '/user-management/owner',
+                name: 'Owners',
+                pathName: 'owners',
+                link: PAGE_ROUTES.dashboard.userManagement.owners.base,
             },
             {
                 key: 3,
-                name: 'Agent',
-                pathName: 'agent',
-                link: '/user-management/agent',
+                name: 'Agents',
+                pathName: 'agents',
+                link: PAGE_ROUTES.dashboard.userManagement.agents.base,
             },
         ]
     },
@@ -43,7 +44,7 @@ export const NAV_LINKS = [
         key: 3,
         name: 'Properties Management',
         pathName: 'properties-management',
-        link: '/properties-management',
+        link: '/property-management',
         icon: <PropertiesIcon className={"w-5"} color={"white"} />,
         secondary: true,
         children: [
@@ -51,19 +52,19 @@ export const NAV_LINKS = [
                 key: 1,
                 name: 'All properties',
                 pathName: 'all-properties',
-                link: '/properties-management/all-properties',
+                link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.base,
             },
             {
                 key: 2,
                 name: 'Assign agents',
                 pathName: 'assign-agents',
-                link: '/properties-management/assign-agents',
+                link: PAGE_ROUTES.dashboard.propertyManagement.assignAgents.base,
             },
             {
                 key: 3,
-                name: 'Manage verification',
-                pathName: 'manage-verification',
-                link: '/properties-management/manage-verification',
+                name: 'Manage verifications',
+                pathName: 'manage-verifications',
+                link: PAGE_ROUTES.dashboard.propertyManagement.manageVerifications.base,
             },
         ]
     },
@@ -79,13 +80,13 @@ export const NAV_LINKS = [
                 key: 1,
                 name: 'Bookings',
                 pathName: 'bookings',
-                link: '/booking-management/bookings',
+                link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
             },
             {
                 key: 2,
                 name: 'Booking disputes',
                 pathName: 'booking-disputes',
-                link: '/booking-management/booking-disputes',
+                link: PAGE_ROUTES.dashboard.bookingManagement.bookingDisputes.base,
             },
         ]
     },
@@ -126,25 +127,25 @@ export const NAV_LINKS = [
                 key: 1,
                 name: 'Payments',
                 pathName: 'payments',
-                link: '/transactions/payments',
+                link: PAGE_ROUTES.dashboard.transactions.payments.base,
             },
             {
                 key: 2,
                 name: 'Withdrawals',
                 pathName: 'withdrawals',
-                link: '/transactions/withdrawals',
+                link: PAGE_ROUTES.dashboard.transactions.withdrawals.base,
             },
             {
                 key: 3,
                 name: 'Booking withdrawals',
                 pathName: 'booking-withdrawals',
-                link: '/transactions/booking-withdrawals',
+                link: PAGE_ROUTES.dashboard.transactions.bookingWithdrawals.base,
             },
             {
                 key: 4,
                 name: 'Refunds',
                 pathName: 'refunds',
-                link: '/transactions/refunds',
+                link: PAGE_ROUTES.dashboard.transactions.refunds.base,
             },
         ]
     },
@@ -160,13 +161,13 @@ export const NAV_LINKS = [
                 key: 1,
                 name: 'Manage notifications',
                 pathName: 'manage-notifications',
-                link: '/notifications/manage-notifications',
+                link: PAGE_ROUTES.dashboard.notifications.manageNotifications.base,
             },
             {
                 key: 2,
                 name: 'Create notification',
                 pathName: 'create-notification',
-                link: '/notifications/create-notification',
+                link: PAGE_ROUTES.dashboard.notifications.createNotification.base,
             },
         ]
     },

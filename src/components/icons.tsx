@@ -83,20 +83,19 @@ export function FinancialsIcon({ className, color, ...rest }: { className?: stri
     return (
         <svg 
             width="18" 
-            height="18" 
-            viewBox="0 0 18 18" 
-            fill="none" 
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
             xmlns="http://www.w3.org/2000/svg"
             {...rest}
             className={`h-auto ${className}`}
         >
-            <path d="M6.75 16.5H11.25C15 16.5 16.5 15 16.5 11.25V6.75C16.5 3 15 1.5 11.25 1.5H6.75C3 1.5 1.5 3 1.5 6.75V11.25C1.5 15 3 16.5 6.75 16.5Z" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M6 14.25H12C13.5 14.25 14.25 13.5 14.25 12V6C14.25 4.5 13.5 3.75 12 3.75H6C4.5 3.75 3.75 4.5 3.75 6V12C3.75 13.5 4.5 14.25 6 14.25Z" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M3.75 7.125H5.61C6.645 7.125 7.485 7.965 7.485 9C7.485 10.035 6.645 10.875 5.61 10.875H3.75" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M14.25 7.49219H12" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M14.25 10.5H12" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M5.40039 9H5.47539" stroke={color} strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M16.5 9C16.5 13.14 13.14 16.5 9 16.5C4.86 16.5 1.5 13.14 1.5 9C1.5 4.86 4.86 1.5 9 1.5" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12.75 2.25V5.25H15.75" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M16.5 1.5L12.75 5.25" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M6.99078 12.7513V9.86H6.11328V9.14H6.99078V8.2175H6.11328V7.4975H6.99078V4.71875H8.16078L9.22953 7.4975H10.557V4.71875H11.4458V7.4975H12.3233V8.2175H11.4458V9.14H12.3233V9.86H11.4458V12.7513H10.2645L9.19578 9.86H7.86828V12.7513H6.99078ZM7.86828 9.14H8.92578L8.58828 8.2175H7.84578L7.86828 9.14ZM10.557 11.165H10.602L10.5683 9.86H10.0958L10.557 11.165ZM7.84578 7.4975H8.31828L7.84578 6.1025H7.80078L7.84578 7.4975ZM9.82578 9.14H10.5795L10.557 8.2175H9.48828L9.82578 9.14Z" fill={color}/>
         </svg>
+
     );
 };
 

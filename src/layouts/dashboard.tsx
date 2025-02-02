@@ -1,9 +1,17 @@
+'use client'
+
 import Image from "next/image";
 import { BellIcon, SettingsIcon } from "@/components/icons";
 import { NAV_LINKS } from "../utils/nav_links";
 import SideNav from "../components/sidenav";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { PAGE_ROUTES } from "../utils/page_routes";
 
 export default function Dashboard({ children }: { children: React.ReactNode }){
+    const currentRoute = usePathname();
+    console.log(currentRoute.split('/'))
+
     return (
         <div className="min-h-screen size-full">
             <div className="fixed w-[18%] h-full bg-primary text-background left-0 top-0 bottom-0">
@@ -13,7 +21,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                             <Image
                                 src="/svg/logo_text_white.svg"
                                 alt="logo"
-                                height={170} 
+                                height={170}
                                 width={170} 
                             />
                             <Image
@@ -33,17 +41,17 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                     >
                         {
                             NAV_LINKS.map((el, index) => 
-                                <SideNav key={index} link={el} />
+                                <SideNav key={index} link={el} route={currentRoute} />
                             )
                         }
                     </div>
                     <div className="absolute bottom-0 w-full flex items-center h-14 border-t-2 border-teal-700/70 bg-primary">
-                        <div className="flex gap-4 pl-12 py-2 hover:bg-teal-600/60 w-full">
+                        <Link href={PAGE_ROUTES.dashboard.settings.base} className="flex gap-4 pl-12 py-2 hover:bg-teal-600/60 w-full">
                             <SettingsIcon className="w-5" color="white" />
                             <p className="text-base flex items-center">
                                 Settings
                             </p>
-                        </div>
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -51,14 +59,21 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                 <div className="w-full h-20 flex items-center px-10 bg-white">
                     <div className="w-1/2">
                         <p className="text-2xl font-semi-bold">
-                            Dashboard
+                            {
+                                currentRoute.split('/').length === 2 && currentRoute.split('/')[1] === '' 
+                                    ? 'Dashboard' 
+                                    : currentRoute
+                                        .split('/')[currentRoute.split('/').length-1]
+                                        .replace(/-/g, ' ')
+                                        .replace(/^./, c => c.toUpperCase())
+                            }
                         </p>
                     </div>
                     <div className="w-1/3 flex justify-end gap-5 items-center pr-5">
-                        <div className="size-10 rounded-md bg-background flex justify-center items-center border border-zinc-500/20">
+                        <Link href={PAGE_ROUTES.dashboard.settings.base} className="size-10 rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20">
                             <SettingsIcon className="w-4" color="black" />
-                        </div>
-                        <div className="size-10 relative rounded-md bg-background flex justify-center items-center border border-zinc-500/20">
+                        </Link>
+                        <div className="size-10 relative rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20">
                             <BellIcon className="w-4" color="black" />
                             <div className="size-2 bg-teal-700 absolute -top-1 left-auto right-auto rounded-full" />
                         </div>
