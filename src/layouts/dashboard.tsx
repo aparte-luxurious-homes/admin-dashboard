@@ -10,11 +10,10 @@ import { PAGE_ROUTES } from "../utils/page_routes";
 
 export default function Dashboard({ children }: { children: React.ReactNode }){
     const currentRoute = usePathname();
-    console.log(currentRoute.split('/'))
 
     return (
-        <div className="min-h-screen size-full">
-            <div className="fixed w-[18%] h-full bg-primary text-background left-0 top-0 bottom-0">
+        <div className="min-h-screen size-full relative">
+            <div className="absolute w-0 lg:w-[26%] xl:w-[20%] 2xl:w-[18%] bg-primary text-background left-0 top-0 bottom-0">
                 <div className="size-full">
                     <div className="w-full flex justify-center items-center ">
                         <div className="relative mt-8 mb-14">
@@ -55,8 +54,8 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                     </div>
                 </div>
             </div>
-            <div className="fixed left-[18%] w-full">
-                <div className="w-full h-20 flex items-center px-10 bg-white">
+            <div className="pl-0 lg:pl-[26%] xl:pl-[20%] 2xl:pl-[18%] w-full">
+                <div className="w-full h-20 flex justify-between items-center px-10 bg-white">
                     <div className="w-1/2">
                         <p className="text-2xl font-semi-bold">
                             {
@@ -69,7 +68,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                             }
                         </p>
                     </div>
-                    <div className="w-1/3 flex justify-end gap-5 items-center pr-5">
+                    <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-5 items-center">
                         <Link href={PAGE_ROUTES.dashboard.settings.base} className="size-10 rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20">
                             <SettingsIcon className="w-4" color="black" />
                         </Link>
@@ -92,7 +91,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                         </div>
                     </div>
                 </div>
-                <div className="px-10 mt-5 ">
+                <div className="px-10 mt-5 w-full">
                     {children}
                 </div>
             </div>

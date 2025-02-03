@@ -1,4 +1,4 @@
-export default function Admins() {
+export default function AdminsPage() {
     return (
         <h2 className="">
             Admins

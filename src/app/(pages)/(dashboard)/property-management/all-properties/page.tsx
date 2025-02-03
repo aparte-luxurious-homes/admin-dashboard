@@ -1,8 +1,10 @@
-export default function AllPropertiesPage() {
+import ListProperties from "@/src/components/properties-mgt/list_properties";
+
+export default function AllProperties() {
     return (
-        <h2 className="">
-            All properties
-        </h2>
+        <div className="w-full">
+            <ListProperties />
+        </div>
     );
 }
   

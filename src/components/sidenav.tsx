@@ -29,9 +29,9 @@ export default function SideNav({ link, route }: { link: ILink, route: string })
                         <div className="w-full">
                             <div 
                                 onClick={() => !link.secondary && router.push(link.link)}
-                                className={`flex items-center gap-4 pt-3 pb-2 pl-12 hover:bg-teal-600/60 ${!link.secondary && route === '/' && link.name === 'Dashboard' && 'bg-teal-600/60'}`}>
+                                className={`flex items-center gap-4 pt-3 pb-2 pl-3 xl:pl-6 2xl:pl-12 hover:bg-teal-600/60 ${!link.secondary && route === '/' && link.name === 'Dashboard' && 'bg-teal-600/60'}`}>
                                 {link.icon}
-                                <p className="text-base flex items-center">
+                                <p className="text-base flex items-center pr-8">
                                     {link.name}
                                 </p>
                             </div>
@@ -39,7 +39,7 @@ export default function SideNav({ link, route }: { link: ILink, route: string })
                         {
                             link.secondary &&
                             <ArrowIcon 
-                                className={`absolute top-4 right-4 transition-all ease-in-out ${open ? 'rotate-[90deg]' : 'rotate-[270deg]'} `}
+                                className={`absolute top-[36%] right-4 transition-all ease-in-out ${open ? 'rotate-[90deg]' : 'rotate-[270deg]'} `}
                                 color="white"
                             />
                         }
@@ -48,7 +48,7 @@ export default function SideNav({ link, route }: { link: ILink, route: string })
                         {
                             link.secondary && 
                             link.children?.map((child) => 
-                                <Link key={child.key} href={child.link} className={`flex items-center gap-4 pl-[5.2rem] py-2 hover:bg-teal-600/60 ${getPathName(route, child.pathName) && 'bg-teal-600/60'}`}>
+                                <Link key={child.key} href={child.link} className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] 2xl:pl-[5.2rem] py-2 hover:bg-teal-600/60 ${getPathName(route, child.pathName) && 'bg-teal-600/60'}`}>
                                     <p className="text-[14px] text-background/95">
                                         {child.name}
                                     </p>
