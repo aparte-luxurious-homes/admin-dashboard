@@ -7,8 +7,8 @@ This is the admin dashboard for the Aparte platform, built with [Next.js](https:
 First, run the development server:
 
 ```bash
-npm run dev
-# or
+npm install -g yarn
+
 yarn dev
 ```
 
@@ -19,13 +19,13 @@ The dashboard will auto-update as you modify files in the `app` directory.
 This project uses:
 - [Next.js](https://nextjs.org) for the framework
 - [TailwindCSS](https://tailwindcss.com) for styling
-- [Geist](https://vercel.com/font) font for typography
+- TT Firs Nue Trl font for typography
 
 ## Development
 
 To start developing:
 
 1. Clone this repository
-2. Install dependencies with `npm install`
-3. Start the development server with `npm run dev`
+2. Install dependencies with `yarn` or `yarn install`
+3. Start the development server with `yarn dev`
 4. Make your changes to the dashboard interface
