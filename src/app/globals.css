@@ -1,21 +1,23 @@
+@import url('https://fonts.cdnfonts.com/css/tt-firs-neue-trl');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
+  --background: #124452;
   --foreground: #171717;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #124452;
     --foreground: #ededed;
   }
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #c0c0c0;
+  font-family: 'TT Firs Neue Trl', sans-serif;
 }
