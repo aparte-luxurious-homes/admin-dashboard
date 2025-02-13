@@ -7,8 +7,6 @@ This is the admin dashboard for the Aparte platform, built with [Next.js](https:
 First, run the development server:
 
 ```bash
-npm run dev
-# or
 yarn dev
 ```
 
@@ -26,6 +24,6 @@ This project uses:
 To start developing:
 
 1. Clone this repository
-2. Install dependencies with `npm install`
-3. Start the development server with `npm run dev`
+2. Install dependencies with `yarn` or `yarn install`
+3. Start the development server with `yarn dev`
 4. Make your changes to the dashboard interface
