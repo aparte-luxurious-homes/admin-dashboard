@@ -21,6 +21,7 @@ export const fetchUser = async (): Promise<IUser | null> => {
 // 🔹 Custom hook to get authenticated user
 export const useAuth = () => {
     const dispatch = useDispatch();
+    const router = useRouter();
     // const queryClient = useQueryClient();
   
     const { data: user } = useQuery<IUser | null>({
@@ -32,7 +33,7 @@ export const useAuth = () => {
     useEffect(() => {
       if (user) {
         dispatch(setUser(user)); // Sync Redux only if user is not null
-      }
+      } else router.push(PAGE_ROUTES.auth.login)
     }, [user, dispatch]);
   
     return { user };
