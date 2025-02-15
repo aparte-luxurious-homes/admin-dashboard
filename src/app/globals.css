@@ -18,6 +18,6 @@
 
 body {
   color: var(--foreground);
-  background: #c0c0c0;
+  background: var(--background);
   font-family: 'TT Firs Neue Trl', sans-serif;
 }

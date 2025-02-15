@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowIcon } from "../components/icons";
-import { ILink } from "../utils/nav_links";
+import { ILink } from "../lib/routes/nav_links";
+import { UserRole } from "../lib/enums";
 
 function getPathName(route: string, targetPath: string) {
     const path = route.split("/");
@@ -13,7 +14,7 @@ function getPathName(route: string, targetPath: string) {
     return false
 }
 
-export default function SideNav({ link, route }: { link: ILink, route: string }) {
+export default function SideNav({ key, link, route, role }: { key: number, link: ILink, route: string, role: UserRole }) {
     const [open, setOpen] = useState<boolean>(false)
     const router = useRouter();
 
@@ -22,7 +23,7 @@ export default function SideNav({ link, route }: { link: ILink, route: string })
             {
                 <div>
                     <div 
-                        key={link.key}
+                        key={key}
                         className={`relative `}
                         onClick={() => setOpen(!open)}
                     >
@@ -47,12 +48,15 @@ export default function SideNav({ link, route }: { link: ILink, route: string })
                     <div className={`flex flex-col w-full transition-all ease-in-out duration-150 ${open ? 'max-h-40 opacity-100': 'max-h-0 opacity-0'}`}>
                         {
                             link.secondary && 
-                            link.children?.map((child) => 
-                                <Link key={child.key} href={child.link} className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] 2xl:pl-[5.2rem] py-2 hover:bg-teal-600/60 ${getPathName(route, child.pathName) && 'bg-teal-600/60'}`}>
+                            link.children?.map((child, index) => 
+                                child.allow.includes(role) ?
+                                <Link key={index} href={child.link} className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] 2xl:pl-[5.2rem] py-2 hover:bg-teal-600/60 ${getPathName(route, child.pathName) && 'bg-teal-600/60'}`}>
                                     <p className="text-[14px] text-background/95">
                                         {child.name}
                                     </p>
                                 </Link>
+                                :
+                                null
                             )
                         }
                     </div>
