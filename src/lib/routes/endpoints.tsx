@@ -5,7 +5,9 @@ const getApiUrl = (env: string) => {
         case 'development':
             return process.env.NEXT_PUBLIC_BASE_STAGING_API_URL
         case 'production':
-            return process.env.NEXT_PUBLIC_BASE_API_URL
+                return process.env.NEXT_PUBLIC_BASE_API_URL
+        default:
+            return process.env.NEXT_PUBLIC_BASE_STAGING_API_URL
     }
 }
 

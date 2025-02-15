@@ -24,6 +24,16 @@ export interface IErrorResponse {
 }
 
 
+export interface IWallet {
+  id: string,
+  userId: number,
+  balance: string,
+  pendingCash: string,
+  currency: string,
+  createdAt: string,
+  updatedAt: string
+}
+
 export interface IUserProfile {
   id: number;
   userId: number;
@@ -57,6 +67,8 @@ export interface IUser {
   role: UserRole;
   verificationToken: string | null;
   profile: IUserProfile;
+  kyc?: [],
+  wallets?: IWallet[],
 }
 
 export interface IAuthorization {

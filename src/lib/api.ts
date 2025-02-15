@@ -3,6 +3,7 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 import { BASE_API_URL } from "./routes/endpoints";
+import { PAGE_ROUTES } from "./routes/page_routes";
 
 const api = axios.create({
   baseURL: BASE_API_URL || "https://v1-api-9mba.onrender.com/api/v1",
@@ -26,8 +27,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status !== 401) {
+    if (error.response?.status === 401) {
       Cookies.remove("token"); // Auto logout
+      window.location.href = PAGE_ROUTES.auth.login;
     }
     return Promise.reject(error);
   }

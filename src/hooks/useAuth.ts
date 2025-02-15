@@ -13,9 +13,9 @@ import { PAGE_ROUTES } from "../lib/routes/page_routes";
 
 
 // 🔹 Fetch User & Sync with Redux
-export const fetchUser = async (): Promise<IUser | null> => {
+export const fetchUser = async (): Promise<IUser> => {
   const response = await api.get(`${BASE_API_URL}/profile`);
-  return response.data.data || null;
+  return response.data.data;
 };
 
 // 🔹 Custom hook to get authenticated user
@@ -24,7 +24,7 @@ export const useAuth = () => {
     const router = useRouter();
     // const queryClient = useQueryClient();
   
-    const { data: user } = useQuery<IUser | null>({
+    const { data: user } = useQuery<IUser>({
       queryKey: ["authUser"],
       queryFn: fetchUser,
       staleTime: 1000 * 60 * 1, // Cache for 5 minutes
@@ -33,8 +33,8 @@ export const useAuth = () => {
     useEffect(() => {
       if (user) {
         dispatch(setUser(user)); // Sync Redux only if user is not null
-      } else router.push(PAGE_ROUTES.auth.login)
-    }, [user, dispatch]);
+      }
+    }, [user, dispatch, router]);
   
     return { user };
 };
