@@ -43,8 +43,8 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                     >
                         {
                             NAV_LINKS.map((el, index) => 
-                                el.allow.includes(user?.role!) ?
-                                <SideNav key={index} link={el} role={user?.role!} route={currentRoute} />
+                                el.allow.includes(user?.role) ?
+                                <SideNav key={index} index={index} link={el} role={user?.role} route={currentRoute} />
                                 :
                                 null
                             )

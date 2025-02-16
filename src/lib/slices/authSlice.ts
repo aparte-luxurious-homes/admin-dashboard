@@ -7,51 +7,51 @@ interface AuthState {
 }
 
 const initialProfileState: IUserProfile = {
-  "id": 0,
-  "userId": 0,
-  "firstName": "",
-  "lastName": "",
-  "gender": "",
-  "bio": "",
-  "address": "",
-  "city": "",
-  "state": "",
-  "country": "",
-  "kycStatus": KycStatus.PENDING,
-  "averageRating": "",
-  "createdAt": "",
-  "updatedAt": "",
-  "dob": "",
-  "profileImage": "",
-  "nin": "",
-  "bvn": ""
+  id: 0,
+  userId: 0,
+  firstName: "",
+  lastName: "",
+  gender: "",
+  bio: "",
+  address: "",
+  city: "",
+  state: "",
+  country: "",
+  kycStatus: KycStatus.PENDING,
+  averageRating: "",
+  createdAt: "",
+  updatedAt: "",
+  dob: "",
+  profileImage: "",
+  nin: "",
+  bvn: ""
 }
 
 const initialWalletState: IWallet = {
-  "id": "",
-  "userId": 0,
-  "balance": "",
-  "pendingCash": "",
-  "currency": "",
-  "createdAt": "",
-  "updatedAt": ""
+  id: "",
+  userId: 0,
+  balance: "",
+  pendingCash: "",
+  currency: "",
+  createdAt: "",
+  updatedAt: ""
 }
 
-const initialState: AuthState = {
+export const initialState: AuthState = {
   user: {
-    "id": 0,
-    "email": "",
-    "phone": "",
-    "role": UserRole.AGENT,
-    "verificationToken": "",
-    "isVerified": true,
-    "createdAt": "",
-    "updatedAt": "",
-    "isActive": true,
-    "lastLogin": "",
-    "profile": initialProfileState,
-    "kyc": [],
-    "wallets": [initialWalletState],
+    id: 0,
+    email: "",
+    phone: "",
+    role: UserRole.AGENT,
+    verificationToken: "",
+    isVerified: true,
+    createdAt: "",
+    updatedAt: "",
+    isActive: true,
+    lastLogin: "",
+    profile: initialProfileState,
+    kyc: [],
+    wallets: [initialWalletState],
   }
 };
 

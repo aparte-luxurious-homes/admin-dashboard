@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Cookies from "js-cookie";
 import api from "@/lib/api";
 import { setUser, clearUser } from "@/lib/slices/authSlice";
@@ -10,33 +10,39 @@ import { BASE_API_URL } from "../lib/routes/endpoints";
 import { ILoginResponse, IUser } from "../lib/types";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
+import { RootState } from "../lib/store";
+import { UserRole } from "../lib/enums";
 
 
 // 🔹 Fetch User & Sync with Redux
 export const fetchUser = async (): Promise<IUser> => {
   const response = await api.get(`${BASE_API_URL}/profile`);
+  if (response.data.data.user.role === UserRole.GUEST) {
+    window.location.href = PAGE_ROUTES.auth.login;
+    throw Error("You aren't authorized to access this platform"); //Use toast instead
+  }
+
   return response.data.data;
 };
 
-// 🔹 Custom hook to get authenticated user
 export const useAuth = () => {
-    const dispatch = useDispatch();
-    const router = useRouter();
-    // const queryClient = useQueryClient();
-  
-    const { data: user } = useQuery<IUser>({
-      queryKey: ["authUser"],
-      queryFn: fetchUser,
-      staleTime: 1000 * 60 * 1, // Cache for 5 minutes
-    });
-  
-    useEffect(() => {
-      if (user) {
-        dispatch(setUser(user)); // Sync Redux only if user is not null
-      }
-    }, [user, dispatch, router]);
-  
-    return { user };
+  const dispatch = useDispatch();
+  const user = useSelector((state: RootState) => state.auth.user);
+
+  const { data, isFetching } = useQuery({
+    queryKey: ["authUser"],
+    queryFn: fetchUser,
+    // staleTime: 100 * 60 * 1, // Cache for less than 1
+  });
+
+  // Sync Redux only if data exists and is different from the current user
+  useEffect(() => {
+    if (data && data.id !== user?.id) {
+      dispatch(setUser(data));
+    }
+  }, [data, dispatch, user]);
+
+  return { user, isFetching };
 };
 
 // 🔹 Login Mutation
@@ -47,18 +53,19 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
-        const { data } = await api.post<ILoginResponse>(`${BASE_API_URL}/auth/login`, credentials);
-        console.log(data)
-        Cookies.set("token", data.authorization.token, { expires: 7, secure: true, sameSite: "Strict" });
-        return data.user;
+      const { data } = await api.post<ILoginResponse>(`${BASE_API_URL}/auth/login`, credentials);
+      // if (data.user.role === UserRole.GUEST) throw Error("You aren't authorized to access this platform");
+
+      Cookies.set("token", data.authorization.token, { expires: 7, secure: true, sameSite: "Strict" });
+      return data.user;
     },
     onSuccess: (user) => {
-        dispatch(setUser(user)); // Sync Redux
-        queryClient.setQueryData(["authUser"], user); // Sync React Query
-        router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
+      dispatch(setUser(user)); // Sync Redux
+      queryClient.setQueryData(["authUser"], user); // Sync React Query
+      router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
     },
     onError: (error) => {
-        console.error(error);
+      console.error(error);
     }
   });
 };

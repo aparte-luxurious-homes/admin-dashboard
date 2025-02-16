@@ -14,7 +14,7 @@ function getPathName(route: string, targetPath: string) {
     return false
 }
 
-export default function SideNav({ key, link, route, role }: { key: number, link: ILink, route: string, role: UserRole }) {
+export default function SideNav({ index, link, route, role }: { index: number, link: ILink, route: string, role: UserRole }) {
     const [open, setOpen] = useState<boolean>(false)
     const router = useRouter();
 
@@ -23,7 +23,7 @@ export default function SideNav({ key, link, route, role }: { key: number, link:
             {
                 <div>
                     <div 
-                        key={key}
+                        key={index}
                         className={`relative `}
                         onClick={() => setOpen(!open)}
                     >
