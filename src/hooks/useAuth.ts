@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDispatch, useSelector } from "react-redux";
 import Cookies from "js-cookie";
-import api from "@/lib/api";
+import axiosRequest from "@/lib/api";
 import { setUser, clearUser } from "@/lib/slices/authSlice";
 import { useEffect } from "react";
 import { BASE_API_URL } from "../lib/routes/endpoints";
@@ -16,7 +16,7 @@ import { UserRole } from "../lib/enums";
 
 // 🔹 Fetch User & Sync with Redux
 export const fetchUser = async (): Promise<IUser> => {
-  const response = await api.get(`${BASE_API_URL}/profile`);
+  const response = await axiosRequest.get(`${BASE_API_URL}/profile`);
   if (response.data.data.user.role === UserRole.GUEST) {
     window.location.href = PAGE_ROUTES.auth.login;
     throw Error("You aren't authorized to access this platform"); //Use toast instead
@@ -53,7 +53,7 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
-      const { data } = await api.post<ILoginResponse>(`${BASE_API_URL}/auth/login`, credentials);
+      const { data } = await axiosRequest.post<ILoginResponse>(`${BASE_API_URL}/auth/login`, credentials);
       // if (data.user.role === UserRole.GUEST) throw Error("You aren't authorized to access this platform");
 
       Cookies.set("token", data.authorization.token, { expires: 7, secure: true, sameSite: "Strict" });
@@ -77,7 +77,7 @@ export const useLogout = () => {
 
   return useMutation({
     mutationFn: async () => {
-      await api.post(`${BASE_API_URL}/auth/logout`);
+      await axiosRequest.post(`${BASE_API_URL}/auth/logout`);
       Cookies.remove("token");
     },
     onSuccess: () => {

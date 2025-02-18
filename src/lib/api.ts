@@ -5,7 +5,7 @@ import Cookies from "js-cookie";
 import { BASE_API_URL } from "./routes/endpoints";
 import { PAGE_ROUTES } from "./routes/page_routes";
 
-const api = axios.create({
+const axiosRequest = axios.create({
   baseURL: BASE_API_URL || "https://v1-api-9mba.onrender.com/api/v1",
   headers: {
     "Content-Type": "application/json",
@@ -15,7 +15,7 @@ const api = axios.create({
 });
 
 // 🔹 Attach token from cookies to every request
-api.interceptors.request.use((config) => {
+axiosRequest.interceptors.request.use((config) => {
   const token = Cookies.get("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -24,7 +24,7 @@ api.interceptors.request.use((config) => {
 });
 
 // 🔹 Handle token expiration (401 errors)
-api.interceptors.response.use(
+axiosRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
@@ -35,4 +35,4 @@ api.interceptors.response.use(
   }
 );
 
-export default api;
+export default axiosRequest;
