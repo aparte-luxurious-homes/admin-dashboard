@@ -2,13 +2,16 @@
 
 import Image from "next/image";
 import { BellIcon, SettingsIcon } from "@/components/icons";
-import { NAV_LINKS } from "../utils/nav_links";
+import { NAV_LINKS } from "../lib/routes/nav_links";
 import SideNav from "../components/sidenav";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { PAGE_ROUTES } from "../utils/page_routes";
+import { PAGE_ROUTES } from "../lib/routes/page_routes";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Dashboard({ children }: { children: React.ReactNode }){
+
+    const { user } = useAuth();
     const currentRoute = usePathname();
 
     return (
@@ -40,7 +43,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                     >
                         {
                             NAV_LINKS.map((el, index) => 
-                                <SideNav key={index} link={el} route={currentRoute} />
+                                el.allow.includes(user?.role) ?
+                                <SideNav key={index} index={index} link={el} role={user?.role} route={currentRoute} />
+                                :
+                                null
                             )
                         }
                     </div>
@@ -85,8 +91,8 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                                 className=""
                             />
                             <div className="ml-2 text-[12px]">
-                                <p className="">Adetunji Muideen</p>
-                                <p className="-mt-1 text-zinc-400">muideenadetunji@gmail.com</p>
+                                <p className="">{user?.profile?.firstName}</p>
+                                <p className="-mt-1 text-zinc-400">{user?.email}</p>
                             </div>
                         </div>
                     </div>
