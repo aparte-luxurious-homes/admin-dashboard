@@ -3,6 +3,7 @@
 import { useLogin } from "@/src/hooks/useAuth";
 import { useState } from "react";
 import Button from "@/src/components/button";
+import InputGroup from "../../../../components/formcomponent/InputGroup";
 import Image from "next/image";
 import AparteeText from "../../../../../public/svg/logo_text_white.svg";
 
@@ -18,33 +19,49 @@ export default function Login() {
 
   return (
     <div className="min-h-screen w-full flex justify-center items-center">
-      <main className="w-2/5">
+      <main className="w-[70%] md:w-[30%]">
 
         <div className="mx-auto w-fit mb-10">
           <Image src={AparteeText} alt="" />
         </div>
         
         <form
-          className="flex flex-col gap-4 p-8 rounded-xl bg-[#028090] text-gray-200 w-full shadow-[4px_4px_10px_rgba(255,255,255,0.5)]"
+          className="flex flex-col gap-4 p-8 rounded-xl bg-[#ffffff] text-gray-200 w-full shadow-[4px_4px_10px_rgba(255,255,255,0.5)]"
           onSubmit={handleSubmit}
         >
-          <label htmlFor="email">
+          {/* <label htmlFor="email">
             Email
           </label>
-          <input id="email" type="email" className="w-full h-auto p-3 rounded-lg text-gray-900" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <label htmlFor="password">
+          <input id="email" type="email" className="w-full h-auto p-3 rounded-lg text-gray-900" value={email} onChange={(e) => setEmail(e.target.value)} /> */}
+          <InputGroup
+            label="Email"
+            required
+            onChange={(e) => setEmail(e.target.value)}
+            inputType="email"
+            inputName="email"
+          />
+          <InputGroup
+            label="PassWord"
+            required
+            onChange={(e) => setPassword(e.target.value)}
+            inputType="text"
+            inputName="password"
+          />
+          {/* <label htmlFor="password">
             Password
           </label>
-          <input id="password" type="password" className="w-full h-auto p-3 mb-4 rounded-lg text-gray-900" value={password} onChange={(e) => setPassword(e.target.value)}/>
-          <Button
-            variant="primaryoutline"
-            buttonSize="full"
-            color="btnfontprimary"
-            isLoading={isPending}
-            // onClick={handleSubmit}
-            type="submit"
-            buttonName="Login"
-          />
+          <input id="password" type="password" className="w-full h-auto p-3 mb-4 rounded-lg text-gray-900" value={password} onChange={(e) => setPassword(e.target.value)}/> */}
+          <div className="mt-4">
+            <Button
+              variant="primaryoutline"
+              buttonSize="full"
+              color="btnfontprimary"
+              isLoading={isPending}
+              // onClick={handleSubmit}
+              type="submit"
+              buttonName="Login"
+            />
+          </div>
           {/* {
             isPending ?
             <p className="text-background text-base">Please wait...</p>
