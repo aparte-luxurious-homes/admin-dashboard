@@ -1,18 +1,14 @@
 import { useState } from "react";
 
-interface Option {
-  label: string;
-  value: string;
-}
 
 interface MultipleChoiceProps {
   options: string[];
-  selected?: string[] | null;
+  selected?: string[];
   onChange: (value: string[]) => void;
 }
 
-export default function MultipleChoice({ options, selected = null, onChange }: MultipleChoiceProps) {
-  const [selectedArray, setSelectedArray] = useState<string[]>([]);
+export default function MultipleChoice({ options, selected = [], onChange }: MultipleChoiceProps) {
+  const [selectedArray, setSelectedArray] = useState<string[]>(selected);
 
   function toggleSelection(option: string) {
     setSelectedArray(prev => {

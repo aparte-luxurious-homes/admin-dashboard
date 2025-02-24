@@ -1,24 +1,6 @@
-import { getSinglePropertyUnit } from "@/src/lib/request-handlers/unitMgt";
-import { useEffect, useState } from "react";
-import { IPropertyUnit } from "../types";
 import { Skeleton } from "../../ui/skeleton";
-import { Navigation, Autoplay } from 'swiper/modules';
-import { Swiper } from "swiper/types";
-import Link from "next/link";
-import { SwiperSlide } from "swiper/react";
-import Image from "next/image";
 
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: number, unitId: number }) {
-    const { data, isLoading } = getSinglePropertyUnit(propertyId, unitId)
-    
-    const [editMode, setEditMode] = useState<boolean>(false);
-    const [propertyUnit, setPropertyUnit] = useState<IPropertyUnit>(data?.data?.data)
-
-    useEffect(() => {
-        if (data) {
-            setPropertyUnit(data?.data?.data)
-        }
-    }, [data])
 
     return(
         <div className="p-10 w-full">

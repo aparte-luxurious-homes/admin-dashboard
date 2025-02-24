@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { IProperty, IPropertyUnit } from "./types";
-import { getSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 
 
@@ -27,7 +27,7 @@ export default function PropertyDetailsView({
     }: {
         propertyId: number;
     }) {
-    const { data, isLoading } = getSingleProperty(propertyId)
+    const { data, isLoading } = GetSingleProperty(propertyId)
 
     const [editMode, setEditMode] = useState<boolean>(false);
     const [property, setProperty] = useState<IProperty>(data?.data?.data)
@@ -313,8 +313,7 @@ export default function PropertyDetailsView({
                             </>
                             :
                             <EditProperty 
-                                propertyData={property} 
-                                setPropertyData={setProperty} 
+                                propertyData={property}
                                 handleEditMode={setEditMode} 
                             />
                         }

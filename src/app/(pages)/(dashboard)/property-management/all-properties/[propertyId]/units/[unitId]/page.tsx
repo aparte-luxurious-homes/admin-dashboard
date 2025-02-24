@@ -1,3 +1,5 @@
+'use client'
+
 import UnitDetailsView from "@/src/components/properties-mgt/unit-mgt/UnitDetailsView";
 import { useParams } from "next/navigation";
 
