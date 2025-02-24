@@ -2,7 +2,7 @@ import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../ico
 
 export default function ListPropertiesView() {
     return (
-        <div className="w-full">
+        <div className="w-full p-10">
             <div className="w-full border border-zinc-500/20 bg-white rounded-xl px-6 py-7 min-h-[70vh] flex flex-col items-center">
                 <div className="w-full flex justify-between items-center">
                     <div className="w-1/2 flex items-center gap-5">

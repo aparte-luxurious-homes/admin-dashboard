@@ -130,6 +130,8 @@ const Home = () => {
         }
         setLoading(false);
         setError("An unknown error occurred");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -149,6 +151,8 @@ const Home = () => {
         }
         setLoading(false);
         setError("An unknown error occurred");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -158,7 +162,7 @@ const Home = () => {
   console.log("stats", stats);
 
   if (loading) return <p>Loading properties...</p>;
-  if (error) return <p>Error: {error}</p>;
+  console.log(error)
   console.log("properties", properties);
 
   const dataByRange = {
@@ -170,12 +174,21 @@ const Home = () => {
   };
 
   const propertyColumns: GridColDef[] = [
-    { field: "id", headerName: "ID", width: 70 },
+    // { field: "id", headerName: "ID", width: 70 },
     { field: "name", headerName: "Property Name", width: 200 },
     { field: "address", headerName: "Address", width: 250 },
-    { field: "city", headerName: "City", width: 120 },
-    { field: "state", headerName: "State", width: 120 },
-    { field: "country", headerName: "Country", width: 120 },
+    // { field: "city", headerName: "City", width: 120 },
+    // { field: "state", headerName: "State", width: 120 },
+    // { field: "country", headerName: "Country", width: 120 },
+    {
+      field: "location",
+      headerName: "Location",
+      width: 200,
+      renderCell: (params) => {
+        const { city, state } = params.row;
+        return `${city || "--/--"}, ${state || "--/--"}`;
+      },
+    },
     { field: "propertyType", headerName: "Type", width: 150 },
     {
       field: "isVerified",
@@ -183,13 +196,13 @@ const Home = () => {
       width: 150,
       renderCell: (params) => <Badge status={params.value} />,
     },
-    { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
-    // { 
-    //   field: "agent", 
-    //   headerName: "Agent Details", 
-    //   width: 280, 
-    //   valueGetter: (params: any) => `Email: ${params.row?.agent?.email || "--/--"} | Phone: ${params.row?.agent?.phone || "--/--"}`
-    // },
+    // { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
+    { 
+      field: "agent", 
+      headerName: "Agent Name", 
+      width: 280, 
+      renderCell: (params: any) => `${params.row?.agent?.name || "--/--"}`
+    },
     {
       field: "actions",
       headerName: "",
@@ -293,7 +306,7 @@ const Home = () => {
   ];
 
   return (
-    <div className="full">
+    <div className="full p-10">
       <div className="mb-6">
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
