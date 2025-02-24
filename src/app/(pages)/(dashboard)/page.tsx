@@ -17,6 +17,7 @@ import StatsCard from "@/src/components/statcard/statcard";
 import LineChart from "@/src/components/linecharts/linecharts";
 import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton"
+import Link from "next/link";
 
 interface Agent {
   id: number;
@@ -170,6 +171,71 @@ const Home = () => {
     })),
   };
 
+  const adminColumns: GridColDef[] = [
+    // { field: "id", headerName: "ID", width: 70 },
+    { field: "name", headerName: "Property Name", width: 180 },
+    // { field: "address", headerName: "Address", width: 250 },
+    // { field: "city", headerName: "City", width: 120 },
+    // { field: "state", headerName: "State", width: 120 },
+    // { field: "country", headerName: "Country", width: 120 },
+    {
+      field: "location",
+      headerName: "Location",
+      width: 150,
+      renderCell: (params) => {
+        const { city, state } = params.row;
+        return `${city || "--/--"}, ${state || "--/--"}`;
+      },
+    },
+    { field: "propertyType", headerName: "Type", width: 110 },
+    {
+      field: "isVerified",
+      headerName: "Verification Status",
+      width: 140,
+      renderCell: (params) => <Badge status={params.value} />,
+    },
+    // { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
+    { 
+      field: "agent", 
+      headerName: "Agent Name", 
+      width: 150, 
+      renderCell: (params) => `${params.row?.agent?.name || "--/--"}`
+    },
+    { 
+      field: "owner", 
+      headerName: "Owner's Name", 
+      width: 150, 
+      renderCell: (params) => `${params.row?.owner?.name || "--/--"}`
+    },
+    {
+      field: "meta",
+      headerName: "Rating",
+      width: 50,
+      renderCell: (params) => {
+        return params.value?.average_rating ?? "--/--";
+      },
+    },
+    {
+      field: "unitsCount",
+      headerName: "Units",
+      width: 50,
+      renderCell: (params) => {
+        return params.row.units?.length ?? 0;
+      },
+    },
+    {
+      field: "actions",
+      headerName: "",
+      width: 50,
+      sortable: false,
+      align: "center",
+      renderCell: (params) => (
+        <Link href={`/property-management/all-properties/${params.row.id}`}>
+          <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A] mt-4" />
+        </Link>
+      ),
+    },
+  ];
   const propertyColumns: GridColDef[] = [
     // { field: "id", headerName: "ID", width: 70 },
     { field: "name", headerName: "Property Name", width: 200 },
@@ -222,10 +288,10 @@ const Home = () => {
       width: 50,
       sortable: false,
       align: "center",
-      renderCell: () => (
-        <button className="bg-transparent border-0 text-[#514A4A]">
-          <Icon icon="mdi:eye" />
-        </button>
+      renderCell: (params) => (
+        <Link href={`/property-management/all-properties/${params.row.id}`}>
+          <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A] mt-4" />
+        </Link>
       ),
     },
   ];
@@ -273,10 +339,10 @@ const Home = () => {
       width: 50,
       sortable: false,
       align: "center",
-      renderCell: () => (
-        <button className="bg-transparent border-0 text-[#514A4A]">
-          <Icon icon="mdi:eye" />
-        </button>
+      renderCell: (params) => (
+        <Link href={`/property-management/all-properties/${params.row.id}`}>
+          <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A] mt-4" />
+        </Link>
       ),
     },
   ];
@@ -349,11 +415,11 @@ const Home = () => {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                <div className="p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md flex items-center justify-center">
+                <div className={`p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md ${stats?.properties?.length === 0 && "flex items-center justify-center"}`}>
                   {isStatLoading ? (
                     <Skeleton className="h-[200px] w-full rounded-md" />
                   ) : stats?.properties?.length > 0 ? (
-                    <>
+                    <div>
                       <select onChange={(e) => setRange(e.target.value)} value={range}>
                         <option value="30days">Last 30 Days</option>
                         <option value="90days">Last 90 Days</option>
@@ -361,9 +427,9 @@ const Home = () => {
                       </select>
 
                       <UsersChart range={range} data={dataByRange} />
-                    </>
+                    </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="flex flex-col items-center justify-center gap-2 mt-20">
                       <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
                       <p className="text-gray-500 text-sm font-medium">No Data Found</p>
                     </div>
@@ -387,7 +453,7 @@ const Home = () => {
             </Grid>
           </Grid>
           {user?.role === "OWNER" || user?.role === "ADMIN" ? (
-            <Grid size={{ xs: 12, sm: 6, md: 3, lg: 3 }}>
+            <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }}>
               <div className="p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                 <h3>Top Performing Agents</h3>
                 <Table columns={topAgentColumns} rows={allAgents} getRowId={(row) => row.agentName} pagination={false} />
@@ -412,7 +478,7 @@ const Home = () => {
             </div>
             {searchResult?.length > 0 ? (
               <Table
-                columns={user?.role === "OWNER" || user?.role === "ADMIN" ? propertyColumns : anAgentColumns}
+                columns={user?.role === "OWNER" ? propertyColumns : user?.role === "ADMIN" ? adminColumns : anAgentColumns}
                 rows={searchResult}
                 getRowId={(row) => row?.id}
                 pagination={false}
