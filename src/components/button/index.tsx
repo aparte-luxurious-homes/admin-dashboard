@@ -1,20 +1,19 @@
 import useStyles from "./styles";
-import PropTypes from "prop-types";
 import classNames from "classnames";
-import { FC, ReactNode } from "react";
+import { FC } from "react";
 
 interface ButtonProps {
   buttonName?: string;
-  buttonIcon?: ReactNode;
   color?: "btndefault" | "btnblack" | "btnfontprimary" | "btnfontsecondary" | "btndanger" | "btnsuccess";
   variant?: "primary" | "danger" | "primaryoutline" | "dangeroutline" | "success";
   buttonSize?: "small" | "medium" | "large" | "fluid" | "full";
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement> | React.FormEvent<HTMLFormElement>) => void;
   disabled?: boolean;
   isLoading?: boolean;
+  type?: "button" | "submit" | "reset";
 }
 
-const Button: FC<ButtonProps> = ({ buttonName, buttonIcon, color, variant, buttonSize, onClick, disabled, isLoading }) => {
+const Button: FC<ButtonProps> = ({ buttonName, color, variant, buttonSize, onClick, disabled, isLoading, type }) => {
   const classes = useStyles();
   
   const getButtonSize = () => {
@@ -71,20 +70,10 @@ const Button: FC<ButtonProps> = ({ buttonName, buttonIcon, color, variant, butto
   };
 
   return (
-    <button className={classNames(classes.button, getButtonVariant(), getButtonColor(), getButtonSize())} onClick={onClick} disabled={disabled}>
-      {isLoading ? "Please wait..." : <>{buttonIcon}{buttonName}</>}
+    <button className={classNames(classes.button, getButtonVariant(), getButtonColor(), getButtonSize())} onClick={onClick} disabled={disabled} type={type}>
+      {isLoading ? "Please wait..." : <>{buttonName}</>}
     </button>
   );
-};
-
-Button.propTypes = {
-  buttonSize: PropTypes.oneOf(["small", "medium", "large", "fluid", "full"]),
-  variant: PropTypes.oneOf(["primary", "danger", "primaryoutline", "dangeroutline", "success"]),
-  buttonName: PropTypes.string,
-  buttonIcon: PropTypes.object,
-  onClick: PropTypes.func,
-  disabled: PropTypes.bool,
-  isLoading: PropTypes.bool
 };
 
 export default Button;

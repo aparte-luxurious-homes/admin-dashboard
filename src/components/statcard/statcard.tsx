@@ -3,8 +3,8 @@ import { Icon } from "@iconify/react";
 
 type CardProps = {
   title: string;
-  amount: string;
-  percentage: number;
+  amount: string | number;
+  percentage: number | string;
   isIncrease: boolean;
 };
 

@@ -5,7 +5,7 @@ import Paper from "@mui/material/Paper";
 interface TableProps<T> {
   columns: GridColDef[];
   rows: T[];
-  getRowId: (row: T) => string;
+  getRowId: (row: T) => number | string;
   pagination: boolean
 }
 

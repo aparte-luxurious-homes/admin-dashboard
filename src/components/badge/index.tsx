@@ -2,13 +2,15 @@ import useStyles from "./styles";
 import classNames from "classnames";
 
 interface BadgeProps {
-  status: string;
+  status: string | boolean;
 }
 
 const Badge: React.FC<BadgeProps> = ({ status }) => {
   const classes = useStyles({ status });
 
   const statusText =
+    status === true ? "Verified" : 
+    status === false ? "Rejected" : 
     status === "verified" ? "Verified" :
     status === "pending" ? "Pending" :
     status === "rejected" ? "Rejected" :
