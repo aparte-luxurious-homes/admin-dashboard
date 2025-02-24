@@ -33,6 +33,16 @@ interface Owner {
   verificationToken: string | null;
 }
 
+interface Amenities {
+  id: number;
+  name: string;
+}
+interface Media {
+  id: number;
+  media_file: string;
+  is_featured: boolean;
+}
+
 interface Property {
   id: number;
   name: string;
@@ -50,8 +60,8 @@ interface Property {
   agent: Agent;
   owner: Owner;
   ownerId: number;
-  media: any[];
-  amenities: any[];
+  media: Media[];
+  amenities: Amenities[];
   createdAt: string;
 }
 // interface AgentData {
@@ -97,7 +107,7 @@ const Home = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [stats, setStats] = useState<StatsData>({} as StatsData);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string>("");
   // const [statError, setStatError] = useState(null);
   const [searchValue, setSearchValue] = useState<string>("");
   const [range, setRange] = useState<string>("year");
@@ -114,9 +124,12 @@ const Home = () => {
         setSearchResult(response?.data?.data?.data);
         setLoading(false);
       } catch (err) {
-        setError(err.message);
-      } finally {
+        if (err instanceof Error) {
+          setError(err.message);
+          return;
+        }
         setLoading(false);
+        setError("An unknown error occurred");
       }
     };
 
@@ -130,9 +143,12 @@ const Home = () => {
         setStats(response?.data?.data);
         setLoading(false);
       } catch (err) {
-        console.log(err.message);
-      } finally {
+        if (err instanceof Error) {
+          setError(err.message);
+          return;
+        }
         setLoading(false);
+        setError("An unknown error occurred");
       }
     };
 
@@ -168,12 +184,12 @@ const Home = () => {
       renderCell: (params) => <Badge status={params.value} />,
     },
     { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
-    { 
-      field: "agent", 
-      headerName: "Agent Details", 
-      width: 280, 
-      valueGetter: (params: any) => `Email: ${params.row?.agent?.email || "--/--"} | Phone: ${params.row?.agent?.phone || "--/--"}`
-    },
+    // { 
+    //   field: "agent", 
+    //   headerName: "Agent Details", 
+    //   width: 280, 
+    //   valueGetter: (params: any) => `Email: ${params.row?.agent?.email || "--/--"} | Phone: ${params.row?.agent?.phone || "--/--"}`
+    // },
     {
       field: "actions",
       headerName: "",
@@ -189,15 +205,41 @@ const Home = () => {
   ];
   const anAgentColumns: GridColDef[] = [
     { field: "name", headerName: "Property Name", width: 300 },
-    { field: "city", headerName: "City", width: 150 },
-    { field: "state", headerName: "State", width: 150 },
-    { field: "country", headerName: "Country", width: 150 },
+    {
+      field: "location",
+      headerName: "Location",
+      width: 200,
+      renderCell: (params) => {
+        const { city, state } = params.row;
+        return `${city || "--/--"}, ${state || "--/--"}`;
+      },
+    },
+    // { field: "country", headerName: "Country", width: 150 },
     { field: "propertyType", headerName: "Type", width: 150 },
     {
-      field: "verificationStatus",
+      field: "meta",
+      headerName: "Rating",
+      width: 90,
+      renderCell: (params) => {
+        return params.value?.average_rating ?? "--/--";
+      },
+    },
+    {
+      field: "unitsCount",
+      headerName: "Units",
+      width: 90,
+      renderCell: (params) => {
+        return params.row.units?.length ?? 0;
+      },
+    },
+    {
+      field: "isVerified",
       headerName: "Verification Status",
       width: 150,
-      renderCell: (params) => <Badge status={params.value} />,
+      renderCell: (params) => {
+        console.log("Badge", params.value);
+        return <Badge status={params.value} />;
+      },
     },
     {
       field: "actions",
