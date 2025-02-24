@@ -1,4 +1,6 @@
 import Dashboard from "@/src/layouts/dashboard";
+import 'swiper/css';
+import 'swiper/css/navigation';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (

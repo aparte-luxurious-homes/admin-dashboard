@@ -191,20 +191,21 @@ export function SearchIcon({ className, color, ...rest }: { className?: string, 
     );
 };
 
-export function ClockIcon({ className, color, ...rest }: { className?: string, color?: string}) {
+export function ClockIcon({ className, color='#888888', ...rest }: { className?: string, color?: string}) {
     return (
         <svg 
-            width="24" 
-            height="24" 
-            viewBox="0 0 24 24" 
+            width="18" 
+            height="18" 
+            viewBox="0 0 18 18" 
             fill="none" 
             xmlns="http://www.w3.org/2000/svg"
-            {...rest}
+            { ...rest }
             className={`h-auto ${className}`}
         >
-            <path d="M11 20C15.9706 20 20 15.9706 20 11C20 6.02944 15.9706 2 11 2C6.02944 2 2 6.02944 2 11C2 15.9706 6.02944 20 11 20Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M18.9304 20.6888C19.4604 22.2888 20.6704 22.4488 21.6004 21.0488C22.4504 19.7688 21.8904 18.7188 20.3504 18.7188C19.2104 18.7088 18.5704 19.5988 18.9304 20.6888Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M16.5 9C16.5 13.14 13.14 16.5 9 16.5C4.86 16.5 1.5 13.14 1.5 9C1.5 4.86 4.86 1.5 9 1.5C13.14 1.5 16.5 4.86 16.5 9Z" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M11.7827 11.3853L9.45766 9.99781C9.05266 9.75781 8.72266 9.18031 8.72266 8.70781V5.63281" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
+        
     );
 };
 
@@ -290,3 +291,19 @@ export function FilterIcon({ className, color, ...rest }: { className?: string, 
         </svg>
     );
 };
+
+export function TrashIcon({ className, color = "currentColor", ...rest }: { className?: string; color?: string }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="100"
+            height="100"
+            viewBox="0 0 24 24"
+            fill={color}
+            className={className}
+            {...rest} 
+        >
+            <path d="M10 2L9 3H4v2h1v15a2 2 0 002 2h10a2 2 0 002-2V5h1V3h-5l-1-1h-4zm-3 3h10v15H7V5zm2 2v11h2V7H9zm4 0v11h2V7h-2z"></path>
+        </svg>
+    );
+}
