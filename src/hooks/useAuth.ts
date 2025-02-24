@@ -62,8 +62,7 @@ export const useLogin = () => {
     onSuccess: (user) => {
       dispatch(setUser(user)); // Sync Redux
       queryClient.setQueryData(["authUser"], user); // Sync React Query
-      router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
-      console.log("Hiiiii")
+      router.push(PAGE_ROUTES.dashboard.base)
     },
     onError: (error) => {
       console.error(error);
