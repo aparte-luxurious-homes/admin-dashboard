@@ -82,6 +82,9 @@ export const API_ROUTES = {
         details: (paymentId: string) => `/payments/${paymentId}`,
         validate: (paymentId: string) => `/payments/${paymentId}/validate`,
     },
+    statistic: {
+        base: '/stats'
+    },
 };
 
 
