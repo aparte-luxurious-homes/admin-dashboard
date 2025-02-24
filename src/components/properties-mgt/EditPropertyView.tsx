@@ -20,25 +20,23 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../ui/CustomDropzone";
 import { Formik, useFormik } from 'formik';
-import { useUpdateProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { UseUpdateProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 
 
 export default function EditPropertyView({  
     handleEditMode,
-    setPropertyData,
     propertyData 
 }: { 
-    handleEditMode: Dispatch<SetStateAction<boolean>>, 
-    setPropertyData: Dispatch<SetStateAction<IProperty>>, 
+    handleEditMode: Dispatch<SetStateAction<boolean>>,
     propertyData: IProperty
 }) {
     const dispatch = useDispatch();
-    const { mutate, isPending } = useUpdateProperty()
+    const { mutate, isPending } = UseUpdateProperty()
     const { user } = useAuth();
 
-    const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
+    const [media, _] = useState<IPropertyMedia[]>(propertyData?.media??[])
 
     const formik = 
         useFormik({

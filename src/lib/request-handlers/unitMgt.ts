@@ -8,7 +8,7 @@ enum PropertyRequestKeys {
     singleUnit = "getSingleUnitsView",
 }
 
-export function getAllPropertyUnits(page=1, limit=10) {
+export function GetAllPropertyUnits(page=1, limit=10) {
     return useQuery({
         queryKey: [PropertyRequestKeys.allUnits, page, limit], 
         queryFn: () => axiosRequest.get(
@@ -21,7 +21,7 @@ export function getAllPropertyUnits(page=1, limit=10) {
 }
 
 
-export function getSinglePropertyUnit(propertyId: number, unitId: number) {
+export function GetSinglePropertyUnit(propertyId: number, unitId: number) {
     return useQuery({
         queryKey: [PropertyRequestKeys.singleUnit, propertyId, unitId], 
         queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId)),
@@ -31,7 +31,7 @@ export function getSinglePropertyUnit(propertyId: number, unitId: number) {
     });
 }
 
-export function useUpdateProperty() {
+export function UseUpdatePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({propertyId, unitId, payload}: {propertyId: number, unitId: number, payload: IUpdateProperty}) =>
