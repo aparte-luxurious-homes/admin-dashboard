@@ -15,7 +15,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
     const currentRoute = usePathname();
 
     return (
-        <div className="min-h-screen size-full relative">
+        <div className="h-screen size-full relative">
             <div className="absolute w-0 lg:w-[26%] xl:w-[20%] 2xl:w-[18%] bg-primary text-background left-0 top-0 bottom-0">
                 <div className="size-full">
                     <div className="w-full flex justify-center items-center ">
@@ -51,7 +51,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                         }
                     </div>
                     <div className="absolute bottom-0 w-full flex items-center h-14 border-t-2 border-teal-700/70 bg-primary">
-                        <Link href={PAGE_ROUTES.dashboard.settings.base} className="flex gap-4 pl-12 py-2 hover:bg-teal-600/60 w-full">
+                        <Link href={PAGE_ROUTES.dashboard.settings.base} className="flex gap-4 pl-7 py-2 hover:bg-teal-600/60 w-full">
                             <SettingsIcon className="w-5" color="white" />
                             <p className="text-base flex items-center">
                                 Settings
@@ -61,9 +61,9 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                 </div>
             </div>
             <div className="pl-0 lg:pl-[26%] xl:pl-[20%] 2xl:pl-[18%] w-full">
-                <div className="w-full h-20 flex justify-between items-center px-10 bg-white">
+                <div className="w-full h-20 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
                     <div className="w-1/2">
-                        <p className="text-2xl font-semi-bold">
+                        {/* <p className="text-2xl font-semi-bold">
                             {
                                 currentRoute.split('/').length === 2 && currentRoute.split('/')[1] === '' 
                                     ? 'Dashboard' 
@@ -72,7 +72,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                                         .replace(/-/g, ' ')
                                         .replace(/^./, c => c.toUpperCase())
                             }
-                        </p>
+                        </p> */}
                     </div>
                     <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-5 items-center">
                         <Link href={PAGE_ROUTES.dashboard.settings.base} className="size-10 rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20">
@@ -97,7 +97,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                         </div>
                     </div>
                 </div>
-                <div className="px-10 mt-5 w-full">
+                <div className=" px-10 w-full h-[91vh] overflow-y-auto">
                     {children}
                 </div>
             </div>

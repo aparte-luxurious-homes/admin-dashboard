@@ -30,7 +30,7 @@ export default function SideNav({ index, link, route, role }: { index: number, l
                         <div className="w-full">
                             <div 
                                 onClick={() => !link.secondary && router.push(link.link)}
-                                className={`flex items-center gap-4 pt-3 pb-2 pl-3 xl:pl-6 2xl:pl-12 hover:bg-teal-600/60 ${!link.secondary && route === '/' && link.name === 'Dashboard' && 'bg-teal-600/60'}`}>
+                                className={`flex items-center gap-4 pt-3 pb-2 pl-3 xl:pl-6  hover:bg-teal-600/60 ${!link.secondary && route === '/' && link.name === 'Dashboard' && 'bg-teal-600/60'}`}>
                                 {link.icon}
                                 <p className="text-base flex items-center pr-8">
                                     {link.name}
@@ -50,7 +50,7 @@ export default function SideNav({ index, link, route, role }: { index: number, l
                             link.secondary && 
                             link.children?.map((child, index) => 
                                 child.allow.includes(role) ?
-                                <Link key={index} href={child.link} className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] 2xl:pl-[5.2rem] py-2 hover:bg-teal-600/60 ${getPathName(route, child.pathName) && 'bg-teal-600/60'}`}>
+                                <Link key={index} href={child.link} className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem]  py-2 hover:bg-teal-600/60 ${getPathName(route, child.pathName) && 'bg-teal-600/60'}`}>
                                     <p className="text-[14px] text-background/95">
                                         {child.name}
                                     </p>

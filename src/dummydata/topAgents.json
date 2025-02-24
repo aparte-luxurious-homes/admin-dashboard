@@ -1,0 +1,9 @@
+[
+    { "agentName": "Agent A", "verifiedCount": 15 },
+    { "agentName": "Agent B", "verifiedCount": 23 },
+    { "agentName": "Agent C", "verifiedCount": 8 },
+    { "agentName": "Agent D", "verifiedCount": 30 },
+    { "agentName": "Agent E", "verifiedCount": 12 },
+    { "agentName": "Agent F", "verifiedCount": 19 }
+  ]
+  

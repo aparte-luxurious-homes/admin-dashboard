@@ -32,7 +32,7 @@ export const useAuth = () => {
   const { data, isFetching } = useQuery({
     queryKey: ["authUser"],
     queryFn: fetchUser,
-    // staleTime: 100 * 60 * 1, // Cache for less than 1
+    refetchInterval: 1000 * 60 * 5, // 5 minutes
   });
 
   // Sync Redux only if data exists and is different from the current user
@@ -54,7 +54,7 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
       const { data } = await axiosRequest.post<ILoginResponse>(`${BASE_API_URL}/auth/login`, credentials);
-      // if (data.user.role === UserRole.GUEST) throw Error("You aren't authorized to access this platform");
+      if (data.user.role === UserRole.GUEST) throw Error("You aren't authorized to access this platform");
 
       Cookies.set("token", data.authorization.token, { expires: 7, secure: true, sameSite: "Strict" });
       return data.user;
@@ -62,7 +62,7 @@ export const useLogin = () => {
     onSuccess: (user) => {
       dispatch(setUser(user)); // Sync Redux
       queryClient.setQueryData(["authUser"], user); // Sync React Query
-      router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
+      router.push(PAGE_ROUTES.dashboard.base)
     },
     onError: (error) => {
       console.error(error);

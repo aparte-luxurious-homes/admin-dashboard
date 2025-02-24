@@ -21,3 +21,66 @@ body {
   background: var(--background);
   font-family: 'TT Firs Neue Trl', sans-serif;
 }
+
+.rewind .swiper-button-next::after,
+.rewind .swiper-button-prev::after {
+  content: '';
+}
+
+.rewind {
+  margin-left: initial !important;
+  margin-right: initial !important;
+}
+
+.rewind .swiper-button-prev::before {
+  content: '\276E';
+}
+
+.rewind .swiper-button-next::before {
+  content: '\276F';
+}
+
+.rewind .swiper-button-prev,
+.rewind .swiper-button-next {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: 48%;
+  bottom: initial;
+  color: white;
+  font-size: x-large;
+  transition: 0.3s ease;
+  z-index: 20;
+  background-color: rgba(4, 90, 112, 0.685);
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+}
+
+.rewind .swiper-button-prev:hover,
+.rewind .swiper-button-next:hover {
+  background-color: rgb(4, 90, 112);
+}
+
+
+.rewind .swiper-button-next {
+  left: initial;
+  right: 1rem;
+  padding-left: 4px;
+}
+
+.rewind .swiper-button-prev {
+  left: 1rem;
+  right: initial;
+  padding-right: 4px;
+}
+
+
+@media screen and (max-width: 767px) {
+  .rewind .swiper-button-prev,
+  .rewind .swiper-button-next {
+    width: 3rem;
+    height: 3rem;
+  }
+}

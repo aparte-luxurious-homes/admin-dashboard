@@ -1,0 +1,193 @@
+/* This file uses a css file as against a modular css so as to overwrite styling on rect datatables */
+
+.datatable header {
+    display: flex;
+    justify-content: space-between;
+    padding-left: 1px;
+    padding-right: 0px;
+    margin-bottom: 5px;
+    background-color: transparent;
+}
+
+.datatable header>div:first-child {
+    width: 35%;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.datatable header>div:last-child {
+   width: 20%;
+}
+
+.rdt_Table {
+    background-color: transparent !important;
+}
+
+.rdt_TableHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+}
+
+.rdt_TableHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.rdt_TableHeadRow {
+    background-color: #F9FAFB !important;
+    color: #101928;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    border-top-right-radius: 10px;
+    border-top-left-radius: 10px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    padding-left: 25px;
+    padding-right: 25px;
+    font-size: 14px;
+}
+
+.rdt_TableRow {
+    padding-top: 25px;
+    padding-bottom: 25px;
+    font-size: 14px !important;
+    border-bottom: none !important;
+    color: #344054;
+    font-weight: 400;
+    padding-left: 25px;
+    padding-right: 25px;
+    border-radius: 8px;
+
+    /* letter-spacing: 0.1px; */
+    max-width: 100% !important;
+}
+
+.rdt_Pagination {
+    justify-content: center !important;
+}
+
+.rdt_Pagination button {
+    border: 1px solid #D0D5DD;
+    border-radius: 8px;
+    margin-right: 4px;
+    height: 36px;
+    width: 36px;
+    padding: 4px;
+}
+
+.table_search {
+    height: 40px;
+    box-sizing: border-box;
+    padding: 5px 5px 5px 35px;
+    border-radius: 6px;
+    border: 1px solid #D0D5DD;
+    background-color: transparent;
+    position: relative;
+    outline: 0;
+    width: 100% !important;
+}
+
+.table_select {
+    width: 100%;
+    height: 40px;
+    box-sizing: border-box;
+    padding: 5px 5px 5px 30px;
+    border: 1px solid #D0D5DD;
+    border-radius: 6px;
+    background-color: transparent;
+    outline: 0;
+    }
+
+
+.search_container svg {
+    position: absolute !important;
+    left: 18px;
+    color: #667185;
+    font-size: 20px;
+    font-weight: bold
+}
+
+.table_select_container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.table_select_container svg {
+    position: absolute !important;
+    left: 10px;
+    color: #667185;
+    font-size: 22px;
+    font-weight: bold
+}
+
+@media(max-width: 1200px) {
+    .datatable header>div:last-child {
+        width: 20%;
+    }
+}
+
+@media (max-width: 576px) {
+    .rdt_TableHeadRow {
+        display: none !important;
+    }
+
+    .datatable header>div:first-child {
+        flex-wrap: wrap;
+    }
+
+    .rdt_TableRow {
+
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .rdt_TableCell {
+        min-width: 50% !important;
+        max-width: 50% !important;
+        text-align: left;
+        justify-content: flex-start !important;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .rdt_TableRow {
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .datatable header {
+        flex-direction: column;
+        row-gap: 5px;
+        background-color: transparent;
+    }
+
+    .datatable header div:first-child {
+        width: 100%;
+    }
+
+    .datatable header div:last-child {
+        width: 100%;
+    }
+
+    .search_container {
+        margin-left: 0px;
+    }
+
+    /* .search_container svg {
+        left: 8px;
+    } */
+
+    .datatable header div:last-child {
+        width: 100%;
+    }
+
+    .rdt_TableRow {
+        padding-top: 5px!important;
+        padding-bottom: 5px!important;
+    }
+}

@@ -38,10 +38,10 @@ export interface IUserProfile {
   id: number;
   userId: number;
   firstName: string;
-  lastName: string | null;
-  gender: string | null;
-  dob: string | null;
-  address: string | null;
+  lastName?: string;
+  gender?: string;
+  dob?: string;
+  address?: string;
   city: string | null;
   state: string | null;
   country: string | null;
@@ -58,14 +58,14 @@ export interface IUserProfile {
 export interface IUser {
   id: number;
   email: string;
-  phone: string | null;
+  phone?: string | null;
   isActive: boolean;
   isVerified: boolean;
-  lastLogin: string | null;
+  lastLogin?: string;
   createdAt: string;
   updatedAt?: string;
   role: UserRole;
-  verificationToken: string | null;
+  verificationToken?: string;
   profile: IUserProfile;
   kyc?: [],
   wallets?: IWallet[],
