@@ -102,7 +102,6 @@ interface MonthlyPropertyStats {
   totalUnverified: number;
 }
 
-
 const Home = () => {
   const [searchResult, setSearchResult] = useState<Property[]>([]);
   const allAgents = topAgents;
@@ -155,8 +154,6 @@ const Home = () => {
     fetchProperties();
     fetchStatistics();
   }, []);
-  
-  
 
   console.log("stats", stats);
   console.log(error)
@@ -306,7 +303,6 @@ const Home = () => {
         return `${city || "--/--"}, ${state || "--/--"}`;
       },
     },
-    // { field: "country", headerName: "Country", width: 150 },
     { field: "propertyType", headerName: "Type", width: 150 },
     {
       field: "meta",
