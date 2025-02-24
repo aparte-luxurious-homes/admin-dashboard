@@ -235,7 +235,7 @@ const Home = () => {
     );
     setSearchResult(result);
   };
-  const labels = stats?.properties?.map((item) => item?.month) || [];;
+  const labels = stats?.properties?.map((item) => item?.month.slice(0, 3),) || [];
 
   const datasets = [
     {
