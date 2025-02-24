@@ -16,6 +16,7 @@ import UsersChart from "@/src/components/userchart/userchart";
 import StatsCard from "@/src/components/statcard/statcard";
 import LineChart from "@/src/components/linecharts/linecharts";
 import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Agent {
   id: number;
@@ -107,62 +108,58 @@ const Home = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [stats, setStats] = useState<StatsData>({} as StatsData);
   const [loading, setLoading] = useState(true);
+  const [isStatLoading, setIsStatLoading] = useState(true);
   const [error, setError] = useState<string>("");
-  // const [statError, setStatError] = useState(null);
+  const [statError, setStatError] = useState<string>("");
   const [searchValue, setSearchValue] = useState<string>("");
   const [range, setRange] = useState<string>("year");
   const { user, isFetching } = useAuth();
 
   console.log(isFetching ? "Fetching User" : user);
 
-  useEffect(() => {
-    const fetchProperties = async () => {
-      try {
-        const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.propertyManagement.properties.base}`);
-
-        setProperties(response?.data?.data?.data);
-        setSearchResult(response?.data?.data?.data);
-        setLoading(false);
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-          return;
-        }
-        setLoading(false);
+  const fetchProperties = async () => {
+    setLoading(true);
+    try {
+      const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.propertyManagement.properties.base}`);
+      setProperties(response?.data?.data?.data);
+      setSearchResult(response?.data?.data?.data);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
         setError("An unknown error occurred");
-      } finally {
-        setLoading(false);
       }
-    };
-
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchStatistics = async () => {
+    setIsStatLoading(true);
+    try {
+      const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.statistic.base}`);
+      setStats(response?.data?.data);
+    } catch (err) {
+      if (err instanceof Error) {
+        setStatError(err.message);
+      } else {
+        setStatError("An unknown error occurred");
+      }
+    } finally {
+      setIsStatLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchProperties();
+    fetchStatistics();
   }, []);
-  useEffect(() => {
-    const getStatistics = async () => {
-      try {
-        const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.statistic.base}`);
-
-        setStats(response?.data?.data);
-        setLoading(false);
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-          return;
-        }
-        setLoading(false);
-        setError("An unknown error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getStatistics();
-  }, []);
+  
+  
 
   console.log("stats", stats);
-
-  if (loading) return <p>Loading properties...</p>;
   console.log(error)
+  console.log(statError)
   console.log("properties", properties);
 
   const dataByRange = {
@@ -176,7 +173,7 @@ const Home = () => {
   const propertyColumns: GridColDef[] = [
     // { field: "id", headerName: "ID", width: 70 },
     { field: "name", headerName: "Property Name", width: 200 },
-    { field: "address", headerName: "Address", width: 250 },
+    // { field: "address", headerName: "Address", width: 250 },
     // { field: "city", headerName: "City", width: 120 },
     // { field: "state", headerName: "State", width: 120 },
     // { field: "country", headerName: "Country", width: 120 },
@@ -200,8 +197,24 @@ const Home = () => {
     { 
       field: "agent", 
       headerName: "Agent Name", 
-      width: 280, 
-      renderCell: (params: any) => `${params.row?.agent?.name || "--/--"}`
+      width: 180, 
+      renderCell: (params) => `${params.row?.agent?.name || "--/--"}`
+    },
+    {
+      field: "meta",
+      headerName: "Rating",
+      width: 70,
+      renderCell: (params) => {
+        return params.value?.average_rating ?? "--/--";
+      },
+    },
+    {
+      field: "unitsCount",
+      headerName: "Units",
+      width: 50,
+      renderCell: (params) => {
+        return params.row.units?.length ?? 0;
+      },
     },
     {
       field: "actions",
@@ -211,7 +224,7 @@ const Home = () => {
       align: "center",
       renderCell: () => (
         <button className="bg-transparent border-0 text-[#514A4A]">
-          <Icon icon="bi:three-dots" />
+          <Icon icon="mdi:eye" />
         </button>
       ),
     },
@@ -248,7 +261,7 @@ const Home = () => {
     {
       field: "isVerified",
       headerName: "Verification Status",
-      width: 150,
+      width: 100,
       renderCell: (params) => {
         console.log("Badge", params.value);
         return <Badge status={params.value} />;
@@ -262,15 +275,15 @@ const Home = () => {
       align: "center",
       renderCell: () => (
         <button className="bg-transparent border-0 text-[#514A4A]">
-          <Icon icon="bi:three-dots" />
+          <Icon icon="mdi:eye" />
         </button>
       ),
     },
   ];
 
   const topAgentColumns: GridColDef[] = [
-    { field: "agentName", headerName: "Agent Name", width: 100 },
-    { field: "verifiedCount", headerName: "Verified Listing", width: 100 },
+    { field: "agentName", headerName: "Agent Name", width: 90 },
+    { field: "verifiedCount", headerName: "Verified Listing", width: 120 },
   ];
 
   // --| Filter Property table using name, state and and all
@@ -336,19 +349,39 @@ const Home = () => {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                <div className="p-[20px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
-                  <select onChange={(e) => setRange(e.target.value)} value={range}>
-                    <option value="30days">Last 30 Days</option>
-                    <option value="90days">Last 90 Days</option>
-                    <option value="year">This Year</option>
-                  </select>
+                <div className="p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md flex items-center justify-center">
+                  {isStatLoading ? (
+                    <Skeleton className="h-[200px] w-full rounded-md" />
+                  ) : stats?.properties?.length > 0 ? (
+                    <>
+                      <select onChange={(e) => setRange(e.target.value)} value={range}>
+                        <option value="30days">Last 30 Days</option>
+                        <option value="90days">Last 90 Days</option>
+                        <option value="year">This Year</option>
+                      </select>
 
-                  <UsersChart range={range} data={dataByRange} />
+                      <UsersChart range={range} data={dataByRange} />
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                      <p className="text-gray-500 text-sm font-medium">No Data Found</p>
+                    </div>
+                  )}
                 </div>
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                <div className="h-full p-[20px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md flex">
-                  <LineChart labels={labels} datasets={datasets} />
+                <div className="p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md flex items-center justify-center">
+                  {isStatLoading ? (
+                    <Skeleton className="h-[200px] w-full rounded-md" />
+                  ) : stats?.users?.length > 0 ? (
+                    <LineChart labels={labels} datasets={datasets} />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                      <p className="text-gray-500 text-sm font-medium">No Data Found</p>
+                    </div>
+                  )}
                 </div>
               </Grid>
             </Grid>
@@ -366,8 +399,32 @@ const Home = () => {
         </Grid>
       </div>
       <div className="p-[30px] mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
-        <div><TableSearch placeholder="Search here..." searchTableFunc={handleSearchProperty} value={searchValue} /></div>
-        <Table columns={user?.role === "OWNER" || user?.role === "ADMIN" ? propertyColumns : anAgentColumns} rows={searchResult} getRowId={(row) => row?.id} pagination={false} />
+        {loading ? (
+          <Skeleton className="h-[300px] w-full rounded-md" />
+        ) : (
+          <>
+            <div>
+              <TableSearch
+                placeholder="Search here..."
+                searchTableFunc={handleSearchProperty}
+                value={searchValue}
+              />
+            </div>
+            {searchResult?.length > 0 ? (
+              <Table
+                columns={user?.role === "OWNER" || user?.role === "ADMIN" ? propertyColumns : anAgentColumns}
+                rows={searchResult}
+                getRowId={(row) => row?.id}
+                pagination={false}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2">
+                <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                <p className="text-gray-500 text-sm font-medium">No Data Found</p>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
