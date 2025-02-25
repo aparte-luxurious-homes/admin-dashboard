@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { IoIosStarOutline } from "react-icons/io";
 
 
 
@@ -36,7 +37,8 @@ export default function PropertyDetailsView({
 
     const [editMode, setEditMode] = useState<boolean>(false);
     const [property, setProperty] = useState<IProperty>(data?.data?.data)
-    const [availabeUnits, setAvailableUnits] = useState<number>(0) 
+    const [availabeUnits, setAvailableUnits] = useState<number>(0)
+    const [averageRating, setAverageRating] = useState<number>(property?.meta?.total_reviews ? (property.meta.total_rating / property.meta.total_reviews): 0);
 
 
     const handleDelete = () => {
@@ -60,6 +62,7 @@ export default function PropertyDetailsView({
             let unitAmount = 0
             data?.data?.data?.units.forEach((el: IPropertyUnit) => {unitAmount += el.count})
             setAvailableUnits(unitAmount)
+            setAverageRating(property?.meta?.total_reviews ? (property.meta.total_reviews / property.meta.average_rating ) : 0)
         }
     }, [data])
 
@@ -138,17 +141,17 @@ export default function PropertyDetailsView({
                                     </div>
                                     <div className="flex flex-col items-center gap-0 pr-3 mt-2">
                                         <p className="text-base text-primary font-medium m-0">
-                                            4.9/5
+                                            {averageRating}/5
                                         </p>
                                         <div className="flex justify-center items-center gap-1 mb-1">
-                                            <IoStarSharp className="text-primary text-xl"/>
-                                            <IoStarSharp className="text-primary text-xl"/>
-                                            <IoStarSharp className="text-primary text-xl"/>
-                                            <IoStarSharp className="text-primary text-xl"/>
-                                            <IoStarSharp className="text-primary text-xl"/>
+                                            {[...Array(5)].map((_, index) => (
+                                            index < Math.round(averageRating) ? 
+                                                <IoStarSharp className="text-primary text-lg" key={index} /> : 
+                                                <IoIosStarOutline className="text-primary text-lg" key={index} />
+                                            ))}
                                         </div>
                                         <p className="text-base text-primary font-medium mt-2">
-                                            36 Reviews
+                                            {property?.meta?.total_reviews ?? 0} Reviews
                                         </p>
                                     </div>
                                 </div>
@@ -157,7 +160,7 @@ export default function PropertyDetailsView({
                                     !property?.isFeatured &&
                                     <div className="flex justify-between items-center gap-4 mt-7 mb-5 w-full px-4 py-3 border-dashed border-2 border-zinc-400 rounded-lg">
                                         <p className="text-xl text-zinc-500">
-                                            This property has not been listed on the market yet! <a href="/" className="pl-1 text-zinc-800"><u>View verification</u></a>
+                                            This property has not been listed on the market yet! <Link href="/#" className="pl-1 text-zinc-800"><u>View verification</u></Link>
                                         </p>
 
                                         <div className="flex justify-center items-center gap-5">

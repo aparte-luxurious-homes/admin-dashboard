@@ -102,6 +102,7 @@ export interface IPropertyUnit {
 
 
 export interface IProperty {
+    [x: string]: any
     id: number
     ownerId: number
     assignedAgent?: number

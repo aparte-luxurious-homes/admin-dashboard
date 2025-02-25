@@ -122,7 +122,7 @@ export default function EditPropertyView({
                     <div className="col-span-2 relative">
                         <label htmlFor="name" className="text-lg zinc-900 font-medium">Name</label>
                         <div className="relative mt-2">
-                            <FaRegBuilding className="absolute top-[60%] left-3 text-zinc-400"/>
+                            <FaRegBuilding className="absolute top-[35%] left-3 text-zinc-400"/>
                             <input
                                 id="name"
                                 type="text" 

@@ -7,20 +7,18 @@ import { Swiper } from "swiper/react";
 import { SwiperSlide } from "swiper/react";
 import Image from "next/image";
 import { IoStarSharp } from "react-icons/io5";
-import { FaTv } from "react-icons/fa";
 import { PiBathtub } from "react-icons/pi";
-import { TbAirConditioning } from "react-icons/tb";
 import { TrashIcon } from "../../icons";
 import { formatMoney } from "@/src/lib/utils";
 import { TbToolsKitchen } from "react-icons/tb";
 import { LuSofa } from "react-icons/lu";
 import { IoBedOutline } from "react-icons/io5";
-import { IoGameControllerOutline } from "react-icons/io5";
 import EditUnitView from "./EditUnitView";
 import Link from "next/link";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { IoIosStarOutline } from "react-icons/io";
 
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: number, unitId: number }) {
     const dispatch = useDispatch();
@@ -201,7 +199,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                         {
                                             propertyUnit?.amenities &&
                                             propertyUnit?.amenities.map((el, index) => 
-                                                <div className="w-fit h-12 flex items-center justify-center p-5 border rounded-lg">
+                                                <div key={index} className="w-fit h-12 flex items-center justify-center p-5 border rounded-lg">
                                                     {el.amenity.name}
                                                 </div>
                                             )
@@ -274,14 +272,14 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                         </p>
                                         <div className="flex flex-col justify-center items-center gap-0  pl-6">
                                             <p className="text-base font-medium text-teal-800">
-                                                (4.5/5)
+                                                (0/5)
                                             </p>
                                             <div className="flex justify-center items-center gap-1">
-                                                <IoStarSharp className="text-primary text-lg"/>
-                                                <IoStarSharp className="text-primary text-lg"/>
-                                                <IoStarSharp className="text-primary text-lg"/>
-                                                <IoStarSharp className="text-primary text-lg"/>
-                                                <IoStarSharp className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
                                             </div>
                                         </div>
                                     </div>
@@ -293,7 +291,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             <div className="flex flex-col divide-x divide-zinc-300 gap-y-4">
                                                 {
                                                     propertyUnit?.reviews.map((review, index) => 
-                                                        <p className="text-lg text-zinc-900 ">
+                                                        <p key={index} className="text-lg text-zinc-900 ">
                                                             {`${review?.review}`}
                                                         </p>
                                                     )

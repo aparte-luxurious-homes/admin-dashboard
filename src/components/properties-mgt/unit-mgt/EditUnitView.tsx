@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useState } from "react";
-import { IAmenityAssignment, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit,  } from "../types";
+import { IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit,  } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UseUpdatePropertyUnit } from "@/src/lib/request-handlers/unitMgt";
