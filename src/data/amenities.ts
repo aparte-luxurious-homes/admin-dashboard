@@ -1,8 +1,8 @@
 export const availableAmenities = [
-    'Pool',
-    'Gym',
-    'Parking',
+    'SWIMMING POOL',
+    'TV',
     'Wi-Fi',
-    'Security',
-    'Hot tub',
+    'AIR CONDITIONER',
+    'HOT TUB',
+    'PS5',
 ]

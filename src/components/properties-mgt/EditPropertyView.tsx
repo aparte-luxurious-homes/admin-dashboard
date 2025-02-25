@@ -8,7 +8,6 @@ import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../ui/customDropdown";
 import { IProperty, IPropertyMedia, IUpdateProperty, PropertyType } from "./types";
 import CustomFilterDropdown from "../ui/customFilterDropDown";
-import { BsHouses } from "react-icons/bs";
 import CustomCheckbox from "../ui/customCheckbox";
 import MultipleChoice from "../ui/MultipleChoice";
 import { ALL_COUNTRIES } from "@/src/data/countries";
@@ -19,17 +18,18 @@ import Image from "next/image";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../ui/CustomDropzone";
-import { Formik, useFormik } from 'formik';
+import { useFormik } from 'formik';
 import { UseUpdateProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
+import Spinner from "../ui/Spinner";
 
 
 export default function EditPropertyView({  
     handleEditMode,
     propertyData 
 }: { 
-    handleEditMode: Dispatch<SetStateAction<boolean>>,
+    handleEditMode: Dispatch<SetStateAction<boolean>>, 
     propertyData: IProperty
 }) {
     const dispatch = useDispatch();
@@ -65,11 +65,11 @@ export default function EditPropertyView({
                 is_pet_allowed: values.petsAllowed,
             };
             mutate({
-                propertyId: 1,
+                propertyId: propertyData.id,
                 payload: updatePayload,
             },
             {
-                onSuccess: (response) => {
+                onSuccess: () => {
                     handleEditMode(false);
                 }
             })
@@ -81,7 +81,7 @@ export default function EditPropertyView({
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: "This action cannot be undone. This will permanently delete the item.",
+                description: `This action cannot be undone. This will permanently delete the image ${e}.`,
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
@@ -95,7 +95,7 @@ export default function EditPropertyView({
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: "This action cannot be undone. This will permanently delete the item.",
+                description: "This action cannot be undone. This will permanently delete this property.",
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
@@ -121,8 +121,8 @@ export default function EditPropertyView({
                 <div className="grid grid-cols-3 grid-flow-row gap-x-8 gap-y-5">
                     <div className="col-span-2 relative">
                         <label htmlFor="name" className="text-lg zinc-900 font-medium">Name</label>
-                        <div className="reative mt-2">
-                            <FaRegBuilding className="absolute top-[60%] left-3 text-zinc-400"/>
+                        <div className="relative mt-2">
+                            <FaRegBuilding className="absolute top-[35%] left-3 text-zinc-400"/>
                             <input
                                 id="name"
                                 type="text" 
@@ -260,7 +260,7 @@ export default function EditPropertyView({
                         </div>
                     </div>
                     
-                    <div className="col-span-3 relative flex flex-col items-start mt-3">
+                    <div className="col-span-3 relative flex flex-col items-start mt-8">
                         <label htmlFor="Media" className="text-lg zinc-900 font-medium mb-4">Media</label>
                         <div className="flex gap-3">
                             {
@@ -295,7 +295,7 @@ export default function EditPropertyView({
                             } }                            
                             />
                         </div>
-                        <div className="flex justify-center gap-4 items-center px-5 py-3 h-14 bg-primary/90 hover:bg-primary text-white rounded-lg mt-3 cursor-pointer">
+                        <div className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer">
                             <IoCloudUploadOutline className="text-2xl text-medium"/>
                             <span>
                                 Upload
@@ -304,23 +304,18 @@ export default function EditPropertyView({
                     </div>
                 </div>
             </form>
-            
-            {
-                isPending ?
-                <p>Saving...</p>
-                :
-                <div className="flex justify-end items-center gap-5 mt-3">
-                    <button onClick={() => formik.handleSubmit()} className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white">
-                        Save
-                    </button>
-                    <button onClick={() => handleEditMode(false)} className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600">
-                        Cancel
-                    </button>
-                    <button onClick={handleDelete} className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700">
-                        <TrashIcon className="size-6" color="white" />
-                    </button>
-                </div>
-            }
+
+            <div className="flex justify-end items-center gap-5 mt-3">
+                <button onClick={() => formik.handleSubmit()} disabled={isPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
+                    {isPending ? <Spinner /> : 'Save'}
+                </button>
+                <button onClick={() => handleEditMode(false)} disabled={isPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
+                    Cancel
+                </button>
+                <button onClick={handleDelete} disabled={isPending}  className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">
+                    <TrashIcon className="size-6" color="white" />
+                </button>
+            </div>
         </>
     );
 }

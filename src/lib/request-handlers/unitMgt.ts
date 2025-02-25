@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import { IUpdateProperty } from "@/src/components/properties-mgt/types";
+import { IUpdatePropertyUnit } from "@/src/components/properties-mgt/types";
 
 enum PropertyRequestKeys {
     allUnits = "getAllUnitsView",
@@ -34,8 +34,8 @@ export function GetSinglePropertyUnit(propertyId: number, unitId: number) {
 export function UseUpdatePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({propertyId, unitId, payload}: {propertyId: number, unitId: number, payload: IUpdateProperty}) =>
-        axiosRequest.put(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId), payload),
+        mutationFn: ({propertyId, unitId, payload}: {propertyId: number, unitId: number, payload: IUpdatePropertyUnit}) =>
+        axiosRequest.patch(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId), payload),
 
         onSuccess: (_, { propertyId, unitId }) => {
             // Invalidate the specific property query so it refetches

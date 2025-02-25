@@ -1,12 +1,58 @@
+import { GetSinglePropertyUnit } from "@/src/lib/request-handlers/unitMgt";
+import { useEffect, useState } from "react";
+import { IPropertyUnit } from "../types";
 import { Skeleton } from "../../ui/skeleton";
+import { Navigation, Autoplay } from 'swiper/modules';
+import { Swiper } from "swiper/react";
+import { SwiperSlide } from "swiper/react";
+import Image from "next/image";
+import { IoStarSharp } from "react-icons/io5";
+import { PiBathtub } from "react-icons/pi";
+import { TrashIcon } from "../../icons";
+import { formatMoney } from "@/src/lib/utils";
+import { TbToolsKitchen } from "react-icons/tb";
+import { LuSofa } from "react-icons/lu";
+import { IoBedOutline } from "react-icons/io5";
+import EditUnitView from "./EditUnitView";
+import Link from "next/link";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import { useDispatch } from "react-redux";
+import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { IoIosStarOutline } from "react-icons/io";
 
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: number, unitId: number }) {
+    const dispatch = useDispatch();
+    const { data, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
+    
+    const [editMode, setEditMode] = useState<boolean>(false);
+    const [propertyUnit, setPropertyUnit] = useState<IPropertyUnit>(data?.data?.data)
+
+    
+    const handleDelete = () => {
+        dispatch(
+            showAlert({
+                title: "Are you sure?",
+                description: "This action cannot be undone. This will permanently delete this unit.",
+                confirmText: "Delete",
+                cancelText: "Cancel",
+                onConfirm: () => {
+                    console.log("Item deleted!");
+                },
+            })
+        );
+    };
+
+    useEffect(() => {
+        if (data) {
+            setPropertyUnit(data?.data?.data)
+        }
+    }, [data])
 
     return(
         <div className="p-10 w-full">
             <div className="w-full border border-zinc-500/20 bg-white rounded-xl p-10 min-h-[50vh]">
                 {
-                    // isLoading ?
+                    isLoading && !propertyUnit ?
                     <div className="flex flex-col space-y-3">
                         <Skeleton className="w-full h-72 rounded-xl" />
                         <div className="space-y-4 mt-4">
@@ -14,270 +60,263 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                             <Skeleton className="h-20 w-full" />
                         </div>
                     </div>
-                    // <>
-                    //     {/* <div className="w-full relative">
-                    //         <Swiper
-                    //             loop={true}
-                    //             modules={[Navigation, Autoplay]}
-                    //             spaceBetween={10}
-                    //             slidesPerView={2}
-                    //             navigation
-                    //             autoplay
-                    //             className="rewind"
-                    //         >   
-                    //             {
-                    //                 propertyUnit?.media?.map((el: any, index: any) => (
-                    //                     <SwiperSlide key={index}>
-                    //                         <Image
-                    //                             alt={`${propertyUnit?.name}_img_${index}`}
-                    //                             src={el.mediaUrl}
-                    //                             className="w-full rounded-xl"
-                    //                             width={900}
-                    //                             height={900}
-                    //                         />
-                    //                     </SwiperSlide>
-                    //                 ))   
-                    //             }
-                    //         </Swiper>
-                    //     </div> */}
+                    :
+                    <>
+                        <div className="w-full relative">
+                            <Swiper
+                                loop={true}
+                                modules={[Navigation, Autoplay]}
+                                spaceBetween={10}
+                                slidesPerView={propertyUnit?.media.length > 1 ? 2 : 1}
+                                navigation
+                                autoplay
+                                className="rewind"
+                            >   
+                                {
+                                    propertyUnit?.media?.map((el: any, index: any) => (
+                                        <SwiperSlide key={index}>
+                                            <Image
+                                                alt={`${propertyUnit?.name}_img_${index}`}
+                                                src={el.mediaUrl}
+                                                className="w-full rounded-xl"
+                                                width={900}
+                                                height={900}
+                                            />
+                                        </SwiperSlide>
+                                    ))   
+                                }
+                            </Swiper>
+                        </div>
 
-                    //     {
-                    //         // !editMode ?   
-                    //         // <>
-                    //         //     <div className="w-full mt-10 flex justify-between items-center">
-                    //         //         <div>
-                    //         //             <h3 className="text-3xl font-normal text-zinc-800">
-                    //         //                 {property?.name}
-                    //         //             </h3>
-                    //         //             <div className="flex gap-2 items-center mt-2 text-xl text-zinc-700">
-                    //         //                 <IoLocationOutline />
-                    //         //                 <p className="text-base">
-                    //         //                     {property?.address}
-                    //         //                 </p>
-                    //         //             </div>
-                    //         //             <div className="flex items-center gap-6 mt-3 ">
-                    //         //                 <div className="flex items-center  gap-2">
-                    //         //                     <FaSwimmer className="text-xl"/>
-                    //         //                     <span>Swimming pool</span>
-                    //         //                 </div>
-                    //         //                 <div className="flex items-center  gap-2 ">
-                    //         //                     <PiBathtub className="text-xl"/>
-                    //         //                     <span>Hot tub</span>
-                    //         //                 </div>
-                    //         //                 <div className="flex items-center  gap-2">
-                    //         //                     <TbAirConditioning className="text-xl"/>
-                    //         //                     <span>Air condition</span>
-                    //         //                 </div>
-                    //         //                 <div className="flex items-center  gap-2">
-                    //         //                     <IoWifi className="text-xl"/>
-                    //         //                     <span>Wi-Fi</span>
-                    //         //                 </div>
-                    //         //             </div>
-                    //         //         </div>
-                    //         //         <div className="flex flex-col justify-center items-center gap-3 pr-3">
-                    //         //             <div className="flex justify-center items-center gap-1">
-                    //         //                 <IoStarSharp className="text-primary text-xl"/>
-                    //         //                 <IoStarSharp className="text-primary text-xl"/>
-                    //         //                 <IoStarSharp className="text-primary text-xl"/>
-                    //         //                 <IoStarSharp className="text-primary text-xl"/>
-                    //         //                 <IoStarSharp className="text-primary text-xl"/>
-                    //         //             </div>
-                    //         //             <p className="text-base text-primary font-semibold">
-                    //         //                 36 Reviews
-                    //         //             </p>
-                    //         //         </div>
-                    //         //     </div>
+                        {
+                            !editMode ? 
+                            <>
+                                <div className="w-full mt-10 flex justify-between items-center">
+                                    <h3 className="text-3xl font-normal text-zinc-800 leading-3 mt-5">
+                                        {propertyUnit?.name} <span className="text-base font-light"><em>{`(${propertyUnit?.count} units)`}</em></span> <br/>
+                                        <span className="underline text-primary/90 italic text-sm hover:text-primary">
+                                            <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyUnit?.propertyId)}>
+                                                See property
+                                            </Link>
+                                        </span>
+                                    </h3>
+                                    
+                                    <div className="flex flex-col justify-center items-center gap-0 mt-3">
+                                        <p className="text-xl font-medium text-zinc-800">
+                                        ₦{formatMoney(propertyUnit?.cautionFee)}
+                                        </p>
+                                        <p className="text-sm font-normal">
+                                            <em>(Caution fee)</em>
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="flex flex-col justify-center items-center gap-0 mt-3">
+                                        <p className="text-xl font-medium text-zinc-800">
+                                            {propertyUnit?.maxGuests} {propertyUnit?.maxGuests > 1 ? 'guests' : 'guest'}
+                                        </p>
+                                        <p className="text-sm font-normal">
+                                            <em>(maximum)</em>
+                                        </p>
+                                    </div>
+                                    
 
-                    //         //     <div className="h-px w-full bg-zinc-400/30 my-5" />
+                                    <div className="flex flex-col justify-center items-center gap-0 pr-3 leading-3 ">
+                                        <p className="text-xl text-primary font-medium mt-5 mb-0">
+                                            ₦{formatMoney(propertyUnit?.pricePerNight)}
+                                        </p>
+                                        <p className="text-sm font-medium text-zinc-600">
+                                            Per night
+                                        </p>
+                                    </div>
+                                </div>
 
-                    //         //     {
-                    //         //         property?.isFeatured &&
-                    //         //         <div className="flex justify-between items-center gap-4 mt-5 w-full px-4 py-3 border-dashed border-2 border-zinc-400 rounded-lg">
-                    //         //             <p className="text-xl text-zinc-500">
-                    //         //                 This property has not been listed on the market yet! <a href="/" className="pl-1 text-zinc-800"><u>View verification</u></a>
-                    //         //             </p>
+                                <div className="h-px w-full bg-zinc-300/30 my-6" />
 
-                    //         //             <div className="flex justify-center items-center gap-5">
-                    //         //                 <Link href={"/"} className="flex gap-3 items-center border border-teal-800 rounded-lg px-5 py-1.5 text-lg text-teal-800 hover:bg-teal-800 hover:text-white">
-                    //         //                     <span>Publish</span>
-                    //         //                     <IoCloudUploadOutline className="text-2xl text-medium"/>
-                    //         //                 </Link>
-                    //         //             </div>
-                    //         //         </div>
-                    //         //     }
+                                <>
+                                    <p className="text-2xl text-zinc-900 mt-8 mb-5">
+                                        Description
+                                    </p>
+                                    <p className="text-lg text-zinc-700 font-normal my-3">
+                                        {propertyUnit?.description}
+                                    </p>
+                                </>
 
-                    //         //     <p className="text-2xl text-zinc-900 mt-8">
-                    //         //         Property description
-                    //         //     </p>
+                                <div className="h-px w-full bg-zinc-300/30 my-8" />
 
-                    //         //     <p className="text-lg text-zinc-700 mt-3">
-                    //         //         {property?.description}
-                    //         //     </p>
+                                <div className="mt-8 mb-5">
+                                    <p className="text-2xl text-zinc-900">
+                                        Features
+                                    </p>
 
-                    //         //     <div className="my-10">
-                    //         //         <p className="text-2xl text-zinc-900">
-                    //         //             Available units
-                    //         //         </p>
+                                    <div className="w-full mt-2 p-3 grid grid-cols-4 gap-10 text-lg font-normal text-zinc-900">
+                                        {
+                                            propertyUnit?.bedroomCount &&  
+                                            <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
+                                                <IoBedOutline className="text-3xl font-normal" />
+                                                <p className="text-center">
+                                                    Bedroom <br /><span className="text-base font-normal text-zinc-700"><em>x{propertyUnit?.bedroomCount}</em></span>
+                                                </p>
+                                            </div>
+                                        }
+                                        {
+                                            propertyUnit?.bathroomCount &&
+                                            <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
+                                                <PiBathtub className="text-3xl font-normal" />
+                                                <p className="text-center">
+                                                    Bathroom <br /><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.bathroomCount}</em></span>
+                                                </p>
+                                            </div>
+                                        }
+                                        {
+                                            propertyUnit?.kitchenCount &&  
+                                            <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
+                                                <TbToolsKitchen className="text-3xl font-normal" />
+                                                <p className="text-center">
+                                                    Kitchen <br /><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.kitchenCount}</em></span>
+                                                </p>
+                                            </div>
+                                        }
+                                        {
+                                            propertyUnit?.livingRoomCount &&
+                                            <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
+                                                <LuSofa className="text-3xl font-normal"/>
+                                                <p className="text-center">
+                                                    Living Room <br/><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.livingRoomCount}</em></span>
+                                                </p>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
 
-                    //         //         <div className="w-full grid grid-cols-3 mt-2 p-3 gap-6">
-                    //         //             {
-                    //         //                 property?.units.map((el, index) => 
-                    //         //                     <Link href={'/#'} key={index} className="cursor-pointer border border-zinc-300 rounded-lg flex justify-between ease-in-out duration-150 hover:border-primary/80">
-                    //         //                         {/* <div className="w-[40%] overflow-hidden">
-                    //         //                             <Image
-                    //         //                                 src={'/png/sample_properties.png'} 
-                    //         //                                 alt="sample"
-                    //         //                                 height={100}
-                    //         //                                 width={100}
-                    //         //                                 className="size-full"
-                    //         //                             />
-                    //         //                         </div> */}
-                    //         //                         <div className="w-full px-4 py-3 text-zinc-900">
-                    //         //                             <p className="font-medium text-lg mt-0 mb-1">
-                    //         //                                 {el.name}
-                    //         //                             </p>
-                    //         //                             <p className="font-normal text-base mt-0 truncate">
-                    //         //                                 {el.description}
-                    //         //                             </p>
-                    //         //                             <p className="font-normal text-sm mt-1 ">
-                    //         //                                 <em>
-                    //         //                                     {el.count}{` ${el.count > 1 ? 'units' : 'unit'}`} available
-                    //         //                                 </em>
-                    //         //                             </p>
-                    //         //                         </div>
-                    //         //                     </Link>
-                    //         //                 )
-                    //         //             }
-                    //         //             {
-                    //         //                 property?.units.length > 5 && 
-                    //         //                 <div className="flex justify-start items-end">
-                    //         //                     <p className="underline hover:text-primary/80 cursor-pointer text-xl">
-                    //         //                         View more
-                    //         //                     </p>
-                    //         //                 </div>
-                    //         //             }
-                    //         //         </div>
+                                <div className="h-px w-full bg-zinc-300/30 my-8" />
 
-                    //         //     </div>
+                                <div className="mt-8 mb-5">
+                                    <p className="text-2xl text-zinc-900">
+                                        Amenities
+                                    </p>
 
-                    //         //     <div className="my-10">
-                    //         //         <p className="text-2xl text-zinc-900">
-                    //         //             Attached profiles
-                    //         //         </p>
+                                    <div className="w-full mt-7 flex gap-3">
+                                        {
+                                            propertyUnit?.amenities &&
+                                            propertyUnit?.amenities.map((el, index) => 
+                                                <div key={index} className="w-fit h-12 flex items-center justify-center p-5 border rounded-lg">
+                                                    {el.amenity.name}
+                                                </div>
+                                            )
+                                        }
 
-                    //         //         <div className="flex gap-4 items-center mt-3 justify-between w-2/3">
-                    //         //             <div className="">
-                    //         //                 <p className="font-medium">
-                    //         //                     Owner
-                    //         //                 </p>
-                    //         //                 <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
-                    //         //                     <Image 
-                    //         //                         alt="owner-image"
-                    //         //                         src={property?.owner?.profile?.profileImage??'/png/sample_profile.png'}
-                    //         //                         height={50}
-                    //         //                         width={60}
-                    //         //                     />
-                    //         //                     <div>
-                    //         //                         <p className="text-lg text-zinc-900 m-0">{`${property?.owner?.profile?.firstName??`Olutayo`} ${property?.owner?.profile?.lastName??`Akingbola`}`}</p>
-                    //         //                         <p className="text-base text-zinc-500">{`${property?.owner?.email}`}</p>
-                    //         //                     </div>
-                    //         //                 </div>
-                    //         //             </div>
 
-                    //         //             {
-                    //         //                 property?.agent &&
-                    //         //                 <>
-                    //         //                     <div className="w-px h-[4.5rem] bg-zinc-400 rotate-180 "/>
-                    //         //                     <div className="">
-                    //         //                         <p className="font-medium">
-                    //         //                             Agent
-                    //         //                         </p>
-                    //         //                         <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
-                    //         //                             <Image 
-                    //         //                                 alt="owner-image"
-                    //         //                                 src={property.agent.profile?.profileImage??'/png/sample_profile.png'}
-                    //         //                                 height={50}
-                    //         //                                 width={60}
-                    //         //                             />
-                    //         //                             <div>
-                    //         //                                 <p className="text-lg text-zinc-900 m-0">{`${property.agent.profile?.firstName??'Kunle'} ${property.agent.profile?.lastName??'Aina'}`}</p>
-                    //         //                                 <p className="text-base text-zinc-500">{`${property.agent.email}`}</p>
-                    //         //                             </div>
-                    //         //                         </div>
-                    //         //                     </div>
-                    //         //                 </>
-                    //         //             }
-                    //         //         </div>
-                    //         //     </div>
+                                    </div>
 
-                    //         //     <div className="mt-20 w-2/3">
-                    //         //         <p className="text-2xl text-zinc-900">
-                    //         //             Stats
-                    //         //         </p>
-                    //         //         <div className="mt-4 grid grid-cols-3 grid-flow-row gap-x-3 gap-y-8">
-                    //         //             <div>
-                    //         //                 <div className="flex gap-3 text-zinc-700">
-                    //         //                     <GoVerified className="text-2xl font-medium"/>
-                    //         //                     <span className="text-base">Status</span>
-                    //         //                 </div>
-                    //         //                 {
-                    //         //                     property?.isVerified ?
-                    //         //                     <p className="text-base  text-teal-900 bg-primary/20 rounded-lg px-5 py-1 mt-2 max-w-min">
-                    //         //                         Verified
-                    //         //                     </p>
-                    //         //                     :
-                    //         //                     <p className="text-base  text-red-600 bg-red-600/15 rounded-lg px-5 py-1 mt-2 max-w-min">
-                    //         //                         Unverified
-                    //         //                     </p>
-                    //         //                 }
-                    //         //             </div>
-                    //         //             <div>
-                    //         //                 <div className="flex gap-3 text-zinc-700">
-                    //         //                     <PiBuildingApartment className="text-2xl "/>
-                    //         //                     <span className="text-base">Total units availabe</span>
-                    //         //                 </div>
-                    //         //                 <p className="text-2xl font-medium text-zinc-800 mt-2">
-                    //         //                     {availabeUnits}
-                    //         //                 </p>
-                    //         //             </div>
-                    //         //             <div>
-                    //         //                 <div className="flex gap-3 text-zinc-700">
-                    //         //                     <GoChecklist className="text-2xl"/>
-                    //         //                     <span className="text-base">Listed on</span>
-                    //         //                 </div>
-                    //         //                 <p className="text-2xl font-medium text-zinc-800 mt-2">
-                    //         //                     30th <span className="text-xl">Februrary, 2025</span>
-                    //         //                 </p>
-                    //         //             </div>
-                    //         //             <div>
-                    //         //                 <div className="flex gap-3 text-zinc-700">
-                    //         //                     <RiBuilding2Line className="text-2xl"/>
-                    //         //                     <span className="text-base">Property type</span>
-                    //         //                 </div>
-                    //         //                 <p className="text-2xl font-medium text-zinc-800 mt-2 capitalize">
-                    //         //                     {property?.propertyType.toLocaleLowerCase()}
-                    //         //                 </p>
-                    //         //             </div>
-                    //         //         </div>
-                    //         //     </div>
+                                </div>
                                 
-                    //         //     <div className="flex justify-end items-center gap-5 mt-3">
-                    //         //         <div onClick={() => setEditMode(true)} className="cursor-pointer border border-zinc-500 rounded-lg px-5 py-2.5 text-lg text-zinc-600 hover:bg-zinc-600 hover:text-white">
-                    //         //             Edit
-                    //         //         </div>
-                    //         //         <div className="border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700">
-                    //         //             <TrashIcon className="size-6" color="white" />
-                    //         //         </div>
-                    //         //     </div>
-                    //         // </>
-                    //         // :
-                    //         // <EditProperty 
-                    //         //     propertyData={property} 
-                    //         //     setPropertyData={setProperty} 
-                    //         //     handleEditMode={setEditMode} 
-                    //         // />
-                    //     }
-                    // </>
+
+                                <div className="h-px w-full bg-zinc-300/30 my-6" />
+                                {
+                                    propertyUnit?.property &&
+                                    <>
+                                        <div className="mb-10">
+                                            <p className="text-2xl text-zinc-900">
+                                                Attached profiles
+                                            </p>
+
+                                            <div className="flex gap-4 items-center mt-3 justify-between w-2/3">
+                                                <div className="">
+                                                    <p className="font-medium">
+                                                        Owner
+                                                    </p>
+                                                    <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
+                                                        <Image 
+                                                            alt="owner-image"
+                                                            src={propertyUnit?.property?.owner?.profile?.profileImage??'/png/sample_profile.png'}
+                                                            height={50}
+                                                            width={60}
+                                                        />
+                                                        <div>
+                                                            <p className="text-lg text-zinc-900 m-0">{`${propertyUnit?.property?.owner?.profile?.firstName??`Olutayo`} ${propertyUnit?.property?.owner?.profile?.lastName??`Akingbola`}`}</p>
+                                                            <p className="text-base text-zinc-500">{`${propertyUnit?.property?.owner?.email}`}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                
+                                                <div className="w-px h-[4.5rem] bg-zinc-400 rotate-180 "/>
+                                                    
+                                                <div className="">
+                                                    <p className="font-medium">
+                                                        Agent
+                                                    </p>
+                                                    <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
+                                                        <Image 
+                                                            alt="owner-image"
+                                                            src={propertyUnit?.property?.agent.profile?.profileImage??'/png/sample_profile.png'}
+                                                            height={50}
+                                                            width={60}
+                                                        />
+                                                        <div>
+                                                            <p className="text-lg text-zinc-900 m-0">{`${propertyUnit?.property?.agent.profile?.firstName??'Kunle'} ${propertyUnit?.property?.agent.profile?.lastName??'Aina'}`}</p>
+                                                            <p className="text-base text-zinc-500">{`${propertyUnit?.property?.agent.email}`}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="h-px w-full bg-zinc-300/30 my-6" />
+                                    </>
+                                }
+
+                                <div className="mt-8 mb-5 w-full">
+                                    <div className="w-full flex justify-between items-center">
+                                        <p className="text-2xl text-zinc-900">
+                                            Reviews 
+                                        </p>
+                                        <div className="flex flex-col justify-center items-center gap-0  pl-6">
+                                            <p className="text-base font-medium text-teal-800">
+                                                (0/5)
+                                            </p>
+                                            <div className="flex justify-center items-center gap-1">
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                                <IoIosStarOutline className="text-primary text-lg"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 p-4">
+                                        {
+                                            propertyUnit?.reviews.length === 0 ?
+                                            <p className="text-lg text-zinc-500 mt-3"><em>No reviews yet</em></p>
+                                            :
+                                            <div className="flex flex-col divide-x divide-zinc-300 gap-y-4">
+                                                {
+                                                    propertyUnit?.reviews.map((review, index) => 
+                                                        <p key={index} className="text-lg text-zinc-900 ">
+                                                            {`${review?.review}`}
+                                                        </p>
+                                                    )
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                
+                                <div className="flex justify-end items-center gap-5 mt-3">
+                                    <div onClick={() => setEditMode(true)} className="cursor-pointer border border-zinc-500 rounded-lg px-5 py-2.5 text-lg text-zinc-600 hover:bg-zinc-600 hover:text-white">
+                                        Edit
+                                    </div>
+                                    <div onClick={() => handleDelete()} className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700">
+                                        <TrashIcon className="size-6" color="white" />
+                                    </div>
+                                </div>
+                            </>
+                            :
+                            <EditUnitView
+                                handleEditMode={setEditMode}
+                                unitData={propertyUnit}
+                            />
+                        }
+                    </>
                 }
             </div> 
         </div>

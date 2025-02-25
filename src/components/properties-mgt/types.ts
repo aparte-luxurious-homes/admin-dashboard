@@ -80,8 +80,8 @@ export interface IPropertyUnit {
     propertyId: number
     name: string
     description?: string
-    pricePerNight: number
-    cautionFee: number
+    pricePerNight: string
+    cautionFee: string
     maxGuests: number
     count: number
     isWholeProperty: boolean
@@ -92,6 +92,7 @@ export interface IPropertyUnit {
     isVerified: boolean
     createdAt: string
     updatedAt: string
+    property?: IProperty
     media: IPropertyMedia[]
     reviews: IPropertyReview[]
     amenities: IAmenityAssignment[]
@@ -101,6 +102,7 @@ export interface IPropertyUnit {
 
 
 export interface IProperty {
+    [x: string]: any
     id: number
     ownerId: number
     assignedAgent?: number
@@ -141,4 +143,18 @@ export interface IUpdateProperty {
     ownerId: number,
     // assignedAgent?: IUser,
     is_pet_allowed: boolean
+}
+
+export interface IUpdatePropertyUnit {
+    name: string,
+    description: string,
+    pricePerNight: string,
+    cautionFee: string,
+    maxGuests: number,
+    count: number,
+    isWholeProperty: boolean,
+    bedroomCount: number,
+    livingRoomCount: number,
+    kitchenCount: number,
+    bathroomCount: number
 }
