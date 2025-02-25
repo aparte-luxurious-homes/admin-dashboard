@@ -8,15 +8,32 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { useAuth } from "../hooks/useAuth";
+import { useState } from "react";
+import { IoMenu, IoClose } from "react-icons/io5";
 
 export default function Dashboard({ children }: { children: React.ReactNode }){
 
     const { user } = useAuth();
     const currentRoute = usePathname();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     return (
         <div className="h-screen size-full relative">
-            <div className="absolute w-0 lg:w-[26%] xl:w-[20%] 2xl:w-[18%] bg-primary text-background left-0 top-0 bottom-0">
+            {/* Mobile Menu Toggle */}
+            <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-white hover:bg-primary/90"
+            >
+                {isMobileMenuOpen ? <IoClose size={24} /> : <IoMenu size={24} />}
+            </button>
+
+            {/* Sidemenu */}
+            <div className={`
+                fixed lg:absolute w-[85%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%] 
+                bg-primary text-background h-full 
+                transition-transform duration-300 ease-in-out z-40
+                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}>
                 <div className="size-full">
                     <div className="w-full flex justify-center items-center ">
                         <div className="relative mt-8 mb-14">
@@ -60,7 +77,12 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                     </div>
                 </div>
             </div>
-            <div className="pl-0 lg:pl-[26%] xl:pl-[20%] 2xl:pl-[18%] w-full">
+            
+            {/* Main Content */}
+            <div className={`
+                lg:ml-[26%] xl:ml-[20%] 2xl:ml-[18%] w-full lg:w-[74%] xl:w-[80%] 2xl:w-[82%] 
+                transition-all duration-300 ease-in-out
+            `}>
                 <div className="w-full h-20 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
                     <div className="w-1/2">
                         {/* <p className="text-2xl font-semi-bold">
@@ -101,6 +123,14 @@ export default function Dashboard({ children }: { children: React.ReactNode }){
                     {children}
                 </div>
             </div>
+
+            {/* Mobile Menu Overlay */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
         </div>
     );
 };
