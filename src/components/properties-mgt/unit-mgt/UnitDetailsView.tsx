@@ -19,10 +19,12 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { IoIosStarOutline } from "react-icons/io";
+import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
 
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: number, unitId: number }) {
     const dispatch = useDispatch();
     const { data, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
+    const { data: fetchedAmenites } = GetAmenities();
     
     const [editMode, setEditMode] = useState<boolean>(false);
     const [propertyUnit, setPropertyUnit] = useState<IPropertyUnit>(data?.data?.data)
@@ -314,6 +316,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                             <EditUnitView
                                 handleEditMode={setEditMode}
                                 unitData={propertyUnit}
+                                availableAmenities={fetchedAmenites?.data?.data}
                             />
                         }
                     </>
