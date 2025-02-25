@@ -5,8 +5,6 @@ import PropertyDetailsView from "@/src/components/properties-mgt/PropertyDetails
 
 export default function PropertyDetail() {
     const params = useParams();
-    // const propertyId = params?.propertyId as string;
-
     
     return (
         <div className="w-full">

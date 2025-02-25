@@ -9,7 +9,7 @@ export default function UnitDetail() {
     return (
         <div className="w-full">
             <UnitDetailsView
-                propertyId={Number(params?.prpertyId)}
+                propertyId={Number(params?.propertyId)}
                 unitId={Number(params?.unitId)}
             />
         </div>
