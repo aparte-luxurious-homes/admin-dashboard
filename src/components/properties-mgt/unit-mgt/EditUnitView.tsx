@@ -1,12 +1,11 @@
-import { Dispatch, SetStateAction, useState } from "react";
-import { IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit,  } from "../types";
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType,  } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
-import { UseUpdatePropertyUnit } from "@/src/lib/request-handlers/unitMgt";
+import { AssignUnitAmenities, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
 import MultipleChoice from "../../ui/MultipleChoice";
-import { availableAmenities } from "@/src/data/amenities";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import Image from "next/image";
 import { TrashIcon } from "../../icons";
@@ -14,27 +13,47 @@ import CustomDropzone from "../../ui/CustomDropzone";
 import { IoBedOutline, IoCloudUploadOutline } from "react-icons/io5";
 import { UserRole } from "@/src/lib/enums";
 import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
-import { formatMoney } from "@/src/lib/utils";
+import { areArraysEqual, formatMoney } from "@/src/lib/utils";
 import { PiBathtub } from "react-icons/pi";
 import { LuSofa } from "react-icons/lu";
 import Spinner from "../../ui/Spinner";
 
 export default function EditUnitView({  
     handleEditMode,
-    unitData 
+    unitData,
+    availableAmenities,
 }: { 
     handleEditMode: Dispatch<SetStateAction<boolean>>, 
-    unitData: IPropertyUnit
+    unitData: IPropertyUnit,
+    availableAmenities: IAmenity[]
 }) {
 
     const dispatch = useDispatch();
-    const { mutate, isPending } = UseUpdatePropertyUnit();
+    const { mutate, isPending } = UpdatePropertyUnit();
+    const { mutate: uploadMedia, data: uploadData, isPending: uploadedMediaPending } = UploadPropertyUnitMedia();
     const { user } = useAuth();
 
-    const [media, _] = useState<IPropertyMedia[]>(unitData?.media??[])
-    const [amenities, setAmenities] = useState<string[]>(unitData?.amenities.map((el) => el.amenity.name))
-
+    const [media, setMedia] = useState<IPropertyMedia[]>(unitData?.media??[])
+    const [amenities, setAmenities] = useState<string[]>(unitData?.amenities?.map((el) => el.amenity.name))
+    const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
+    const uploadRef = useRef<{ url: string; file: File }[]>([]);
+    const { mutate: assignAmenity   } = AssignUnitAmenities(); 
     
+
+    const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
+        const sortedAmenities = []
+        let prevAmenityNames = amenities.map((a) => a.name);
+        for (const amenity of newAmeities) {
+            if (prevAmenityNames.includes(amenity)) {
+                const pos = prevAmenityNames.indexOf(amenity)
+                sortedAmenities.push(amenities[pos])
+            }
+        }
+
+        return sortedAmenities;
+    }
+
+
     const formik = 
         useFormik({
             initialValues: {
@@ -49,8 +68,25 @@ export default function EditUnitView({
                 livingRoomCount: unitData?.livingRoomCount ?? 0,
                 kitchenCount: unitData?.kitchenCount ?? 0,
                 bathroomCount: unitData?.bathroomCount ?? 0,
+                amenities: unitData?.amenities.map((el) => el.amenity.name) ?? [],
             },
         onSubmit: (values) => {
+            const newAmenities = sortAmenities(availableAmenities, values.amenities);
+            if (
+                !areArraysEqual( // Change the need for this on the backend
+                    unitData?.amenities.map((el) => el.amenity.id),
+                    newAmenities.map(el => el.id), 
+                ))
+                {
+                    assignAmenity({                              // Update amenity asignments if changed
+                        propertyId: unitData.propertyId, 
+                        unitId: unitData.id,
+                        payload: {
+                            amenity_ids: newAmenities.map(el => el.id)
+                        },
+                    })
+                }
+
             const updatePayload: IUpdatePropertyUnit = {
                 ...values,
             };
@@ -95,6 +131,18 @@ export default function EditUnitView({
             })
         );
     };
+
+
+    useEffect(() => {
+        if (uploadData?.data) {
+            // Ensure uploadData.data is an array before spreading
+            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.mediaUrl) : [uploadData.data?.data])]);
+            if (uploadData.status === 201) {
+                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url)); // Revoke object URLs
+                uploadRef.current = []
+            }
+        }
+    }, [uploadData]);
 
     return (
         <>
@@ -212,9 +260,13 @@ export default function EditUnitView({
                     <div className="col-span-3 relative flex flex-col items-start mt-10">
                         <label htmlFor="amenities" className="text-lg zinc-900 font-medium mb-4">Amenities</label>
                         <MultipleChoice
-                            options={availableAmenities}
-                            selected={amenities}
-                            onChange={setAmenities}
+                            options={availableAmenities?.map(el => 
+                                el.name
+                            )}
+                            selected={formik.values.amenities}
+                            onChange={(val) => {
+                                formik.setFieldValue("amenities", [...val]); // Ensure a new array reference
+                            }} 
                         />
 
                         {
@@ -230,11 +282,11 @@ export default function EditUnitView({
 
 
                     
-                    <div className="col-span-3 relative flex flex-col items-start mt-10">
+                    <div className="col-span-3 relative flex flex-col items-start mt-10 mb-20">
                         <label htmlFor="Media" className="text-lg zinc-900 font-medium mb-4">Media</label>
                         <div className="flex gap-3">
                             {
-                                media.map((el, index) => 
+                                media?.map((el, index) => 
                                     <div
                                         key={index}
                                         className="relative rounded-md overflow-hidden group"
@@ -260,17 +312,51 @@ export default function EditUnitView({
                         </div>
 
                         <div className="w-full mt-14 mx-auto">
-                            <CustomDropzone onDrop={function (acceptedFiles: File[]): void {
-                                throw new Error("Function not implemented.");
-                            } }                            
+                            <CustomDropzone 
+                                onDrop={setUploadedMedia}
+                                multiple
+                                previewsRef={uploadRef}              
                             />
                         </div>
-                        <div className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer">
-                            <IoCloudUploadOutline className="text-2xl text-medium"/>
-                            <span>
-                                Upload
-                            </span>
-                        </div>
+
+                        {
+                            uploadedMedia.length > 0 &&
+                            <button 
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                
+                                    const formData = new FormData();
+                                
+                                    uploadedMedia?.forEach(file => {
+                                        formData.append("media_file", file);
+                                    });
+                                
+                                    formData.append("media_type", MediaType.IMAGE);
+                                    formData.append("is_featured", "true");
+
+                                    uploadMedia({
+                                        propertyId: unitData.propertyId,
+                                        unitId: unitData.id,
+                                        payload: formData,
+                                    });
+
+                                } }
+                                className={`flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75`}
+                                disabled={uploadedMediaPending}
+                            >
+                                {
+                                    uploadedMediaPending ? 
+                                    <Spinner /> 
+                                    : 
+                                    <>
+                                        <IoCloudUploadOutline className="text-2xl text-medium"/>
+                                        <span>
+                                            Upload
+                                        </span>
+                                    </>
+                                }
+                            </button>
+                        }
                     </div>
 
 

@@ -1,17 +1,16 @@
 'use client'
 
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { FaMapLocationDot } from "react-icons/fa6";
 import { TrashIcon } from "../icons";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../ui/customDropdown";
-import { IProperty, IPropertyMedia, IUpdateProperty, PropertyType } from "./types";
+import { IAmenity, IProperty, IPropertyMedia, IUpdateProperty, MediaType, PropertyType } from "./types";
 import CustomFilterDropdown from "../ui/customFilterDropDown";
 import CustomCheckbox from "../ui/customCheckbox";
 import MultipleChoice from "../ui/MultipleChoice";
 import { ALL_COUNTRIES } from "@/src/data/countries";
-import { availableAmenities } from "@/src/data/amenities";
 import { FaPlus } from "react-icons/fa6";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import Image from "next/image";
@@ -19,24 +18,52 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { UseUpdateProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { AssignPropertyAmenities, FeatureProperty, UpdateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../ui/Spinner";
+import { areArraysEqual } from "@/src/lib/utils";
 
 
 export default function EditPropertyView({  
     handleEditMode,
-    propertyData 
+    propertyData,
+    availableAmenities,
 }: { 
     handleEditMode: Dispatch<SetStateAction<boolean>>, 
-    propertyData: IProperty
+    propertyData: IProperty,
+    availableAmenities: IAmenity[],
 }) {
     const dispatch = useDispatch();
-    const { mutate, isPending } = UseUpdateProperty()
+    const { mutate, isPending } = UpdateProperty()
+    const { 
+        mutate: uploadMedia, 
+        data: uploadData, 
+        isPending: uploadedMediaPending
+    } = UploadPropertyMedia();
+
+    const { mutate: assignAmenity   } = AssignPropertyAmenities(); 
+    const { mutate: featureProperty   } = FeatureProperty(); 
+
     const { user } = useAuth();
 
-    const [media, _] = useState<IPropertyMedia[]>(propertyData?.media??[])
+    const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
+    const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
+    const uploadRef = useRef<{ url: string; file: File }[]>([]);
+
+
+    const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
+        const sortedAmenities = []
+        let prevAmenityNames = amenities.map((a) => a.name);
+        for (const amenity of newAmeities) {
+            if (prevAmenityNames.includes(amenity)) {
+                const pos = prevAmenityNames.indexOf(amenity)
+                sortedAmenities.push(amenities[pos])
+            }
+        }
+
+        return sortedAmenities;
+    }
 
     const formik = 
         useFormik({
@@ -57,14 +84,35 @@ export default function EditPropertyView({
                 isFeatured: propertyData?.isFeatured ?? false,
                 petsAllowed: propertyData?.isPetAllowed ?? false,
                 amenities: propertyData?.amenities.map((el) => el.amenity.name) ?? [],
+                amenityIds: propertyData?.amenities.map((el) => el.amenity.id) ?? [],
             },
+
         onSubmit: (values) => {
+            const newAmenities = sortAmenities(availableAmenities, values.amenities);
+            if (
+                !areArraysEqual( // Change the need for this on the backend
+                    propertyData?.amenities.map((el) => el.amenity.id),
+                    newAmenities.map(el => el.id), 
+                ))
+                {
+                    assignAmenity({                              // Update amenity asignments if changed
+                        propertyId: propertyData.id, 
+                        payload: {
+                            amenity_ids: newAmenities.map(el => el.id)
+                        },
+                    })
+                }
+
+            if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
+                featureProperty({ propertyId: propertyData.id })
+
             const updatePayload: IUpdateProperty = {
                 ...values,
                 property_type: values.type,
                 is_pet_allowed: values.petsAllowed,
             };
-            mutate({
+
+            mutate({                                            // Update proprety
                 propertyId: propertyData.id,
                 payload: updatePayload,
             },
@@ -72,10 +120,9 @@ export default function EditPropertyView({
                 onSuccess: () => {
                     handleEditMode(false);
                 }
-            })
+            })            
         },
     });
-
 
     const handleDeleteImage = (e: number) => {
         dispatch(
@@ -104,6 +151,18 @@ export default function EditPropertyView({
             })
         );
     };
+
+    useEffect(() => {
+        if (uploadData?.data) {
+            // Ensure uploadData.data is an array before spreading
+            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.mediaUrl) : [uploadData.data?.data])]);
+            if (uploadData.status === 201) {
+                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url)); // Revoke object URLs
+                uploadRef.current = []
+            }
+        }
+    }, [uploadData]);
+    
 
 
 
@@ -205,20 +264,6 @@ export default function EditPropertyView({
                     <div className="col-span-2 relative mt-3">
                         <label htmlFor="units" className="text-lg zinc-900 font-medium">Verifications</label>
                         <div className="w-full flex justify-between gap-10 items-center">
-                            {/* <div className="relative w-1/3">
-                                <div className="relative mt-2">
-                                    <BsHouses className="absolute top-[30%] left-3 text-zinc-500/90 text-xl"/>
-                                    <input
-                                        id="units"
-                                        type="number"
-                                        placeholder="0"
-                                        min={0}
-                                        value={units}
-                                        onChange={(e) => setUnits(e.target.value)}
-                                        className="w-1/2 border border-zinc-400 rounded-lg pl-12 pr-3 py-5 h-14 text-xl"
-                                    />
-                                </div>
-                            </div> */}
                             <div className="flex flex-col gap-5 justify-between items-left w-fit mt-4">
                                 {
                                     user.role === UserRole.ADMIN &&
@@ -248,9 +293,11 @@ export default function EditPropertyView({
                     <div className="col-span-3 relative flex flex-col items-start mt-5">
                         <label htmlFor="amenities" className="text-lg zinc-900 font-medium mb-4">Amenities</label>
                         <MultipleChoice
-                            options={availableAmenities}
+                            options={availableAmenities?.map(am => am.name)}
                             selected={formik.values.amenities}
-                            onChange={(val) => formik.setFieldValue("amenities", val)}
+                            onChange={(val) => {
+                                formik.setFieldValue("amenities", [...val]); // Ensure a new array reference
+                            }} 
                         />
                         <div className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-10 cursor-pointer">
                             <FaPlus />
@@ -260,9 +307,9 @@ export default function EditPropertyView({
                         </div>
                     </div>
                     
-                    <div className="col-span-3 relative flex flex-col items-start mt-8">
+                    <div className="col-span-3 relative flex flex-col items-start mt-10 mb-16">
                         <label htmlFor="Media" className="text-lg zinc-900 font-medium mb-4">Media</label>
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap gap-3">
                             {
                                 media.map((el, index) => 
                                     <div
@@ -290,29 +337,62 @@ export default function EditPropertyView({
                         </div>
 
                         <div className="w-full mt-14 mx-auto">
-                            <CustomDropzone onDrop={function (acceptedFiles: File[]): void {
-                                throw new Error("Function not implemented.");
-                            } }                            
+                            <CustomDropzone 
+                                onDrop={setUploadedMedia}
+                                multiple
+                                previewsRef={uploadRef}              
                             />
                         </div>
-                        <div className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer">
-                            <IoCloudUploadOutline className="text-2xl text-medium"/>
-                            <span>
-                                Upload
-                            </span>
-                        </div>
+
+                        {
+                            uploadedMedia.length > 0 &&
+                            <button 
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                
+                                    const formData = new FormData();
+                                
+                                    uploadedMedia?.forEach(file => {
+                                        formData.append("media_file", file);
+                                    });
+                                
+                                    formData.append("media_type", MediaType.IMAGE);
+                                    formData.append("is_featured", "true");
+
+                                    uploadMedia({
+                                        propertyId: propertyData.id, 
+                                        payload: formData,
+                                    });
+
+                                } }
+                                className={`flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75`}
+                                disabled={uploadedMediaPending}
+                            >
+                                {
+                                    uploadedMediaPending ? 
+                                    <Spinner /> 
+                                    : 
+                                    <>
+                                        <IoCloudUploadOutline className="text-2xl text-medium"/>
+                                        <span>
+                                            Upload
+                                        </span>
+                                    </>
+                                }
+                            </button>
+                        }
                     </div>
                 </div>
             </form>
 
             <div className="flex justify-end items-center gap-5 mt-3">
-                <button onClick={() => formik.handleSubmit()} disabled={isPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
+                <button onClick={() => formik.handleSubmit()} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
                     {isPending ? <Spinner /> : 'Save'}
                 </button>
-                <button onClick={() => handleEditMode(false)} disabled={isPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
+                <button onClick={() => handleEditMode(false)} disabled={isPending || uploadedMediaPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
                     Cancel
                 </button>
-                <button onClick={handleDelete} disabled={isPending}  className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">
+                <button onClick={handleDelete} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">
                     <TrashIcon className="size-6" color="white" />
                 </button>
             </div>

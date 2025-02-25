@@ -56,6 +56,10 @@ export interface IAmenityAssignment {
     amenity: IAmenity
 }
 
+export interface IAssignAmenity {
+    amenity_ids: number[]
+}
+
 export interface IPropertyReview {
    id: number
    unitId: number
@@ -157,4 +161,10 @@ export interface IUpdatePropertyUnit {
     livingRoomCount: number,
     kitchenCount: number,
     bathroomCount: number
+}
+
+export interface IUploadPropertyMedia {
+    media_file: File
+    media_type: MediaType
+    is_featured: boolean
 }

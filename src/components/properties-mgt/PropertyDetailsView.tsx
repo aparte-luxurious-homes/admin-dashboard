@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { TrashIcon } from "../icons";
 import { TbAirConditioning } from "react-icons/tb";
-import { FaSwimmer } from "react-icons/fa";
+import { FaSwimmer, FaTv } from "react-icons/fa";
 import { GoChecklist, GoVerified } from "react-icons/go";
 import { IoCloudUploadOutline, IoLocationOutline } from "react-icons/io5";
 import { PiBuildingApartment } from "react-icons/pi";
@@ -17,12 +17,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { IProperty, IPropertyUnit } from "./types";
-import { GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { FeatureProperty, GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { IoIosStarOutline } from "react-icons/io";
+import Spinner from "../ui/Spinner";
+import CustomModal from "../ui/CustomModal";
+import { IoGameControllerOutline } from "react-icons/io5";
 
 
 
@@ -34,7 +37,10 @@ export default function PropertyDetailsView({
 
     const dispatch = useDispatch();
     const { data, isLoading } = GetSingleProperty(propertyId)
-
+    const { data: fetchedAmenites } = GetAmenities();
+    const { mutate, isPending } = FeatureProperty();
+    
+    const [showVerification, setShowVerification] = useState(false);
     const [editMode, setEditMode] = useState<boolean>(false);
     const [property, setProperty] = useState<IProperty>(data?.data?.data)
     const [availabeUnits, setAvailableUnits] = useState<number>(0)
@@ -64,7 +70,7 @@ export default function PropertyDetailsView({
             setAvailableUnits(unitAmount)
             setAverageRating(property?.meta?.total_reviews ? (property.meta.total_reviews / property.meta.average_rating ) : 0)
         }
-    }, [data])
+    }, [data, property.meta.average_rating, property.meta.total_reviews])
 
     return (
         <div className="p-10 w-full">
@@ -121,22 +127,27 @@ export default function PropertyDetailsView({
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-6 mt-3 ">
-                                            <div className="flex items-center  gap-2">
-                                                <FaSwimmer className="text-xl"/>
-                                                <span>Swimming pool</span>
-                                            </div>
-                                            <div className="flex items-center  gap-2 ">
-                                                <PiBathtub className="text-xl"/>
-                                                <span>Hot tub</span>
-                                            </div>
-                                            <div className="flex items-center  gap-2">
-                                                <TbAirConditioning className="text-xl"/>
-                                                <span>Air condition</span>
-                                            </div>
-                                            <div className="flex items-center  gap-2">
-                                                <IoWifi className="text-xl"/>
-                                                <span>Wi-Fi</span>
-                                            </div>
+                                            {
+                                                property?.amenities?.map((el, index) => 
+                                                    <div key={index} className="flex items-center  gap-2 ">
+                                                        {
+                                                            el.amenity.name === 'AIR CONDITIONER'
+                                                            ? <TbAirConditioning className="text-xl"/>
+                                                            : el.amenity.name === 'HOT TUB'
+                                                                ? <PiBathtub className="text-xl"/>
+                                                                : el.amenity.name === 'Wi-FI'
+                                                                    ? <IoWifi className="text-xl"/>
+                                                                    : el.amenity.name === 'PS5'
+                                                                        ? < IoGameControllerOutline  className="text-xl"/>
+                                                                        : el.amenity.name === 'TV'
+                                                                            ? <FaTv className="text-xl"/>
+                                                                            : <FaSwimmer />
+
+                                                        }
+                                                        <span>{ el.amenity.name }</span>
+                                                    </div>
+                                                )
+                                            }
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-center gap-0 pr-3 mt-2">
@@ -160,15 +171,20 @@ export default function PropertyDetailsView({
                                     !property?.isFeatured &&
                                     <div className="flex justify-between items-center gap-4 mt-7 mb-5 w-full px-4 py-3 border-dashed border-2 border-zinc-400 rounded-lg">
                                         <p className="text-xl text-zinc-500">
-                                            This property has not been listed on the market yet! <Link href="/#" className="pl-1 text-zinc-800"><u>View verification</u></Link>
+                                            This property has not been listed on the market yet! <span onClick={() => setShowVerification(true)} className="cursor-pointer pl-1 text-zinc-800"><u>View verification</u></span>
                                         </p>
 
-                                        <div className="flex justify-center items-center gap-5">
-                                            <Link href={"/"} className="flex gap-3 items-center border border-teal-800 rounded-lg px-5 py-1.5 text-lg text-teal-800 hover:bg-teal-800 hover:text-white">
-                                                <span>Publish</span>
-                                                <IoCloudUploadOutline className="text-2xl text-medium"/>
-                                            </Link>
-                                        </div>
+                                        {
+                                            isPending ?
+                                            <Spinner />
+                                            :
+                                            <div className="flex justify-center items-center gap-5">
+                                                <button onClick={() => mutate({ propertyId: property?.id })} disabled={isPending}  className="cursor-pointer  flex gap-3 items-center border border-teal-800 rounded-lg px-5 py-1.5 text-lg text-teal-800 hover:bg-teal-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:bg-transparent">
+                                                    <span>Publish</span>
+                                                    <IoCloudUploadOutline className="text-2xl text-medium"/>
+                                                </button>
+                                            </div>
+                                        }
                                     </div>
                                 }
 
@@ -256,13 +272,13 @@ export default function PropertyDetailsView({
                                                 <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
                                                     <Image 
                                                         alt="owner-image"
-                                                        src={property.agent.profile?.profileImage??'/png/sample_profile.png'}
+                                                        src={property?.agent?.profile?.profileImage??'/png/sample_profile.png'}
                                                         height={50}
                                                         width={60}
                                                     />
                                                     <div>
-                                                        <p className="text-lg text-zinc-900 m-0">{`${property.agent.profile?.firstName??'Kunle'} ${property.agent.profile?.lastName??'Aina'}`}</p>
-                                                        <p className="text-base text-zinc-500">{`${property.agent.email}`}</p>
+                                                        <p className="text-lg text-zinc-900 m-0">{`${property?.agent?.profile?.firstName??'Kunle'} ${property?.agent?.profile?.lastName??'Aina'}`}</p>
+                                                        <p className="text-base text-zinc-500">{`${property?.agent?.email}`}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -335,9 +351,44 @@ export default function PropertyDetailsView({
                             :
                             <EditProperty 
                                 propertyData={property}
-                                handleEditMode={setEditMode} 
+                                handleEditMode={setEditMode}
+                                availableAmenities={fetchedAmenites?.data?.data} 
                             />
                         }
+
+                        <CustomModal 
+                            isOpen={showVerification}
+                            onClose={() => setShowVerification(false)}
+                            title="Property verification details"
+                        >
+                            <div className="w-full p-3 flex flex-col justify-between gap-7">
+                                <div className="flex gap-4 items-center rounded-full mt-3 ">
+                                    <Image 
+                                        alt="owner-image"
+                                        src={property?.agent?.profile?.profileImage??'/png/sample_profile.png'}
+                                        height={50}
+                                        width={60}
+                                    />
+                                    <div>
+                                        <p className="text-xl font-medium text-zinc-900 m-0">{`${property?.agent?.profile?.firstName??'Kunle'} ${property?.agent?.profile?.lastName??'Aina'}`} <span className="text-base font-normal text-zinc-600"><em> (Assigned agent)</em></span></p>
+                                        <p className="text-lg text-zinc-700">{`${property?.agent?.email ?? 'agent007@aparteng.com'}`}</p>
+                                    </div>
+                                </div>
+
+                                <p className="text-lg font-medium text-zinc-900 mt-2">
+                                    {
+                                        property?.verifications?.feedback??
+                                        'The luxury apartment units for rent were meticulously verified, ensuring premium features such as smart home automation, high-end finishes, top-tier security, resort-style amenities, and breathtaking views.'
+                                    }
+                                </p>
+
+                                <p className="text-base font-normal text-zinc-600 ">
+                                    <em>
+                                        Verified on <br />{property?.verifications?.verificationDate??'February 15th, 2024'}
+                                    </em>
+                                </p>
+                            </div>
+                        </CustomModal>
                     </>
                 }
             </div> 
