@@ -1,8 +1,26 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./slices/authSlice";
 import alertDialogReducer from "./slices/alertDialogSlice";
-import storage from "redux-persist/lib/storage"; // Uses localStorage
 import { persistReducer, persistStore } from "redux-persist";
+
+// Custom storage object that safely handles server-side rendering
+const createNoopStorage = () => {
+  return {
+    getItem(_key: string) {
+      return Promise.resolve(null);
+    },
+    setItem(_key: string, value: any) {
+      return Promise.resolve(value);
+    },
+    removeItem(_key: string) {
+      return Promise.resolve();
+    },
+  };
+};
+
+const storage = typeof window !== 'undefined' 
+  ? require('redux-persist/lib/storage').default 
+  : createNoopStorage();
 
 // 🔹 Persist Config (Only for 'auth' slice)
 const persistConfig = {

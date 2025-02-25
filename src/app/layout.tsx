@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "../components/providers";
+import { Suspense } from "react";
+import Loader from "@/src/components/loader";
 
 export const metadata: Metadata = {
   title: "Aparte Admin",
@@ -19,7 +21,9 @@ export default function RootLayout({
         className={`antialiased w-full`}
       >
         <Providers>
-          {children}
+          <Suspense fallback={<Loader />}>
+            {children}
+          </Suspense>
         </Providers>
       </body>
     </html>

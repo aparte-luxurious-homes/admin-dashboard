@@ -17,12 +17,15 @@ import { UserRole } from "../lib/enums";
 // 🔹 Fetch User & Sync with Redux
 export const fetchUser = async (): Promise<IUser> => {
   const response = await axiosRequest.get(`${BASE_API_URL}/profile`);
-  if (response.data.data.user.role === UserRole.GUEST) {
+  const user = response.data.data;
+  
+  if (user.role === UserRole.GUEST) {
+    Cookies.remove("token");
     window.location.href = PAGE_ROUTES.auth.login;
-    throw Error("You aren't authorized to access this platform"); //Use toast instead
+    throw Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
   }
 
-  return response.data.data;
+  return user;
 };
 
 export const useAuth = () => {
@@ -33,6 +36,7 @@ export const useAuth = () => {
     queryKey: ["authUser"],
     queryFn: fetchUser,
     refetchInterval: 1000 * 60 * 5, // 5 minutes
+    retry: false, // Don't retry on failure
   });
 
   // Sync Redux only if data exists and is different from the current user
@@ -54,18 +58,28 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
       const { data } = await axiosRequest.post<ILoginResponse>(`${BASE_API_URL}/auth/login`, credentials);
-      if (data.user.role === UserRole.GUEST) throw Error("You aren't authorized to access this platform");
+      
+      // Check for guest role before setting any state
+      if (data.user.role === UserRole.GUEST) {
+        throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
+      }
 
+      // Only set token if user is not a guest
       Cookies.set("token", data.authorization.token, { expires: 7, secure: true, sameSite: "Strict" });
       return data.user;
     },
     onSuccess: (user) => {
-      dispatch(setUser(user)); // Sync Redux
-      queryClient.setQueryData(["authUser"], user); // Sync React Query
-      router.push(PAGE_ROUTES.dashboard.base)
+      // Update state before navigation
+      dispatch(setUser(user));
+      queryClient.setQueryData(["authUser"], user);
+      
+      // Use replace instead of push to prevent back navigation to login
+      router.replace(PAGE_ROUTES.dashboard.base);
     },
-    onError: (error) => {
-      console.error(error);
+    onError: (error: any) => {
+      // Remove token if there's an error
+      Cookies.remove("token");
+      console.error('Login failed:', error);
     }
   });
 };
@@ -81,8 +95,10 @@ export const useLogout = () => {
       Cookies.remove("token");
     },
     onSuccess: () => {
-      dispatch(clearUser()); // Clear Redux
-      queryClient.setQueryData(["authUser"], null); // Clear React Query
+      dispatch(clearUser());
+      queryClient.setQueryData(["authUser"], null);
+      // Redirect to login after logout
+      window.location.href = PAGE_ROUTES.auth.login;
     },
   });
 };
