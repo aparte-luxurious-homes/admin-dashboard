@@ -1,38 +1,154 @@
 'use client'
 
 import { useLogin } from "@/src/hooks/useAuth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Button from "@/src/components/button";
 import InputGroup from "../../../../components/formcomponent/InputGroup";
 import Image from "next/image";
 import AparteeText from "../../../../../public/svg/logo_text_white.svg";
+import { useSearchParams, useRouter } from 'next/navigation';
+import { toast } from "react-hot-toast";
+import Cookies from "js-cookie";
+import axiosRequest from "@/lib/api";
+import { BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { useDispatch } from "react-redux";
+import { setUser } from "@/src/lib/slices/authSlice";
+import { useQueryClient } from "@tanstack/react-query";
+import Loader from "@/src/components/loader";
+import { UserRole } from "@/src/lib/enums";
 
 export default function Login() {
   const { mutate: loginMutation, isPending } = useLogin(); 
   const [email, setEmail] = useState<string>('')
   const [password, setPassword] = useState<string>('')
+  const [isTokenAuthenticating, setIsTokenAuthenticating] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      setIsTokenAuthenticating(true);
+      
+      // Set the token in cookies first
+      Cookies.set("token", token, { expires: 7, secure: true, sameSite: "Strict" });
+      
+      // Try to fetch profile with the token
+      axiosRequest.get(`${BASE_API_URL}/profile`)
+        .then((response) => {
+          const user = response.data.data;
+          
+          // Check for guest role
+          if (user.role === UserRole.GUEST) {
+            throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
+          }
+          
+          // Batch our state updates before navigation
+          Promise.all([
+            // Update Redux store
+            dispatch(setUser(user)),
+            // Update React Query cache
+            queryClient.setQueryData(["authUser"], user)
+          ]).then(() => {
+            // Immediate redirect after state updates
+            window.location.href = '/';
+          });
+        })
+        .catch((error) => {
+          // Token is invalid, remove it and show error
+          Cookies.remove("token");
+          console.error('Token validation failed:', error);
+          
+          const errorMessage = error?.response?.data?.message || 
+            (error.message?.includes('Access Denied') ? error.message : 'Authentication failed. Please login with your credentials.');
+          
+          toast.error(errorMessage, {
+            duration: 6000,
+            style: {
+              maxWidth: '500px',
+              width: 'max-content'
+            }
+          });
+          setIsTokenAuthenticating(false);
+        });
+    }
+  }, [searchParams, dispatch, queryClient]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    loginMutation({email, password})
+    loginMutation(
+      { email, password },
+      {
+        onError: (error: any) => {
+          const errorMessage = error?.response?.data?.message || 
+            (error.message?.includes('Access Denied') ? error.message : 'Login failed. Please check your credentials.');
+          
+          toast.error(errorMessage, {
+            duration: 6000,
+            style: {
+              maxWidth: '500px',
+              width: 'max-content'
+            }
+          });
+        }
+      }
+    );
+  }
+
+  if (isTokenAuthenticating) {
+    return <Loader message="Authenticating..." />;
   }
 
   return (
-    <div className="min-h-screen w-full flex justify-center items-center">
-      <main className="w-[70%] md:w-[30%]">
-
-        <div className="mx-auto w-fit mb-10">
-          <Image src={AparteeText} alt="" />
+    <div className="min-h-screen w-full flex justify-center items-center px-4 relative overflow-hidden">
+      {/* Faded background logo */}
+      <div className="absolute hidden md:block top-8 left-8 opacity-5 transform scale-150 -rotate-12">
+        <Image
+          src="/svg/logo.svg"
+          alt="background-logo"
+          height={300}
+          width={300}
+          priority
+        />
+      </div>
+      
+      {/* Mobile watermark - centered and subtle */}
+      <div className="absolute md:hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] transform scale-[2]">
+        <Image
+          src="/svg/logo.svg"
+          alt="background-logo"
+          height={200}
+          width={200}
+          priority
+        />
+      </div>
+      
+      <main className="w-full max-w-md animate-fadeIn relative z-10">
+        <div className="mx-auto w-fit mb-8 md:mb-10 transform hover:scale-105 transition-transform duration-300">
+          <div className="relative">
+            <Image
+              src="/svg/logo_text_white.svg"
+              alt="logo"
+              height={170}
+              width={170}
+            />
+            <Image
+              src="/svg/admin_text.svg"
+              alt="admin"
+              className="absolute -bottom-1 right-0.5"
+              height={30}
+              width={30}
+            />
+          </div>
         </div>
         
         <form
-          className="flex flex-col gap-4 p-8 rounded-xl bg-[#ffffff] text-gray-200 w-full shadow-[4px_4px_10px_rgba(255,255,255,0.5)]"
+          className="flex flex-col gap-5 p-6 md:p-8 rounded-xl bg-[#ffffff] text-gray-200 w-full 
+          shadow-[4px_4px_10px_rgba(255,255,255,0.5)] transition-all duration-300"
           onSubmit={handleSubmit}
         >
-          {/* <label htmlFor="email">
-            Email
-          </label>
-          <input id="email" type="email" className="w-full h-auto p-3 rounded-lg text-gray-900" value={email} onChange={(e) => setEmail(e.target.value)} /> */}
           <InputGroup
             label="Email"
             required
@@ -41,33 +157,24 @@ export default function Login() {
             inputName="email"
           />
           <InputGroup
-            label="PassWord"
+            label="Password"
             required
             onChange={(e) => setPassword(e.target.value)}
-            inputType="text"
+            inputType="password"
             inputName="password"
           />
-          {/* <label htmlFor="password">
-            Password
-          </label>
-          <input id="password" type="password" className="w-full h-auto p-3 mb-4 rounded-lg text-gray-900" value={password} onChange={(e) => setPassword(e.target.value)}/> */}
-          <div className="mt-4">
-            <Button
-              variant="primaryoutline"
-              buttonSize="full"
-              color="btnfontprimary"
-              isLoading={isPending}
-              // onClick={handleSubmit}
-              type="submit"
-              buttonName="Login"
-            />
+          <div className="mt-2 flex justify-center">
+            <div className="w-2/3">
+              <Button
+                variant="primaryoutline"
+                buttonSize="full"
+                color="btnfontprimary"
+                isLoading={isPending}
+                type="submit"
+                buttonName="Login"
+              />
+            </div>
           </div>
-          {/* {
-            isPending ?
-            <p className="text-background text-base">Please wait...</p>
-            :
-            <input type="submit" value={'Submit'} className="mt-5 w-2/3 h-auto m-auto p-2 rounded-xl bg-transparent hover:bg-white border border-gray-200 text-gray-200 hover:text-gray-900 ease-in-out duration-150"/>
-          } */}
         </form>
       </main>
     </div>
