@@ -15,7 +15,7 @@ import { UserRole } from "@/src/lib/enums";
 import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
 import { areArraysEqual, formatMoney } from "@/src/lib/utils";
 import { PiBathtub } from "react-icons/pi";
-import { LuSofa } from "react-icons/lu";
+import { LuSofa, LuUsers } from "react-icons/lu";
 import Spinner from "../../ui/Spinner";
 
 export default function EditUnitView({  
@@ -243,9 +243,9 @@ export default function EditUnitView({
                         </div>
                     </div>
                     <div className="col-span-1">
-                        <label htmlFor="name" className="text-lg zinc-900 font-medium">Guests <span className="font-normal text-base">(max)</span></label>
+                        <label htmlFor="name" className="text-lg zinc-900 font-medium">Guests <span className="font-normal text-base"><em>(max)</em></span></label>
                         <div className="relative mt-2">
-                            <LuSofa className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
+                            <LuUsers className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
                             <input
                                 id="max-guests"
                                 type="number" 

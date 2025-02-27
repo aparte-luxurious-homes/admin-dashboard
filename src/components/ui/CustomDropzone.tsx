@@ -82,6 +82,8 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
                 src={preview.url}
                 alt={`preview-${index}`}
                 className="w-full h-full object-cover rounded-md"
+                width={100}
+                height={100}
               />
               <div
                  onClick={(event) => {

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import { IAssignAmenity, IUpdateProperty, IUploadPropertyMedia } from "@/src/components/properties-mgt/types";
+import { IAssignAmenity, ICreateProperty, IUpdateProperty, IUpdatePropertyVerification, IUploadPropertyMedia } from "@/src/components/properties-mgt/types";
 
 enum PropertyRequestKeys {
     allProperties = "getAllPropertiesView",
@@ -9,7 +9,10 @@ enum PropertyRequestKeys {
     propertyMedia = "uploadPropertyMedia",
     propertyAmenities = "assignPropertyAmenities",
     getAmenities = "getAmenities",
+    createAmenities = "getAmenities",
     featureProperty = "featureProperty",
+    createProperty = "createProperty",
+    propertyVerification = "propertyVerification",
 }
 
 export function GetAllProperties(page=1, limit=10) {
@@ -35,15 +38,55 @@ export function GetSingleProperty(propertyId: number) {
     });
 }
 
+
+export function UpdatePropertyVerification() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, payload }: { propertyId: number, payload: IUpdatePropertyVerification }) =>
+        axiosRequest.put(API_ROUTES.propertyManagement.properties.verify(propertyId), payload),
+
+        onSuccess: () => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyVerification] });
+        },
+    });
+}
+
 export function GetAmenities() {
     return useQuery({
         queryKey: [PropertyRequestKeys.getAmenities], 
         queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.amenities.base),
-        refetchOnWindowFocus: true,
-        staleTime: Infinity,
-        refetchInterval: 10000 * 60 * 5,
     });
 }
+
+
+export function CreateAmenity() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ name }: { name: string }) =>
+        axiosRequest.post(API_ROUTES.propertyManagement.amenities.base, { name }),
+
+        onSuccess: () => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.createAmenities] });
+        },
+    });
+}
+
+
+export function CreateProperty() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({payload}: { payload: ICreateProperty }) =>
+        axiosRequest.post(API_ROUTES.propertyManagement.properties.base, payload),
+
+        onSuccess: () => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.createProperty] });
+        },
+    });
+}
+
 
 export function UpdateProperty() {
     const queryClient = useQueryClient();

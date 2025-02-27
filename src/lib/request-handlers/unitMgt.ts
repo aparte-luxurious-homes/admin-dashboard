@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import { IAssignAmenity, IUpdatePropertyUnit } from "@/src/components/properties-mgt/types";
+import { IAssignAmenity, ICreatePropertyUnit, IUpdatePropertyUnit } from "@/src/components/properties-mgt/types";
 
 enum PropertyUnitRequestKeys {
     allUnits = "getAllUnitsView",
     singleUnit = "getSingleUnitsView",
     unitMedia = "uploadUnitMedia",
-    assignAmenities = "assigneAmenities"
+    assignAmenities = "assigneAmenities",
+    createUnit = "createUnit",
 }
 
 export function GetAllPropertyUnits(page=1, limit=10) {
@@ -32,6 +33,20 @@ export function GetSinglePropertyUnit(propertyId: number, unitId: number) {
         refetchInterval: 1000 * 60 * 1,
     });
 }
+
+export function CreatePropertyUnit() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({propertyId, payload}: {propertyId: number, payload: ICreatePropertyUnit[]}) =>
+        axiosRequest.post(API_ROUTES.propertyManagement.properties.units.base(propertyId), { payload } ),
+
+        onSuccess: (_, { propertyId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.createUnit, propertyId ] });
+        },
+    });
+}
+
 
 export function UpdatePropertyUnit() {
     const queryClient = useQueryClient();

@@ -11,9 +11,18 @@ interface ModalProps {
 const CustomModal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
+  const handleBackgroundClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-primary bg-opacity-50 z-50">
-      <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6">
+    <div 
+      className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
+      onClick={handleBackgroundClick}
+    >
+      <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="flex justify-between items-center border-b pb-2 mb-4">
           {title && <h2 className="text-lg font-semibold">{title}</h2>}
@@ -24,11 +33,6 @@ const CustomModal: React.FC<ModalProps> = ({ isOpen, onClose, title, children })
 
         {/* Modal Content */}
         <div>{children}</div>
-
-        {/* Modal Footer */}
-        <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
-        </div>
       </div>
     </div>
   );

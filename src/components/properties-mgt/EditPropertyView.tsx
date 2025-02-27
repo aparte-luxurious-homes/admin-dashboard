@@ -23,6 +23,8 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../ui/Spinner";
 import { areArraysEqual } from "@/src/lib/utils";
+import { CreateAmenityForm } from "./CreatePropertyView";
+import CustomModal from "../ui/CustomModal";
 
 
 export default function EditPropertyView({  
@@ -50,6 +52,7 @@ export default function EditPropertyView({
     const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
+    const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
 
 
     const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
@@ -299,7 +302,7 @@ export default function EditPropertyView({
                                 formik.setFieldValue("amenities", [...val]); // Ensure a new array reference
                             }} 
                         />
-                        <div className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-10 cursor-pointer">
+                        <div onClick={() => setShowAmenityForm(true)} className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-10 cursor-pointer">
                             <FaPlus />
                             <span>
                                 New Amenity
@@ -384,6 +387,17 @@ export default function EditPropertyView({
                     </div>
                 </div>
             </form>
+
+            {
+                showAmenityForm &&
+                <CustomModal
+                    title="Create Amenity"
+                    onClose={() => setShowAmenityForm(false)}
+                    isOpen={showAmenityForm}
+                >
+                    <CreateAmenityForm show={setShowAmenityForm} />
+                </CustomModal>
+            }
 
             <div className="flex justify-end items-center gap-5 mt-3">
                 <button onClick={() => formik.handleSubmit()} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
