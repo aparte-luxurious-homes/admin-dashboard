@@ -107,8 +107,8 @@ const Home = () => {
   const allAgents = topAgents;
   const [properties, setProperties] = useState<Property[]>([]);
   const [stats, setStats] = useState<StatsData>({} as StatsData);
-  const [loading, setLoading] = useState(true);
-  const [isStatLoading, setIsStatLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isStatLoading, setIsStatLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [statError, setStatError] = useState<string>("");
   const [searchValue, setSearchValue] = useState<string>("");
