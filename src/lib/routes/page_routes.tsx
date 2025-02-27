@@ -38,6 +38,10 @@ export const PAGE_ROUTES = {
             allProperties: {
                 base: '/property-management/all-properties',
                 details: (id: number) => `/property-management/all-properties/${id}`,
+                units: {
+                    base: (propertyId: number) => `/property-management/all-properties/${propertyId}/units`,
+                    details: (propertyId: number, unitId: number) => `/property-management/all-properties/${propertyId}/units/${unitId}`,
+                }
             },
             assignAgents: {
                 base: '/property-management/assign-agents',
