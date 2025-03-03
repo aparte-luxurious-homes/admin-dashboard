@@ -24,6 +24,9 @@ export const API_ROUTES = {
         auditLogs: {
             index: '/admin/audit-logs',
         },
+        users: {
+            base: '/admin/users'
+        }
     },
     profile: {
         show: '/profile',
