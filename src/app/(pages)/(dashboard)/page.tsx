@@ -188,7 +188,7 @@ const Home = () => {
     {
       field: "isVerified",
       headerName: "Verification Status",
-      width: 140,
+      width: 120,
       renderCell: (params) => <Badge status={params.value} />,
     },
     // { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
@@ -207,7 +207,7 @@ const Home = () => {
     {
       field: "meta",
       headerName: "Rating",
-      width: 50,
+      width: 100,
       renderCell: (params) => {
         return params.value?.average_rating ?? "--/--";
       },
@@ -417,9 +417,9 @@ const Home = () => {
                   ) : stats?.properties?.length > 0 ? (
                     <div>
                       <div className="flex justify-between items-center gap-1 mb-1">
-                        <div>
-                        <h4>Users</h4>
-                          <div>
+                        <div className="flex gap-4 items-center">
+                          <h4>Users</h4>
+                          <div className="flex gap-1 items-center">
                             <div className="flex items-center gap-2">
                               <p className="text-[12px]">This Year</p>
                               <div className="w-3 h-1 bg-[#028090]"></div>
