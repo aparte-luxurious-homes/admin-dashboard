@@ -99,7 +99,7 @@ export interface IPropertyUnit {
     property?: IProperty
     media: IPropertyMedia[]
     reviews: IPropertyReview[]
-    amenities: IAmenityAssignment[]
+    amenities: IAmenity[]
     availability: IAvailability[]
     bookings: IBooking[]
 }
@@ -130,7 +130,7 @@ export interface IProperty {
     units: IPropertyUnit[]
     verifications: IPropertyVerification
     media: IPropertyMedia[]
-    amenities: IAmenityAssignment[]
+    amenities: IAmenity[]
 }
 
 export interface IUpdatePropertyVerification {
@@ -153,6 +153,7 @@ export interface ICreateProperty {
     country: string
     latitude: number
     longitude: number
+    amenities: number[]
     // kyc_id: number
     is_pet_allowed: boolean
 }
@@ -167,8 +168,9 @@ export interface IUpdateProperty {
     country: string,
     latitude: number,
     longitude: number,
-    kyc_id: number,
+    // kyc_id?: number,
     ownerId: number,
+    amenities?: number[],
     // assignedAgent?: IUser,
     is_pet_allowed: boolean
 }
@@ -184,7 +186,8 @@ export interface IUpdatePropertyUnit {
     bedroomCount: number,
     livingRoomCount: number,
     kitchenCount: number,
-    bathroomCount: number
+    bathroomCount: number,
+    amenities?: number[],
 }
 
 export interface ICreatePropertyUnit {
@@ -198,6 +201,7 @@ export interface ICreatePropertyUnit {
     living_room_count: number,
     kitchen_count: number,
     bathroom_count: number
+    amenities: number[]
 }
 
 export interface IUploadPropertyMedia {

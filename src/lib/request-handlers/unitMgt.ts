@@ -38,7 +38,7 @@ export function CreatePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({propertyId, payload}: {propertyId: number, payload: ICreatePropertyUnit[]}) =>
-        axiosRequest.post(API_ROUTES.propertyManagement.properties.units.base(propertyId), { payload } ),
+        axiosRequest.post(API_ROUTES.propertyManagement.properties.units.base(propertyId), { units: payload } ),
 
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches

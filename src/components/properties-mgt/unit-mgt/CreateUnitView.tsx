@@ -1,8 +1,7 @@
 'use client'
 
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
-import CustomDropdown from "@/components/ui/customDropdown";
 import { IAmenity, ICreatePropertyUnit, IProperty, MediaType } from "../types";
 import MultipleChoice from "@/components/ui/MultipleChoice";
 import { FaArrowLeftLong, FaPlus } from "react-icons/fa6";
@@ -13,7 +12,7 @@ import Spinner from "@/components/ui/Spinner";
 import { GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { fixedAmenities } from "@/src/data/amenities";
 import CustomModal from "@/components/ui/CustomModal";
-import { AssignUnitAmenities, CreatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import { CreatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { CreateAmenityForm } from "../CreatePropertyView";
 import { IoBedOutline } from "react-icons/io5";
 import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
@@ -31,7 +30,6 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
     const { user } = useAuth();
     const { mutate, isPending } = CreatePropertyUnit();
     const { data: fetchedAmenites } = GetAmenities();
-    const { mutate: assignUnitAmenity } = AssignUnitAmenities(); 
     const { mutate: uploadMedia } = UploadPropertyUnitMedia();
     const { data: propertyData, isLoading } = GetSingleProperty(propertyId);
 
@@ -48,7 +46,7 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
         for (const amenity of newAmeities) {
             if (prevAmenityNames.includes(amenity)) {
                 const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos])
+                sortedAmenities.push(amenities[pos].id)
             }
         }
 
@@ -78,14 +76,15 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                 bathroom_count: 0,
                 caution_fee: "0.00",
                 amenities: [],
-                amenityIds: [],
+                amenityNames: [],
             },
 
         onSubmit: (values) => {
-            const newAmenities = sortAmenities(availableAmenities, values.amenities);
+            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames);
 
             const payload: ICreatePropertyUnit[] = [{
                 ...values,
+                amenities: sortedAmenities,
             }]
             
             mutate({
@@ -94,18 +93,10 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
             },
             {
                 onSuccess: (response) => {
-                    const unitId = response?.data?.data?.id 
+                    const unitId = response?.data?.data[0]?.id
                     const formData = new FormData();
 
-                    if (propertyId) {
-                        assignUnitAmenity({                              // Update amenity asignments if changed
-                            propertyId,
-                            unitId,
-                            payload: {
-                                amenity_ids: newAmenities.map(el => el.id)
-                            },
-                        })
-
+                    if (unitId) {
                         if (uploadedMedia.length > 0) {  
                             uploadedMedia?.forEach(file => {
                                 formData.append("media_file", file);
@@ -122,7 +113,7 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                         }
                     }
 
-                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId))
+                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(propertyId, unitId))
 
                 }
             })         
@@ -280,9 +271,9 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                                     options={availableAmenities?.map(el => 
                                         el.name
                                     )}
-                                    selected={formik.values.amenities}
+                                    selected={formik.values.amenityNames}
                                     onChange={(val) => {
-                                        formik.setFieldValue("amenities", [...val]); // Ensure a new array reference
+                                        formik.setFieldValue("amenityNames", [...val]); // Ensure a new array reference
                                     }} 
                                 />
 

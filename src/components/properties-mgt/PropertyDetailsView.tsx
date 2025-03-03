@@ -132,19 +132,19 @@ export default function PropertyDetailsView({
                                                 property?.amenities?.map((el, index) => 
                                                     <div key={index} className="flex items-center  gap-2 ">
                                                         {
-                                                            el.amenity.name === 'AIR CONDITIONER'
+                                                            el.name === 'AIR CONDITIONER'
                                                             ? <TbAirConditioning className="text-xl"/>
-                                                            : el.amenity.name === 'HOT TUB'
+                                                            : el.name === 'HOT TUB'
                                                                 ? <PiBathtub className="text-xl"/>
-                                                                : el.amenity.name === 'Wi-FI'
+                                                                : el.name === 'Wi-FI'
                                                                     ? <IoWifi className="text-xl"/>
-                                                                    : el.amenity.name === 'PS5'
+                                                                    : el.name === 'PS5'
                                                                         ? < IoGameControllerOutline  className="text-xl"/>
-                                                                        : el.amenity.name === 'TV'
+                                                                        : el?.name === 'TV'
                                                                             ? <FaTv className="text-xl"/>
                                                                             : <FaSwimmer />
                                                         }
-                                                        <span>{ el.amenity.name }</span>
+                                                        <span>{ el.name }</span>
                                                     </div>
                                                 )
                                             }

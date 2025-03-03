@@ -152,7 +152,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
 
                                     <div className="w-full mt-2 p-3 grid grid-cols-4 gap-10 text-lg font-normal text-zinc-900">
                                         {
-                                            propertyUnit?.bedroomCount &&  
+                                            propertyUnit?.bedroomCount > 0 &&  
                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                 <IoBedOutline className="text-3xl font-normal" />
                                                 <p className="text-center">
@@ -161,7 +161,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             </div>
                                         }
                                         {
-                                            propertyUnit?.bathroomCount &&
+                                            propertyUnit?.bathroomCount > 0 &&
                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                 <PiBathtub className="text-3xl font-normal" />
                                                 <p className="text-center">
@@ -170,7 +170,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             </div>
                                         }
                                         {
-                                            propertyUnit?.kitchenCount &&  
+                                            propertyUnit?.kitchenCount > 0 &&  
                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                 <TbToolsKitchen className="text-3xl font-normal" />
                                                 <p className="text-center">
@@ -179,7 +179,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             </div>
                                         }
                                         {
-                                            propertyUnit?.livingRoomCount &&
+                                            propertyUnit?.livingRoomCount > 0 &&
                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                 <LuSofa className="text-3xl font-normal"/>
                                                 <p className="text-center">
@@ -202,7 +202,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             propertyUnit?.amenities &&
                                             propertyUnit?.amenities.map((el, index) => 
                                                 <div key={index} className="w-fit h-12 flex items-center justify-center p-5 border rounded-lg">
-                                                    {el.amenity.name}
+                                                    {el.name}
                                                 </div>
                                             )
                                         }

@@ -13,13 +13,15 @@ import { ALL_COUNTRIES } from "@/src/data/countries";
 import { FaPlus } from "react-icons/fa6";
 import CustomDropzone from "../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { AssignPropertyAmenities, CreateAmenity, CreateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { CreateAmenity, CreateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import Spinner from "../ui/Spinner";
 import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
 import { fixedAmenities } from "@/src/data/amenities";
 import CustomModal from "../ui/CustomModal";
 import { UserRole } from "@/src/lib/enums";
+import { useRouter } from "next/navigation";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
 
 export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<boolean>> }) {
@@ -71,9 +73,9 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
 
 export default function CreatePropertyView({}) {
     const { user } = useAuth();
+    const router = useRouter();
     const { mutate, isPending } = CreateProperty();
     const { data: fetchedAmenites } = GetAmenities();
-    const { mutate: assignAmenity } = AssignPropertyAmenities(); 
     const { mutate: uploadMedia } = UploadPropertyMedia();
 
     const [availableAmenities, setAvailableAmenities] = useState<IAmenity[]>(fixedAmenities);
@@ -87,7 +89,7 @@ export default function CreatePropertyView({}) {
         for (const amenity of newAmeities) {
             if (prevAmenityNames.includes(amenity)) {
                 const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos])
+                sortedAmenities.push(amenities[pos].id)
             }
         }
 
@@ -118,10 +120,11 @@ export default function CreatePropertyView({}) {
             },
 
         onSubmit: (values) => {
-            const newAmenities = sortAmenities(availableAmenities, values.amenities);
+            const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
 
             const payload: ICreateProperty = {
                 ...values,
+                amenities: sortedAmenities,
             }
             
             mutate({
@@ -133,12 +136,6 @@ export default function CreatePropertyView({}) {
                     const formData = new FormData();
 
                     if (propertyId) {
-                        assignAmenity({                              // Update amenity asignments if changed
-                            propertyId, 
-                            payload: {
-                                amenity_ids: newAmenities.map(el => el.id)
-                            },
-                        })
 
                         if (uploadedMedia.length > 0) {  
                             uploadedMedia?.forEach(file => {
@@ -153,6 +150,8 @@ export default function CreatePropertyView({}) {
                                 payload: formData,
                             });
                         }
+
+                        router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId))
                     }
 
 

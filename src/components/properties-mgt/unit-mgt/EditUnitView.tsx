@@ -34,7 +34,6 @@ export default function EditUnitView({
     const { user } = useAuth();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(unitData?.media??[])
-    const [amenities, setAmenities] = useState<string[]>(unitData?.amenities?.map((el) => el.amenity.name))
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const { mutate: assignAmenity   } = AssignUnitAmenities(); 
@@ -46,7 +45,7 @@ export default function EditUnitView({
         for (const amenity of newAmeities) {
             if (prevAmenityNames.includes(amenity)) {
                 const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos])
+                sortedAmenities.push(amenities[pos].id)
             }
         }
 
@@ -68,27 +67,15 @@ export default function EditUnitView({
                 livingRoomCount: unitData?.livingRoomCount ?? 0,
                 kitchenCount: unitData?.kitchenCount ?? 0,
                 bathroomCount: unitData?.bathroomCount ?? 0,
-                amenities: unitData?.amenities.map((el) => el.amenity.name) ?? [],
+                amenities: unitData?.amenities.map((el) => el.id),
+                amenityNames: unitData?.amenities.map((el) => el.name),
             },
         onSubmit: (values) => {
-            const newAmenities = sortAmenities(availableAmenities, values.amenities);
-            if (
-                !areArraysEqual( // Change the need for this on the backend
-                    unitData?.amenities.map((el) => el.amenity.id),
-                    newAmenities.map(el => el.id), 
-                ))
-                {
-                    assignAmenity({                              // Update amenity asignments if changed
-                        propertyId: unitData.propertyId, 
-                        unitId: unitData.id,
-                        payload: {
-                            amenity_ids: newAmenities.map(el => el.id)
-                        },
-                    })
-                }
-
+            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames);
+            
             const updatePayload: IUpdatePropertyUnit = {
                 ...values,
+                amenities: sortedAmenities,
             };
             mutate({
                 propertyId: unitData.propertyId,
@@ -263,9 +250,9 @@ export default function EditUnitView({
                             options={availableAmenities?.map(el => 
                                 el.name
                             )}
-                            selected={formik.values.amenities}
+                            selected={formik.values.amenityNames}
                             onChange={(val) => {
-                                formik.setFieldValue("amenities", [...val]); // Ensure a new array reference
+                                formik.setFieldValue("amenityNames", [...val]); // Ensure a new array reference
                             }} 
                         />
 
