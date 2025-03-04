@@ -155,7 +155,7 @@ const AgentInfo = () => {
       console.log("response prop", response);
 
       const filteredProperties = response?.data?.data?.data.filter(
-        (owner: Owner) => owner.id === Number(id)
+        (agent: Property) => agent?.assignedAgent === Number(id)
       );
 
       setProperties(filteredProperties);
@@ -255,8 +255,8 @@ const AgentInfo = () => {
         <BreadCrumb
           description=""
           active="Agent info"
-          link_one="/user-management/agent"
-          link_one_name="Owners"
+          link_one="/user-management/agents"
+          link_one_name="All Agents"
         />
         <div className="mt-0">
           <h3 className="mb-[50px] mt-[10px] font-semibold">
