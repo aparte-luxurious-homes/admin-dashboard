@@ -91,7 +91,7 @@ export default function EditPropertyView({
                 amenityNames: propertyData?.amenities.map((el) => el.name),
             },
 
-        onSubmit: (values) => {
+        onSubmit: (values: any) => {
             const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
 
             if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed

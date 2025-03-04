@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { IProperty, IPropertyUnit } from "./types";
-import { FeatureProperty, GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
@@ -26,6 +26,8 @@ import { IoIosStarOutline } from "react-icons/io";
 import Spinner from "../ui/Spinner";
 import CustomModal from "../ui/CustomModal";
 import { IoGameControllerOutline } from "react-icons/io5";
+import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 
 
@@ -39,6 +41,8 @@ export default function PropertyDetailsView({
     const { data, isLoading } = GetSingleProperty(propertyId)
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate, isPending } = FeatureProperty();
+    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
+    const router = useRouter();
     
     const [showVerification, setShowVerification] = useState(false);
     const [editMode, setEditMode] = useState<boolean>(false);
@@ -55,7 +59,24 @@ export default function PropertyDetailsView({
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log("Item deleted!");
+                    if (propertyId)
+                    deleteMutation(
+                        { propertyId },
+                        {
+                            onSuccess: (response) => {
+                                console.log(response)
+                                toast.success(response?.data?.message, {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                });
+                                if (response.status === 204) 
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
+                            }
+                        }
+                    )
                 },
             })
         );

@@ -2,7 +2,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType,  } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
-import { AssignUnitAmenities, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import { AssignUnitAmenities, DeletePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -17,6 +17,9 @@ import { areArraysEqual, formatMoney } from "@/src/lib/utils";
 import { PiBathtub } from "react-icons/pi";
 import { LuSofa, LuUsers } from "react-icons/lu";
 import Spinner from "../../ui/Spinner";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
 export default function EditUnitView({  
     handleEditMode,
@@ -30,8 +33,10 @@ export default function EditUnitView({
 
     const dispatch = useDispatch();
     const { mutate, isPending } = UpdatePropertyUnit();
+    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const { mutate: uploadMedia, data: uploadData, isPending: uploadedMediaPending } = UploadPropertyUnitMedia();
     const { user } = useAuth();
+    const router = useRouter();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(unitData?.media??[])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
@@ -109,11 +114,27 @@ export default function EditUnitView({
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: "This action cannot be undone. This will permanently delete the unit.",
+                description: "This action cannot be undone. This will permanently delete this property unit.",
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log("Item deleted!");
+                    deleteMutation(
+                        { propertyId: unitData.propertyId, unitId: unitData.id },
+                        {
+                            onSuccess: (response) => {
+                                console.log(response)
+                                toast.success(response?.data?.message, {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                });
+                                if (response.status === 204) 
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(unitData.propertyId))
+                            }
+                        }
+                    )
                 },
             })
         );

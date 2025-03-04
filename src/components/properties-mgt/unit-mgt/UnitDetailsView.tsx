@@ -1,4 +1,4 @@
-import { GetSinglePropertyUnit } from "@/src/lib/request-handlers/unitMgt";
+import { DeletePropertyUnit, GetSinglePropertyUnit } from "@/src/lib/request-handlers/unitMgt";
 import { useEffect, useState } from "react";
 import { IPropertyUnit } from "../types";
 import { Skeleton } from "../../ui/skeleton";
@@ -20,11 +20,15 @@ import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { IoIosStarOutline } from "react-icons/io";
 import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: number, unitId: number }) {
     const dispatch = useDispatch();
     const { data, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
+    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const { data: fetchedAmenites } = GetAmenities();
+    const router = useRouter();
     
     const [editMode, setEditMode] = useState<boolean>(false);
     const [propertyUnit, setPropertyUnit] = useState<IPropertyUnit>(data?.data?.data)
@@ -34,11 +38,28 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: "This action cannot be undone. This will permanently delete this unit.",
+                description: "This action cannot be undone. This will permanently delete this property unit.",
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log("Item deleted!");
+                    if (propertyId && unitId)
+                    deleteMutation(
+                        { propertyId, unitId },
+                        {
+                            onSuccess: (response) => {
+                                console.log(response)
+                                toast.success(response?.data?.message, {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                });
+                                if (response.status === 204) 
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId))
+                            }
+                        }
+                    )
                 },
             })
         );
