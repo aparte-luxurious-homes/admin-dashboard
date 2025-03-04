@@ -114,7 +114,6 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                     }
 
                     router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(propertyId, unitId))
-
                 }
             })         
         },

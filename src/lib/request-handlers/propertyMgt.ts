@@ -13,6 +13,7 @@ enum PropertyRequestKeys {
     featureProperty = "featureProperty",
     createProperty = "createProperty",
     propertyVerification = "propertyVerification",
+    deleteProperty = "deleteProperty",
 }
 
 export function GetAllProperties(page=1, limit=10) {
@@ -97,6 +98,19 @@ export function UpdateProperty() {
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+        },
+    });
+}
+
+export function DeleteProperty() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId }: { propertyId: number }) =>
+        axiosRequest.delete(API_ROUTES.propertyManagement.properties.details(propertyId)),
+
+        onSuccess: (_, { propertyId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.deleteProperty, propertyId] });
         },
     });
 }

@@ -18,12 +18,15 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { FeatureProperty, UpdateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { DeleteProperty, FeatureProperty, UpdateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../ui/Spinner";
 import { CreateAmenityForm } from "./CreatePropertyView";
 import CustomModal from "../ui/CustomModal";
+import { useRouter } from "next/navigation";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import toast from "react-hot-toast";
 
 
 export default function EditPropertyView({  
@@ -37,6 +40,7 @@ export default function EditPropertyView({
 }) {
     const dispatch = useDispatch();
     const { mutate, isPending } = UpdateProperty()
+    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const { 
         mutate: uploadMedia, 
         data: uploadData, 
@@ -45,6 +49,7 @@ export default function EditPropertyView({
     const { mutate: featureProperty   } = FeatureProperty(); 
 
     const { user } = useAuth();
+    const router = useRouter();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
@@ -133,7 +138,23 @@ export default function EditPropertyView({
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log("Item deleted!");
+                    deleteMutation(
+                        { propertyId: propertyData.id },
+                        {
+                            onSuccess: (response) => {
+                                console.log(response)
+                                toast.success(response?.data?.message, {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                });
+                                if (response.status === 204) 
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
+                            }
+                        }
+                    )
                 },
             })
         );

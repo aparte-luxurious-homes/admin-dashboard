@@ -9,6 +9,7 @@ enum PropertyUnitRequestKeys {
     unitMedia = "uploadUnitMedia",
     assignAmenities = "assigneAmenities",
     createUnit = "createUnit",
+    deleteUnit = "deleteUnit", 
 }
 
 export function GetAllPropertyUnits(page=1, limit=10) {
@@ -57,6 +58,20 @@ export function UpdatePropertyUnit() {
         onSuccess: (_, { propertyId, unitId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+        },
+    });
+}
+
+
+export function DeletePropertyUnit() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId }: { propertyId: number, unitId: number }) =>
+        axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId)),
+
+        onSuccess: (_, { propertyId, unitId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.deleteUnit, propertyId, unitId] });
         },
     });
 }
