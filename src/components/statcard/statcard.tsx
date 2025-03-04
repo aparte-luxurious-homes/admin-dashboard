@@ -11,7 +11,7 @@ type CardProps = {
 const StatsCard: React.FC<CardProps> = ({ title, amount, percentage, isIncrease }) => {
   return (
     <div
-      className="transition-all duration-300 border border-[#D9D9D9] rounded-[15px] p-5 max-w-[400px] bg-white hover:bg-[#028090] hover:text-white"
+      className="transition-all w-full duration-300 border border-[#D9D9D9] rounded-[15px] p-5 max-w-[400px] bg-white hover:bg-[#028090] hover:text-white"
     >
       <p className="text-sm font-medium">{title}</p>
       <h2 className="text-2xl mt-[27px] font-bold">{amount}</h2>
