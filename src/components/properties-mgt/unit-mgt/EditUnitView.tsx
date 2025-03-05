@@ -13,7 +13,7 @@ import CustomDropzone from "../../ui/CustomDropzone";
 import { IoBedOutline, IoCloudUploadOutline } from "react-icons/io5";
 import { UserRole } from "@/src/lib/enums";
 import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
-import { areArraysEqual, formatMoney } from "@/src/lib/utils";
+import { formatMoney } from "@/src/lib/utils";
 import { PiBathtub } from "react-icons/pi";
 import { LuSofa, LuUsers } from "react-icons/lu";
 import Spinner from "../../ui/Spinner";

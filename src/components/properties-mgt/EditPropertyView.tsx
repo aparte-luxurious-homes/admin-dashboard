@@ -91,30 +91,31 @@ export default function EditPropertyView({
                 amenityNames: propertyData?.amenities.map((el) => el.name),
             },
 
-        onSubmit: (values: any) => {
-            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
+            onSubmit: (values: any) => {
+                const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
 
-            if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
-                featureProperty({ propertyId: propertyData.id })
+                if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
+                    featureProperty({ propertyId: propertyData.id })
 
-            const updatePayload: IUpdateProperty = {
-                ...values,
-                amenities: sortedAmenities,
-                property_type: values.type,
-                is_pet_allowed: values.petsAllowed,
-            };
+                const updatePayload: IUpdateProperty = {
+                    ...values,
+                    amenities: sortedAmenities,
+                    property_type: values.type,
+                    is_pet_allowed: values.petsAllowed,
+                };
 
-            mutate({                                            // Update proprety
-                propertyId: propertyData.id,
-                payload: updatePayload,
+                mutate({                                            // Update proprety
+                    propertyId: propertyData.id,
+                    payload: updatePayload,
+                },
+                {
+                    onSuccess: () => {
+                        handleEditMode(false);
+                    }
+                })            
             },
-            {
-                onSuccess: () => {
-                    handleEditMode(false);
-                }
-            })            
-        },
-    });
+        }
+    );
 
     const handleDeleteImage = (e: number) => {
         dispatch(
