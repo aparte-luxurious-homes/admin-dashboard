@@ -183,7 +183,7 @@ const Agent = () => {
       sortable: false,
       align: "center",
       renderCell: (params) => (
-        <Link href={`/property-management/all-ownerInfo/${params.row.id}`}>
+        <Link href={`/user-management/agents/${params.row.id}`}>
           <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A] mt-4" />
         </Link>
       ),

@@ -188,7 +188,7 @@ const Home = () => {
     {
       field: "isVerified",
       headerName: "Verification Status",
-      width: 140,
+      width: 120,
       renderCell: (params) => <Badge status={params.value} />,
     },
     // { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
@@ -207,7 +207,7 @@ const Home = () => {
     {
       field: "meta",
       headerName: "Rating",
-      width: 50,
+      width: 100,
       renderCell: (params) => {
         return params.value?.average_rating ?? "--/--";
       },
@@ -304,6 +304,12 @@ const Home = () => {
       },
     },
     { field: "propertyType", headerName: "Type", width: 150 },
+    { 
+      field: "owner", 
+      headerName: "Owner's Name", 
+      width: 150, 
+      renderCell: (params) => `${params.row?.owner?.name || "--/--"}`
+    },
     {
       field: "meta",
       headerName: "Rating",
@@ -381,7 +387,7 @@ const Home = () => {
   ];
 
   return (
-    <div className="full p-10">
+    <div className="full p-2 md:p-10">
       <div className="mb-6">
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
@@ -416,10 +422,10 @@ const Home = () => {
                     <Skeleton className="h-[200px] w-full rounded-md" />
                   ) : stats?.properties?.length > 0 ? (
                     <div>
-                      <div className="flex justify-between items-center gap-1 mb-1">
-                        <div>
-                        <h4>Users</h4>
-                          <div>
+                      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-1 mb-1">
+                        <div className="flex gap-4 items-center">
+                          <h4>Users</h4>
+                          <div className="flex gap-1 items-center">
                             <div className="flex items-center gap-2">
                               <p className="text-[12px]">This Year</p>
                               <div className="w-3 h-1 bg-[#028090]"></div>
@@ -430,7 +436,7 @@ const Home = () => {
                             </div>
                           </div>
                         </div>
-                        <select onChange={(e) => setRange(e.target.value)} value={range}>
+                        <select className="border border-[#D9D9D9] p-1 rounded-[6px]" onChange={(e) => setRange(e.target.value)} value={range}>
                           <option value="30days">Last 30 Days</option>
                           <option value="90days">Last 90 Days</option>
                           <option value="year">This Year</option>

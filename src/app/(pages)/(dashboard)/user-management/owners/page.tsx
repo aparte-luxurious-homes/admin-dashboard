@@ -126,7 +126,7 @@ const Owner = () => {
   };
 
 
-  const anAgentColumns: GridColDef[] = [
+  const anOwnerColumn: GridColDef[] = [
     {
       field: "name",
       headerName: "Full Name",
@@ -183,7 +183,7 @@ const Owner = () => {
       sortable: false,
       align: "center",
       renderCell: (params) => (
-        <Link href={`/property-management/all-ownerInfo/${params.row.id}`}>
+        <Link href={`/user-management/owners/${params.row.id}`}>
           <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A] mt-4" />
         </Link>
       ),
@@ -288,7 +288,7 @@ const Owner = () => {
             </div>
             {searchResult?.length > 0 ? (
               <Table
-                columns={anAgentColumns}
+                columns={anOwnerColumn}
                 rows={searchResult}
                 getRowId={(row) => row?.id}
                 pagination={false}

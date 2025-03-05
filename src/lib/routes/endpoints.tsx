@@ -25,7 +25,8 @@ export const API_ROUTES = {
             index: '/admin/audit-logs',
         },
         users: {
-            base: '/admin/users'
+            base: '/admin/users',
+            userById: (id: number) => `/admin/users/${id}`
         }
     },
     profile: {
