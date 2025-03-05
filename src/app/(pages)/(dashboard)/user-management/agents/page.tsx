@@ -244,7 +244,7 @@ const Agent = () => {
           <Skeleton className="h-[300px] w-full rounded-md" />
         ) : (
           <>
-            <div className="flex justify-between gap-4">
+            <div className="flex justify-between gap-4 items-start md:items-center flex-col md:flex-row">
               <div className="flex items-center">
                 <h4 className="mr-4 font-medium">Agent Management</h4>
                 <TableSearch

@@ -19,6 +19,7 @@ export const API_ROUTES = {
             feature: (id: number) => `/admin/properties/${id}/feature`,
         },
         bookings: {
+            base: '/bookings',
             update: (id: number) => `/admin/bookings/${id}`,
         },
         auditLogs: {

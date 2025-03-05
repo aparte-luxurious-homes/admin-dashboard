@@ -10,6 +10,7 @@ interface InputGroupProps {
   inputMin?: string | number;
   inputMax?: string | number;
   onChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onClick?: (event: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   defaultValue?: string | number;
   disabled?: boolean;
   multiline?: boolean;
@@ -24,6 +25,7 @@ const InputGroup: React.FC<InputGroupProps> = ({
   value,
   inputName = "",
   onChange,
+  onClick,
   inputMin,
   inputMax,
   placeHolder = "",
@@ -47,6 +49,7 @@ const InputGroup: React.FC<InputGroupProps> = ({
           type={inputType}
           name={inputName}
           value={value}
+          onClick={onClick}
           onChange={onChange}
           min={inputMin}
           max={inputMax}
