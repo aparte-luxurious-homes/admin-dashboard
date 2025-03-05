@@ -304,6 +304,12 @@ const Home = () => {
       },
     },
     { field: "propertyType", headerName: "Type", width: 150 },
+    { 
+      field: "owner", 
+      headerName: "Owner's Name", 
+      width: 150, 
+      renderCell: (params) => `${params.row?.owner?.name || "--/--"}`
+    },
     {
       field: "meta",
       headerName: "Rating",

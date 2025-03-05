@@ -243,7 +243,7 @@ const OwnerInfo = () => {
       sortable: false,
       align: "center",
       renderCell: (params) => (
-        <Link href={`/property-management/all-properties/${params.row.id}`}>
+        <Link href={`/user-management/owners/${params.row.id}`}>
           <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A] mt-4" />
         </Link>
       ),

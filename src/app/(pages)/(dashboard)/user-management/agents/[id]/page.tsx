@@ -114,7 +114,7 @@ const AgentInfo = () => {
   console.log("params", params?.id);
 
   const fetchAUserInfo = async () => {
-    if (!id) return; // Ensure id exists before making the request
+    if (!id) return;
 
     setUserLoading(true);
     try {
@@ -125,7 +125,6 @@ const AgentInfo = () => {
       setUserInfo(response?.data?.data);
       setUserLoading(false);
     } catch (error: any) {
-      console.error("Error fetching user info:", error);
       toast.error(error.response?.data?.message, {
         duration: 6000,
         style: {
@@ -141,8 +140,6 @@ const AgentInfo = () => {
   useEffect(() => {
     fetchAUserInfo();
   }, []);
-
-  console.log("userInfo", userInfo);
 
   const fetchProperties = useCallback(async () => {
     if (!id) return;
@@ -207,18 +204,17 @@ const AgentInfo = () => {
       },
     },
     { field: "propertyType", headerName: "Type", width: 150 },
+    { 
+      field: "owner", 
+      headerName: "Owner's Name", 
+      width: 150, 
+      renderCell: (params) => `${params.row?.owner?.name || "--/--"}`
+    },
     {
       field: "isVerified",
       headerName: "Verification Status",
       width: 150,
       renderCell: (params) => <Badge status={params.value} />,
-    },
-    // { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
-    {
-      field: "agent",
-      headerName: "Agent Name",
-      width: 180,
-      renderCell: (params) => `${params.row?.agent?.name || "--/--"}`,
     },
     {
       field: "meta",
@@ -243,7 +239,7 @@ const AgentInfo = () => {
       sortable: false,
       align: "center",
       renderCell: (params) => (
-        <Link href={`/property-management/all-properties/${params.row.id}`}>
+        <Link href={`/user-management/agents/${params.row.id}`}>
           <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A] mt-4" />
         </Link>
       ),

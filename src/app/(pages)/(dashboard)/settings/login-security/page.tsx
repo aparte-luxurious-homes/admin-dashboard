@@ -6,6 +6,7 @@ import Grid from "@mui/material/Grid2";
 import Button from "@/src/components/button";
 import axiosRequest from "@/src/lib/api";
 import { toast } from "react-hot-toast";
+import Cookies from "js-cookie";
 import { BASE_API_URL, API_ROUTES } from "@/src/lib/routes/endpoints";
 import InputGroup from "@/src/components/formcomponent/InputGroup";
 import useValidator from "@/src/hooks/useValidator";
@@ -48,7 +49,7 @@ const LoginandSecurity = () => {
 
       // Checking validation errors
       if (!validator.allValid()) {
-        return; // Stop execution if validation fails
+        return;
       }
 
       if (!otp || otp.length !== 6) {
@@ -76,6 +77,8 @@ const LoginandSecurity = () => {
           width: "max-content",
         },
       });
+      Cookies.remove("token");
+      window.location.href = "/auth/login";
       setIsOpen(false);
     } catch (error: any) {
       toast.error(error?.response?.data?.message, {
