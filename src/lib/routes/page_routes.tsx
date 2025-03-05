@@ -37,9 +37,11 @@ export const PAGE_ROUTES = {
         propertyManagement: {
             allProperties: {
                 base: '/property-management/all-properties',
+                create: '/property-management/create-property',
                 details: (id: number) => `/property-management/all-properties/${id}`,
                 units: {
                     base: (propertyId: number) => `/property-management/all-properties/${propertyId}/units`,
+                    create: (propertyId: number) => `/property-management/all-properties/${propertyId}/create-unit`,
                     details: (propertyId: number, unitId: number) => `/property-management/all-properties/${propertyId}/units/${unitId}`,
                 }
             },

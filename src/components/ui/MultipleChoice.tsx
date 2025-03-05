@@ -11,31 +11,31 @@ export default function MultipleChoice({ options, selected = [], onChange }: Mul
   const [selectedArray, setSelectedArray] = useState<string[]>(selected); 
   
   // Sync state with prop changes
-   useEffect(() => {
-    setSelectedArray(selected);
-  }, [selected]);
+  //  useEffect(() => {
+  //   setSelectedArray(selected);
+  // }, [selected]);
 
   function toggleSelection(option: string) {
-    setSelectedArray(prev => {
-      const newSelection = prev.includes(option)
-        ? prev.filter(item => item !== option) // Remove
-        : [...prev, option]; // Add
+    // setSelectedArray(prev => {
+      const newSelection = selected.includes(option)
+        ? selected.filter(item => item !== option) // Remove
+        : [...selected, option]; // Add
 
       console.log("Updated Selection:", newSelection); // Debugging
       onChange(newSelection); // Ensure Formik gets the correct update
       return newSelection;
-    });
+    // });
   }
 
 
 
   return (
     <div className="flex gap-3">
-      {options.map((option, index) => (
+      {options?.map((option, index) => (
         <p
           key={index}
           className={`w-fit h-12 flex items-center justify-center p-5 border rounded-lg transition-all cursor-pointer font-medium
-            ${selected.includes(option)
+            ${selected?.includes(option)
               ? "bg-primary/90 text-white border-primary/90" 
               : "border-gray-300 text-gray-700 hover:border-primary hover:text-primary"}
           `}

@@ -18,11 +18,15 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { AssignPropertyAmenities, FeatureProperty, UpdateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { DeleteProperty, FeatureProperty, UpdateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../ui/Spinner";
-import { areArraysEqual } from "@/src/lib/utils";
+import { CreateAmenityForm } from "./CreatePropertyView";
+import CustomModal from "../ui/CustomModal";
+import { useRouter } from "next/navigation";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import toast from "react-hot-toast";
 
 
 export default function EditPropertyView({  
@@ -36,20 +40,21 @@ export default function EditPropertyView({
 }) {
     const dispatch = useDispatch();
     const { mutate, isPending } = UpdateProperty()
+    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const { 
         mutate: uploadMedia, 
         data: uploadData, 
         isPending: uploadedMediaPending
     } = UploadPropertyMedia();
-
-    const { mutate: assignAmenity   } = AssignPropertyAmenities(); 
     const { mutate: featureProperty   } = FeatureProperty(); 
 
     const { user } = useAuth();
+    const router = useRouter();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
+    const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
 
 
     const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
@@ -58,7 +63,7 @@ export default function EditPropertyView({
         for (const amenity of newAmeities) {
             if (prevAmenityNames.includes(amenity)) {
                 const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos])
+                sortedAmenities.push(amenities[pos].id)
             }
         }
 
@@ -77,37 +82,24 @@ export default function EditPropertyView({
                 description: propertyData?.description ?? "",
                 latitude: propertyData?.latitude ?? 0,
                 longitude: propertyData?.longitude ?? 0,
-                kyc_id: propertyData?.kycId ?? 0,
                 ownerId: propertyData?.ownerId ?? 0,
                 units: String(propertyData?.units?.length) ?? "0",
                 isVerified: propertyData?.isVerified ?? false,
                 isFeatured: propertyData?.isFeatured ?? false,
                 petsAllowed: propertyData?.isPetAllowed ?? false,
-                amenities: propertyData?.amenities.map((el) => el.amenity.name) ?? [],
-                amenityIds: propertyData?.amenities.map((el) => el.amenity.id) ?? [],
+                amenities: propertyData?.amenities.map((el) => el.id),
+                amenityNames: propertyData?.amenities.map((el) => el.name),
             },
 
-        onSubmit: (values) => {
-            const newAmenities = sortAmenities(availableAmenities, values.amenities);
-            if (
-                !areArraysEqual( // Change the need for this on the backend
-                    propertyData?.amenities.map((el) => el.amenity.id),
-                    newAmenities.map(el => el.id), 
-                ))
-                {
-                    assignAmenity({                              // Update amenity asignments if changed
-                        propertyId: propertyData.id, 
-                        payload: {
-                            amenity_ids: newAmenities.map(el => el.id)
-                        },
-                    })
-                }
+        onSubmit: (values: any) => {
+            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
 
             if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
                 featureProperty({ propertyId: propertyData.id })
 
             const updatePayload: IUpdateProperty = {
                 ...values,
+                amenities: sortedAmenities,
                 property_type: values.type,
                 is_pet_allowed: values.petsAllowed,
             };
@@ -146,7 +138,23 @@ export default function EditPropertyView({
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log("Item deleted!");
+                    deleteMutation(
+                        { propertyId: propertyData.id },
+                        {
+                            onSuccess: (response) => {
+                                console.log(response)
+                                toast.success(response?.data?.message, {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                });
+                                if (response.status === 204) 
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
+                            }
+                        }
+                    )
                 },
             })
         );
@@ -294,12 +302,12 @@ export default function EditPropertyView({
                         <label htmlFor="amenities" className="text-lg zinc-900 font-medium mb-4">Amenities</label>
                         <MultipleChoice
                             options={availableAmenities?.map(am => am.name)}
-                            selected={formik.values.amenities}
+                            selected={formik.values.amenityNames}
                             onChange={(val) => {
-                                formik.setFieldValue("amenities", [...val]); // Ensure a new array reference
+                                formik.setFieldValue("amenityNames", [...val]); // Ensure a new array reference
                             }} 
                         />
-                        <div className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-10 cursor-pointer">
+                        <div onClick={() => setShowAmenityForm(true)} className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-10 cursor-pointer">
                             <FaPlus />
                             <span>
                                 New Amenity
@@ -384,6 +392,17 @@ export default function EditPropertyView({
                     </div>
                 </div>
             </form>
+
+            {
+                showAmenityForm &&
+                <CustomModal
+                    title="Create Amenity"
+                    onClose={() => setShowAmenityForm(false)}
+                    isOpen={showAmenityForm}
+                >
+                    <CreateAmenityForm show={setShowAmenityForm} />
+                </CustomModal>
+            }
 
             <div className="flex justify-end items-center gap-5 mt-3">
                 <button onClick={() => formik.handleSubmit()} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">

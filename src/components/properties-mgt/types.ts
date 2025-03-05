@@ -30,8 +30,8 @@ export enum PropertyType {
 export interface IAmenity {
     id: number
     name: string
-    createdAt: string
-    updatedAt: string
+    createdAt?: string
+    updatedAt?: string
 }
 
 
@@ -99,7 +99,7 @@ export interface IPropertyUnit {
     property?: IProperty
     media: IPropertyMedia[]
     reviews: IPropertyReview[]
-    amenities: IAmenityAssignment[]
+    amenities: IAmenity[]
     availability: IAvailability[]
     bookings: IBooking[]
 }
@@ -130,7 +130,32 @@ export interface IProperty {
     units: IPropertyUnit[]
     verifications: IPropertyVerification
     media: IPropertyMedia[]
-    amenities: IAmenityAssignment[]
+    amenities: IAmenity[]
+}
+
+export interface IUpdatePropertyVerification {
+    id: number,
+    property_id: number,
+    agent_id: number,
+    status: PropertyType,
+    feedback: string,
+    verification_date?: string,
+    created_at?: string
+}
+
+export interface ICreateProperty {
+    name: string
+    description: string
+    address: string
+    property_type: PropertyType
+    city: string
+    state: string
+    country: string
+    latitude: number
+    longitude: number
+    amenities: number[]
+    // kyc_id: number
+    is_pet_allowed: boolean
 }
 
 export interface IUpdateProperty {
@@ -143,8 +168,9 @@ export interface IUpdateProperty {
     country: string,
     latitude: number,
     longitude: number,
-    kyc_id: number,
+    // kyc_id?: number,
     ownerId: number,
+    amenities?: number[],
     // assignedAgent?: IUser,
     is_pet_allowed: boolean
 }
@@ -160,7 +186,22 @@ export interface IUpdatePropertyUnit {
     bedroomCount: number,
     livingRoomCount: number,
     kitchenCount: number,
-    bathroomCount: number
+    bathroomCount: number,
+    amenities?: number[],
+}
+
+export interface ICreatePropertyUnit {
+    name: string,
+    description: string,
+    price_per_night: string,
+    max_guests: number,
+    count: number,
+    is_whole_property: boolean,
+    bedroom_count: number,
+    living_room_count: number,
+    kitchen_count: number,
+    bathroom_count: number
+    amenities: number[]
 }
 
 export interface IUploadPropertyMedia {

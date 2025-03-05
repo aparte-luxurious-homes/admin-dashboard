@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import { IAssignAmenity, IUpdatePropertyUnit } from "@/src/components/properties-mgt/types";
+import { IAssignAmenity, ICreatePropertyUnit, IUpdatePropertyUnit } from "@/src/components/properties-mgt/types";
 
 enum PropertyUnitRequestKeys {
     allUnits = "getAllUnitsView",
     singleUnit = "getSingleUnitsView",
     unitMedia = "uploadUnitMedia",
-    assignAmenities = "assigneAmenities"
+    assignAmenities = "assigneAmenities",
+    createUnit = "createUnit",
+    deleteUnit = "deleteUnit", 
 }
 
 export function GetAllPropertyUnits(page=1, limit=10) {
@@ -33,6 +35,20 @@ export function GetSinglePropertyUnit(propertyId: number, unitId: number) {
     });
 }
 
+export function CreatePropertyUnit() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({propertyId, payload}: {propertyId: number, payload: ICreatePropertyUnit[]}) =>
+        axiosRequest.post(API_ROUTES.propertyManagement.properties.units.base(propertyId), { units: payload } ),
+
+        onSuccess: (_, { propertyId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.createUnit, propertyId ] });
+        },
+    });
+}
+
+
 export function UpdatePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -42,6 +58,20 @@ export function UpdatePropertyUnit() {
         onSuccess: (_, { propertyId, unitId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+        },
+    });
+}
+
+
+export function DeletePropertyUnit() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId }: { propertyId: number, unitId: number }) =>
+        axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId)),
+
+        onSuccess: (_, { propertyId, unitId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.deleteUnit, propertyId, unitId] });
         },
     });
 }
