@@ -2,7 +2,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType,  } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
-import { AssignUnitAmenities, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import { AssignUnitAmenities, DeletePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -15,8 +15,11 @@ import { UserRole } from "@/src/lib/enums";
 import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
 import { areArraysEqual, formatMoney } from "@/src/lib/utils";
 import { PiBathtub } from "react-icons/pi";
-import { LuSofa } from "react-icons/lu";
+import { LuSofa, LuUsers } from "react-icons/lu";
 import Spinner from "../../ui/Spinner";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
 export default function EditUnitView({  
     handleEditMode,
@@ -30,11 +33,12 @@ export default function EditUnitView({
 
     const dispatch = useDispatch();
     const { mutate, isPending } = UpdatePropertyUnit();
+    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const { mutate: uploadMedia, data: uploadData, isPending: uploadedMediaPending } = UploadPropertyUnitMedia();
     const { user } = useAuth();
+    const router = useRouter();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(unitData?.media??[])
-    const [amenities, setAmenities] = useState<string[]>(unitData?.amenities?.map((el) => el.amenity.name))
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const { mutate: assignAmenity   } = AssignUnitAmenities(); 
@@ -46,7 +50,7 @@ export default function EditUnitView({
         for (const amenity of newAmeities) {
             if (prevAmenityNames.includes(amenity)) {
                 const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos])
+                sortedAmenities.push(amenities[pos].id)
             }
         }
 
@@ -68,27 +72,15 @@ export default function EditUnitView({
                 livingRoomCount: unitData?.livingRoomCount ?? 0,
                 kitchenCount: unitData?.kitchenCount ?? 0,
                 bathroomCount: unitData?.bathroomCount ?? 0,
-                amenities: unitData?.amenities.map((el) => el.amenity.name) ?? [],
+                amenities: unitData?.amenities.map((el) => el.id),
+                amenityNames: unitData?.amenities.map((el) => el.name),
             },
         onSubmit: (values) => {
-            const newAmenities = sortAmenities(availableAmenities, values.amenities);
-            if (
-                !areArraysEqual( // Change the need for this on the backend
-                    unitData?.amenities.map((el) => el.amenity.id),
-                    newAmenities.map(el => el.id), 
-                ))
-                {
-                    assignAmenity({                              // Update amenity asignments if changed
-                        propertyId: unitData.propertyId, 
-                        unitId: unitData.id,
-                        payload: {
-                            amenity_ids: newAmenities.map(el => el.id)
-                        },
-                    })
-                }
-
+            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames);
+            
             const updatePayload: IUpdatePropertyUnit = {
                 ...values,
+                amenities: sortedAmenities,
             };
             mutate({
                 propertyId: unitData.propertyId,
@@ -122,11 +114,27 @@ export default function EditUnitView({
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: "This action cannot be undone. This will permanently delete the unit.",
+                description: "This action cannot be undone. This will permanently delete this property unit.",
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log("Item deleted!");
+                    deleteMutation(
+                        { propertyId: unitData.propertyId, unitId: unitData.id },
+                        {
+                            onSuccess: (response) => {
+                                console.log(response)
+                                toast.success(response?.data?.message, {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                });
+                                if (response.status === 204) 
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(unitData.propertyId))
+                            }
+                        }
+                    )
                 },
             })
         );
@@ -243,9 +251,9 @@ export default function EditUnitView({
                         </div>
                     </div>
                     <div className="col-span-1">
-                        <label htmlFor="name" className="text-lg zinc-900 font-medium">Guests <span className="font-normal text-base">(max)</span></label>
+                        <label htmlFor="name" className="text-lg zinc-900 font-medium">Guests <span className="font-normal text-base"><em>(max)</em></span></label>
                         <div className="relative mt-2">
-                            <LuSofa className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
+                            <LuUsers className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
                             <input
                                 id="max-guests"
                                 type="number" 
@@ -263,9 +271,9 @@ export default function EditUnitView({
                             options={availableAmenities?.map(el => 
                                 el.name
                             )}
-                            selected={formik.values.amenities}
+                            selected={formik.values.amenityNames}
                             onChange={(val) => {
-                                formik.setFieldValue("amenities", [...val]); // Ensure a new array reference
+                                formik.setFieldValue("amenityNames", [...val]); // Ensure a new array reference
                             }} 
                         />
 

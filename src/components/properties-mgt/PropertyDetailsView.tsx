@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { TrashIcon } from "../icons";
 import { TbAirConditioning } from "react-icons/tb";
-import { FaSwimmer, FaTv } from "react-icons/fa";
+import { FaPlus, FaSwimmer, FaTv } from "react-icons/fa";
 import { GoChecklist, GoVerified } from "react-icons/go";
 import { IoCloudUploadOutline, IoLocationOutline } from "react-icons/io5";
 import { PiBuildingApartment } from "react-icons/pi";
@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { IProperty, IPropertyUnit } from "./types";
-import { FeatureProperty, GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
@@ -26,6 +26,8 @@ import { IoIosStarOutline } from "react-icons/io";
 import Spinner from "../ui/Spinner";
 import CustomModal from "../ui/CustomModal";
 import { IoGameControllerOutline } from "react-icons/io5";
+import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 
 
@@ -39,12 +41,14 @@ export default function PropertyDetailsView({
     const { data, isLoading } = GetSingleProperty(propertyId)
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate, isPending } = FeatureProperty();
+    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
+    const router = useRouter();
     
     const [showVerification, setShowVerification] = useState(false);
     const [editMode, setEditMode] = useState<boolean>(false);
     const [property, setProperty] = useState<IProperty>(data?.data?.data)
     const [availabeUnits, setAvailableUnits] = useState<number>(0)
-    const [averageRating, setAverageRating] = useState<number>(property?.meta?.total_reviews ? (property.meta.total_rating / property.meta.total_reviews): 0);
+    const [averageRating, setAverageRating] = useState<number>(property?.meta?.total_reviews ? (property?.meta?.total_rating / property?.meta?.total_reviews): 0);
 
 
     const handleDelete = () => {
@@ -55,7 +59,24 @@ export default function PropertyDetailsView({
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log("Item deleted!");
+                    if (propertyId)
+                    deleteMutation(
+                        { propertyId },
+                        {
+                            onSuccess: (response) => {
+                                console.log(response)
+                                toast.success(response?.data?.message, {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                });
+                                if (response.status === 204) 
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
+                            }
+                        }
+                    )
                 },
             })
         );
@@ -68,9 +89,10 @@ export default function PropertyDetailsView({
             let unitAmount = 0
             data?.data?.data?.units.forEach((el: IPropertyUnit) => {unitAmount += el.count})
             setAvailableUnits(unitAmount)
-            setAverageRating(property?.meta?.total_reviews ? (property.meta.total_reviews / property.meta.average_rating ) : 0)
+            setAverageRating(property?.meta?.total_reviews ? (property?.meta?.total_reviews / property?.meta?.average_rating ) : 0)
         }
-    }, [data, property.meta.average_rating, property.meta.total_reviews])
+
+    }, [data, property?.meta?.average_rating, property?.meta.total_reviews])
 
     return (
         <div className="p-10 w-full">
@@ -131,20 +153,19 @@ export default function PropertyDetailsView({
                                                 property?.amenities?.map((el, index) => 
                                                     <div key={index} className="flex items-center  gap-2 ">
                                                         {
-                                                            el.amenity.name === 'AIR CONDITIONER'
+                                                            el.name === 'AIR CONDITIONER'
                                                             ? <TbAirConditioning className="text-xl"/>
-                                                            : el.amenity.name === 'HOT TUB'
+                                                            : el.name === 'HOT TUB'
                                                                 ? <PiBathtub className="text-xl"/>
-                                                                : el.amenity.name === 'Wi-FI'
+                                                                : el.name === 'Wi-FI'
                                                                     ? <IoWifi className="text-xl"/>
-                                                                    : el.amenity.name === 'PS5'
+                                                                    : el.name === 'PS5'
                                                                         ? < IoGameControllerOutline  className="text-xl"/>
-                                                                        : el.amenity.name === 'TV'
+                                                                        : el?.name === 'TV'
                                                                             ? <FaTv className="text-xl"/>
                                                                             : <FaSwimmer />
-
                                                         }
-                                                        <span>{ el.amenity.name }</span>
+                                                        <span>{ el.name }</span>
                                                     </div>
                                                 )
                                             }
@@ -201,14 +222,22 @@ export default function PropertyDetailsView({
                                 <div className="h-px w-full bg-zinc-400/30 my-5" />
 
                                 <div className="my-10">
-                                    <p className="text-2xl text-zinc-900">
-                                        Available units
-                                    </p>
+                                    <div className="text-2xl text-zinc-900 flex items-center justify-between">
+                                        <p>
+                                            Available units
+                                        </p>
+                                        <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.create(property?.id)} className="cursor-pointer text-base text-primary/90 group flex items-center gap-2">
+                                            Add Units
+                                            <span>
+                                                <FaPlus className="text-primary/90"/>
+                                            </span>
+                                        </Link>
+                                    </div>
 
                                     <div className="w-full grid grid-cols-3 mt-2 p-3 gap-6">
                                         {
                                             property?.units.map((el, index) => 
-                                                <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(property.id, el.id)} key={index} className="cursor-pointer border border-zinc-300 rounded-lg flex justify-between ease-in-out duration-150 hover:border-primary/80">
+                                                <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(property?.id, el.id)} key={index} className="cursor-pointer border border-zinc-300 rounded-lg flex justify-between ease-in-out duration-150 hover:border-primary/80">
                                                     <div className="w-full px-4 py-3 text-zinc-900">
                                                         <p className="font-medium text-lg mt-0 mb-1">
                                                             {el.name}

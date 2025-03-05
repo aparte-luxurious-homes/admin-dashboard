@@ -1,4 +1,4 @@
-import { GetSinglePropertyUnit } from "@/src/lib/request-handlers/unitMgt";
+import { DeletePropertyUnit, GetSinglePropertyUnit } from "@/src/lib/request-handlers/unitMgt";
 import { useEffect, useState } from "react";
 import { IPropertyUnit } from "../types";
 import { Skeleton } from "../../ui/skeleton";
@@ -20,11 +20,15 @@ import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { IoIosStarOutline } from "react-icons/io";
 import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: number, unitId: number }) {
     const dispatch = useDispatch();
     const { data, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
+    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const { data: fetchedAmenites } = GetAmenities();
+    const router = useRouter();
     
     const [editMode, setEditMode] = useState<boolean>(false);
     const [propertyUnit, setPropertyUnit] = useState<IPropertyUnit>(data?.data?.data)
@@ -34,11 +38,28 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: "This action cannot be undone. This will permanently delete this unit.",
+                description: "This action cannot be undone. This will permanently delete this property unit.",
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log("Item deleted!");
+                    if (propertyId && unitId)
+                    deleteMutation(
+                        { propertyId, unitId },
+                        {
+                            onSuccess: (response) => {
+                                console.log(response)
+                                toast.success(response?.data?.message, {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                });
+                                if (response.status === 204) 
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId))
+                            }
+                        }
+                    )
                 },
             })
         );
@@ -152,7 +173,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
 
                                     <div className="w-full mt-2 p-3 grid grid-cols-4 gap-10 text-lg font-normal text-zinc-900">
                                         {
-                                            propertyUnit?.bedroomCount &&  
+                                            propertyUnit?.bedroomCount > 0 &&  
                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                 <IoBedOutline className="text-3xl font-normal" />
                                                 <p className="text-center">
@@ -161,7 +182,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             </div>
                                         }
                                         {
-                                            propertyUnit?.bathroomCount &&
+                                            propertyUnit?.bathroomCount > 0 &&
                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                 <PiBathtub className="text-3xl font-normal" />
                                                 <p className="text-center">
@@ -170,7 +191,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             </div>
                                         }
                                         {
-                                            propertyUnit?.kitchenCount &&  
+                                            propertyUnit?.kitchenCount > 0 &&  
                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                 <TbToolsKitchen className="text-3xl font-normal" />
                                                 <p className="text-center">
@@ -179,7 +200,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             </div>
                                         }
                                         {
-                                            propertyUnit?.livingRoomCount &&
+                                            propertyUnit?.livingRoomCount > 0 &&
                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                 <LuSofa className="text-3xl font-normal"/>
                                                 <p className="text-center">
@@ -202,7 +223,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                             propertyUnit?.amenities &&
                                             propertyUnit?.amenities.map((el, index) => 
                                                 <div key={index} className="w-fit h-12 flex items-center justify-center p-5 border rounded-lg">
-                                                    {el.amenity.name}
+                                                    {el.name}
                                                 </div>
                                             )
                                         }
