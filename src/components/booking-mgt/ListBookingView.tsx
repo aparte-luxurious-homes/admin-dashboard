@@ -8,8 +8,8 @@ import { IBooking } from "./types";
 import { BookingBadge } from "../badge";
 import TablePagination from "../TablePagination";
 import Loader from "@/src/components/loader";
-import { Icon } from "lucide-react";
-import { LuEye } from "react-icons/lu";
+// import { Icon } from "lucide-react";
+// import { LuEye } from "react-icons/lu";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
@@ -75,7 +75,7 @@ export default function ListBookingView() {
                                         <thead className="">
                                             <tr className="text-teal-600 text-[13px]">
                                                 <th className="bg-[#0280901A] h-10 p-5 flex justify-start items-center gap-3 rounded-tl-xl rounded-bl-xl font-medium w-full">
-                                                    {/* <input 
+                                                    {/* <input
                                                         type="checkbox"
                                                         className={`
                                                             size-4 border-2 border-teal-600 rounded-md bg-transparent appearance-none
@@ -174,8 +174,8 @@ export default function ListBookingView() {
                     </div>
 
                     {
-                        !isLoading &&
-                        <TablePagination 
+                        !isLoading && !bookingList &&
+                        <TablePagination
                             total={bookings?.data?.data?.meta?.total}
                             currentPage={page}
                             setPage={setPage}

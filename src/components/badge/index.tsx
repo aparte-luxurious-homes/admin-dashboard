@@ -56,7 +56,7 @@ export const BookingBadge: React.FC<BookingBageProps> = ({ status, textColour='t
         ${classNames}
       `}
     >
-      {status.toLowerCase()}
+      {status?.toLowerCase()}
     </p>
   );
 }

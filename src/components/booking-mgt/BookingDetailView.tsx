@@ -3,16 +3,26 @@ import { BsCloudDownload } from "react-icons/bs";
 import { LiaPrintSolid } from "react-icons/lia";
 
 import { CalendarIcon, CancelStampIcon, CardClockIcon, CardsCycleIcon, ClockIcon, MailIcon, OpenWalletIcon, PhoneIcon, PriceTagIcon, PrinterIcon, PropertiesIcon, RateIcon, ReturnIcon, TornPaperIcon, UnitIcon, UserIcon, UsersIcon } from "../icons";
-import { useCallback, useRef, useState } from "react";
-import { downloadScreenAsPDF } from "@/src/lib/utils";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { downloadScreenAsPDF, formatDate, formatMoney, getDayDifference } from "@/src/lib/utils";
 import EditBookingDetails from "./EditBookingDetails";
 import Badge, { BookingBadge } from "../badge";
-import { BookingStatus } from "./types";
+import { BookingStatus, IBooking } from "./types";
+import { GetBookingDetails } from "@/src/lib/request-handlers/bookingMgt";
+import { PropertyType } from "../properties-mgt/types";
 
 export default function BookingDetailView({ bookingId }: { bookingId: number }) {
     const targetRef = useRef<HTMLDivElement>(null);
     const [editMode, setEditMode] = useState(false);
-    const [status, setStatus] = useState(BookingStatus.CONFIRMED)
+    const [status, setStatus] = useState(BookingStatus.PENDING)
+    const { data: bookingData } = GetBookingDetails(bookingId);
+    const [bookingDetails, setBookingDetails] = useState<IBooking>(bookingData?.data?.data?.data);
+
+    useEffect(() => {
+        setBookingDetails(bookingData?.data?.data?.data)
+        setStatus(bookingData?.data?.data?.data?.status)
+    }, [bookingData])
+    
 
     const textHue = status === BookingStatus.CANCELLED 
       ? 'text-red-600' 
@@ -24,16 +34,15 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
             ? 'text-[#028090]'
             : "";
   
-  const bgHue = status === BookingStatus.CANCELLED 
-    ? 'bg-red-200' 
-    : status === BookingStatus.COMPLETED
-      ? 'bg-zinc-300'
-      : status === BookingStatus.PENDING
-        ? 'bg-[#FFAE0033]'
-        : status === BookingStatus.CONFIRMED
-          ? 'bg-[#0280901A]'
-          : "";
-
+    const bgHue = status === BookingStatus.CANCELLED 
+        ? 'bg-red-200' 
+        : status === BookingStatus.COMPLETED
+            ? 'bg-zinc-300'
+            : status === BookingStatus.PENDING
+                ? 'bg-[#FFAE0033]'
+                : status === BookingStatus.CONFIRMED
+                ? 'bg-[#0280901A]'
+                : "";
 
     return(
         <div className="p-10 w-full">
@@ -43,12 +52,12 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                     <div className="w-full mt-10 items-center flex justify-between">
                         <div>
                             <h3 className="text-3xl font-normal text-zinc-800 leading-3 my-4">
-                                Magodo Crystal Springs Hotel and Resort
+                                {bookingDetails?.unit?.name}
                             </h3>
                             <div className="flex gap-2 items-center mt-2 text-md text-zinc-500">
                                 <IoLocationOutline className="text-zinc-700"/>
                                 <p>
-                                    17a Abdulrahman Sanni St. Alagbado, Lagos 102213, Lagos.
+                                    {bookingDetails?.unit?.property?.address}
                                 </p>
                             </div>
                         </div>
@@ -120,7 +129,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Guest name</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-1 mt-1.5">
-                                                Abimbola Suleiman
+                                                {`${bookingDetails?.user?.profile?.firstName?? 'Adigun'} ${bookingDetails?.user?.profile?.lastName??'Samuel'}`}
                                             </p>
                                         </div>
 
@@ -130,7 +139,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Email</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-1 mt-1.5">
-                                                abimbola2002@gmail.com
+                                                {bookingDetails?.user?.email}
                                             </p>
                                         </div>
 
@@ -140,7 +149,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Phone number</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-1 mt-1.5">
-                                                +234 802 6712 0067
+                                                {bookingDetails?.user?.phone ?? "+234 802 6712 0067"}
                                             </p>
                                         </div>
 
@@ -150,7 +159,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Address</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-1 mt-1.5">
-                                                1134 Johnson Close Suite 33b, Oshodi-Isolo. Lagos, Nigeria
+                                                {bookingDetails?.unit?.property?.address ??`1134 Johnson Close Suite 33b, Oshodi-Isolo. Lagos, Nigeria`}
                                             </p>
                                         </div>
 
@@ -185,7 +194,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Check-in</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-1 mt-1.5">
-                                                Sunday 23rd March, 2025
+                                                {formatDate(bookingDetails?.startDate)??`Sunday 23rd March, 2025`}
                                             </p>
                                         </div>
                                         <div className="">
@@ -194,7 +203,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Check-out</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-1 mt-1.5">
-                                                Sunday 23rd March, 2025
+                                                {formatDate(bookingDetails?.endDate)??'Monday 24td March, 2025'}
                                             </p>
                                         </div>
                                         <div className="">
@@ -203,7 +212,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Stay</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-1 mt-1.5">
-                                                2 Nights
+                                                {getDayDifference(formatDate(bookingDetails?.endDate), formatDate(bookingDetails?.startDate)) ?? 2} Nights
                                             </p>
                                         </div>
                                         <div className="">
@@ -213,11 +222,11 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                             </div>
                                             <div className="flex gap-8 first:pl-1">
                                                 <p className="text-zinc-900 text-xl mt-1.5 w-fit">
-                                                    Adults <em className="text-base text-zinc-700">x2</em>
+                                                    Adults <em className="text-base text-zinc-700">x{bookingDetails?.guestsCount}</em>
                                                 </p>
-                                                <p className="text-zinc-900 text-xl mt-1.5 w-fit">
+                                                {/* <p className="text-zinc-900 text-xl mt-1.5 w-fit">
                                                     Children <em className="text-base text-zinc-700">x0</em>
-                                                </p>
+                                                </p> */}
                                             </div>
                                         </div>
                                     </div>
@@ -250,7 +259,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Property type</p>
                                             </div>
                                             <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                BUNGALOW
+                                                {bookingDetails?.unit?.property?.propertyType??PropertyType.BUNGALOW}
                                             </p>
                                         </div>
                                         <div className="">
@@ -259,7 +268,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Units</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-1 mt-1.5">
-                                                1
+                                                {bookingDetails?.unitCount??1}
                                             </p>
                                         </div>
                                         <div className="">
@@ -268,7 +277,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Price per night</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-2 mt-1.5">
-                                                ₦ 235,000
+                                                ₦ {formatMoney(bookingDetails?.unit?.pricePerNight??0)}
                                             </p>
                                         </div>
                                         <div className="">
@@ -277,7 +286,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Caution Fee</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-2 mt-1.5">
-                                                ₦ 17,625
+                                                ₦ {formatMoney(bookingDetails?.unit?.cautionFee??0)}
                                             </p>
                                         </div>
                                         {/* <div className="">
@@ -296,7 +305,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Total payable</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-2 mt-1.5">
-                                                ₦ 178,625
+                                                ₦ {formatMoney(bookingDetails?.totalPrice??0)}
                                             </p>
                                         </div>
                                         
@@ -306,7 +315,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 <p className="mt-1 ml-2 text-lg">Expires on</p>
                                             </div>
                                             <p className="text-zinc-900 text-xl pl-2 mt-1.5">
-                                                Saturday 22 March, 2025
+                                                {formatDate(bookingDetails?.endDate)}
                                             </p>
                                         </div>
                                         
