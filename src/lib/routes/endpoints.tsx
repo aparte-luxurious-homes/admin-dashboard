@@ -90,6 +90,10 @@ export const API_ROUTES = {
     statistic: {
         base: '/stats'
     },
+    transactions: {
+        base: '/transactions',
+        details: (transactionId: string) => `/transactions/${transactionId}`
+    },
 };
 
 
