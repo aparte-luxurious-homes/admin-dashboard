@@ -19,6 +19,15 @@ export function areArraysEqual(arr1: any[], arr2: any[]): boolean {
     return arr1.sort().toString() === arr2.sort().toString();
 }
 
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const month = date.toLocaleString('en-US', { month: 'short' });
+  const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 > 3 || [11, 12, 13].includes(day)) ? 0 : day % 10];
+
+  return `${month} ${day}${suffix}, ${date.getFullYear()}`;
+}
+
 
 export async function downloadScreenAsPDF({ name, element }: { name: string; element: RefObject<HTMLDivElement | null> }) {
   if (!element.current) return;

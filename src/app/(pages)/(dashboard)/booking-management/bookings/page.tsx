@@ -1,8 +1,10 @@
+import ListBookingView from "@/src/components/booking-mgt/ListBookingView";
+
 export default function Bookings() {
     return (
-        <h2 className="">
-            Bookings
-        </h2>
+        <div className="w-full">
+            <ListBookingView />
+        </div>
     );
 }
   
