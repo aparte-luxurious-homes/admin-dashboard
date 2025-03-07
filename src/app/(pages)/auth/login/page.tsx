@@ -16,16 +16,27 @@ import { setUser } from "@/src/lib/slices/authSlice";
 import { useQueryClient } from "@tanstack/react-query";
 import Loader from "@/src/components/loader";
 import { UserRole } from "@/src/lib/enums";
+import { Icon } from "@iconify/react/dist/iconify.js";
+import useValidator from "@/src/hooks/useValidator";
 
 export default function Login() {
   const { mutate: loginMutation, isPending } = useLogin(); 
   const [email, setEmail] = useState<string>('')
   const [password, setPassword] = useState<string>('')
+  const [validator, triggerValidation] = useValidator();
+  const [passwordType, setPasswordType] = useState<string>("password");
   const [isTokenAuthenticating, setIsTokenAuthenticating] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
+  const togglePassword = () => {
+    if (passwordType === "password") {
+      setPasswordType("text");
+    } else {
+      setPasswordType("password");
+    }
+  };
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -78,23 +89,27 @@ export default function Login() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    loginMutation(
-      { email, password },
-      {
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || 
-            (error.message?.includes('Access Denied') ? error.message : 'Login failed. Please check your credentials.');
-          
-          toast.error(errorMessage, {
-            duration: 6000,
-            style: {
-              maxWidth: '500px',
-              width: 'max-content'
-            }
-          });
+    if (validator.allValid()) {
+      loginMutation(
+        { email, password },
+        {
+          onError: (error: any) => {
+            const errorMessage = error?.response?.data?.message || 
+              (error.message?.includes('Access Denied') ? error.message : 'Login failed. Please check your credentials.');
+            
+            toast.error(errorMessage, {
+              duration: 6000,
+              style: {
+                maxWidth: '500px',
+                width: 'max-content'
+              }
+            });
+          }
         }
-      }
-    );
+      );
+    } else {
+      triggerValidation();
+    }
   }
 
   if (isTokenAuthenticating) {
@@ -149,20 +164,33 @@ export default function Login() {
           shadow-[4px_4px_10px_rgba(255,255,255,0.5)] transition-all duration-300"
           onSubmit={handleSubmit}
         >
-          <InputGroup
-            label="Email"
-            required
-            onChange={(e) => setEmail(e.target.value)}
-            inputType="email"
-            inputName="email"
-          />
-          <InputGroup
-            label="Password"
-            required
-            onChange={(e) => setPassword(e.target.value)}
-            inputType="password"
-            inputName="password"
-          />
+          <div>
+            <InputGroup
+              label="Email"
+              required
+              onChange={(e) => setEmail(e.target.value)}
+              inputType="email"
+              inputName="email"
+            />
+            {validator.message("email", email, "required|email")}
+          </div>
+          <div>
+            <InputGroup
+              label="Password"
+              required
+              onChange={(e) => setPassword(e.target.value)}
+              inputType={passwordType}
+              inputName="password"
+            />
+            <div className="w-[26px] relative top-[-32px] ml-auto">
+              {passwordType === "password" ? (
+                <Icon icon="mdi:eye-outline" className="text-black" onClick={togglePassword} />
+              ) : (
+                <Icon icon="f7:eye-slash" className="text-black" onClick={togglePassword} />
+              )}
+            </div>
+            {validator.message("password", password, "required|password")}
+          </div>
           <div className="mt-2 flex justify-center">
             <div className="w-2/3">
               <Button

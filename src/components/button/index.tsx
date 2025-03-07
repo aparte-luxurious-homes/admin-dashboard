@@ -1,10 +1,10 @@
 import useStyles from "./styles";
 import classNames from "classnames";
-import { FC } from "react";
+import { FC, ReactNode } from "react";
 
 interface ButtonProps {
-  buttonName?: string;
-  color?: "btndefault" | "btnblack" | "btnfontprimary" | "btnfontsecondary" | "btndanger" | "btnsuccess";
+  buttonName?: string | ReactNode;
+  color?: "btndefault" | "btnblack" | "btnfontprimary" | "btnfontsecondary" | "btndanger" | "btnsuccess" | "btnwhite";
   variant?: "primary" | "danger" | "primaryoutline" | "dangeroutline" | "success";
   buttonSize?: "small" | "medium" | "large" | "fluid" | "full";
   onClick?: (event: React.MouseEvent<HTMLButtonElement> | React.FormEvent<HTMLFormElement>) => void;
