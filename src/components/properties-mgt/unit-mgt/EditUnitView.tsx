@@ -2,7 +2,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType,  } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
-import { AssignUnitAmenities, DeletePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -18,30 +18,47 @@ import { PiBathtub } from "react-icons/pi";
 import { LuSofa, LuUsers } from "react-icons/lu";
 import Spinner from "../../ui/Spinner";
 import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
 
 export default function EditUnitView({  
     handleEditMode,
     unitData,
-    availableAmenities,
+    propertyId,
+    unitId,
 }: { 
     handleEditMode: Dispatch<SetStateAction<boolean>>, 
     unitData: IPropertyUnit,
-    availableAmenities: IAmenity[]
+    propertyId: number,
+    unitId: number,
 }) {
-
+    const { data: unitDetails, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
+    const { data: fetchedAmenites } = GetAmenities();
+    const [unit, setUnit] = useState<IPropertyUnit>(unitData);
+    const [amenities, setAmenities] = useState<IAmenity[]>([]);
     const dispatch = useDispatch();
     const { mutate, isPending } = UpdatePropertyUnit();
     const  { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const { mutate: uploadMedia, data: uploadData, isPending: uploadedMediaPending } = UploadPropertyUnitMedia();
     const { user } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(unitData?.media??[])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
-    const { mutate: assignAmenity   } = AssignUnitAmenities(); 
+    const { mutate: assignAmenity   } = AssignUnitAmenities();
+    
+    useEffect(() => {
+        setUnit(unitDetails?.data?.data)
+        setMedia(unitDetails?.data?.data?.media)
+    }, [unitDetails])
+    
+    useEffect(() => {
+        setAmenities(fetchedAmenites?.data?.data)
+    }, [fetchedAmenites])
     
 
     const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
@@ -57,38 +74,47 @@ export default function EditUnitView({
         return sortedAmenities;
     }
 
+    const removeParam = (param: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete(param); // Remove the specified query param
+    
+        const newQueryString = params.toString();
+        router.push(newQueryString ? `?${newQueryString}` : pathname, { scroll: false });
+    };
+
 
     const formik = 
         useFormik({
             initialValues: {
-                name: unitData?.name ?? "",
-                description: unitData?.description ?? "",
-                pricePerNight: unitData?.pricePerNight ?? "0.00",
-                cautionFee: unitData?.cautionFee ?? "0.00",
-                maxGuests: unitData?.maxGuests ?? 0,
-                count: unitData?.count ?? 0,
-                isWholeProperty: unitData?.isWholeProperty ?? 0,
-                bedroomCount: unitData?.bedroomCount ?? 0,
-                livingRoomCount: unitData?.livingRoomCount ?? 0,
-                kitchenCount: unitData?.kitchenCount ?? 0,
-                bathroomCount: unitData?.bathroomCount ?? 0,
-                amenities: unitData?.amenities.map((el) => el.id),
-                amenityNames: unitData?.amenities.map((el) => el.name),
+                name: unit?.name ?? "",
+                description: unit?.description ?? "",
+                pricePerNight: unit?.pricePerNight ?? "0.00",
+                cautionFee: unit?.cautionFee ?? "0.00",
+                maxGuests: unit?.maxGuests ?? 0,
+                count: unit?.count ?? 0,
+                isWholeProperty: unit?.isWholeProperty ?? 0,
+                bedroomCount: unit?.bedroomCount ?? 0,
+                livingRoomCount: unit?.livingRoomCount ?? 0,
+                kitchenCount: unit?.kitchenCount ?? 0,
+                bathroomCount: unit?.bathroomCount ?? 0,
+                amenities: unit?.amenities.map((el) => el.id),
+                amenityNames: unit?.amenities.map((el) => el.name),
             },
         onSubmit: (values) => {
-            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames);
+            const sortedAmenities = sortAmenities(amenities, values.amenityNames);
             
             const updatePayload: IUpdatePropertyUnit = {
                 ...values,
                 amenities: sortedAmenities,
             };
             mutate({
-                propertyId: unitData.propertyId,
-                unitId: unitData.id,
+                propertyId: unit.propertyId,
+                unitId: unit.id,
                 payload: updatePayload,
             },
             {
                 onSuccess: () => {
+                    removeParam('edit');
                     handleEditMode(false);
                 }
             })
@@ -119,10 +145,10 @@ export default function EditUnitView({
                 cancelText: "Cancel",
                 onConfirm: () => {
                     deleteMutation(
-                        { propertyId: unitData.propertyId, unitId: unitData.id },
+                        { propertyId: unit.propertyId, unitId: unit.id },
                         {
                             onSuccess: (response) => {
-                                console.log(response)
+                                removeParam('edit')
                                 toast.success(response?.data?.message, {
                                     duration: 6000,
                                     style: {
@@ -131,7 +157,7 @@ export default function EditUnitView({
                                     }
                                 });
                                 if (response.status === 204) 
-                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(unitData.propertyId))
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(unit.propertyId))
                             }
                         }
                     )
@@ -268,7 +294,7 @@ export default function EditUnitView({
                     <div className="col-span-3 relative flex flex-col items-start mt-10">
                         <label htmlFor="amenities" className="text-lg zinc-900 font-medium mb-4">Amenities</label>
                         <MultipleChoice
-                            options={availableAmenities?.map(el => 
+                            options={amenities?.map(el => 
                                 el.name
                             )}
                             selected={formik.values.amenityNames}
@@ -343,8 +369,8 @@ export default function EditUnitView({
                                     formData.append("is_featured", "true");
 
                                     uploadMedia({
-                                        propertyId: unitData.propertyId,
-                                        unitId: unitData.id,
+                                        propertyId: unit.propertyId,
+                                        unitId: unit.id,
                                         payload: formData,
                                     });
 
@@ -423,7 +449,7 @@ export default function EditUnitView({
                     <button onClick={() => formik.handleSubmit()} disabled={isPending} className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
                         {isPending ? <Spinner /> : 'Save'}
                     </button>
-                    <button onClick={() => handleEditMode(false)} disabled={isPending} className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
+                    <button onClick={() => {removeParam('edit'); handleEditMode(false)}} disabled={isPending} className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
                         Cancel
                     </button>
                     <button onClick={handleDelete} disabled={isPending} className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">

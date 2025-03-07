@@ -10,18 +10,31 @@ import { BookingStatus, IBooking } from "./types";
 import { GetBookingDetails } from "@/src/lib/request-handlers/bookingMgt";
 import { PropertyType } from "../properties-mgt/types";
 import Loader from "../loader";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export default function BookingDetailView({ bookingId }: { bookingId: number }) {
+    const pathname = usePathname(); // Get current path
+    const urlSearchParams = new URLSearchParams(window.location.search); 
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const targetRef = useRef<HTMLDivElement>(null);
-    const [editMode, setEditMode] = useState(false);
+    const [editMode, setEditMode] = useState<boolean>(Boolean(searchParams.get('edit')));
     const [status, setStatus] = useState(BookingStatus.PENDING)
     const { data: bookingData, isLoading } = GetBookingDetails(bookingId);
     const [bookingDetails, setBookingDetails] = useState<IBooking>(bookingData?.data?.data);
+
+
+
 
     useEffect(() => {
         setBookingDetails(bookingData?.data?.data)
         setStatus(bookingData?.data?.data?.status)
     }, [bookingData])
+
+    const setQueryParam = (key: string, value: string) => {
+        urlSearchParams.set(key, value); // Add or update query param
+        router.push(`${pathname}?${urlSearchParams.toString()}`); // Update the URL
+    };
     
 
     const textHue = status === BookingStatus.CANCELLED 
@@ -129,40 +142,40 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                             <div className="grid grid-cols-3 grid-cols grid-flow-row gap-y-6">
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <UserIcon className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Guest name</p>
+                                                        <UserIcon className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Guest name</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-1 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
                                                         {`${bookingDetails?.user?.profile?.firstName?? 'Adigun'} ${bookingDetails?.user?.profile?.lastName??'Samuel'}`}
                                                     </p>
                                                 </div>
 
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <MailIcon className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Email</p>
+                                                        <MailIcon className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Email</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-1 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
                                                         {bookingDetails?.user?.email}
                                                     </p>
                                                 </div>
 
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <PhoneIcon className="size-5"/>
+                                                        <PhoneIcon className="size-4"/>
                                                         <p className="mt-1 ml-2 text-lg">Phone number</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-1 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
                                                         {bookingDetails?.user?.phone ?? "+234 802 6712 0067"}
                                                     </p>
                                                 </div>
 
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <IoLocationOutline className="size-5 text-zinc-900" />
+                                                        <IoLocationOutline className="size-4 text-zinc-900" />
                                                         <p className="mt-1 ml-2 text-lg">Address</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-1 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
                                                         {bookingDetails?.unit?.property?.address ??`1134 Johnson Close Suite 33b, Oshodi-Isolo. Lagos, Nigeria`}
                                                     </p>
                                                 </div>
@@ -194,41 +207,41 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                             <div className="grid grid-cols-3 grid-cols grid-flow-row gap-y-6">
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <ReturnIcon className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Check-in</p>
+                                                        <ReturnIcon className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Check-in</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-1 mt-1.5">
+                                                    <p className="text-zinc-900 text-base pl-1 mt-1.5">
                                                         {formatDate(bookingDetails?.startDate)??`Sunday 23rd March, 2025`}
                                                     </p>
                                                 </div>
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <ReturnIcon className="size-5 scale-x-[-1]"/>
+                                                        <ReturnIcon className="size-4 scale-x-[-1]"/>
                                                         <p className="mt-1 ml-2 text-lg">Check-out</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-1 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
                                                         {formatDate(bookingDetails?.endDate)??'Monday 24td March, 2025'}
                                                     </p>
                                                 </div>
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <ClockIcon color="#191919"  className="size-5"/>
+                                                        <ClockIcon color="#191919"  className="size-4"/>
                                                         <p className="mt-1 ml-2 text-lg">Stay</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-1 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
                                                         {getDayDifference(bookingDetails?.endDate, bookingDetails?.startDate) ?? 2} {getDayDifference(bookingDetails?.endDate, bookingDetails?.startDate) > 1 ? 'Nights' : 'Night'}
                                                     </p>
                                                 </div>
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <UsersIcon color="#191919"  className="size-5"/>
+                                                        <UsersIcon color="#191919"  className="size-4"/>
                                                         <p className="mt-1 ml-2 text-lg">Guests</p>
                                                     </div>
                                                     <div className="flex gap-8 first:pl-1">
-                                                        <p className="text-zinc-900 text-xl mt-1.5 w-fit">
+                                                        <p className="text-zinc-900 text-lg mt-1.5 w-fit">
                                                             Adults <em className="text-base text-zinc-700">x{bookingDetails?.guestsCount}</em>
                                                         </p>
-                                                        {/* <p className="text-zinc-900 text-xl mt-1.5 w-fit">
+                                                        {/* <p className="text-zinc-900 text-lg mt-1.5 w-fit">
                                                             Children <em className="text-base text-zinc-700">x0</em>
                                                         </p> */}
                                                     </div>
@@ -239,7 +252,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
 
                                     <section className="w-full my-8">
                                         <div className={`w-full p-5 ${bgHue} flex gap-3`}>
-                                            <OpenWalletIcon className="size-5" color={`
+                                            <OpenWalletIcon className="size-4" color={`
                                                 ${
                                                     status === BookingStatus.PENDING 
                                                         ? '#FFAE00' 
@@ -259,8 +272,8 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                             <div className="grid grid-cols-3 grid-cols grid-flow-row gap-y-6">
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <PropertiesIcon color="#191919" className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Property type</p>
+                                                        <PropertiesIcon color="#191919" className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Property type</p>
                                                     </div>
                                                     <p className="text-zinc-900 text-lg pl-1 mt-1.5">
                                                         {bookingDetails?.unit?.property?.propertyType??PropertyType.BUNGALOW}
@@ -268,65 +281,65 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                                 </div>
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <UnitIcon color="#191919" className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Units</p>
+                                                        <UnitIcon color="#191919" className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Units</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-1 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
                                                         {bookingDetails?.unitCount??1}
                                                     </p>
                                                 </div>
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <PriceTagIcon color="#191919" className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Price per night</p>
+                                                        <PriceTagIcon color="#191919" className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Price per night</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-2 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
                                                         ₦ {formatMoney(bookingDetails?.unit?.pricePerNight??0)}
                                                     </p>
                                                 </div>
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <CancelStampIcon className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Caution Fee</p>
+                                                        <CancelStampIcon className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Caution Fee</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-2 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
                                                         ₦ {formatMoney(bookingDetails?.unit?.cautionFee??0)}
                                                     </p>
                                                 </div>
                                                 {/* <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <RateIcon className="size-5"/>
+                                                        <RateIcon className="size-4"/>
                                                         <p className="mt-1 ml-2 text-lg">5% TAX</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-2 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
                                                         ₦ 17,625
                                                     </p>
                                                 </div> */}
                                                 
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <CardsCycleIcon className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Total payable</p>
+                                                        <CardsCycleIcon className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Total payable</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-2 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
                                                         ₦ {formatMoney(bookingDetails?.totalPrice??0)}
                                                     </p>
                                                 </div>
                                                 
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <CalendarIcon color="#191919" className="size-5"/>
+                                                        <CalendarIcon color="#191919" className="size-4"/>
                                                         <p className="mt-1 ml-2 text-lg">Expires on</p>
                                                     </div>
-                                                    <p className="text-zinc-900 text-xl pl-2 mt-1.5">
+                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
                                                         {formatDate(bookingDetails?.endDate)}
                                                     </p>
                                                 </div>
                                                 
                                                 <div className="">
                                                     <div className="text-zinc-500 text-sm flex items-center">
-                                                        <CardClockIcon className="size-5"/>
-                                                        <p className="mt-1 ml-2 text-lg">Payment Status</p>
+                                                        <CardClockIcon className="size-4"/>
+                                                        <p className="mt-1 ml-2 text-base">Payment Status</p>
                                                     </div>
                                                     <BookingBadge status={status} classNames="w-fit" />
                                                 </div>
@@ -336,7 +349,8 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                     </section>
                                 </>
                                 :
-                                <EditBookingDetails 
+                                <EditBookingDetails
+                                    bookingId={bookingId} 
                                     bookingData={bookingDetails}
                                     handleEditMode={setEditMode}            
                                 />
@@ -357,10 +371,10 @@ export default function BookingDetailView({ bookingId }: { bookingId: number }) 
                                 <div className="h-px bg-zinc-200/80 w-full my-8" />
                                 <div className="flex justify-end items-center my-3">
                                     <div className="w-3/6 flex justify-end items-center gap-6">
-                                        <button type="button" onClick={() => setEditMode(true)} className="bg-zinc-500 text-white hover:bg-zinc-400 rounded-lg px-7 py-2 h-14 text-xl">
+                                        <button type="button" onClick={() => {setEditMode(true); setQueryParam('edit', 'true')}} className="bg-transparent border border-zinc-500 text-zinc-500 hover:text-white hover:bg-zinc-500 rounded-lg px-5 py-2.5 text-lg font-medium">
                                             Edit
                                         </button>
-                                        <button type="button" onClick={() => setStatus(BookingStatus.CANCELLED)} className="bg-red-600 text-white hover:bg-red-500 rounded-lg px-7 py-2 h-14 text-xl">
+                                        <button type="button" onClick={() => setStatus(BookingStatus.CANCELLED)} className="bg-red-600 text-white hover:bg-red-500 rounded-lg px-5 py-2.5  text-lg font-medium">
                                            Cancel booking
                                         </button>
                                     </div>

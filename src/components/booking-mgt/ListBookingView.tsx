@@ -3,13 +3,13 @@
 import { formatDate, formatMoney } from "@/src/lib/utils";
 import { DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../icons";
 import { GetAllBookings } from "@/src/lib/request-handlers/bookingMgt";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IBooking } from "./types";
 import { BookingBadge } from "../badge";
 import TablePagination from "../TablePagination";
 import Loader from "@/src/components/loader";
-// import { Icon } from "lucide-react";
-// import { LuEye } from "react-icons/lu";
+import { LuEye } from "react-icons/lu";
+import { HiOutlinePencilAlt } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
@@ -21,18 +21,45 @@ export default function ListBookingView() {
     const [bookingList, setBookingList] = useState<IBooking[]>(bookings?.data?.data?.data);
     const router = useRouter();
 
-    // const detailButtons = [
-    //     {
-    //         label: "View",
-    //         Icon: <LuEye />,
-    //         onClick: () => console.log("View button clicked"),
-    //     },
-    //     {
-    //         label: "Edit",
-    //         Icon: <HiOutlinePencilAlt />,
-    //         onClick: () => console.log("View button clicked"),
-    //     }
-    // ]
+    const [selectedRow, setSelectedRow] = useState<number>(0);
+    const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
+    const modalRef = useRef(null);
+
+    const detailButtons = [
+        {
+            label: "View",
+            Icon: <LuEye />,
+            onClick: () => router.push(
+                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow].id)
+            ),
+        },
+        {
+            label: "Edit",
+            Icon: <HiOutlinePencilAlt />,
+            onClick: () => router.push(
+                `${PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow].id)}?edit=true`
+            ),
+        }
+    ];
+
+    // Handle click outside modal
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (modalRef.current && !(modalRef.current as HTMLElement).contains(event.target as Node)) {
+                setSelectedRow(0);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleDotsClick = (event: React.MouseEvent, index: number) => {
+        event.stopPropagation();
+        setSelectedRow(index);
+
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
+        setModalPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
+    };
 
 
     useEffect(() => {
@@ -119,15 +146,17 @@ export default function ListBookingView() {
                                             Booking date
                                         </p>
                                     </th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
+                                    <th className="bg-[#0280901A] h-10 ">{' '}</th>
                                     <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-[14px]">
+                            <tbody className="text-[13px]">
                                 {
                                     bookingList &&
                                     bookingList?.map((booking, index) => (
-                                        <tr key={index} className="hover:bg-background/50 cursor-pointer" onClick={() => router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(booking?.id))} >
+                                        <tr key={index} className="hover:bg-background/50 cursor-pointer" 
+                                            onClick={() => router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(booking?.id))} 
+                                        >
                                             <td className="flex items-center px-5 py-4 gap-3 border-b-2 border-b-gray-200">
                                                 {/* <input 
                                                     type="checkbox"
@@ -136,8 +165,8 @@ export default function ListBookingView() {
                                                         checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
                                                     `}
                                                 /> */}
-                                                <p className="pt-1">
-                                                    APRT-{booking?.id}
+                                                <p className="pt-1 truncate max-w-36">
+                                                    {booking?.bookingId}
                                                 </p>  
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
@@ -162,9 +191,11 @@ export default function ListBookingView() {
                                                 </div>
                                             </td>
                                             <td className="border-b-2 border-b-gray-200 text-center">{formatDate(booking.startDate)}</td>
-                                            {/* <td className="border-b-2 border-b-gray-200">
-                                                <DotsIcon className="w-5 ml-12 cursor-pointer rotate-90 " color="black" />
-                                            </td> */}
+                                            <td className="border-b-2 border-b-gray-200">
+                                                <div className="flex justify-center items-center w-fit" onClick={(event) => handleDotsClick(event, index)}>
+                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))
                                 }
@@ -174,6 +205,26 @@ export default function ListBookingView() {
                 }
 
             </div>
+
+            {/* Modal */}
+            {selectedRow !== null && modalPosition && (
+                <div
+                    ref={modalRef}
+                    className="absolute bg-white shadow-md rounded-md z-50 border border-gray-300 w-[9em]"
+                    style={{ top: modalPosition.top, left: modalPosition.left }}
+                >
+                    {detailButtons.map((button, idx) => (
+                        <div
+                            key={idx}
+                            className="flex items-center gap-2 px-4 py-3 hover:bg-zinc-100 cursor-pointer"
+                            onClick={button.onClick}
+                        >
+                            {button.Icon}
+                            <p>{button.label}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {
                 !isLoading && bookingList &&

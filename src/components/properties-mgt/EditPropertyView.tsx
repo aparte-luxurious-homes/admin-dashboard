@@ -24,9 +24,11 @@ import { UserRole } from "@/src/lib/enums";
 import Spinner from "../ui/Spinner";
 import { CreateAmenityForm } from "./CreatePropertyView";
 import CustomModal from "../ui/CustomModal";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
+import { usePathname } from 'next/navigation';
+
 
 
 export default function EditPropertyView({  
@@ -39,6 +41,7 @@ export default function EditPropertyView({
     availableAmenities: IAmenity[],
 }) {
     const dispatch = useDispatch();
+    const pathname = usePathname();
     const { mutate, isPending } = UpdateProperty()
     const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const { 
@@ -50,6 +53,7 @@ export default function EditPropertyView({
 
     const { user } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
@@ -110,12 +114,22 @@ export default function EditPropertyView({
                 },
                 {
                     onSuccess: () => {
+                        removeParam('edit')
                         handleEditMode(false);
                     }
                 })            
             },
         }
     );
+
+      
+    const removeParam = (param: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete(param); // Remove the specified query param
+    
+        const newQueryString = params.toString();
+        router.push(newQueryString ? `?${newQueryString}` : pathname, { scroll: false });
+    };
 
     const handleDeleteImage = (e: number) => {
         dispatch(
@@ -143,7 +157,7 @@ export default function EditPropertyView({
                         { propertyId: propertyData.id },
                         {
                             onSuccess: (response) => {
-                                console.log(response)
+                                removeParam('edit')
                                 toast.success(response?.data?.message, {
                                     duration: 6000,
                                     style: {
@@ -409,7 +423,7 @@ export default function EditPropertyView({
                 <button onClick={() => formik.handleSubmit()} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
                     {isPending ? <Spinner /> : 'Save'}
                 </button>
-                <button onClick={() => handleEditMode(false)} disabled={isPending || uploadedMediaPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
+                <button onClick={() =>{removeParam('edit'); handleEditMode(false); }} disabled={isPending || uploadedMediaPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
                     Cancel
                 </button>
                 <button onClick={handleDelete} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">

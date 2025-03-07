@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../icons";
 import { useRouter } from "next/navigation";
 import { IProperty, PropertyType } from "./types";
@@ -10,6 +10,8 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { BookingBadge } from "../badge";
 import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../TablePagination";
+import { LuEye } from "react-icons/lu";
+import { HiOutlinePencilAlt } from "react-icons/hi";
 
 export default function ListPropertiesView() {
     const [page, setPage] = useState<number>(1);
@@ -18,18 +20,45 @@ export default function ListPropertiesView() {
     const [propertyList, setPropertyList] = useState<IProperty[]>(properties?.data?.data?.data);
     const router = useRouter();
 
-    // const detailButtons = [
-    //     {
-    //         label: "View",
-    //         Icon: <LuEye />,
-    //         onClick: () => console.log("View button clicked"),
-    //     },
-    //     {
-    //         label: "Edit",
-    //         Icon: <HiOutlinePencilAlt />,
-    //         onClick: () => console.log("View button clicked"),
-    //     }
-    // ]
+    const [selectedRow, setSelectedRow] = useState<number>(0);
+    const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
+    const modalRef = useRef(null);
+
+    const detailButtons = [
+        {
+            label: "View",
+            Icon: <LuEye />,
+            onClick: () => router.push(
+                PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow].id)
+            ),
+        },
+        {
+            label: "Edit",
+            Icon: <HiOutlinePencilAlt />,
+            onClick: () => router.push(
+                `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow].id)}?edit=true`
+            ),
+        }
+    ]
+
+    // Handle click outside modal
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (modalRef.current && !(modalRef.current as HTMLElement).contains(event.target as Node)) {
+                setSelectedRow(0);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleDotsClick = (event: React.MouseEvent, index: number) => {
+        event.stopPropagation();
+        setSelectedRow(index);
+
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
+        setModalPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
+    };
 
     useEffect(() => {
         setPropertyList(properties?.data?.data?.data);
@@ -120,7 +149,7 @@ export default function ListPropertiesView() {
                                 {
                                     propertyList &&
                                     propertyList?.map((property, index) => (
-                                        <tr key={index} className="hover:bg-background cursor-pointer"  onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}>
+                                        <tr key={index} className="hover:bg-background/50 cursor-pointer"  onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}>
                                             <td className="flex items-center px-5 py-4 gap-3 border-b-2 border-b-gray-200">
                                                 {/* <input 
                                                     type="checkbox"
@@ -165,9 +194,11 @@ export default function ListPropertiesView() {
                                             <td className="border-b-2 border-b-gray-200">
                                                 {formatDate(property?.verifications?.createdAt??"02-03-2024")}
                                             </td>
-                                            {/* <td className="border-b-2 border-b-gray-200">
-                                                <DotsIcon className="w-5 -ml-12 cursor-pointer" color="black" />
-                                            </td> */}
+                                            <td className="border-b-2 border-b-gray-200">
+                                                <div className="flex justify-center items-center w-fit" onClick={(event) => handleDotsClick(event, index)}>
+                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))
                                 }
@@ -176,17 +207,38 @@ export default function ListPropertiesView() {
                     </div>
                 }
             </div>
+
+
+            {/* Modal */}
+            {selectedRow !== null && modalPosition && (
+                <div
+                    ref={modalRef}
+                    className="absolute bg-white shadow-md rounded-md z-50 border border-gray-300 w-[9em]"
+                    style={{ top: modalPosition.top, left: modalPosition.left }}
+                >
+                    {detailButtons.map((button, idx) => (
+                        <div
+                            key={idx}
+                            className="flex items-center gap-2 px-4 py-3 hover:bg-zinc-100 cursor-pointer"
+                            onClick={button.onClick}
+                        >
+                            {button.Icon}
+                            <p>{button.label}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
             
-                {
-                    !isLoading && propertyList &&
-                    <TablePagination
-                        total={properties?.data?.data?.meta?.total}
-                        currentPage={page}
-                        setPage={setPage}
-                        firstPage={properties?.data?.data?.meta?.firstPage}
-                        itemsPerPage={10}
-                    />
-                }   
+            {
+                !isLoading && propertyList &&
+                <TablePagination
+                    total={properties?.data?.data?.meta?.total}
+                    currentPage={page}
+                    setPage={setPage}
+                    firstPage={properties?.data?.data?.meta?.firstPage}
+                    itemsPerPage={10}
+                />
+            }   
 
         </div>
     );

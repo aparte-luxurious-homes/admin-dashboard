@@ -26,8 +26,9 @@ import { IoIosStarOutline } from "react-icons/io";
 import Spinner from "../ui/Spinner";
 import CustomModal from "../ui/CustomModal";
 import { IoGameControllerOutline } from "react-icons/io5";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import { useSearchParams } from 'next/navigation';
 
 
 
@@ -43,13 +44,21 @@ export default function PropertyDetailsView({
     const { mutate, isPending } = FeatureProperty();
     const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const router = useRouter();
+    const pathname = usePathname(); // Get current path
+    const urlSearchParams = new URLSearchParams(window.location.search); 
+    const searchParams = useSearchParams();
     
     const [showVerification, setShowVerification] = useState(false);
-    const [editMode, setEditMode] = useState<boolean>(false);
+    const [editMode, setEditMode] = useState<boolean>(Boolean(searchParams.get('edit')));
     const [property, setProperty] = useState<IProperty>(data?.data?.data)
     const [availabeUnits, setAvailableUnits] = useState<number>(0)
     const [averageRating, setAverageRating] = useState<number>(property?.meta?.total_reviews ? (property?.meta?.total_rating / property?.meta?.total_reviews): 0);
 
+    
+    const setQueryParam = (key: string, value: string) => {
+        urlSearchParams.set(key, value); // Add or update query param
+        router.push(`${pathname}?${urlSearchParams.toString()}`); // Update the URL
+    };
 
     const handleDelete = () => {
         dispatch(
@@ -369,7 +378,12 @@ export default function PropertyDetailsView({
                                 </div>
                                 
                                 <div className="flex justify-end items-center gap-5 mt-3">
-                                    <div onClick={() => setEditMode(true)} className="cursor-pointer border border-zinc-500 rounded-lg px-5 py-2.5 text-lg text-zinc-600 hover:bg-zinc-600 hover:text-white">
+                                    <div 
+                                        onClick={() => {
+                                            setEditMode(true)
+                                            setQueryParam('edit', 'true')
+                                        }} 
+                                        className="cursor-pointer border border-zinc-500 rounded-lg px-5 py-2.5 text-lg text-zinc-600 hover:bg-zinc-600 hover:text-white">
                                         Edit
                                     </div>
                                     <div onClick={() => handleDelete()} className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700">
