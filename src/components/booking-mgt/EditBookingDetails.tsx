@@ -1,7 +1,7 @@
 import { useFormik } from "formik";
 import { PriceTagIcon, ReturnIcon, UnitIcon, UsersIcon } from "../icons";
 import CustomDropdown from "../ui/customDropdown";
-import { BookingStatus } from "./types";
+import { BookingStatus, IBooking } from "./types";
 import { SetStateAction, useState, Dispatch } from "react";
 import { HiOutlineTicket } from "react-icons/hi2";
 import { TbCurrencyNaira } from "react-icons/tb";
@@ -9,19 +9,21 @@ import { formatMoney } from "@/src/lib/utils";
 
 export default function EditBookingDetails({
     handleEditMode,
+    bookingData,
  }: { 
-    handleEditMode: Dispatch<SetStateAction<boolean>>, 
+    handleEditMode: Dispatch<SetStateAction<boolean>>,
+    bookingData: IBooking,
   }) {
 
-    const [status, setStatus] = useState<BookingStatus>(BookingStatus.CANCELLED)
+    const [status, setStatus] = useState<BookingStatus>(bookingData?.status)
 
     const formik = useFormik({
         initialValues: {
-            startDate: "",
-            endDate: "",
-            guestsCount: 0,
-            unitCount: 0,
-            totalPrice: 0,
+            startDate: bookingData.startDate??'',
+            endDate: bookingData.endDate??'',
+            guestsCount: bookingData.guestsCount??0,
+            unitCount: bookingData.unitCount??0,
+            totalPrice: bookingData.totalPrice??0,
         },
         onSubmit: async (values, { setSubmitting }) => {}
     })
@@ -41,8 +43,8 @@ export default function EditBookingDetails({
                             <input
                                 id="start-date"
                                 type="date" 
-                                // value={formik.values.name}
-                                // onChange={formik.handleChange}
+                                value={formik.values.startDate}
+                                onChange={(e) => formik.setFieldValue('startDate', (e.target.value))}
                                 className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
                             />
                         </div>
@@ -57,8 +59,8 @@ export default function EditBookingDetails({
                             <input
                                 id="end-date"
                                 type="date" 
-                                // value={formik.values.name}
-                                // onChange={formik.handleChange}
+                                value={formik.values.endDate}
+                                onChange={(e) => formik.setFieldValue('endDate', (e.target.value))}
                                 className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
                             />
                         </div>
@@ -67,15 +69,15 @@ export default function EditBookingDetails({
                     <div className="relative">
                         <div className="text-zinc-500 text-sm flex gap-3 items-center">
                             <UsersIcon color="#191919"  className="size-5"/>
-                            <label htmlFor="end-date" className="text-lg zinc-900 font-medium mt-1">Check-in</label>
+                            <label htmlFor="end-date" className="text-lg zinc-900 font-medium mt-1">Guests</label>
                         </div>
                         <div className="reative mt-2">
                             <input
                                 id="guests"
                                 type="number" 
                                 placeholder="0" 
-                                // value={formik.values.name}
-                                // onChange={formik.handleChange}
+                                value={formik.values.guestsCount}
+                                onChange={(e) => formik.setFieldValue('guestsCount', (e.target.value))}
                                 className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
                             />
                         </div>
@@ -92,8 +94,8 @@ export default function EditBookingDetails({
                                 id="units"
                                 type="number"
                                 placeholder="0" 
-                                // value={formik.values.name}
-                                // onChange={formik.handleChange}
+                                value={formik.values.unitCount}
+                                onChange={(e) => formik.setFieldValue('unitCount', (e.target.value))}
                                 className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
                             />
                         </div>
@@ -121,15 +123,15 @@ export default function EditBookingDetails({
                         <p className="mb-3 text-base text-zinc-500 font-medium border border-zinc-500 px-3 py-auto rounded-full w-fit">Total price</p>
                         <div className="relative flex justify-between ">
                             <TbCurrencyNaira className="size-10"/>
-                            <p className="text-[2.5rem] text-zinc-600">{formatMoney(Number(345555))}</p>
+                            <p className="text-[2.5rem] text-zinc-600">{formatMoney(Number(bookingData?.totalPrice))}</p>
                             <PriceTagIcon color="#191919" className="size-6 ml-1"/>
                         </div>
                     </div>
                     <div className="w-3/6 flex justify-end items-center gap-6">
-                        <button type="button" onClick={() => handleEditMode(false)} className="bg-zinc-500 text-white hover:bg-zinc-400 rounded-lg px-7 py-2 h-14 text-xl">
+                        <button type="button" onClick={() => handleEditMode(false)} className="border border-teal-700 bg-transparent text-teal-700 hover:text-white hover:bg-teal-800 rounded-lg px-7 py-2 h-14 text-xl font-medium">
                             Save
                         </button>
-                        <button type="button" onClick={() => handleEditMode(false)} className="bg-red-600 text-white hover:bg-red-500 rounded-lg px-7 py-2 h-14 text-xl">
+                        <button type="button" onClick={() => handleEditMode(false)} className="bg-zinc-500 text-white hover:bg-zinc-400 rounded-lg px-7 py-2 h-14 text-xl font-medium">
                             Cancel
                         </button>
                     </div>

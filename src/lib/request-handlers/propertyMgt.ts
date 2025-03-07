@@ -16,11 +16,11 @@ enum PropertyRequestKeys {
     deleteProperty = "deleteProperty",
 }
 
-export function GetAllProperties(page=1, limit=10) {
+export function GetAllProperties(page=1, limit=10, searchTerm='') {
     return useQuery({
-        queryKey: [PropertyRequestKeys.allProperties, page, limit], 
+        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm], 
         queryFn: () => axiosRequest.get(
-            `${API_ROUTES.propertyManagement.properties.base}?page=${page}&limit=${limit}`
+            `${API_ROUTES.propertyManagement.properties.base}?page=${page}&limit=${limit}&search=${searchTerm}`
         ),
         refetchOnWindowFocus: true,
         staleTime: Infinity,

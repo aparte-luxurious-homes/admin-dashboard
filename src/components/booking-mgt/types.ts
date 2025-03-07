@@ -10,7 +10,7 @@ export enum BookingStatus {
 }
 
 export type BookingBageProps = {
-    status: BookingStatus;
+    status: BookingStatus | string;
     textColour?: string;
     backgroundColour?: string;
     classNames?: string;

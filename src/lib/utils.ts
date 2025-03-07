@@ -31,6 +31,9 @@ export function formatDate(dateString: string): string {
 export function getDayDifference(date1: string, date2: string): number {
   const d1 = new Date(date1);
   const d2 = new Date(date2);
+  console.log(d1)
+  console.log(d2)
+  console.log(Math.abs(Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))))
   return Math.abs(Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
 }
 

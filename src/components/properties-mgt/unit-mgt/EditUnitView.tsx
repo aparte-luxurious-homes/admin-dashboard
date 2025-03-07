@@ -8,7 +8,7 @@ import { FaPlus, FaRegBuilding } from "react-icons/fa";
 import MultipleChoice from "../../ui/MultipleChoice";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import Image from "next/image";
-import { TrashIcon } from "../../icons";
+import { PriceTagIcon, TrashIcon } from "../../icons";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { IoBedOutline, IoCloudUploadOutline } from "react-icons/io5";
 import { UserRole } from "@/src/lib/enums";
@@ -403,21 +403,6 @@ export default function EditUnitView({
                                     />
                                 </div>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <p className="text-lg text-zinc-900 font-semibold italic">
-                                    Total
-                                </p>
-                                <div className="relative mt-4 pl-2">
-                                    <TbCurrencyNaira className="absolute top-[25%] left-2.5 text-[25px]"/>
-                                    <input
-                                        id="total"
-                                        type="text"
-                                        disabled
-                                        value={formatMoney(Number(formik.values.pricePerNight) + Number(formik.values.cautionFee))}
-                                        className="w-full border-none outline-none pl-8 pr-3 py-3 h-14 text-lg italic font-semibold bg-none"
-                                    />
-                                </div>
-                            </div>
 
                         </div>
                     </div>
@@ -425,16 +410,26 @@ export default function EditUnitView({
             </form>
             
             
-            <div className="flex justify-end items-center gap-5 mt-3">
-                <button onClick={() => formik.handleSubmit()} disabled={isPending} className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
-                    {isPending ? <Spinner /> : 'Save'}
-                </button>
-                <button onClick={() => handleEditMode(false)} disabled={isPending} className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
-                    Cancel
-                </button>
-                <button onClick={handleDelete} disabled={isPending} className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">
-                    <TrashIcon className="size-6" color="white" />
-                </button>
+            <div className="flex justify-between items-center gap-5 mt-3">
+                <div>
+                    <p className="mb-3 text-base text-zinc-500 font-medium border border-zinc-500 px-3 py-auto rounded-full w-fit">Total price per night</p>
+                    <div className="relative flex justify-between ">
+                        <TbCurrencyNaira className="size-10"/>
+                        <p className="text-[2.5rem] text-zinc-600">{formatMoney(Number(formik.values.pricePerNight) + Number(formik.values.cautionFee))}</p>
+                        <PriceTagIcon color="#191919" className="size-6 ml-1"/>
+                    </div>
+                </div>
+                <div className="w-3/6 flex justify-end items-center gap-6">
+                    <button onClick={() => formik.handleSubmit()} disabled={isPending} className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
+                        {isPending ? <Spinner /> : 'Save'}
+                    </button>
+                    <button onClick={() => handleEditMode(false)} disabled={isPending} className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
+                        Cancel
+                    </button>
+                    <button onClick={handleDelete} disabled={isPending} className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">
+                        <TrashIcon className="size-6" color="white" />
+                    </button>
+                </div>
             </div>
         </>
     );

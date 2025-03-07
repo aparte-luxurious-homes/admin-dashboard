@@ -8,11 +8,11 @@ enum BookingRequestKeys {
     getBookingDetails = "getBookingDetails",
 }
 
-export function GetAllBookings(page=1, limit=10) {
+export function GetAllBookings(page=1, limit=10, searchQuery = '') {
     return useQuery({
-        queryKey: [BookingRequestKeys.getAllBookings, page, limit], 
+        queryKey: [BookingRequestKeys.getAllBookings, page, limit, searchQuery], 
         queryFn: () => axiosRequest.get(
-            `${API_ROUTES.bookings.base}?page=${page}&limit=${limit}`
+            `${API_ROUTES.bookings.base}?page=${page}&limit=${limit}&search=${searchQuery}`
         ),
         refetchOnWindowFocus: true,
     });
