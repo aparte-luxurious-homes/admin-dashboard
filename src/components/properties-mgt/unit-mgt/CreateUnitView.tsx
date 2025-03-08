@@ -13,7 +13,7 @@ import { GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/prop
 import { fixedAmenities } from "@/src/data/amenities";
 import CustomModal from "@/components/ui/CustomModal";
 import { CreatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
-import { CreateAmenityForm } from "../CreatePropertyView";
+import { CreateAmenityForm } from "../all-properties/CreatePropertyView";
 import { IoBedOutline } from "react-icons/io5";
 import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
 import { PiBathtub } from "react-icons/pi";

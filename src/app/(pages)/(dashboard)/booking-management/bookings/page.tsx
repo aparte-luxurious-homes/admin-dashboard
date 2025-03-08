@@ -1,9 +1,9 @@
-import ListBookingView from "@/src/components/booking-mgt/ListBookingView";
+import BookingsTable from "@/src/components/booking-mgt/tables/bookings";
 
 export default function Bookings() {
     return (
         <div className="w-full">
-            <ListBookingView />
+            <BookingsTable />
         </div>
     );
 }

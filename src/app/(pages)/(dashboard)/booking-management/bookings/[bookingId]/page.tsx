@@ -1,6 +1,6 @@
 "use client";
 
-import BookingDetailView from "@/src/components/booking-mgt/BookingDetailView";
+import BookingDetailView from "@/src/components/booking-mgt/bookings/BookingDetailView";
 import { useParams } from "next/navigation";
 
 export default function BookingDetail({}) {

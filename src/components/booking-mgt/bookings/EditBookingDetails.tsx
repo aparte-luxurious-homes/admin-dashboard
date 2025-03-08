@@ -1,7 +1,7 @@
 import { useFormik } from "formik";
-import { PriceTagIcon, ReturnIcon, UnitIcon, UsersIcon } from "../icons";
-import CustomDropdown from "../ui/customDropdown";
-import { BookingStatus, IBooking } from "./types";
+import { PriceTagIcon, ReturnIcon, UnitIcon, UsersIcon } from "../../icons";
+import CustomDropdown from "../../ui/customDropdown";
+import { BookingStatus, IBooking } from "../types";
 import { SetStateAction, useState, Dispatch, useEffect } from "react";
 import { HiOutlineTicket } from "react-icons/hi2";
 import { TbCurrencyNaira } from "react-icons/tb";
@@ -9,7 +9,7 @@ import { formatMoney } from "@/src/lib/utils";
 import { useRouter } from "next/navigation";
 import { usePathname, useSearchParams } from "next/navigation";
 import { GetBookingDetails } from "@/src/lib/request-handlers/bookingMgt";
-import Loader from "../loader";
+import Loader from "../../loader";
 
 export default function EditBookingDetails({
     handleEditMode,

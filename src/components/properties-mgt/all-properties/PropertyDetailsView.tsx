@@ -1,7 +1,7 @@
 'use client'
 
 import Image from "next/image";
-import { TrashIcon } from "../icons";
+import { TrashIcon } from "../../icons";
 import { TbAirConditioning } from "react-icons/tb";
 import { FaPlus, FaSwimmer, FaTv } from "react-icons/fa";
 import { GoChecklist, GoVerified } from "react-icons/go";
@@ -16,15 +16,15 @@ import { Navigation, Autoplay } from 'swiper/modules';
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import EditProperty from "./EditPropertyView";
-import { IProperty, IPropertyUnit } from "./types";
+import { IProperty, IPropertyUnit } from "../types";
 import { DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { IoIosStarOutline } from "react-icons/io";
-import Spinner from "../ui/Spinner";
-import CustomModal from "../ui/CustomModal";
+import Spinner from "../../ui/Spinner";
+import CustomModal from "../../ui/CustomModal";
 import { IoGameControllerOutline } from "react-icons/io5";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
