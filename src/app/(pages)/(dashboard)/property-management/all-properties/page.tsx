@@ -1,9 +1,9 @@
-import ListPropertiesView from "@/src/components/properties-mgt/ListPropertiesView";
+import PropertiesTable from "@/src/components/properties-mgt/tables/properties";
 
 export default function AllProperties() {
     return (
         <div className="w-full">
-            <ListPropertiesView />
+            <PropertiesTable />
         </div>
     );
 }

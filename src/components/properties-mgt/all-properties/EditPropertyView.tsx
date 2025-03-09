@@ -3,30 +3,32 @@
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { TrashIcon } from "../icons";
+import { TrashIcon } from "../../icons";
 import { SlLocationPin } from "react-icons/sl";
-import CustomDropdown from "../ui/customDropdown";
-import { IAmenity, IProperty, IPropertyMedia, IUpdateProperty, MediaType, PropertyType } from "./types";
-import CustomFilterDropdown from "../ui/customFilterDropDown";
-import CustomCheckbox from "../ui/customCheckbox";
-import MultipleChoice from "../ui/MultipleChoice";
+import CustomDropdown from "../../ui/customDropdown";
+import { IAmenity, IProperty, IPropertyMedia, IUpdateProperty, MediaType, PropertyType } from "../types";
+import CustomFilterDropdown from "../../ui/customFilterDropDown";
+import CustomCheckbox from "../../ui/customCheckbox";
+import MultipleChoice from "../../ui/MultipleChoice";
 import { ALL_COUNTRIES } from "@/src/data/countries";
 import { FaPlus } from "react-icons/fa6";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import Image from "next/image";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
-import CustomDropzone from "../ui/CustomDropzone";
+import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
 import { DeleteProperty, FeatureProperty, UpdateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
-import Spinner from "../ui/Spinner";
+import Spinner from "../../ui/Spinner";
 import { CreateAmenityForm } from "./CreatePropertyView";
-import CustomModal from "../ui/CustomModal";
-import { useRouter } from "next/navigation";
+import CustomModal from "../../ui/CustomModal";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
+import { usePathname } from 'next/navigation';
+
 
 
 export default function EditPropertyView({  
@@ -39,6 +41,7 @@ export default function EditPropertyView({
     availableAmenities: IAmenity[],
 }) {
     const dispatch = useDispatch();
+    const pathname = usePathname();
     const { mutate, isPending } = UpdateProperty()
     const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const { 
@@ -50,6 +53,7 @@ export default function EditPropertyView({
 
     const { user } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
@@ -91,30 +95,41 @@ export default function EditPropertyView({
                 amenityNames: propertyData?.amenities.map((el) => el.name),
             },
 
-        onSubmit: (values: any) => {
-            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
+            onSubmit: (values: any) => {
+                const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
 
-            if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
-                featureProperty({ propertyId: propertyData.id })
+                if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
+                    featureProperty({ propertyId: propertyData.id })
 
-            const updatePayload: IUpdateProperty = {
-                ...values,
-                amenities: sortedAmenities,
-                property_type: values.type,
-                is_pet_allowed: values.petsAllowed,
-            };
+                const updatePayload: IUpdateProperty = {
+                    ...values,
+                    amenities: sortedAmenities,
+                    property_type: values.type,
+                    is_pet_allowed: values.petsAllowed,
+                };
 
-            mutate({                                            // Update proprety
-                propertyId: propertyData.id,
-                payload: updatePayload,
+                mutate({                                            // Update proprety
+                    propertyId: propertyData.id,
+                    payload: updatePayload,
+                },
+                {
+                    onSuccess: () => {
+                        removeParam('edit')
+                        handleEditMode(false);
+                    }
+                })            
             },
-            {
-                onSuccess: () => {
-                    handleEditMode(false);
-                }
-            })            
-        },
-    });
+        }
+    );
+
+      
+    const removeParam = (param: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete(param); // Remove the specified query param
+    
+        const newQueryString = params.toString();
+        router.push(newQueryString ? `?${newQueryString}` : pathname, { scroll: false });
+    };
 
     const handleDeleteImage = (e: number) => {
         dispatch(
@@ -142,7 +157,7 @@ export default function EditPropertyView({
                         { propertyId: propertyData.id },
                         {
                             onSuccess: (response) => {
-                                console.log(response)
+                                removeParam('edit')
                                 toast.success(response?.data?.message, {
                                     duration: 6000,
                                     style: {
@@ -408,7 +423,7 @@ export default function EditPropertyView({
                 <button onClick={() => formik.handleSubmit()} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
                     {isPending ? <Spinner /> : 'Save'}
                 </button>
-                <button onClick={() => handleEditMode(false)} disabled={isPending || uploadedMediaPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
+                <button onClick={() =>{removeParam('edit'); handleEditMode(false); }} disabled={isPending || uploadedMediaPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
                     Cancel
                 </button>
                 <button onClick={handleDelete} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">
