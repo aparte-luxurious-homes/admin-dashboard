@@ -12,6 +12,8 @@ import { LuEye } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import Link from "next/link";
+import { FiPlus } from "react-icons/fi";
 
 export default function BookingsTable() {
 
@@ -80,19 +82,17 @@ export default function BookingsTable() {
                             <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="border border-zinc-500/20 bg-background rounded-lg w-full h-10 p-3 pl-10" placeholder="Search bookings "/>
                             <SearchIcon className="absolute top-[25%] left-3 w-5" color="black" />
                         </div>
-                        <div className="flex justify-center items-center gap-2 border border-zinc-500/20 bg-background hover:bg-zinc-300/70 cursor-pointer rounded-lg h-10 px-3 w-[10%]">
-                            <p className="text-zinc-700 text-base">
-                                Filter
-                            </p>
-                            <FilterIcon className="w-5" color="black" />
-                        </div>
+                        
                     </div>
-                    <button className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-48 p-1.5 h-10">
+                    <Link
+                        href={`${PAGE_ROUTES.dashboard.bookingManagement.bookings.create}`}
+                        className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-44 p-1.5 h-10"
+                    >
+                        <FiPlus className="w-4" color="white"/>
                         <p className="text-sm">
-                            Print CSV
+                            New Booking
                         </p>
-                        <PrinterIcon className="w-4" color="white"/>
-                    </button>
+                    </Link>
                 </div>
 
 

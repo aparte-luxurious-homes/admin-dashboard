@@ -234,8 +234,6 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                                 </div>
                                             )
                                         }
-
-
                                     </div>
 
                                 </div>

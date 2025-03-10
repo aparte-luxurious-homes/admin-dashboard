@@ -8,8 +8,11 @@ import { TbCurrencyNaira } from "react-icons/tb";
 import { formatMoney } from "@/src/lib/utils";
 import { useRouter } from "next/navigation";
 import { usePathname, useSearchParams } from "next/navigation";
-import { GetBookingDetails } from "@/src/lib/request-handlers/bookingMgt";
+import { GetBookingDetails, UpdateBookingDetails } from "@/src/lib/request-handlers/bookingMgt";
 import Loader from "../../loader";
+import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
+import Spinner from "../../ui/Spinner";
 
 export default function EditBookingDetails({
     handleEditMode,
@@ -23,9 +26,11 @@ export default function EditBookingDetails({
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
+    const { user } = useAuth();
     const [details, setDetails] = useState<IBooking>(bookingData);
     const [status, setStatus] = useState<BookingStatus>(bookingData?.status??BookingStatus.COMPLETED)
     const { data: bookingDetails, isLoading } = GetBookingDetails(bookingId);
+    const { mutate, isPending } = UpdateBookingDetails();
 
     const removeParam = (param: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -38,13 +43,27 @@ export default function EditBookingDetails({
 
     const formik = useFormik({
         initialValues: {
-            startDate: details?.startDate??'',
-            endDate: details?.endDate??'',
-            guestsCount: details?.guestsCount??0,
-            unitCount: details?.unitCount??0,
-            totalPrice: details?.totalPrice??0,
+            unit_id: details?.id??bookingId,
+            start_date: details?.startDate??'',
+            end_date: details?.endDate??'',
+            guests_count: details?.guestsCount??0,
+            unit_count: details?.unitCount??0,
+            status: details?.status??bookingData?.status,
         },
-        onSubmit: async (values, { setSubmitting }) => {}
+        onSubmit: async (values) => {
+            mutate(
+                {
+                    bookingId,
+                    payload: { ...values }
+                },
+                {
+                    onSuccess: () => {
+                        removeParam('edit'); 
+                        handleEditMode(false)
+                    }
+                }
+            )
+        }
     })
 
     useEffect(() => {
@@ -71,8 +90,8 @@ export default function EditBookingDetails({
                                 <input
                                     id="start-date"
                                     type="date" 
-                                    value={formik.values.startDate}
-                                    onChange={(e) => formik.setFieldValue('startDate', (e.target.value))}
+                                    value={formik.values.start_date}
+                                    onChange={(e) => formik.setFieldValue('start_date', (e.target.value))}
                                     className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
                                 />
                             </div>
@@ -87,8 +106,8 @@ export default function EditBookingDetails({
                                 <input
                                     id="end-date"
                                     type="date" 
-                                    value={formik.values.endDate}
-                                    onChange={(e) => formik.setFieldValue('endDate', (e.target.value))}
+                                    value={formik.values.end_date}
+                                    onChange={(e) => formik.setFieldValue('end_date', (e.target.value))}
                                     className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
                                 />
                             </div>
@@ -104,8 +123,8 @@ export default function EditBookingDetails({
                                     id="guests"
                                     type="number" 
                                     placeholder="0" 
-                                    value={formik.values.guestsCount}
-                                    onChange={(e) => formik.setFieldValue('guestsCount', (e.target.value))}
+                                    value={formik.values.guests_count}
+                                    onChange={(e) => formik.setFieldValue('guests_count', (e.target.value))}
                                     className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
                                 />
                             </div>
@@ -122,25 +141,27 @@ export default function EditBookingDetails({
                                     id="units"
                                     type="number"
                                     placeholder="0" 
-                                    value={formik.values.unitCount}
-                                    onChange={(e) => formik.setFieldValue('unitCount', (e.target.value))}
+                                    value={formik.values.unit_count}
+                                    onChange={(e) => formik.setFieldValue('unit_count', (e.target.value))}
                                     className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
                                 />
                             </div>
                         </div>
                         
-                        
-                        <div className=" relative">
-                            <div className="text-zinc-500 text-sm flex gap-3 items-center">
-                                <HiOutlineTicket  color="#191919" className="size-5"/>
-                                <label htmlFor="end-date" className="text-lg zinc-900 font-medium mt-1">Status</label>
+                        {
+                            user && user.role === UserRole.ADMIN &&
+                            <div className=" relative">
+                                <div className="text-zinc-500 text-sm flex gap-3 items-center">
+                                    <HiOutlineTicket  color="#191919" className="size-5"/>
+                                    <label htmlFor="end-date" className="text-lg zinc-900 font-medium mt-1">Status</label>
+                                </div>
+                                <CustomDropdown
+                                    selected={status}
+                                    handleSelection={(val) => formik.setFieldValue('status', (val))}
+                                    options={Object.values(BookingStatus)}
+                                />
                             </div>
-                            <CustomDropdown
-                                selected={status}
-                                handleSelection={(val) => setStatus(val)}
-                                options={Object.values(BookingStatus)}
-                            />
-                        </div>
+                        }
 
 
 
@@ -156,10 +177,10 @@ export default function EditBookingDetails({
                             </div>
                         </div>
                         <div className="w-3/6 flex justify-end items-center gap-6">
-                            <button type="button" onClick={() => {removeParam('edit'); handleEditMode(false)}} className="border border-teal-700 bg-transparent text-teal-700 hover:text-white hover:bg-teal-800 rounded-lg px-5 py-2.5  text-lg font-medium">
-                                Save
+                            <button type="button" onClick={() => formik.handleSubmit()} disabled={isPending||isLoading} className="border border-teal-700 bg-transparent text-teal-700 hover:text-white hover:bg-teal-800 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
+                                {isPending ? <Spinner /> : 'Save'}
                             </button>
-                            <button type="button" onClick={() => {removeParam('edit'); handleEditMode(false)}} className="bg-zinc-500 text-white hover:bg-zinc-400 rounded-lg px-5 py-2.5  text-lg font-medium">
+                            <button type="button" onClick={() => {removeParam('edit'); handleEditMode(false)}} disabled={isPending||isLoading} className="bg-zinc-500 text-white hover:bg-zinc-400 rounded-lg px-5 py-2.5  text-lg font-medium  disabled:opacity-75 disabled:cursor-not-allowed">
                                 Cancel
                             </button>
                         </div>

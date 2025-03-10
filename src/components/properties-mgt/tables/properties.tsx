@@ -12,6 +12,8 @@ import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import { LuEye } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
+import { FiPlus } from "react-icons/fi";
+import Link from "next/link";
 
 export default function PropertiesTable() {
     const [page, setPage] = useState<number>(1);
@@ -89,12 +91,15 @@ export default function PropertiesTable() {
                             <FilterIcon className="w-5" color="black" />
                         </div>
                     </div>
-                    <button className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-48 p-1.5 h-10">
+                    <Link
+                        href={`${PAGE_ROUTES.dashboard.propertyManagement.allProperties.create}`}
+                        className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-44 p-1.5 h-10"
+                    >
+                        <FiPlus className="w-4" color="white"/>
                         <p className="text-sm">
-                            Print CSV
+                            New property
                         </p>
-                        <PrinterIcon className="w-4" color="white"/>
-                    </button>
+                    </Link>
                 </div>
 
                 {

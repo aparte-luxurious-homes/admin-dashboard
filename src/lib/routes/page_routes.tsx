@@ -31,13 +31,14 @@ export const PAGE_ROUTES = {
             },
             bookings: {
                 base: '/booking-management/bookings',
+                create: '/booking-management/bookings/create',
                 details: (id: number) => `/booking-management/bookings/${id}`,
             },
         },
         propertyManagement: {
             allProperties: {
                 base: '/property-management/all-properties',
-                create: '/property-management/create-property',
+                create: '/property-management/create',
                 details: (id: number) => `/property-management/all-properties/${id}`,
                 units: {
                     base: (propertyId: number) => `/property-management/all-properties/${propertyId}/units`,

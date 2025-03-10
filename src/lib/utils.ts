@@ -28,11 +28,24 @@ export function formatDate(dateString: string): string {
   return `${month} ${day}${suffix}, ${date.getFullYear()}`;
 }
 
+
+export function formatDateToYYYYMMDD(dateString: string): string {
+  const date = new Date(dateString);
+  
+  if (isNaN(date.getTime())) {
+      throw new Error("Invalid date format");
+  }
+
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${year}-${month}-${day}`;
+}
+
 export function getDayDifference(date1: string, date2: string): number {
   const d1 = new Date(date1);
   const d2 = new Date(date2);
-  console.log(d1)
-  console.log(d2)
   console.log(Math.abs(Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))))
   return Math.abs(Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
 }

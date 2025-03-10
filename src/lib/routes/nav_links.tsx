@@ -72,12 +72,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.base,
                 allow: Object.values(UserRole),
             },
-            {
-                name: 'Assign agents',
-                pathName: 'assign-agents',
-                link: PAGE_ROUTES.dashboard.propertyManagement.assignAgents.base,
-                allow: [UserRole.ADMIN],
-            },
+            // {
+            //     name: 'Create property',
+            //     pathName: 'create',
+            //     link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.create,
+            //     allow: [UserRole.ADMIN, UserRole.OWNER],
+            // },
             {
                 name: 'Manage verifications',
                 pathName: 'manage-verifications',
