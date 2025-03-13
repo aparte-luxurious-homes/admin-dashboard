@@ -44,6 +44,7 @@ export const PAGE_ROUTES = {
                     base: (propertyId: number) => `/property-management/all-properties/${propertyId}/units`,
                     create: (propertyId: number) => `/property-management/all-properties/${propertyId}/create-unit`,
                     details: (propertyId: number, unitId: number) => `/property-management/all-properties/${propertyId}/units/${unitId}`,
+                    bookings: (propertyId: number, unitId: number) => `/property-management/all-properties/${propertyId}/units/${unitId}/bookings`,
                 }
             },
             assignAgents: {

@@ -13,6 +13,7 @@ import Loader from "../../loader";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../../ui/Spinner";
+import { toast } from "react-hot-toast";
 
 export default function EditBookingDetails({
     handleEditMode,
@@ -60,6 +61,16 @@ export default function EditBookingDetails({
                     onSuccess: () => {
                         removeParam('edit'); 
                         handleEditMode(false)
+                    },
+                    onError: (error) => {
+                        console.error(error);
+                        toast.error(error.message, {
+                            duration: 6000,
+                            style: {
+                              maxWidth: '500px',
+                              width: 'max-content'
+                            }
+                        });
                     }
                 }
             )

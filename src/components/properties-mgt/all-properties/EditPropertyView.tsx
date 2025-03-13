@@ -30,7 +30,6 @@ import toast from "react-hot-toast";
 import { usePathname } from 'next/navigation';
 
 
-
 export default function EditPropertyView({  
     handleEditMode,
     propertyData,
@@ -114,9 +113,24 @@ export default function EditPropertyView({
                 },
                 {
                     onSuccess: () => {
+                        toast.success('Property update successfull', {
+                            duration: 6000,
+                            style: {
+                                maxWidth: '500px',
+                                width: 'max-content'
+                            }
+                        }),
                         removeParam('edit')
                         handleEditMode(false);
-                    }
+                    },
+                    onError: () => 
+                        toast.error('Something went wrong, Please try again later', {
+                            duration: 6000,
+                            style: {
+                                maxWidth: '500px',
+                                width: 'max-content'
+                            }
+                        }),
                 })            
             },
         }
@@ -382,10 +396,31 @@ export default function EditPropertyView({
                                     formData.append("media_type", MediaType.IMAGE);
                                     formData.append("is_featured", "true");
 
-                                    uploadMedia({
-                                        propertyId: propertyData.id, 
-                                        payload: formData,
-                                    });
+                                    uploadMedia(
+                                        {
+                                            propertyId: propertyData.id, 
+                                            payload: formData,
+                                        },
+                                        {
+                                            onSuccess: () => 
+                                                toast.success('Property media uploaded successfully', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+                                            onError: (error: any) => 
+                                                toast.error(error.status === 422 ? 'Media file(s) include invalid format' : 'Media upload failed', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+
+                                        }
+                                    );
 
                                 } }
                                 className={`flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75`}

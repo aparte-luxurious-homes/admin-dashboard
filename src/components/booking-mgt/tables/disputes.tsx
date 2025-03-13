@@ -177,7 +177,7 @@ export default function VerificationsTable() {
                                                         checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
                                                     `}
                                                 /> */}
-                                                <p className="pt-1">
+                                                <p className="pt-1 pl-5">
                                                     The Hut
                                                 </p>  
                                             </td>

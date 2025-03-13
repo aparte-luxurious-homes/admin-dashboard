@@ -29,6 +29,9 @@ import { IoGameControllerOutline } from "react-icons/io5";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { useSearchParams } from 'next/navigation';
+import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
+import { Icon } from "@iconify/react/dist/iconify.js";
 
 
 
@@ -37,7 +40,7 @@ export default function PropertyDetailsView({
     }: {
         propertyId: number;
     }) {
-
+    const  { user } = useAuth();
     const dispatch = useDispatch();
     const { data, isLoading } = GetSingleProperty(propertyId)
     const { data: fetchedAmenites } = GetAmenities();
@@ -115,6 +118,15 @@ export default function PropertyDetailsView({
                             <Skeleton className="h-20 w-full" />
                         </div>
                     </div>
+                    : !isLoading && !property ?
+                    <p className="size-full text-center text-gray-500 pt-10 self-center">
+                        <div className="m-auto w-fit">
+                            <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
+                        </div>
+                        <p className="text-center text-gray-500">
+                            Error loading unit
+                        </p>
+                    </p>
                     :
                     <>
                         <div className="w-full relative">
@@ -198,7 +210,7 @@ export default function PropertyDetailsView({
                                 </div>
 
                                 {
-                                    !property?.isFeatured &&
+                                    !property?.isFeatured && property?.isVerified &&
                                     <div className="flex justify-between items-center gap-4 mt-7 mb-5 w-full px-4 py-3 border-dashed border-2 border-zinc-400 rounded-lg">
                                         <p className="text-xl text-zinc-500">
                                             This property has not been listed on the market yet! <span onClick={() => setShowVerification(true)} className="cursor-pointer pl-1 text-zinc-800"><u>View verification</u></span>
@@ -207,7 +219,7 @@ export default function PropertyDetailsView({
                                         {
                                             isPending ?
                                             <Spinner />
-                                            :
+                                            : user.role === UserRole.ADMIN &&
                                             <div className="flex justify-center items-center gap-5">
                                                 <button onClick={() => mutate({ propertyId: property?.id })} disabled={isPending}  className="cursor-pointer  flex gap-3 items-center border border-teal-800 rounded-lg px-5 py-1.5 text-lg text-teal-800 hover:bg-teal-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:bg-transparent">
                                                     <span>Publish</span>
@@ -262,6 +274,9 @@ export default function PropertyDetailsView({
                                                     </div>
                                                 </Link>
                                             )
+                                        }
+                                        {
+                                            property?.units.length === 0 && <em className="text-sm text-zinc-700 mt-4">You haven't created units for this property</em>
                                         }
                                         {
                                             property?.units.length > 5 && 

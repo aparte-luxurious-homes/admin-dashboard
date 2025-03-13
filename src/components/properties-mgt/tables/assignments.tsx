@@ -136,8 +136,8 @@ export default function AssignmentsTable() {
                                             Assigned on
                                         </p>
                                     </th>
-                                    <th className="bg-[#0280901A] h-10">{' '}</th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
+                                    <th className="bg-[#0280901A] h-10">{''}</th>
+                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl  w-3">{''}</th>
                                 </tr>
                             </thead>
                             <tbody className="text-[13px]">
@@ -149,7 +149,7 @@ export default function AssignmentsTable() {
                                             className="hover:bg-background/50 cursor-pointer"  
                                             // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
                                         >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
+                                            <td className="border-b border-b-gray-200">
                                                 {/* <input 
                                                     type="checkbox"
                                                     className={`
@@ -157,7 +157,7 @@ export default function AssignmentsTable() {
                                                         checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
                                                     `}
                                                 /> */}
-                                                <p className="pt-1">
+                                                <p className="pt-1 pl-5">
                                                     APRT-20356
                                                 </p>  
                                             </td>
