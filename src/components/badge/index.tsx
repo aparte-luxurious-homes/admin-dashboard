@@ -13,6 +13,7 @@ const Badge: React.FC<BadgeProps> = ({ status }) => {
     status === true ? "Verified" : 
     status === false ? "Rejected" : 
     status === "verified" ? "Verified" :
+    status === "successful" ? "Successful" :
     status === "pending" ? "Pending" :
     status === "rejected" ? "Rejected" :
     "";
