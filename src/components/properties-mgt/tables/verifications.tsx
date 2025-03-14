@@ -156,8 +156,8 @@ export default function VerificationsTable() {
                                             Status
                                         </p>
                                     </th>
-                                    <th className="bg-[#0280901A] h-10">{' '}</th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
+                                    <th className="bg-[#0280901A] h-10">{''}</th>
+                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl  w-3">{' '}</th>
                                 </tr>
                             </thead>
                             <tbody className="text-[13px]">
@@ -177,7 +177,7 @@ export default function VerificationsTable() {
                                                         checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
                                                     `}
                                                 /> */}
-                                                <p className="pt-1">
+                                                <p className="pt-1 pl-5">
                                                     The Hut
                                                 </p>  
                                             </td>

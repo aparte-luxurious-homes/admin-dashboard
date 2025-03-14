@@ -114,9 +114,24 @@ export default function EditUnitView({
             },
             {
                 onSuccess: () => {
+                    toast.success('Property created successfully', {
+                        duration: 6000,
+                        style: {
+                            maxWidth: '500px',
+                            width: 'max-content'
+                        }
+                    })
                     removeParam('edit');
                     handleEditMode(false);
-                }
+                },
+                onError: () => 
+                    toast.error('Something went wrong', {
+                        duration: 6000,
+                        style: {
+                            maxWidth: '500px',
+                            width: 'max-content'
+                        }
+                    })
             })
         },
     });
@@ -156,9 +171,17 @@ export default function EditUnitView({
                                         width: 'max-content'
                                     }
                                 });
-                                if (response.status === 204) 
-                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(unit.propertyId))
-                            }
+                                
+                                router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(unit.propertyId))
+                            },
+                            onError: () => 
+                                toast.error('Something went wrong', {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                }),
                         }
                     )
                 },
@@ -368,20 +391,41 @@ export default function EditUnitView({
                                     formData.append("media_type", MediaType.IMAGE);
                                     formData.append("is_featured", "true");
 
-                                    uploadMedia({
-                                        propertyId: unit.propertyId,
-                                        unitId: unit.id,
-                                        payload: formData,
-                                    });
+                                    uploadMedia(
+                                        {
+                                            propertyId: unit.propertyId,
+                                            unitId: unit.id,
+                                            payload: formData,
+                                        },
+                                        {
+                                            onSuccess: () =>
+                                                toast.success('Media file(s) uplodaed successfully', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
 
-                                } }
+                                            onError: (error: any) => 
+                                                toast.error(error.status === 422 ? 'Media file(s) include Invalid format' : 'Media upload failed', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+                                        }
+                                    );
+
+                                }}
                                 className={`flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75`}
                                 disabled={uploadedMediaPending}
                             >
                                 {
                                     uploadedMediaPending ? 
                                     <Spinner /> 
-                                    : 
+                                    :
                                     <>
                                         <IoCloudUploadOutline className="text-2xl text-medium"/>
                                         <span>

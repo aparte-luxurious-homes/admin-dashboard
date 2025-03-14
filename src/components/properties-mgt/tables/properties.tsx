@@ -12,11 +12,16 @@ import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import { LuEye } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
+import { FiPlus } from "react-icons/fi";
+import Link from "next/link";
+import { Icon } from "@iconify/react/dist/iconify.js";
+import { useAuth } from "@/src/hooks/useAuth";
 
 export default function PropertiesTable() {
+    const { user } = useAuth();
     const [page, setPage] = useState<number>(1);
     const [searchTerm , setSearchTerm] = useState<string>("");
-    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm);
+    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user.role!, user.id!);
     const [propertyList, setPropertyList] = useState<IProperty[]>(properties?.data?.data?.data);
     const router = useRouter();
 
@@ -89,18 +94,21 @@ export default function PropertiesTable() {
                             <FilterIcon className="w-5" color="black" />
                         </div>
                     </div>
-                    <button className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-48 p-1.5 h-10">
+                    <Link
+                        href={`${PAGE_ROUTES.dashboard.propertyManagement.allProperties.create}`}
+                        className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-44 p-1.5 h-10"
+                    >
+                        <FiPlus className="w-4" color="white"/>
                         <p className="text-sm">
-                            Print CSV
+                            New property
                         </p>
-                        <PrinterIcon className="w-4" color="white"/>
-                    </button>
+                    </Link>
                 </div>
 
                 {
                     isLoading ?
                     <Loader />
-                    :
+                    : propertyList  && propertyList.length > 0 ?
                     <div className="w-full mt-6">
                         <table className="w-full border-collapse">
                             <thead className="">
@@ -147,8 +155,8 @@ export default function PropertiesTable() {
                                             Submission date
                                         </p>
                                     </th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
+                                    <th className="bg-[#0280901A] h-10">{''}</th>
+                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl w-3">{''}</th>
                                 </tr>
                             </thead>
                             <tbody className="text-[13px]">
@@ -156,7 +164,7 @@ export default function PropertiesTable() {
                                     propertyList &&
                                     propertyList?.map((property, index) => (
                                         <tr key={index} className="hover:bg-background/50 cursor-pointer"  onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}>
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b-2 border-b-gray-200">
+                                            <td className="border-b-2 border-b-gray-200">
                                                 {/* <input 
                                                     type="checkbox"
                                                     className={`
@@ -164,7 +172,7 @@ export default function PropertiesTable() {
                                                         checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
                                                     `}
                                                 /> */}
-                                                <p className="pt-1">
+                                                <p className="pt-1 pl-5">
                                                     APT25-{property?.id}
                                                 </p>  
                                             </td>
@@ -193,9 +201,16 @@ export default function PropertiesTable() {
                                                 </div>
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
-                                                <p className="pt-1 ">
-                                                    {`${property?.agent?.profile?.firstName??'Thomas'} ${property?.agent?.profile?.lastName??'Alexander'}`}
-                                                </p>
+                                                {
+                                                    property?.agent ?
+                                                    <p className="pt-1 ">
+                                                        {`${property?.agent?.profile?.firstName??'Thomas'} ${property?.agent?.profile?.lastName??'Alexander'}`}
+                                                    </p>
+                                                    :
+                                                    <p className='pl-8'>
+                                                        {'N/A'}
+                                                    </p>
+                                                }
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
                                                 {formatDate(property?.verifications?.createdAt??"02-03-2024")}
@@ -211,6 +226,22 @@ export default function PropertiesTable() {
                             </tbody>
                         </table>
                     </div>
+                    : propertyList && propertyList.length === 0 ? 
+                    <div className="size-full m-auto text-center">
+                        <div className="m-auto w-fit">
+                            <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                        </div>
+                        <p className="text-center text-gray-500 pt-10">No properties found</p>
+                    </div>
+                    : 
+                    <p className="size-full text-center text-gray-500 pt-10 self-center">
+                        <div className="m-auto w-fit">
+                            <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
+                        </div>
+                        <p className="text-center text-gray-500">
+                            Error loading properties
+                        </p>
+                    </p>
                 }
             </div>
 

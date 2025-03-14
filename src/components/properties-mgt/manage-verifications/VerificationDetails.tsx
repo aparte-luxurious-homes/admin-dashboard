@@ -189,7 +189,7 @@ export default function VerifcationDetails({
                 <section className='my-10 w-full px-10'>
                     <div className='w-full flex justify-end items-center gap-4'>
                         {/* pending | rejected ? */}
-                        <button type='button'  className="border border-teal-700 bg-transparent text-teal-700 hover:text-white hover:bg-teal-800 rounded-lg px-5 py-2.5  text-lg font-medium">
+                        <button type='button'  className="border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium">
                             Verify 
                         </button>
                         {/* verified | pending ? */}

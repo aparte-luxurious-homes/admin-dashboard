@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import Link from "next/link";
 import { BsHouses } from "react-icons/bs";
+import toast from "react-hot-toast";
 
 
 export default function CreateUnitView({ propertyId } : { propertyId: number }) {
@@ -105,16 +106,45 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             formData.append("media_type", MediaType.IMAGE);
                             formData.append("is_featured", "true");
 
-                            uploadMedia({
-                                propertyId,
-                                unitId,
-                                payload: formData,
-                            });
+                            uploadMedia(
+                                {
+                                    propertyId,
+                                    unitId,
+                                    payload: formData,
+                                },
+                                {
+                                    onError: (error: any) => 
+                                        toast.error(error.status === 422 ? 'Media file(s) include Invalid format' : 'Media upload failed', {
+                                            duration: 6000,
+                                            style: {
+                                                maxWidth: '500px',
+                                                width: 'max-content'
+                                            }
+                                        }),
+                                }
+                            );
+
+                            
+                            toast.success('Property unit created successfully', {
+                                duration: 6000,
+                                style: {
+                                    maxWidth: '500px',
+                                    width: 'max-content'
+                                }
+                            })
                         }
                     }
 
                     router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(propertyId, unitId))
-                }
+                },
+                onError: () => 
+                    toast.error('Something went wrong', {
+                        duration: 6000,
+                        style: {
+                            maxWidth: '500px',
+                            width: 'max-content'
+                        }
+                    })
             })         
         },
     });

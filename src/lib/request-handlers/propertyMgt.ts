@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
 import { IAssignAmenity, ICreateProperty, IUpdateProperty, IUpdatePropertyVerification, IUploadPropertyMedia } from "@/src/components/properties-mgt/types";
+import { UserRole } from "../enums";
 
 enum PropertyRequestKeys {
     allProperties = "getAllPropertiesView",
@@ -16,11 +17,11 @@ enum PropertyRequestKeys {
     deleteProperty = "deleteProperty",
 }
 
-export function GetAllProperties(page=1, limit=10, searchTerm='') {
+export function GetAllProperties(page=1, limit=10, searchTerm='', role?: UserRole, id?: number) {
     return useQuery({
-        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm], 
+        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role, id], 
         queryFn: () => axiosRequest.get(
-            `${API_ROUTES.propertyManagement.properties.base}?page=${page}&limit=${limit}&search=${searchTerm}`
+            `${API_ROUTES.propertyManagement.properties.base}?page=${page}&limit=${limit}&search=${searchTerm}&role=${role}&user=${id}`
         ),
         refetchOnWindowFocus: true,
         staleTime: Infinity,

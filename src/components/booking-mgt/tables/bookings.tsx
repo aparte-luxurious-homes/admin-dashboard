@@ -12,12 +12,18 @@ import { LuEye } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import Link from "next/link";
+import { FiPlus } from "react-icons/fi";
+import { Icon } from "@iconify/react/dist/iconify.js";
 
-export default function BookingsTable() {
-
+export default function BookingsTable({
+    unitId
+}: {
+    unitId?: number
+}) {
     const [page, setPage] = useState<number>(1);
     const [searchTerm , setSearchTerm] = useState<string>("");
-    const { data: bookings, isLoading } = GetAllBookings(page, 10, searchTerm);
+    const { data: bookings, isLoading } = GetAllBookings(page, 10, searchTerm, unitId);
     const [bookingList, setBookingList] = useState<IBooking[]>(bookings?.data?.data?.data);
     const router = useRouter();
 
@@ -80,26 +86,24 @@ export default function BookingsTable() {
                             <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="border border-zinc-500/20 bg-background rounded-lg w-full h-10 p-3 pl-10" placeholder="Search bookings "/>
                             <SearchIcon className="absolute top-[25%] left-3 w-5" color="black" />
                         </div>
-                        <div className="flex justify-center items-center gap-2 border border-zinc-500/20 bg-background hover:bg-zinc-300/70 cursor-pointer rounded-lg h-10 px-3 w-[10%]">
-                            <p className="text-zinc-700 text-base">
-                                Filter
-                            </p>
-                            <FilterIcon className="w-5" color="black" />
-                        </div>
+                        
                     </div>
-                    <button className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-48 p-1.5 h-10">
+                    <Link
+                        href={`${PAGE_ROUTES.dashboard.bookingManagement.bookings.create}`}
+                        className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-44 p-1.5 h-10"
+                    >
+                        <FiPlus className="w-4" color="white"/>
                         <p className="text-sm">
-                            Print CSV
+                            New Booking
                         </p>
-                        <PrinterIcon className="w-4" color="white"/>
-                    </button>
+                    </Link>
                 </div>
 
 
                 {
                     isLoading ?
                     <Loader />
-                    :
+                    : bookingList && bookingList?.length > 0 ?
                     <div className="w-full mt-6">
                         <table className="w-full border-collapse">
                             <thead className="">
@@ -146,8 +150,8 @@ export default function BookingsTable() {
                                             Booking date
                                         </p>
                                     </th>
-                                    <th className="bg-[#0280901A] h-10 ">{' '}</th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
+                                    <th className="bg-[#0280901A] h-10">{''}</th>
+                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl  w-3">{''}</th>
                                 </tr>
                             </thead>
                             <tbody className="text-[13px]">
@@ -157,7 +161,7 @@ export default function BookingsTable() {
                                         <tr key={index} className="hover:bg-background/50 cursor-pointer" 
                                             onClick={() => router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(booking?.id))} 
                                         >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b-2 border-b-gray-200">
+                                            <td className="border-b-2 border-b-gray-200">
                                                 {/* <input 
                                                     type="checkbox"
                                                     className={`
@@ -165,7 +169,7 @@ export default function BookingsTable() {
                                                         checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
                                                     `}
                                                 /> */}
-                                                <p className="pt-1 truncate max-w-36">
+                                                <p className="pt-1 pl-5 truncate max-w-36">
                                                     {booking?.bookingId}
                                                 </p>  
                                             </td>
@@ -202,6 +206,22 @@ export default function BookingsTable() {
                             </tbody>
                         </table>
                     </div>
+                    : bookingList && bookingList.length === 0 ? 
+                    <div className="size-full m-auto text-center">
+                        <div className="m-auto w-fit">
+                            <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                        </div>
+                        <p className="text-center text-gray-500 pt-10">No bookings found for this unit</p>
+                    </div>
+                    : 
+                    <p className="size-full text-center text-gray-500 pt-10 self-center">
+                        <div className="m-auto w-fit">
+                            <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
+                        </div>
+                        <p className="text-center text-gray-500">
+                            Error loading bookings
+                        </p>
+                    </p>
                 }
 
             </div>

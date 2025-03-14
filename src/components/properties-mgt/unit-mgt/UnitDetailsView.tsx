@@ -157,6 +157,11 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                         <p className="text-sm font-medium text-zinc-600">
                                             Per night
                                         </p>
+                                        <span className="underline text-primary/90 italic text-sm hover:text-primary mt-1">
+                                            <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.bookings(propertyUnit?.propertyId, propertyUnit?.id)}>
+                                                See bookings
+                                            </Link>
+                                        </span>
                                     </div>
                                 </div>
 
@@ -234,8 +239,6 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: nu
                                                 </div>
                                             )
                                         }
-
-
                                     </div>
 
                                 </div>
