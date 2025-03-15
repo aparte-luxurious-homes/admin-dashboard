@@ -10,7 +10,14 @@ import {
   Legend,
 } from "chart.js";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const chartOptions = {
   responsive: true,
@@ -54,7 +61,11 @@ const UsersChart: React.FC<UsersChartProps> = ({ range, data }) => {
     ],
   };
 
-  return <Bar data={chartData} options={chartOptions} />;
+  return (
+    <div className="h-[200px] w-full">
+      <Bar data={chartData} options={chartOptions} className="h-full w-full" />
+    </div>
+  );
 };
 
 export default UsersChart;

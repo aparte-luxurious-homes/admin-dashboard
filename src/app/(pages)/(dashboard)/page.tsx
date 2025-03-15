@@ -27,14 +27,16 @@ interface Agent {
   verificationToken: string | null;
 }
 
-interface Owner {
-  id: number;
-  email: string;
-  phone: string;
-  role: string;
-  verificationToken: string | null;
+interface OwnerProfile {
+  firstName: string;
+  lastName: string | null;
+  userId: number;
 }
-
+interface Owner {
+  email: string;
+  id: number;
+  profile: OwnerProfile;
+}
 interface Amenities {
   id: number;
   name: string;
@@ -66,10 +68,16 @@ interface Property {
   amenities: Amenities[];
   createdAt: string;
 }
-// interface AgentData {
-//   agentName: string;
-//   verifiedCount: number;
-// }
+interface Agent {
+  id: number;
+  name: string;
+}
+
+interface TopListing {
+  propertyId: number;
+  agent: Agent;
+  totalVerifiedProperties: number;
+}
 
 interface StatsData {
   totalPayments: TotalStats;
@@ -77,7 +85,7 @@ interface StatsData {
   totalProperties: TotalPropertiesStats;
   users: MonthlyUserStats[];
   properties: MonthlyPropertyStats[];
-  topListings: Record<string, number>;
+  topListings: TopListing[];
 }
 
 interface TotalStats {
@@ -104,7 +112,7 @@ interface MonthlyPropertyStats {
 
 const Home = () => {
   const [searchResult, setSearchResult] = useState<Property[]>([]);
-  const allAgents = topAgents;
+  // const allAgents = topAgents;
   const [properties, setProperties] = useState<Property[]>([]);
   const [stats, setStats] = useState<StatsData>({} as StatsData);
   const [loading, setLoading] = useState(false);
@@ -202,7 +210,7 @@ const Home = () => {
       field: "owner", 
       headerName: "Owner's Name", 
       width: 150, 
-      renderCell: (params) => `${params.row?.owner?.name || "--/--"}`
+      renderCell: (params) => `${params.row?.owner?.profile?.lastName || ""} ${params.row?.owner?.profile?.firstName}`
     },
     {
       field: "meta",
@@ -308,7 +316,7 @@ const Home = () => {
       field: "owner", 
       headerName: "Owner's Name", 
       width: 150, 
-      renderCell: (params) => `${params.row?.owner?.name || "--/--"}`
+      renderCell: (params) => `${params.row?.owner?.profile?.lastName || ""} ${params.row?.owner?.profile?.firstName}`
     },
     {
       field: "meta",
@@ -331,7 +339,6 @@ const Home = () => {
       headerName: "Verification Status",
       width: 100,
       renderCell: (params) => {
-        console.log("Badge", params.value);
         return <Badge status={params.value} />;
       },
     },
@@ -350,27 +357,70 @@ const Home = () => {
   ];
 
   const topAgentColumns: GridColDef[] = [
-    { field: "agentName", headerName: "Agent Name", width: 90 },
-    { field: "verifiedCount", headerName: "Verified Listing", width: 120 },
+    {
+      field: "agent",
+      headerName: "Agent Name",
+      width: 110,
+      renderCell: (params) => params?.row?.agent?.name || "--/--",
+    },
+    {
+      field: "totalVerifiedProperties",
+      headerName: "Verified Listing",
+      width: 120,
+      renderCell: (params) => params?.row?.totalVerifiedProperties || "--/--",
+    }
   ];
 
-  // --| Filter Property table using name, state and and all
   const handleSearchProperty = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     setSearchValue(value);
-
-    const valArray = value.split(" ");
-    // --| Filter data by partial match onchange in the search input box
-    const result = properties?.filter((data) => 
-      valArray?.every((word: string) => 
-        data?.name?.toLowerCase().includes(word.toLowerCase()) ||
-        data?.propertyType?.toLowerCase().includes(word.toLowerCase()) ||
-        data?.propertyType?.toLowerCase().includes(word.toLowerCase()) ||
-        data?.agent?.email?.toLowerCase().includes(word.toLowerCase())
-      )
-    );
+  
+    const valArray = value.toLowerCase().split(" ");
+  
+    // --| Filter properties based on search input
+    const result = properties?.filter((data) => {
+      const matchesAnyKeyword = valArray.some((word) => {
+        if (word === "verified") {
+          return data?.isVerified === true;
+        }
+  
+        return (
+          data?.name?.toLowerCase().includes(word.toLowerCase()) ||
+          data?.owner?.profile?.lastName?.toLowerCase().includes(word.toLowerCase()) ||
+          data?.owner?.email?.toLowerCase().includes(word.toLowerCase()) ||
+          data?.owner?.profile?.firstName?.toLowerCase().includes(word.toLowerCase()) ||
+          data?.state?.toLowerCase().includes(word.toLowerCase()) ||
+          data?.propertyType?.toLowerCase().includes(word.toLowerCase()) ||
+          data?.agent?.email?.toLowerCase().includes(word.toLowerCase())
+        );
+      });
+  
+      return matchesAnyKeyword;
+    });
+  
     setSearchResult(result);
   };
+  
+  // --| Filter Property table using name, state and and all
+  // const handleSearchProperty = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const { value } = e.target;
+  //   setSearchValue(value);
+
+  //   const valArray = value.split(" ");
+  //   // --| Filter data by partial match onchange in the search input box
+  //   const result = properties?.filter((data) => 
+  //     valArray?.every((word: string) => 
+  //       data?.name?.toLowerCase().includes(word.toLowerCase()) ||
+  //       data?.owner?.profile?.lastName?.toLowerCase().includes(word.toLowerCase()) ||
+  //       data?.owner?.email?.toLowerCase().includes(word.toLowerCase()) ||
+  //       data?.owner?.profile?.firstName?.toLowerCase().includes(word.toLowerCase()) ||
+  //       data?.state?.toLowerCase().includes(word.toLowerCase()) ||
+  //       data?.propertyType?.toLowerCase().includes(word.toLowerCase()) ||
+  //       data?.agent?.email?.toLowerCase().includes(word.toLowerCase())
+  //     )
+  //   );
+  //   setSearchResult(result);
+  // };
   const labels = stats?.properties?.map((item) => item?.month.slice(0, 3),) || [];
 
   const datasets = [
@@ -387,7 +437,7 @@ const Home = () => {
   ];
 
   return (
-    <div className="full p-2 md:p-10">
+    <div className="full py-6">
       <div className="mb-6">
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
@@ -395,7 +445,7 @@ const Home = () => {
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
                 <StatsCard 
                   title="Total Revenue"
-                  amount={`₦${stats?.totalRevenue?.lastMonthAmount?.toLocaleString()  || "0"}`}
+                  amount={`₦${(stats?.totalRevenue?.lastMonthAmount || 0).toLocaleString()}`}
                   percentage={stats?.totalRevenue?.percentageChange || 0}
                   isIncrease={parseFloat(stats?.totalRevenue?.percentageChange) > 0} 
                 />
@@ -436,7 +486,7 @@ const Home = () => {
                             </div>
                           </div>
                         </div>
-                        <select className="border border-[#D9D9D9] p-1 rounded-[6px]" onChange={(e) => setRange(e.target.value)} value={range}>
+                        <select className="border border-[#D9D9D9] p-1 rounded-[6px] max-[400px]:mb-4" onChange={(e) => setRange(e.target.value)} value={range}>
                           <option value="30days">Last 30 Days</option>
                           <option value="90days">Last 90 Days</option>
                           <option value="year">This Year</option>
@@ -486,9 +536,9 @@ const Home = () => {
           </Grid>
           {user?.role === "OWNER" || user?.role === "ADMIN" ? (
             <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }}>
-              <div className="p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+              <div className="h-full p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                 <h3>Top Performing Agents</h3>
-                <Table columns={topAgentColumns} rows={allAgents} getRowId={(row) => row.agentName} pagination={false} />
+                <Table columns={topAgentColumns} rows={stats?.topListings} getRowId={(row) => row.agent?.id} pagination={false} />
               </div>
             </Grid>
           ) : (
@@ -501,12 +551,15 @@ const Home = () => {
           <Skeleton className="h-[300px] w-full rounded-md" />
         ) : (
           <>
-            <div>
+            <div className="flex items-center gap-4">
               <TableSearch
                 placeholder="Search here..."
                 searchTableFunc={handleSearchProperty}
                 value={searchValue}
               />
+              <div className="bg-[#124452] text-white text-sm px-3 py-2 rounded-md">
+                {searchResult.length} results
+              </div>
             </div>
             {searchResult?.length > 0 ? (
               <Table
