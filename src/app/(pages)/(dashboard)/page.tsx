@@ -18,6 +18,7 @@ import LineChart from "@/src/components/linecharts/linecharts";
 import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link";
+import ItemCount from "@/src/components/item-count/itemcount";
 
 interface Agent {
   id: number;
@@ -557,9 +558,7 @@ const Home = () => {
                 searchTableFunc={handleSearchProperty}
                 value={searchValue}
               />
-              <div className="bg-[#124452] text-white text-sm px-3 py-2 rounded-md">
-                {searchResult.length}
-              </div>
+              <ItemCount count={searchResult?.length} />
             </div>
             {searchResult?.length > 0 ? (
               <Table
