@@ -558,7 +558,7 @@ const Home = () => {
                 value={searchValue}
               />
               <div className="bg-[#124452] text-white text-sm px-3 py-2 rounded-md">
-                {searchResult.length} results
+                {searchResult.length}
               </div>
             </div>
             {searchResult?.length > 0 ? (
