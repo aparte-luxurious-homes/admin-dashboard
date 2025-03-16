@@ -6,7 +6,7 @@ import { FaMapLocationDot } from "react-icons/fa6";
 import { TrashIcon } from "../../icons";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
-import { IAmenity, IProperty, IPropertyMedia, IUpdateProperty, MediaType, PropertyType } from "../types";
+import { IAmenity, IProperty, IPropertyMedia, IUpdateProperty, MediaType, PropertyType, PropertyVerificationStatus } from "../types";
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -303,7 +303,7 @@ export default function EditPropertyView({
                         <div className="w-full flex justify-between gap-10 items-center">
                             <div className="flex flex-col gap-5 justify-between items-left w-fit mt-4">
                                 {
-                                    user.role === UserRole.ADMIN &&
+                                    user.role === UserRole.ADMIN && propertyData?.verifications[0]?.status === PropertyVerificationStatus.VERIFIED &&
                                     <CustomCheckbox 
                                         label="Is verified"
                                         checked={formik.values.isVerified}
@@ -313,7 +313,7 @@ export default function EditPropertyView({
                                 {
                                     user.role === UserRole.ADMIN &&
                                     <CustomCheckbox 
-                                        label="Is Published"
+                                        label="Is Featured"
                                         checked={formik.values.isFeatured}
                                         onChange={(val) => formik.setFieldValue("isFeatured", val)}
                                     />

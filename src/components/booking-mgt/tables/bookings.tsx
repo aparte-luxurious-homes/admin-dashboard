@@ -76,9 +76,14 @@ export default function BookingsTable({
     return (
  
         <div className="w-full p-10">
-            <div className="w-full border border-zinc-500/20 bg-white rounded-xl px-6 py-7 min-h-[72vh] flex flex-col items-center">
+            <div className="w-full border border-zinc-500/20 bg-white rounded-xl px-6 py-7 min-h-[72vh] flex flex-col">
 
-                
+                {/* {
+                    unitId && bookingList &&
+                    <p className='text-2xl font-medium my-3'>
+                        {bookingList[0]?.unit?.property?.name} - <span className="font-normal">{bookingList[0]?.unit?.name}</span>
+                    </p>
+                } */}
                 <div className="w-full flex justify-between items-center">
                     <div className="w-[80%] flex items-center gap-5">
                         <p className="text-2xl font-medium mr-10">All Bookings</p>
@@ -122,7 +127,7 @@ export default function BookingsTable({
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium text-left">
                                         <p>
-                                            Property
+                                            Unit
                                         </p>
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium text-left">
@@ -227,7 +232,7 @@ export default function BookingsTable({
             </div>
 
             {/* Modal */}
-            {selectedRow !== null && modalPosition && (
+            {selectedRow !== 0 && modalPosition && (
                 <div
                     ref={modalRef}
                     className="absolute bg-white shadow-md rounded-md z-50 border border-gray-300 w-[9em]"

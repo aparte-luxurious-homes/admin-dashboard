@@ -59,6 +59,13 @@ export default function EditBookingDetails({
                 },
                 {
                     onSuccess: () => {
+                        toast.success('Booking updated successfully', {
+                            duration: 6000,
+                            style: {
+                              maxWidth: '500px',
+                              width: 'max-content'
+                            }
+                        });
                         removeParam('edit'); 
                         handleEditMode(false)
                     },
@@ -167,7 +174,7 @@ export default function EditBookingDetails({
                                     <label htmlFor="end-date" className="text-lg zinc-900 font-medium mt-1">Status</label>
                                 </div>
                                 <CustomDropdown
-                                    selected={status}
+                                    selected={formik.values.status}
                                     handleSelection={(val) => formik.setFieldValue('status', (val))}
                                     options={Object.values(BookingStatus)}
                                 />

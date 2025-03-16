@@ -1,6 +1,14 @@
 import { IUser } from "@/src/lib/types"
 import { IAvailability, IBooking } from "../booking-mgt/types"
 
+
+export type VerificationBageProps = {
+    status: PropertyVerificationStatus | string;
+    textColour?: string;
+    backgroundColour?: string;
+    classNames?: string;
+}
+
 export enum PropertyVerificationStatus {
     PENDING = 'PENDING',
     VERIFIED = 'VERIFIED',
@@ -128,7 +136,7 @@ export interface IProperty {
     owner: IUser
     agent: IUser
     units: IPropertyUnit[]
-    verifications: IPropertyVerification
+    verifications: IPropertyVerification[]
     media: IPropertyMedia[]
     amenities: IAmenity[]
 }
@@ -156,6 +164,10 @@ export interface ICreateProperty {
     amenities: number[]
     // kyc_id: number
     is_pet_allowed: boolean
+}
+
+export interface IAssignProperty {
+    agent_id: number
 }
 
 export interface IUpdateProperty {

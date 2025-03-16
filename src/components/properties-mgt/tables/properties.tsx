@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
 import { useRouter } from "next/navigation";
 import { IProperty, PropertyType } from "../types";
@@ -74,6 +74,10 @@ export default function PropertiesTable() {
     useEffect(() => {
         setPropertyList(properties?.data?.data?.data);
     }, [properties])
+
+    useEffect(() => {
+        setPage(1)
+    }, [searchTerm])
 
     return (
         <div className="w-full p-10">

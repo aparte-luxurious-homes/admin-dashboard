@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import { IAssignAmenity, ICreateProperty, IUpdateProperty, IUpdatePropertyVerification, IUploadPropertyMedia } from "@/src/components/properties-mgt/types";
+import { IAssignAmenity, IAssignProperty, ICreateProperty, IUpdateProperty, IUpdatePropertyVerification, IUploadPropertyMedia } from "@/src/components/properties-mgt/types";
 import { UserRole } from "../enums";
 
 enum PropertyRequestKeys {
@@ -15,6 +15,8 @@ enum PropertyRequestKeys {
     createProperty = "createProperty",
     propertyVerification = "propertyVerification",
     deleteProperty = "deleteProperty",
+    assignToProperty = "assignToProperty",
+    getPropertyVerification = "getPropertyVerification",
 }
 
 export function GetAllProperties(page=1, limit=10, searchTerm='', role?: UserRole, id?: number) {
@@ -34,6 +36,17 @@ export function GetSingleProperty(propertyId: number) {
     return useQuery({
         queryKey: [PropertyRequestKeys.singleProperty, propertyId], 
         queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.details(propertyId)),
+        refetchOnWindowFocus: true,
+        staleTime: Infinity,
+        refetchInterval: 10000 * 60 * 5,
+    });
+}
+
+
+export function GetPropertyVerification(verificationId: number) {
+    return useQuery({
+        queryKey: [PropertyRequestKeys.getPropertyVerification, verificationId], 
+        queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.verify(verificationId)),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
         refetchInterval: 10000 * 60 * 5,
@@ -85,6 +98,21 @@ export function CreateProperty() {
         onSuccess: () => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.createProperty] });
+        },
+    });
+}
+
+
+export function AssignToProperty(propertyId: number) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({payload}: { payload: IAssignProperty }) =>
+        axiosRequest.post(API_ROUTES.admin.properties.assign(propertyId), payload),
+
+        onSuccess: () => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.assignToProperty] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
         },
     });
 }

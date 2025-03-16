@@ -44,10 +44,10 @@ export const API_ROUTES = {
     propertyManagement: {
         properties: {
             base: '/properties',
-            details: (id: number) => `/properties/${id}`,
-            verify: (id: number) => `/properties/${id}/verify`,
-            amenities: (id: number) => `/properties/${id}/amenities`,
+            details: (propertyId: number) => `/properties/${propertyId}`,
+            amenities: (propertyId: number) => `/properties/${propertyId}/amenities`,
             media: (propertyId: number) => `/properties/${propertyId}/media`,
+            verify: (id: number) => `/properties/${id}/verify`,
             units: {
                 base: (propertyId: number) => `/properties/${propertyId}/units`,
                 details: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}`,

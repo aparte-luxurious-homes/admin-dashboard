@@ -1,6 +1,6 @@
 "use client";
 
-import VerifcationDetails from "@/src/components/properties-mgt/manage-verifications/VerificationDetails";
+import VerificationDetails from "@/src/components/properties-mgt/manage-verifications/VerificationDetails";
 import { useParams } from "next/navigation";
 
 export default function PropertyDetail() {
@@ -8,7 +8,7 @@ export default function PropertyDetail() {
     
     return (
         <div className="w-full">
-            <VerifcationDetails
+            <VerificationDetails
                 verificationId={Number(params?.verificationId)}
             />
         </div>
