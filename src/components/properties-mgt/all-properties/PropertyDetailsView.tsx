@@ -143,7 +143,6 @@ export default function PropertyDetailsView({
             if (el?.email === email ) return el;
         })
         setSelectedAgent(filteredUsers[0])
-        // formik.setFieldValue('user_id', filteredUsers[0]?.id)
     }
 
     useEffect(() => {
@@ -215,9 +214,15 @@ export default function PropertyDetailsView({
                             <>
                                 <div className="w-full mt-10 flex justify-between items-center">
                                     <div>
-                                        <h3 className="text-3xl font-normal text-zinc-800">
-                                            {property?.name}
-                                        </h3>
+                                        <div className="flex flex-wrap items-start gap-2">
+                                            <h3 className="text-3xl font-normal text-zinc-800">
+                                                {property?.name} 
+                                            </h3>
+                                            {
+                                                property?.isVerified &&
+                                                <span className="text-sm text-teal-800 border border-teal-800 rounded-full px-2 "><em>Verified {property?.verifications[0]?.verificationDate && `on ${formatDate(property?.verifications[0]?.verificationDate)}`}</em></span>
+                                            }
+                                        </div>
                                         <div className="flex gap-2 items-center mt-2 text-xl text-zinc-700">
                                             <IoLocationOutline />
                                             <p className="text-base">
@@ -247,10 +252,11 @@ export default function PropertyDetailsView({
                                             }
                                         </div>
                                         {
-                                            property?.isVerified &&
-                                            <p onClick={() => setShowVerification(!showAgentSelection)} className="cursor-pointer text-sm underline text-teal-800 my-4 w-fit">
-                                                <em>Verified on {formatDate(property?.verifications[0]?.verificationDate??'2024-12-25')}</em>
-                                            </p>
+                                            <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.base(propertyId)}>
+                                                <em className="text-teal-800 text-sm underline">
+                                                    View verifications
+                                                </em>
+                                            </Link>
                                         }
                                     </div>
                                     <div className="flex flex-col items-center gap-0 pr-3 mt-2">
@@ -290,13 +296,13 @@ export default function PropertyDetailsView({
                                     </div>
                                 }
 
-                                <div className="h-px w-full bg-zinc-400/30 mt-10 mb-5" />
+                                <div className="h-px w-full bg-zinc-400/30 mb-5" />
 
                                 <p className="text-2xl text-zinc-900 mt-8">
                                     Property description
                                 </p>
 
-                                <p className="text-lg text-zinc-700 mt-4">
+                                <p className="text-base text-zinc-700 mt-4">
                                     {property?.description}
                                 </p>
 
@@ -357,27 +363,31 @@ export default function PropertyDetailsView({
                                         Attached profiles
                                     </p>
 
-                                    <div className="flex gap-4 items-center mt-4 justify-between w-2/3">
-                                        <div className="">
-                                            <p className="font-medium">
-                                                Owner
-                                            </p>
-                                            <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
-                                                <Image 
-                                                    alt="owner-image"
-                                                    src={property?.owner?.profile?.profileImage??'/png/sample_profile.png'}
-                                                    height={50}
-                                                    width={60}
-                                                />
-                                                <div>
-                                                    <p className="text-lg text-zinc-900 m-0">{`${property?.owner?.profile?.firstName??`Olutayo`} ${property?.owner?.profile?.lastName??`John Doe`}`}</p>
-                                                    <p className="text-base text-zinc-500">{`${property?.owner?.email??'N/A'}`}</p>
+                                    <div className="flex gap-4 items-center mt-4 justify-between w-[90%]">
+                                        
+                                        {
+                                            user.role !== UserRole.OWNER &&
+                                            <div className="">
+                                                <p className="font-medium">
+                                                    Owner
+                                                </p>
+                                                <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
+                                                    <Image 
+                                                        alt="owner-image"
+                                                        src={property?.owner?.profile?.profileImage??'/png/sample_profile.png'}
+                                                        height={50}
+                                                        width={60}
+                                                    />
+                                                    <div>
+                                                        <p className="text-lg text-zinc-900 m-0">{`${property?.owner?.profile?.firstName??`--/--`} ${property?.owner?.profile?.lastName??`--/--`}`}</p>
+                                                        <p className="text-base text-zinc-500">{`${property?.owner?.email??'--/--'}`}</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        }
 
                                         {
-                                            property?.agent &&
+                                            property?.agent && user.role !== UserRole.AGENT &&
                                             <div className="">
                                                 <p className="font-medium">
                                                     Agent
@@ -390,8 +400,8 @@ export default function PropertyDetailsView({
                                                         width={60}
                                                     />
                                                     <div>
-                                                        <p className="text-lg text-zinc-900 m-0">{`${property?.agent?.profile?.firstName??'Kunle'} ${property?.agent?.profile?.lastName??'Aina'}`}</p>
-                                                        <p className="text-base text-zinc-500">{`${property?.agent?.email}`}</p>
+                                                        <p className="text-lg text-zinc-900 m-0">{`${property?.agent?.profile?.firstName??'--/--'} ${property?.agent?.profile?.lastName??'--/--'}`}</p>
+                                                        <p className="text-base text-zinc-500">{`${property?.agent?.email??'--/--'}`}</p>
                                                     </div>
                                                 </div>
                                             </div>

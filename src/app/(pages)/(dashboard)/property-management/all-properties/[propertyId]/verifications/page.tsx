@@ -1,6 +1,6 @@
 "use client";
 
-import VerifcationDetails from "@/src/components/properties-mgt/manage-verifications/VerificationDetails";
+import PropertyVerificationsTable from "@/src/components/properties-mgt/tables/property-verifications";
 import { useParams } from "next/navigation";
 
 export default function PropertyVerificationTable() {
@@ -8,9 +8,9 @@ export default function PropertyVerificationTable() {
     
     return (
         <div className="w-full">
-            <VerifcationDetails
-                // propertyId={Number(params?.propertyId)}
-                verificationId={Number(params?.verificationId)}
+            <PropertyVerificationsTable
+                propertyId={Number(params?.propertyId)}
+                // verificationId={Number(params?.verificationId)}
             />
         </div>
     );

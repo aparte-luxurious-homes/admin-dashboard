@@ -27,7 +27,7 @@ export default function BookingsTable({
     const [bookingList, setBookingList] = useState<IBooking[]>(bookings?.data?.data?.data);
     const router = useRouter();
 
-    const [selectedRow, setSelectedRow] = useState<number>(0);
+    const [selectedRow, setSelectedRow] = useState<number|null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef(null);
 
@@ -36,14 +36,14 @@ export default function BookingsTable({
             label: "View",
             Icon: <LuEye />,
             onClick: () => router.push(
-                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow].id)
+                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow!].id)
             ),
         },
         {
             label: "Edit",
             Icon: <HiOutlinePencilAlt />,
             onClick: () => router.push(
-                `${PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow].id)}?edit=true`
+                `${PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow!].id)}?edit=true`
             ),
         }
     ];
@@ -52,7 +52,7 @@ export default function BookingsTable({
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (modalRef.current && !(modalRef.current as HTMLElement).contains(event.target as Node)) {
-                setSelectedRow(0);
+                setSelectedRow(null);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -232,7 +232,7 @@ export default function BookingsTable({
             </div>
 
             {/* Modal */}
-            {selectedRow !== 0 && modalPosition && (
+            {selectedRow !== null && modalPosition && (
                 <div
                     ref={modalRef}
                     className="absolute bg-white shadow-md rounded-md z-50 border border-gray-300 w-[9em]"

@@ -55,10 +55,18 @@ export const API_ROUTES = {
                 media: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/media`,
                 availability: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/availability`,
             },
+            verifications: {
+                base: (propertyId: number) => `/properties/${propertyId}/verifications`,
+                details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
+            }
         },
         amenities: {
             base: '/amenities',
         },
+    },
+    verifications: {
+        base: '/verifications',
+        details: (verificationId: number) => `/verifications/${verificationId}`
     },
     bookings: {
         base: '/bookings',

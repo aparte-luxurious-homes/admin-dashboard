@@ -25,7 +25,7 @@ export default function PropertiesTable() {
     const [propertyList, setPropertyList] = useState<IProperty[]>(properties?.data?.data?.data);
     const router = useRouter();
 
-    const [selectedRow, setSelectedRow] = useState<number>(0);
+    const [selectedRow, setSelectedRow] = useState<number|null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef(null);
 
@@ -35,9 +35,9 @@ export default function PropertiesTable() {
             Icon: <LuEye />,
             onClick: () => {
                 router.push(
-                    PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow].id)
+                    PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow!].id)
                 )
-                setSelectedRow(0)
+                setSelectedRow(null)
             },
         },
         {
@@ -45,9 +45,9 @@ export default function PropertiesTable() {
             Icon: <HiOutlinePencilAlt />,
             onClick: () => {
                 router.push(
-                    `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow].id)}?edit=true`
+                    `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow!].id)}?edit=true`
                 )
-                setSelectedRow(0)
+                setSelectedRow(null)
             },
         }
     ]
@@ -56,7 +56,7 @@ export default function PropertiesTable() {
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (modalRef.current && !(modalRef.current as HTMLElement).contains(event.target as Node)) {
-                setSelectedRow(0);
+                setSelectedRow(null);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -177,12 +177,12 @@ export default function PropertiesTable() {
                                                     `}
                                                 /> */}
                                                 <p className="pt-1 pl-5">
-                                                    APT25-{property?.id}
+                                                    APRT25-{property?.id}
                                                 </p>  
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
                                                 <p className="pt-1 truncate max-w-[13rem]">
-                                                    {property?.name}
+                                                    {property?.name?? '--/--'}
                                                 </p>   
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
@@ -192,7 +192,7 @@ export default function PropertiesTable() {
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
                                                 <p className="pt-1 ">
-                                                    {`${property?.owner?.profile?.firstName??'John'} ${property?.owner?.profile?.lastName??'Oderinde'}`}
+                                                    {`${property?.owner?.profile?.firstName??'--/--'} ${property?.owner?.profile?.lastName??'--/--'}`}
                                                 </p>
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
@@ -208,16 +208,16 @@ export default function PropertiesTable() {
                                                 {
                                                     property?.agent ?
                                                     <p className="pt-1 ">
-                                                        {`${property?.agent?.profile?.firstName??'Thomas'} ${property?.agent?.profile?.lastName??'Alexander'}`}
+                                                        {`${property?.agent?.profile?.firstName??'--/--'} ${property?.agent?.profile?.lastName??'--/--'}`}
                                                     </p>
                                                     :
                                                     <p className='pl-8'>
-                                                        {'N/A'}
+                                                        {property?.agent?.email??'--/--'}
                                                     </p>
                                                 }
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
-                                                {formatDate(property?.verifications?.createdAt??"02-03-2024")}
+                                                {property?.verifications[0]?.createdAt ? formatDate(property?.verifications[0]?.createdAt) : '--/--'}
                                             </td>
                                             <td className="border-b-2 border-b-gray-200">
                                                 <div className="flex justify-center items-center w-fit" onClick={(event) => handleDotsClick(event, index)}>
@@ -251,7 +251,7 @@ export default function PropertiesTable() {
 
 
             {/* Modal */}
-            {selectedRow !== 0 && modalPosition && (
+            {selectedRow !== null && modalPosition && (
                 <div
                     ref={modalRef}
                     className="absolute bg-white shadow-md rounded-md z-50 border border-gray-300 w-[9em]"

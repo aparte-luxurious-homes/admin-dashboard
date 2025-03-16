@@ -17,9 +17,11 @@ enum PropertyRequestKeys {
     deleteProperty = "deleteProperty",
     assignToProperty = "assignToProperty",
     getPropertyVerification = "getPropertyVerification",
+    getAllVerifications = "getAllVerifications",
+    getPropertiesVerifications = "getPropertiesVerifications",
 }
 
-export function GetAllProperties(page=1, limit=10, searchTerm='', role?: UserRole, id?: number) {
+export function GetAllProperties(page=1, limit=10, searchTerm='', role: UserRole, id?: number) {
     return useQuery({
         queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role, id], 
         queryFn: () => axiosRequest.get(
@@ -43,10 +45,50 @@ export function GetSingleProperty(propertyId: number) {
 }
 
 
-export function GetPropertyVerification(verificationId: number) {
+export function GetAllVerifications(page: number=1, limit: number=10, searchQuery: string='', role?: UserRole) {
+    const queryParams = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        search: searchQuery,
+    });
+
+    if (role !== undefined) {
+        queryParams.append('role', String(role));
+    }
+
+    return useQuery({
+        queryKey: [PropertyRequestKeys.getAllVerifications, page, limit, searchQuery, role], 
+        queryFn: () => axiosRequest.get(`${API_ROUTES.verifications.base}?${queryParams.toString()}`),
+        refetchOnWindowFocus: true,
+        staleTime: Infinity,
+        refetchInterval: 10000 * 60 * 5,
+    });
+}
+
+export function GetPropertyVerification(verificationId: number, role: UserRole) {
     return useQuery({
         queryKey: [PropertyRequestKeys.getPropertyVerification, verificationId], 
-        queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.verify(verificationId)),
+        queryFn: () => axiosRequest.get(`${API_ROUTES.propertyManagement.properties.verify(verificationId)}?role=${role}`),
+        refetchOnWindowFocus: true,
+        staleTime: Infinity,
+        refetchInterval: 10000 * 60 * 5,
+    });
+}
+
+export function GetPropertyVerifications(page: number=1, limit: number=10, searchQuery: string='', propertyId: number, role?: UserRole) {
+    const queryParams = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        search: searchQuery,
+    });
+
+    if (role !== undefined) {
+        queryParams.append('role', String(role));
+    }
+
+    return useQuery({
+        queryKey: [PropertyRequestKeys.getPropertiesVerifications, page, limit, searchQuery, propertyId, role], 
+        queryFn: () => axiosRequest.get(`${API_ROUTES.propertyManagement.properties.verifications.base(propertyId)}?${queryParams.toString()}`),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
         refetchInterval: 10000 * 60 * 5,
@@ -60,8 +102,17 @@ export function UpdatePropertyVerification() {
         mutationFn: ({ propertyId, payload }: { propertyId: number, payload: IUpdatePropertyVerification }) =>
         axiosRequest.put(API_ROUTES.propertyManagement.properties.verify(propertyId), payload),
 
-        onSuccess: () => {
-            // Invalidate the specific property query so it refetches
+        onSuccess: (values) => {
+            console.log(values)
+        },
+
+        onSettled: (values) => {
+            if (values?.data?.data?.property?.id) {
+                queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, values.data.data.property.id] });
+            }
+            if (values?.data?.data?.verification?.id) {
+                queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.getPropertyVerification, values.data.data.verification.id] });
+            }
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyVerification] });
         },
     });
@@ -109,10 +160,12 @@ export function AssignToProperty(propertyId: number) {
         mutationFn: ({payload}: { payload: IAssignProperty }) =>
         axiosRequest.post(API_ROUTES.admin.properties.assign(propertyId), payload),
 
-        onSuccess: () => {
+        onSuccess: (values) => {
+            console.log(values)
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.assignToProperty] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.getPropertyVerification, values?.data?.data?.VerificationBadge?.id] });
         },
     });
 }

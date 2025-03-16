@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
 import { useRouter } from "next/navigation";
-import { IProperty, PropertyType } from "../types";
-import { GetAllProperties } from "@/src/lib/request-handlers/propertyMgt";
+import { IProperty, IPropertyVerification, PropertyType } from "../types";
+import { GetAllProperties, GetAllVerifications } from "@/src/lib/request-handlers/propertyMgt";
 import Loader from "../../loader";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { BookingBadge } from "../../badge";
+import { BookingBadge, VerificationBadge } from "../../badge";
 import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import { LuEye } from "react-icons/lu";
@@ -15,17 +15,20 @@ import { HiOutlinePencilAlt } from "react-icons/hi";
 import { BookingStatus } from "../../booking-mgt/types";
 import { MdOutlineVerified } from "react-icons/md";
 import { ImCancelCircle } from "react-icons/im";
+import { useAuth } from "@/src/hooks/useAuth";
+import { Icon } from "@iconify/react/dist/iconify.js";
 
 
-export default function VerificationsTable() {
+export default function AllVerificationsTable() {
+    const  { user } = useAuth();
     const router = useRouter();
     const modalRef = useRef(null);
     const [page, setPage] = useState<number>(1);
-    // const [searchTerm , setSearchTerm] = useState<string>("");
-    // const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm);
-    // const [propertyList, setPropertyList] = useState<IProperty[]>(properties?.data?.data?.data);
+    const [searchTerm , setSearchTerm] = useState<string>("");
+    const { data: verificationList, isLoading: verificationsLoading } = GetAllVerifications(page, 12, searchTerm, user.role)
+    const [verifications, setVerifications] = useState<IPropertyVerification[]>(verificationList?.data?.data?.data);
 
-    const [selectedRow, setSelectedRow] = useState<number>(0);
+    const [selectedRow, setSelectedRow] = useState<number|null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
 
     const detailButtons = [
@@ -34,9 +37,19 @@ export default function VerificationsTable() {
             Icon: <LuEye />,
             onClick: () => {
                 router.push(
-                    PAGE_ROUTES.dashboard.propertyManagement.manageVerifications.details(1)
+                    PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(verifications[selectedRow!]?.propertyId, verifications[selectedRow!]?.id)
                 )
-                setSelectedRow(0)
+                setSelectedRow(null)
+            },
+        },
+        {
+            label: "Edit",
+            Icon: <HiOutlinePencilAlt />,
+            onClick: () => {
+                router.push(
+                    `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(verifications[selectedRow!]?.propertyId, verifications[selectedRow!]?.id)}?edit=true`
+                )
+                setSelectedRow(null)
             },
         },
         {
@@ -46,7 +59,7 @@ export default function VerificationsTable() {
                 // router.push(
                 //     `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow].id)}?edit=true`
                 // )
-                setSelectedRow(0)
+                setSelectedRow(null)
             },
         },
         {
@@ -56,7 +69,7 @@ export default function VerificationsTable() {
                 // router.push(
                 //     `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow].id)}?edit=true`
                 // )
-                setSelectedRow(0)
+                setSelectedRow(null)
             },
         },
     ]
@@ -65,7 +78,7 @@ export default function VerificationsTable() {
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (modalRef.current && !(modalRef.current as HTMLElement).contains(event.target as Node)) {
-                setSelectedRow(0);
+                setSelectedRow(null);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -80,9 +93,9 @@ export default function VerificationsTable() {
         setModalPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
     };
 
-    // useEffect(() => {
-    //     setPropertyList(properties?.data?.data?.data);
-    // }, [properties])
+    useEffect(() => {
+        setVerifications(verificationList?.data?.data?.data);
+    }, [verificationList])
 
     return (
         <div className="w-full p-10">
@@ -95,26 +108,26 @@ export default function VerificationsTable() {
                         <div className="relative w-[40%]">
                             <input 
                                 type="text" 
-                                // value={searchTerm} 
-                                // onChange={(e) => setSearchTerm(e.target.value)} 
+                                value={searchTerm} 
+                                onChange={(e) => setSearchTerm(e.target.value)} 
                                 className="border border-zinc-500/20 bg-background rounded-lg w-full h-10 p-3 pl-10" 
                                 placeholder="Search property "
                             />
                             <SearchIcon className="absolute top-[25%] left-3 w-5" color="black" />
                         </div>
                     </div>
-                    <button className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-48 p-1.5 h-10">
+                    {/* <button className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-48 p-1.5 h-10">
                         <p className="text-sm">
                             Print CSV
                         </p>
                         <PrinterIcon className="w-4" color="white"/>
-                    </button>
+                    </button> */}
                 </div>
 
                 {
-                    // isLoading ?
-                    // <Loader />
-                    // :
+                    verificationsLoading ?
+                    <Loader />
+                    : verifications  && verifications.length > 0 ?
                     <div className="w-full mt-6">
                         <table className="w-full border-collapse">
                             <thead className="">
@@ -128,7 +141,12 @@ export default function VerificationsTable() {
                                             `}
                                         /> */}
                                         <p>
-                                            Property Name
+                                            PropertyID
+                                        </p>
+                                    </th>
+                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
+                                        <p>
+                                            Property name
                                         </p>
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium text-left">
@@ -143,7 +161,7 @@ export default function VerificationsTable() {
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium  text-left">
                                         <p className="pr-2">
-                                            Submitted on
+                                            Created on
                                         </p>
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium  text-left">
@@ -161,13 +179,13 @@ export default function VerificationsTable() {
                                 </tr>
                             </thead>
                             <tbody className="text-[13px]">
-                                {/* {
-                                    propertyList &&
-                                    propertyList?.map((property, index) => ( */}
+                                {
+                                    verifications &&
+                                    verifications?.map((verification, index) => (
                                         <tr 
-                                            // key={index} 
+                                            key={index} 
                                             className="hover:bg-background/50 cursor-pointer"  
-                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
+                                            onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(verification?.propertyId, verification?.id))}
                                         >
                                             <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
                                                 {/* <input 
@@ -178,297 +196,73 @@ export default function VerificationsTable() {
                                                     `}
                                                 /> */}
                                                 <p className="pt-1 pl-5">
-                                                    The Hut
+                                                    APRT25-{verification?.propertyId}
                                                 </p>  
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 <p className="pt-1 truncate max-w-[13rem]">
-                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
+                                                    {verification?.property?.name}
+                                                </p>   
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 truncate max-w-[13rem]">
+                                                    {verification?.feedback??<em className=" text-zinc-400">No comments yet</em>}
                                                 </p>   
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 <p className="pt-1 font-medium">
-                                                    Akindele Majid
+                                                    {`${verification?.agent?.profile.firstName??'--/--'} ${verification?.agent?.profile.lastName??'--/--'}`}
                                                 </p>
                                             </td>
                                             <td className="border-b border-b-gray-200">
-                                                {formatDate("02-03-2024")}
+                                            {verification?.verificationDate ? formatDate(verification?.createdAt) : '--/--'}
                                             </td>
                                             <td className="border-b border-b-gray-200">
-                                                {formatDate("03-03-2024")}
+                                                {verification?.verificationDate ? formatDate(verification?.verificationDate) : '--/--'}
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
+                                                    <VerificationBadge 
+                                                        status={verification?.status}
                                                     />
                                                 </div>
                                             </td>                                          
                                             <td className="border-b border-b-gray-200">
                                                 <div 
                                                     className="flex justify-center items-center w-fit" 
-                                                    onClick={(event) => handleDotsClick(event, 1)}
+                                                    onClick={(event) => handleDotsClick(event, index)}
                                                 >
                                                     <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
                                                 </div>
                                             </td>
                                         </tr>
-                                        <tr 
-                                            // key={index} 
-                                            className="hover:bg-background/50 cursor-pointer"  
-                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
-                                        >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
-                                                {/* <input 
-                                                    type="checkbox"
-                                                    className={`
-                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
-                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
-                                                    `}
-                                                /> */}
-                                                <p className="pt-1">
-                                                    The Hut
-                                                </p>  
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
-                                                </p>   
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 font-medium">
-                                                    Akindele Majid
-                                                </p>
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("02-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
-                                            <td className="border-b border-b-gray-200">
-                                                <div 
-                                                    className="flex justify-center items-center w-fit" 
-                                                    onClick={(event) => handleDotsClick(event, 1)}
-                                                >
-                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr 
-                                            // key={index} 
-                                            className="hover:bg-background/50 cursor-pointer"  
-                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
-                                        >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
-                                                {/* <input 
-                                                    type="checkbox"
-                                                    className={`
-                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
-                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
-                                                    `}
-                                                /> */}
-                                                <p className="pt-1">
-                                                    The Hut
-                                                </p>  
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
-                                                </p>   
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 font-medium">
-                                                    Akindele Majid
-                                                </p>
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("02-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
-                                            <td className="border-b border-b-gray-200">
-                                                <div 
-                                                    className="flex justify-center items-center w-fit" 
-                                                    onClick={(event) => handleDotsClick(event, 1)}
-                                                >
-                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr 
-                                            // key={index} 
-                                            className="hover:bg-background/50 cursor-pointer"  
-                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
-                                        >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
-                                                {/* <input 
-                                                    type="checkbox"
-                                                    className={`
-                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
-                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
-                                                    `}
-                                                /> */}
-                                                <p className="pt-1">
-                                                    The Hut
-                                                </p>  
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
-                                                </p>   
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 font-medium">
-                                                    Akindele Majid
-                                                </p>
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("02-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
-                                            <td className="border-b border-b-gray-200">
-                                                <div 
-                                                    className="flex justify-center items-center w-fit" 
-                                                    onClick={(event) => handleDotsClick(event, 1)}
-                                                >
-                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr 
-                                            // key={index} 
-                                            className="hover:bg-background/50 cursor-pointer"  
-                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
-                                        >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
-                                                {/* <input 
-                                                    type="checkbox"
-                                                    className={`
-                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
-                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
-                                                    `}
-                                                /> */}
-                                                <p className="pt-1">
-                                                    The Hut
-                                                </p>  
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
-                                                </p>   
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 font-medium">
-                                                    Akindele Majid
-                                                </p>
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("02-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
-                                            <td className="border-b border-b-gray-200">
-                                                <div 
-                                                    className="flex justify-center items-center w-fit" 
-                                                    onClick={(event) => handleDotsClick(event, 1)}
-                                                >
-                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr 
-                                            // key={index} 
-                                            className="hover:bg-background/50 cursor-pointer"  
-                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
-                                        >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
-                                                {/* <input 
-                                                    type="checkbox"
-                                                    className={`
-                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
-                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
-                                                    `}
-                                                /> */}
-                                                <p className="pt-1">
-                                                    The Hut
-                                                </p>  
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
-                                                </p>   
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 font-medium">
-                                                    Akindele Majid
-                                                </p>
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("02-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
-                                            <td className="border-b border-b-gray-200">
-                                                <div 
-                                                    className="flex justify-center items-center w-fit" 
-                                                    onClick={(event) => handleDotsClick(event, 1)}
-                                                >
-                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    {/* ))
-                                } */}
+                                    ))
+                                }
                             </tbody>
                         </table>
                     </div>
+                    : verifications && verifications.length === 0 ? 
+                    <div className="size-full m-auto text-center">
+                        <div className="m-auto w-fit">
+                            <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                        </div>
+                        <p className="text-center text-gray-500 pt-10">No verifications found</p>
+                    </div>
+                    : 
+                    <p className="size-full text-center text-gray-500 pt-10 self-center">
+                        <div className="m-auto w-fit">
+                            <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
+                        </div>
+                        <p className="text-center text-gray-500">
+                            Error loading verifications
+                        </p>
+                    </p>
                 }
             </div>
 
 
             {/* Modal */}
-            {selectedRow !== 0 && modalPosition && (
+            {selectedRow !== null && modalPosition && (
                 <div
                     ref={modalRef}
                     className="absolute bg-white shadow-md rounded-md z-50 border border-gray-300 w-[9em]"
@@ -488,12 +282,12 @@ export default function VerificationsTable() {
             )}
             
             {
-                // !isLoading && propertyList &&
+                !verificationsLoading && verificationList &&
                 <TablePagination
-                    total={5}
+                    total={verificationList?.data?.data?.meta?.total}
                     currentPage={page}
                     setPage={setPage}
-                    firstPage={1}
+                    firstPage={verificationList?.data?.data?.meta?.firstPage}
                     itemsPerPage={10}
                 />
             }   
