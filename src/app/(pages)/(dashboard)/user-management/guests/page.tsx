@@ -90,7 +90,7 @@ const Guest = () => {
     
     const a = document.createElement("a");
     a.href = url;
-    a.download = "owner_info.csv";
+    a.download = "user_info.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -100,7 +100,7 @@ const Guest = () => {
     if (!data.length) return;
   
     const doc = new jsPDF();
-    doc.text("Owner Information", 10, 10);
+    doc.text("Guest Information", 10, 10);
   
     // Defind table headers
     const headers = ["ID", "First Name", "Last Name", "KYC Status", "Email", "Created At"];
@@ -123,7 +123,7 @@ const Guest = () => {
       theme: "grid",
     });
   
-    doc.save("owner_info.pdf");
+    doc.save("guest_info.pdf");
   };
 
 

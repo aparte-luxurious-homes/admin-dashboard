@@ -130,8 +130,21 @@ const Home = () => {
     setLoading(true);
     try {
       const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.propertyManagement.properties.base}`);
-      setProperties(response?.data?.data?.data);
-      setSearchResult(response?.data?.data?.data);
+      let DataByRole: Property[] = [];
+      if (user?.role === "OWNER") {
+        DataByRole = response?.data?.data?.data?.filter(
+          (property: Property) => property?.owner?.id === user?.profile?.id
+        );
+      } else if (user?.role === "AGENT") {
+        DataByRole = response?.data?.data?.data?.filter(
+          (property: Property) => property?.agent?.id === user?.profile?.id
+        );
+      } else {
+        DataByRole = response?.data?.data?.data;
+      }
+      
+      setProperties(DataByRole);
+      setSearchResult(DataByRole);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
