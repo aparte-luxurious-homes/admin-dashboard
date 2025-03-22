@@ -19,7 +19,7 @@ const PersonalInfoPage = () => {
 
   const handleEditProfile = () => {
     setIsEditing(true);
-    axiosRequest.patch(`${BASE_API_URL}${API_ROUTES?.profile?.update}`)
+    axiosRequest.patch(`${BASE_API_URL}${API_ROUTES?.profile?.update}`, personalInfo)
     .then((res) => {
       setIsEditing(false);
       toast.success(res?.data?.message, {
@@ -65,22 +65,22 @@ const PersonalInfoPage = () => {
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
-                label="Legal Name"
-                required
-                defaultValue={`${user?.profile?.firstName || ""} ${user?.profile?.lastName || ""}`}
-                onChange={handleTextChange}
-                inputType="text"
-                inputName="name"
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-              <InputGroup
-                label="Preferred First Name"
+                label="Last Name"
                 required
                 defaultValue={user?.profile?.firstName || ""}
                 onChange={handleTextChange}
                 inputType="text"
-                inputName="firstName"
+                inputName="last_name"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
+              <InputGroup
+                label="First Name"
+                required
+                defaultValue={user?.profile?.firstName || ""}
+                onChange={handleTextChange}
+                inputType="text"
+                inputName="first_name"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
@@ -101,7 +101,7 @@ const PersonalInfoPage = () => {
                 defaultValue={user?.phone || ""}
                 onChange={handleTextChange}
                 inputType="text"
-                inputName="phoneNumber"
+                inputName="phone"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
