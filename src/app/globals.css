@@ -48,32 +48,35 @@ body {
   align-items: center;
   top: 48%;
   bottom: initial;
-  color: white;
+  /* color: white; */
+  color: #000000;
   font-size: x-large;
   transition: 0.3s ease;
   z-index: 20;
-  background-color: rgba(4, 90, 112, 0.685);
-  width: 4rem;
-  height: 4rem;
+  /* background-color: rgba(4, 90, 112, 0.685); */
+  background-color: #ffffff;
+  width: 3.5rem;
+  height: 3.5rem;
   border-radius: 50%;
 }
 
 .rewind .swiper-button-prev:hover,
 .rewind .swiper-button-next:hover {
-  background-color: rgb(4, 90, 112);
+  /* background-color: rgb(4, 90, 112); */
+  background-color: #ebeaea;
 }
 
 
 .rewind .swiper-button-next {
   left: initial;
-  right: 1rem;
-  padding-left: 4px;
+  right: 1.5rem;
+  padding-left: 2px;
 }
 
 .rewind .swiper-button-prev {
-  left: 1rem;
+  left: 1.5rem;
   right: initial;
-  padding-right: 4px;
+  padding-right: 2px;
 }
 
 

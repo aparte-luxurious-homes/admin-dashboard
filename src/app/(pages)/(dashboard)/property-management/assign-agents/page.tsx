@@ -1,8 +1,10 @@
+import AssignmentsTable from "@/src/components/properties-mgt/tables/assignments";
+
 export default function AssignAgentsPage() {
     return (
-        <h2 className="">
-            Assign agents
-        </h2>
+        <div className="w-full">
+            <AssignmentsTable />
+        </div>
     );
 }
   

@@ -1,8 +1,10 @@
+import BookingsTable from "@/src/components/booking-mgt/tables/bookings";
+
 export default function Bookings() {
     return (
-        <h2 className="">
-            Bookings
-        </h2>
+        <div className="w-full">
+            <BookingsTable />
+        </div>
     );
 }
   

@@ -1,8 +1,10 @@
+import AllVerificationsTable from "@/src/components/properties-mgt/tables/verifications";
+
 export default function ManageVerificationPage() {
     return (
-        <h2 className="">
-            Manage verification
-        </h2>
+        <div className="w-full">
+            <AllVerificationsTable />
+        </div>
     );
 }
   

@@ -3,30 +3,31 @@
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { TrashIcon } from "../icons";
+import { TrashIcon } from "../../icons";
 import { SlLocationPin } from "react-icons/sl";
-import CustomDropdown from "../ui/customDropdown";
-import { IAmenity, IProperty, IPropertyMedia, IUpdateProperty, MediaType, PropertyType } from "./types";
-import CustomFilterDropdown from "../ui/customFilterDropDown";
-import CustomCheckbox from "../ui/customCheckbox";
-import MultipleChoice from "../ui/MultipleChoice";
+import CustomDropdown from "../../ui/customDropdown";
+import { IAmenity, IProperty, IPropertyMedia, IUpdateProperty, MediaType, PropertyType, PropertyVerificationStatus } from "../types";
+import CustomFilterDropdown from "../../ui/customFilterDropDown";
+import CustomCheckbox from "../../ui/customCheckbox";
+import MultipleChoice from "../../ui/MultipleChoice";
 import { ALL_COUNTRIES } from "@/src/data/countries";
 import { FaPlus } from "react-icons/fa6";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import Image from "next/image";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
-import CustomDropzone from "../ui/CustomDropzone";
+import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
 import { DeleteProperty, FeatureProperty, UpdateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
-import Spinner from "../ui/Spinner";
+import Spinner from "../../ui/Spinner";
 import { CreateAmenityForm } from "./CreatePropertyView";
-import CustomModal from "../ui/CustomModal";
-import { useRouter } from "next/navigation";
+import CustomModal from "../../ui/CustomModal";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
+import { usePathname } from 'next/navigation';
 
 
 export default function EditPropertyView({  
@@ -39,6 +40,7 @@ export default function EditPropertyView({
     availableAmenities: IAmenity[],
 }) {
     const dispatch = useDispatch();
+    const pathname = usePathname();
     const { mutate, isPending } = UpdateProperty()
     const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const { 
@@ -50,6 +52,7 @@ export default function EditPropertyView({
 
     const { user } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
@@ -91,30 +94,56 @@ export default function EditPropertyView({
                 amenityNames: propertyData?.amenities.map((el) => el.name),
             },
 
-        onSubmit: (values: any) => {
-            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
+            onSubmit: (values: any) => {
+                const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
 
-            if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
-                featureProperty({ propertyId: propertyData.id })
+                if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
+                    featureProperty({ propertyId: propertyData.id })
 
-            const updatePayload: IUpdateProperty = {
-                ...values,
-                amenities: sortedAmenities,
-                property_type: values.type,
-                is_pet_allowed: values.petsAllowed,
-            };
+                const updatePayload: IUpdateProperty = {
+                    ...values,
+                    amenities: sortedAmenities,
+                    property_type: values.type,
+                    is_pet_allowed: values.petsAllowed,
+                };
 
-            mutate({                                            // Update proprety
-                propertyId: propertyData.id,
-                payload: updatePayload,
+                mutate({                                            // Update proprety
+                    propertyId: propertyData.id,
+                    payload: updatePayload,
+                },
+                {
+                    onSuccess: () => {
+                        toast.success('Property update successfull', {
+                            duration: 6000,
+                            style: {
+                                maxWidth: '500px',
+                                width: 'max-content'
+                            }
+                        }),
+                        removeParam('edit')
+                        handleEditMode(false);
+                    },
+                    onError: () => 
+                        toast.error('Something went wrong, Please try again later', {
+                            duration: 6000,
+                            style: {
+                                maxWidth: '500px',
+                                width: 'max-content'
+                            }
+                        }),
+                })            
             },
-            {
-                onSuccess: () => {
-                    handleEditMode(false);
-                }
-            })            
-        },
-    });
+        }
+    );
+
+      
+    const removeParam = (param: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete(param); // Remove the specified query param
+    
+        const newQueryString = params.toString();
+        router.push(newQueryString ? `?${newQueryString}` : pathname, { scroll: false });
+    };
 
     const handleDeleteImage = (e: number) => {
         dispatch(
@@ -142,7 +171,7 @@ export default function EditPropertyView({
                         { propertyId: propertyData.id },
                         {
                             onSuccess: (response) => {
-                                console.log(response)
+                                removeParam('edit')
                                 toast.success(response?.data?.message, {
                                     duration: 6000,
                                     style: {
@@ -274,7 +303,7 @@ export default function EditPropertyView({
                         <div className="w-full flex justify-between gap-10 items-center">
                             <div className="flex flex-col gap-5 justify-between items-left w-fit mt-4">
                                 {
-                                    user.role === UserRole.ADMIN &&
+                                    user.role === UserRole.ADMIN && propertyData?.verifications[0]?.status === PropertyVerificationStatus.VERIFIED &&
                                     <CustomCheckbox 
                                         label="Is verified"
                                         checked={formik.values.isVerified}
@@ -284,7 +313,7 @@ export default function EditPropertyView({
                                 {
                                     user.role === UserRole.ADMIN &&
                                     <CustomCheckbox 
-                                        label="Is Published"
+                                        label="Is Featured"
                                         checked={formik.values.isFeatured}
                                         onChange={(val) => formik.setFieldValue("isFeatured", val)}
                                     />
@@ -367,10 +396,31 @@ export default function EditPropertyView({
                                     formData.append("media_type", MediaType.IMAGE);
                                     formData.append("is_featured", "true");
 
-                                    uploadMedia({
-                                        propertyId: propertyData.id, 
-                                        payload: formData,
-                                    });
+                                    uploadMedia(
+                                        {
+                                            propertyId: propertyData.id, 
+                                            payload: formData,
+                                        },
+                                        {
+                                            onSuccess: () => 
+                                                toast.success('Property media uploaded successfully', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+                                            onError: (error: any) => 
+                                                toast.error(error.status === 422 ? 'Media file(s) include invalid format' : 'Media upload failed', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+
+                                        }
+                                    );
 
                                 } }
                                 className={`flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75`}
@@ -408,7 +458,7 @@ export default function EditPropertyView({
                 <button onClick={() => formik.handleSubmit()} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
                     {isPending ? <Spinner /> : 'Save'}
                 </button>
-                <button onClick={() => handleEditMode(false)} disabled={isPending || uploadedMediaPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
+                <button onClick={() =>{removeParam('edit'); handleEditMode(false); }} disabled={isPending || uploadedMediaPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
                     Cancel
                 </button>
                 <button onClick={handleDelete} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">

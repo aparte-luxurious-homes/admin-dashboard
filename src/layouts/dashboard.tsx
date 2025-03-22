@@ -111,16 +111,16 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       >
         <div className="w-full h-20 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
           <div className="w-1/2">
-            {/* <p className="text-2xl font-semi-bold">
+            <p className="text-2xl font-medium">
                             {
                                 currentRoute.split('/').length === 2 && currentRoute.split('/')[1] === '' 
                                     ? 'Dashboard' 
                                     : currentRoute
-                                        .split('/')[currentRoute.split('/').length-1]
+                                        .split('/')[1]
                                         .replace(/-/g, ' ')
                                         .replace(/^./, c => c.toUpperCase())
                             }
-                        </p> */}
+                        </p>
           </div>
           <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-3 items-center">
             {/* <Link

@@ -4,24 +4,25 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { FaMapLocationDot } from "react-icons/fa6";
 import { SlLocationPin } from "react-icons/sl";
-import CustomDropdown from "../ui/customDropdown";
-import { IAmenity, ICreateProperty, MediaType, PropertyType } from "./types";
-import CustomFilterDropdown from "../ui/customFilterDropDown";
-import CustomCheckbox from "../ui/customCheckbox";
-import MultipleChoice from "../ui/MultipleChoice";
+import CustomDropdown from "../../ui/customDropdown";
+import { IAmenity, ICreateProperty, MediaType, PropertyType } from "../types";
+import CustomFilterDropdown from "../../ui/customFilterDropDown";
+import CustomCheckbox from "../../ui/customCheckbox";
+import MultipleChoice from "../../ui/MultipleChoice";
 import { ALL_COUNTRIES } from "@/src/data/countries";
 import { FaPlus } from "react-icons/fa6";
-import CustomDropzone from "../ui/CustomDropzone";
+import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
 import { CreateAmenity, CreateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
-import Spinner from "../ui/Spinner";
+import Spinner from "../../ui/Spinner";
 import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
 import { fixedAmenities } from "@/src/data/amenities";
-import CustomModal from "../ui/CustomModal";
+import CustomModal from "../../ui/CustomModal";
 import { UserRole } from "@/src/lib/enums";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import toast from "react-hot-toast";
 
 
 export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<boolean>> }) {
@@ -38,7 +39,24 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
         mutate(
             { name },
             {
-                onSuccess: () => show(false)
+                onSuccess: () => {
+                    toast.success('Amenity created successfully', {
+                        duration: 6000,
+                        style: {
+                            maxWidth: '500px',
+                            width: 'max-content'
+                        }
+                    }),
+                    show(false);
+                },
+                onError: () => 
+                    toast.error('Something went wrong', {
+                        duration: 6000,
+                        style: {
+                            maxWidth: '500px',
+                            width: 'max-content'
+                        }
+                    }),
             }
         );
     };
@@ -145,17 +163,43 @@ export default function CreatePropertyView({}) {
                             formData.append("media_type", MediaType.IMAGE);
                             formData.append("is_featured", "true");
 
-                            uploadMedia({
-                                propertyId,
-                                payload: formData,
-                            });
+                            uploadMedia(
+                                {
+                                    propertyId,
+                                    payload: formData,
+                                },
+                                {
+                                    onError: (error: any) => 
+                                        toast.error(error.status === 422 ? 'Invalid media file format' : 'Media upload failed', {
+                                            duration: 6000,
+                                            style: {
+                                                maxWidth: '500px',
+                                                width: 'max-content'
+                                            }
+                                        }),
+                                },
+                            );
                         }
+
+                        toast.success('Property created successfully', {
+                            duration: 6000,
+                            style: {
+                                maxWidth: '500px',
+                                width: 'max-content'
+                            }
+                        }),
 
                         router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId))
                     }
-
-
-                }
+                },
+                onError: () => 
+                    toast.error('Something went wrong', {
+                        duration: 6000,
+                        style: {
+                            maxWidth: '500px',
+                            width: 'max-content'
+                        }
+                    }),
             })         
         },
     });
