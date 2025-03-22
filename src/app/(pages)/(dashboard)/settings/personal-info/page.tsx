@@ -5,13 +5,44 @@ import { useAuth } from "@/src/hooks/useAuth";
 import Grid from "@mui/material/Grid2";
 import { useState } from "react";
 import Button from "@/src/components/button";
+import { toast } from "react-hot-toast";
+import axiosRequest from "@/src/lib/api";
 import InputGroup from "@/src/components/formcomponent/InputGroup";
+import { BASE_API_URL, API_ROUTES } from "@/src/lib/routes/endpoints";
 
 const PersonalInfoPage = () => {
   const { user, isFetching } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
   const [personalInfo, setPersonalInfo] = useState<{ [key: string]: string }>(
     {}
   );
+
+  const handleEditProfile = () => {
+    setIsEditing(true);
+    axiosRequest.patch(`${BASE_API_URL}${API_ROUTES?.profile?.update}`, personalInfo)
+    .then((res) => {
+      setIsEditing(false);
+      toast.success(res?.data?.message, {
+        duration: 3000,
+        style: {
+          maxWidth: "500px",
+          width: "max-content",
+        },
+      });
+    })
+    .catch((err) => {
+      setIsEditing(false);
+      toast.error(err?.response?.data?.message, {
+        duration: 3000,
+        style: {
+          maxWidth: "500px",
+          width: "max-content",
+        },
+      });
+    });
+  };
+
+  console.log("personalInfo", personalInfo);
 
   const handleTextChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -34,28 +65,29 @@ const PersonalInfoPage = () => {
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
-                label="Legal Name"
-                required
-                defaultValue={`${user?.profile?.firstName || ""} ${user?.profile?.lastName || ""}`}
-                onChange={handleTextChange}
-                inputType="text"
-                inputName="name"
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-              <InputGroup
-                label="Preferred First Name"
+                label="Last Name"
                 required
                 defaultValue={user?.profile?.firstName || ""}
                 onChange={handleTextChange}
                 inputType="text"
-                inputName="firstName"
+                inputName="last_name"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
+              <InputGroup
+                label="First Name"
+                required
+                defaultValue={user?.profile?.firstName || ""}
+                onChange={handleTextChange}
+                inputType="text"
+                inputName="first_name"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
                 label="Email Address"
                 required
+                disabled
                 defaultValue={user?.email}
                 onChange={handleTextChange}
                 inputType="email"
@@ -69,7 +101,7 @@ const PersonalInfoPage = () => {
                 defaultValue={user?.phone || ""}
                 onChange={handleTextChange}
                 inputType="text"
-                inputName="phoneNumber"
+                inputName="phone"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
@@ -78,6 +110,7 @@ const PersonalInfoPage = () => {
                 required
                 defaultValue={user?.verificationToken || ""}
                 onChange={handleTextChange}
+                disabled
                 inputType="text"
                 inputName="verification"
               />
@@ -105,18 +138,19 @@ const PersonalInfoPage = () => {
             </Grid>
           </Grid>
           <div className="mt-10 flex justify-center">
-            <div className="w-1/3">
+            <div className="w-full sm:w-1/3">
               <Button
                 variant="primaryoutline"
                 buttonSize="full"
                 color="btnfontprimary"
                 buttonName="Edit Profile"
+                onClick={handleEditProfile}
+                isLoading={isEditing}
               />
             </div>
           </div>
         </div>
       </div>
-      ;
     </>
   );
 };

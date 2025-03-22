@@ -55,8 +55,8 @@ const LineChart: React.FC<LineChartProps> = ({ labels, datasets }) => {
   } as const;
   
   return (
-    <div className="h-full w-full">
-        <Line data={chartData} options={chartOptions} />
+    <div className="h-[200px] w-full">
+        <Line data={chartData} options={chartOptions} className="h-full w-full" />
     </div>
   );
 };

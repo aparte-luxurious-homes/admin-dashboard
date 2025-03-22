@@ -13,6 +13,7 @@ import Button from "@/src/components/button";
 import Link from "next/link";
 import jsPDF from "jspdf";
 import "jspdf-autotable";import autoTable from "jspdf-autotable";
+import ItemCount from "@/src/components/item-count/itemcount";
 
 interface UserProfile {
   address: string | null;
@@ -89,7 +90,7 @@ const Guest = () => {
     
     const a = document.createElement("a");
     a.href = url;
-    a.download = "owner_info.csv";
+    a.download = "user_info.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -99,7 +100,7 @@ const Guest = () => {
     if (!data.length) return;
   
     const doc = new jsPDF();
-    doc.text("Owner Information", 10, 10);
+    doc.text("Guest Information", 10, 10);
   
     // Defind table headers
     const headers = ["ID", "First Name", "Last Name", "KYC Status", "Email", "Created At"];
@@ -122,7 +123,7 @@ const Guest = () => {
       theme: "grid",
     });
   
-    doc.save("owner_info.pdf");
+    doc.save("guest_info.pdf");
   };
 
 
@@ -245,15 +246,18 @@ const Guest = () => {
         ) : (
           <>
             <div className="flex justify-between gap-4 items-start md:items-center flex-col md:flex-row">
-              <div className="flex items-center">
-                <h4 className="mr-4 font-medium">Guest Management</h4>
-                <TableSearch
-                  placeholder="Search here..."
-                  searchTableFunc={handleSearchProperty}
-                  value={searchValue}
-                />
+              <div className="flex items-center md:items-center flex-col md:flex-row">
+                <h4 className="mr-4 font-medium max-[400px]:mb-2">Guest Management</h4>
+                <div className="flex items-center gap-2">
+                  <TableSearch
+                    placeholder="Search here..."
+                    searchTableFunc={handleSearchProperty}
+                    value={searchValue}
+                  />
+                  <ItemCount count={searchResult?.length} />
+                </div>
               </div>
-              <div className="mt-4">
+              <div>
                 <Button
                   variant="primaryoutline"
                   buttonSize="full"

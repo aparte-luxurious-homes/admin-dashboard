@@ -1749,6 +1749,11 @@ dom-helpers@^5.0.1:
     "@babel/runtime" "^7.8.7"
     csstype "^3.0.2"
 
+dom-to-image-more@^3.5.0:
+  version "3.5.0"
+  resolved "https://registry.yarnpkg.com/dom-to-image-more/-/dom-to-image-more-3.5.0.tgz#762fcd077f9d623a671724546bf6253330829a39"
+  integrity sha512-VF/vwfHsPNMHJb5W/5sAmco3UIlEWSEFLppInQwqwN4joUvBULDwE3CqVcUDkUWleke/nZ5KwIVSrrFlGw7WPA==
+
 dom-to-image@^2.6.0:
   version "2.6.0"
   resolved "https://registry.yarnpkg.com/dom-to-image/-/dom-to-image-2.6.0.tgz#8a503608088c87b1c22f9034ae032e1898955867"

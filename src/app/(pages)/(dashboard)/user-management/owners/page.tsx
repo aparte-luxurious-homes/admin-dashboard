@@ -13,6 +13,7 @@ import Button from "@/src/components/button";
 import Link from "next/link";
 import jsPDF from "jspdf";
 import "jspdf-autotable";import autoTable from "jspdf-autotable";
+import ItemCount from "@/src/components/item-count/itemcount";
 
 interface UserProfile {
   address: string | null;
@@ -164,7 +165,7 @@ const Owner = () => {
     },
     {
       field: "createdAt",
-      headerName: "Phone Number",
+      headerName: "Date Created",
       width: 150,
       renderCell: (params) => params?.value?.substring(0, 10) || "--/--",
     },
@@ -245,15 +246,18 @@ const Owner = () => {
         ) : (
           <>
             <div className="flex justify-between gap-4 items-start md:items-center flex-col md:flex-row">
-              <div className="flex items-center">
-                <h4 className="mr-4 font-medium">Owner Management</h4>
-                <TableSearch
-                  placeholder="Search here..."
-                  searchTableFunc={handleSearchProperty}
-                  value={searchValue}
-                />
+              <div className="flex items-center md:items-center flex-col md:flex-row">
+                <h4 className="mr-4 font-medium max-[400px]:mb-2">Owner Management</h4>
+                <div className="flex items-center gap-2">
+                  <TableSearch
+                    placeholder="Search here..."
+                    searchTableFunc={handleSearchProperty}
+                    value={searchValue}
+                  />
+                  <ItemCount count={searchResult?.length} />
+                </div>
               </div>
-              <div className="mt-4">
+              <div>
                 <Button
                   variant="primaryoutline"
                   buttonSize="full"
