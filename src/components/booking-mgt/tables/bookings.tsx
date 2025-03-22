@@ -27,7 +27,7 @@ export default function BookingsTable({
     const [bookingList, setBookingList] = useState<IBooking[]>(bookings?.data?.data?.data);
     const router = useRouter();
 
-    const [selectedRow, setSelectedRow] = useState<number>(0);
+    const [selectedRow, setSelectedRow] = useState<number|null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef(null);
 
@@ -36,14 +36,14 @@ export default function BookingsTable({
             label: "View",
             Icon: <LuEye />,
             onClick: () => router.push(
-                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow].id)
+                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow!].id)
             ),
         },
         {
             label: "Edit",
             Icon: <HiOutlinePencilAlt />,
             onClick: () => router.push(
-                `${PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow].id)}?edit=true`
+                `${PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow!].id)}?edit=true`
             ),
         }
     ];
@@ -52,7 +52,7 @@ export default function BookingsTable({
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (modalRef.current && !(modalRef.current as HTMLElement).contains(event.target as Node)) {
-                setSelectedRow(0);
+                setSelectedRow(null);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -76,9 +76,14 @@ export default function BookingsTable({
     return (
  
         <div className="w-full p-10">
-            <div className="w-full border border-zinc-500/20 bg-white rounded-xl px-6 py-7 min-h-[72vh] flex flex-col items-center">
+            <div className="w-full border border-zinc-500/20 bg-white rounded-xl px-6 py-7 min-h-[72vh] flex flex-col">
 
-                
+                {/* {
+                    unitId && bookingList &&
+                    <p className='text-2xl font-medium my-3'>
+                        {bookingList[0]?.unit?.property?.name} - <span className="font-normal">{bookingList[0]?.unit?.name}</span>
+                    </p>
+                } */}
                 <div className="w-full flex justify-between items-center">
                     <div className="w-[80%] flex items-center gap-5">
                         <p className="text-2xl font-medium mr-10">All Bookings</p>
@@ -122,7 +127,7 @@ export default function BookingsTable({
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium text-left">
                                         <p>
-                                            Property
+                                            Unit
                                         </p>
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium text-left">

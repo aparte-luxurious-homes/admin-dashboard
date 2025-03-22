@@ -22,13 +22,16 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CreateBooking } from "@/src/lib/request-handlers/bookingMgt";
 import Spinner from "../../ui/Spinner";
+import { useAuth } from "@/src/hooks/useAuth";
+import toast from "react-hot-toast";
 
 export default function CreateBookingView() {
     const router = useRouter();
+    const { user } = useAuth();
     const searchParams = useSearchParams();
     const [userSearchTerm, setUserSearchTerm] = useState<string>('')
     const [propertySearchTerm, setPropertySearchTerm] = useState<string>('')
-    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(1, 12, propertySearchTerm)
+    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(1, 12, propertySearchTerm, user.role, user.id);
     const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
     const [selectionMode, setSelectionMode] = useState<boolean>(true)
     const [properties, setProperties] = useState<IProperty[]>(propertyList?.data?.data?.data)
@@ -61,10 +64,26 @@ export default function CreateBookingView() {
                 },
                 {
                     onSuccess: (values) => {
-                        if (values?.data?.data?.data) {
-                            router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(values?.data?.data?.data?.id))
+                        console.log(values)
+                        toast.success('Booking created successfully', {
+                            duration: 6000,
+                            style: {
+                              maxWidth: '500px',
+                              width: 'max-content'
+                            }
+                        });
+                        if (values?.data?.data) {
+                            router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(values?.data?.data?.id))
                         }
-                    }
+                    },
+                    onError: () => 
+                        toast.error('Something went wrong', {
+                            duration: 6000,
+                            style: {
+                              maxWidth: '500px',
+                              width: 'max-content'
+                            }
+                        }),
                 }
             )
         }

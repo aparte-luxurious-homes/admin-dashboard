@@ -44,10 +44,10 @@ export const API_ROUTES = {
     propertyManagement: {
         properties: {
             base: '/properties',
-            details: (id: number) => `/properties/${id}`,
-            verify: (id: number) => `/properties/${id}/verify`,
-            amenities: (id: number) => `/properties/${id}/amenities`,
+            details: (propertyId: number) => `/properties/${propertyId}`,
+            amenities: (propertyId: number) => `/properties/${propertyId}/amenities`,
             media: (propertyId: number) => `/properties/${propertyId}/media`,
+            verify: (id: number) => `/properties/${id}/verify`,
             units: {
                 base: (propertyId: number) => `/properties/${propertyId}/units`,
                 details: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}`,
@@ -55,10 +55,18 @@ export const API_ROUTES = {
                 media: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/media`,
                 availability: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/availability`,
             },
+            verifications: {
+                base: (propertyId: number) => `/properties/${propertyId}/verifications`,
+                details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
+            }
         },
         amenities: {
             base: '/amenities',
         },
+    },
+    verifications: {
+        base: '/verifications',
+        details: (verificationId: number) => `/verifications/${verificationId}`
     },
     bookings: {
         base: '/bookings',

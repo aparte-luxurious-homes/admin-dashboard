@@ -1,4 +1,5 @@
 import { BookingBageProps, BookingStatus } from "../booking-mgt/types";
+import { PropertyVerificationStatus, VerificationBageProps } from "../properties-mgt/types";
 import useStyles from "./styles";
 import classNames from "classnames";
 
@@ -46,6 +47,36 @@ export const BookingBadge: React.FC<BookingBageProps> = ({ status, textColour='t
       : status === BookingStatus.PENDING
         ? 'bg-[#FFAE0033]'
         : status === BookingStatus.CONFIRMED
+          ? 'bg-[#0280901A]'
+          : backgroundColour;
+
+
+  return(
+    <p 
+      className={`
+        text-sm px-4 py-2 rounded-md capitalize ${textHue} ${bgHue}
+        ${classNames}
+      `}
+    >
+      {status?.toLowerCase()}
+    </p>
+  );
+}
+
+export const VerificationBadge: React.FC<VerificationBageProps> = ({ status, textColour='text-zinc-600', backgroundColour='bg-zinc-300', classNames }) => {
+  const textHue = status === PropertyVerificationStatus.REJECTED 
+      ? 'text-red-600'
+      : status === PropertyVerificationStatus.PENDING
+        ? 'text-[#FFAE00]'
+        : status === PropertyVerificationStatus.VERIFIED
+          ? 'text-[#028090]'
+          : textColour;
+  
+  const bgHue = status === PropertyVerificationStatus.REJECTED
+    ? 'bg-red-200'
+      : status === PropertyVerificationStatus.PENDING
+        ? 'bg-[#FFAE0033]'
+        : status === PropertyVerificationStatus.VERIFIED
           ? 'bg-[#0280901A]'
           : backgroundColour;
 

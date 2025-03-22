@@ -11,12 +11,20 @@ enum BookingRequestKeys {
     createBooking = "createBooking",
 }
 
-export function GetAllBookings(page=1, limit=10, searchQuery = '', unitId?: number) {
+export function GetAllBookings(page = 1, limit = 10, searchQuery = '', unitId?: number) {
+    const queryParams = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        search: searchQuery,
+    });
+
+    if (unitId !== undefined) {
+        queryParams.append('unit', String(unitId));
+    }
+
     return useQuery({
         queryKey: [BookingRequestKeys.getAllBookings, page, limit, searchQuery, unitId], 
-        queryFn: () => axiosRequest.get(
-            `${API_ROUTES.bookings.base}?page=${page}&limit=${limit}&search=${searchQuery}&unit=${unitId}`
-        ),
+        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.base}?${queryParams.toString()}`),
         refetchOnWindowFocus: true,
     });
 }
@@ -25,8 +33,8 @@ export function GetAllBookings(page=1, limit=10, searchQuery = '', unitId?: numb
 export function GetBookingDetails(bookingId: number) {
     return useQuery({
         queryKey: [BookingRequestKeys.createBooking], 
-        queryFn: () => axiosRequest.post(
-            `${API_ROUTES.bookings.base}`,
+        queryFn: () => axiosRequest.get(
+            `${API_ROUTES.bookings.details(bookingId)}`,
 
         ),
         refetchOnWindowFocus: true,

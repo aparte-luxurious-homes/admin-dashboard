@@ -39,13 +39,17 @@ export const PAGE_ROUTES = {
             allProperties: {
                 base: '/property-management/all-properties',
                 create: '/property-management/create',
-                details: (id: number) => `/property-management/all-properties/${id}`,
+                details: (propertyId: number) => `/property-management/all-properties/${propertyId}`,
+                verifications: {
+                    base: (propertyId: number) => `/property-management/all-properties/${propertyId}/verifications`,
+                    details: (propertyId: number, verificationId: number) => `/property-management/all-properties/${propertyId}/verifications/${verificationId}`
+                },
                 units: {
                     base: (propertyId: number) => `/property-management/all-properties/${propertyId}/units`,
                     create: (propertyId: number) => `/property-management/all-properties/${propertyId}/create-unit`,
                     details: (propertyId: number, unitId: number) => `/property-management/all-properties/${propertyId}/units/${unitId}`,
                     bookings: (propertyId: number, unitId: number) => `/property-management/all-properties/${propertyId}/units/${unitId}/bookings`,
-                }
+                },
             },
             assignAgents: {
                 base: '/property-management/assign-agents',
@@ -53,7 +57,7 @@ export const PAGE_ROUTES = {
             },
             manageVerifications: {
                 base: '/property-management/manage-verifications',
-                details: (id: number) => `/property-management//manage-verifications/${id}`,
+                details: (verificationId: number) => `/property-management/manage-verifications/${verificationId}`,
             },
         },
         transactions: {
