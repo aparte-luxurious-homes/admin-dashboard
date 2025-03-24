@@ -12,6 +12,10 @@ import { useState } from "react";
 import { IoMenu, IoClose } from "react-icons/io5";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import { toast } from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
+import { clearUser } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
@@ -19,6 +23,8 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const currentRoute = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "?";
 
   // Handle click to navigate
@@ -27,9 +33,22 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   };
 
   const handleLogOut = () => {
-    Cookies.remove("token");
-    window.location.href = "/auth/login";
-  }
+    Promise.all([
+      Promise.resolve(Cookies.remove("token")),
+      Promise.resolve(dispatch(clearUser())),
+      queryClient.removeQueries({ queryKey: ["authUser"] }),
+    ]).then(() => {
+      // Redirect to the login page after all actions complete
+      window.location.href = "/auth/login";
+      toast.success("You have been logged out", {
+        duration: 3000,
+        style: {
+          maxWidth: "500px",
+          width: "max-content",
+        },
+      })
+    });
+  };
 
   return (
     <div className="h-screen size-full relative">
@@ -110,17 +129,16 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             `}
       >
         <div className="w-full h-20 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
-          <div className="w-1/2">
+          <div className="w-1/2 hidden md:block">
             <p className="text-2xl font-medium">
-                            {
-                                currentRoute.split('/').length === 2 && currentRoute.split('/')[1] === '' 
-                                    ? 'Dashboard' 
-                                    : currentRoute
-                                        .split('/')[1]
-                                        .replace(/-/g, ' ')
-                                        .replace(/^./, c => c.toUpperCase())
-                            }
-                        </p>
+              {currentRoute.split("/").length === 2 &&
+              currentRoute.split("/")[1] === ""
+                ? "Dashboard"
+                : currentRoute
+                    .split("/")[1]
+                    .replace(/-/g, " ")
+                    .replace(/^./, (c) => c.toUpperCase())}
+            </p>
           </div>
           <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-3 items-center">
             {/* <Link
@@ -129,11 +147,16 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             >
               <SettingsIcon className="w-4" color="black" />
             </Link> */}
-            <div className="size-10 relative rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20">
-              <BellIcon className="w-4" color="black" />
-              <div className="size-2 bg-teal-700 absolute -top-1 left-auto right-auto rounded-full" />
+            <div className="hidden md:block">
+              <div className="size-10 relative rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20">
+                <BellIcon className="w-4" color="black" />
+                <div className="size-2 bg-teal-700 absolute -top-1 left-auto right-auto rounded-full" />
+              </div>
             </div>
-            <div className="flex items-center cursor-pointer" onClick={handleClick}>
+            <div
+              className="flex items-center cursor-pointer"
+              onClick={handleClick}
+            >
               {user?.profile?.profileImage ? (
                 <Image
                   src={user?.profile?.profileImage}
@@ -154,11 +177,16 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div className="cursor-pointer" onClick={handleLogOut}>
-                <Icon icon="ic:baseline-logout" width="20" height="20"  style={{color: "#f21717"}} />
+              <Icon
+                icon="ic:baseline-logout"
+                width="20"
+                height="20"
+                style={{ color: "#f21717" }}
+              />
             </div>
           </div>
         </div>
-        <div className=" px-10 w-full h-[91vh] overflow-y-auto">{children}</div>
+        <div className="md:px-10 px-5 w-full h-[91vh] overflow-y-auto">{children}</div>
       </div>
 
       {/* Mobile Menu Overlay */}
