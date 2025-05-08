@@ -1,0 +1,48 @@
+[
+    {
+      "propertyID": "P001",
+      "propertyName": "Sunset Villa",
+      "propertyType": "Residential",
+      "ownersName": "John Doe",
+      "verificationStatus": "verified",
+      "assignedAgent": "Alice Smith",
+      "submissionDate": "2024-02-10"
+    },
+    {
+      "propertyID": "P002",
+      "propertyName": "Downtown Office",
+      "propertyType": "Commercial",
+      "ownersName": "Jane Cooper",
+      "verificationStatus": "pending",
+      "assignedAgent": "Michael Johnson",
+      "submissionDate": "2024-02-12"
+    },
+    {
+      "propertyID": "P003",
+      "propertyName": "Greenwood Estate",
+      "propertyType": "Residential",
+      "ownersName": "Robert Brown",
+      "verificationStatus": "rejected",
+      "assignedAgent": "Emily Davis",
+      "submissionDate": "2024-02-15"
+    },
+    {
+      "propertyID": "P004",
+      "propertyName": "Lakeside Apartments",
+      "propertyType": "Residential",
+      "ownersName": "Emma Wilson",
+      "verificationStatus": "verified",
+      "assignedAgent": "Daniel Martinez",
+      "submissionDate": "2024-02-18"
+    },
+    {
+      "propertyID": "P005",
+      "propertyName": "Tech Hub Tower",
+      "propertyType": "Commercial",
+      "ownersName": "Oliver Thomas",
+      "verificationStatus": "pending",
+      "assignedAgent": "Sophia Lee",
+      "submissionDate": "2024-02-20"
+    }
+  ]
+  
