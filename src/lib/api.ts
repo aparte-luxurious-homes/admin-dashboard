@@ -31,8 +31,15 @@ axiosRequest.interceptors.response.use(
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       
+      console.log('[Axios Interceptor] 401 error detected:', {
+        path: currentPath,
+        url: error.config?.url,
+        willRemoveToken: !currentPath.includes('/auth/login') && !error.config?.url?.includes('/auth/login')
+      });
+      
       // Don't redirect if already on login page or if this is a login attempt
       if (!currentPath.includes('/auth/login') && !error.config?.url?.includes('/auth/login')) {
+        console.log('[Axios Interceptor] Removing token due to 401');
         Cookies.remove("token"); // Auto logout
         window.location.href = PAGE_ROUTES.auth.login;
       }

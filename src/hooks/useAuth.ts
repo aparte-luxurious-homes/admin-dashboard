@@ -32,6 +32,13 @@ export const useAuth = () => {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
   const token = Cookies.get("token");
+  
+  // Debug: Log all cookies
+  useEffect(() => {
+    const allCookies = document.cookie;
+    console.log('[useAuth] All cookies:', allCookies);
+    console.log('[useAuth] Token from Cookies.get:', token);
+  }, [token]);
 
   const { data, isFetching, error } = useQuery({
     queryKey: ["authUser"],
@@ -84,15 +91,28 @@ export const useLogin = () => {
       // Only set token if user is not a guest
       // Use secure cookies only in production (HTTPS)
       const isProduction = window.location.protocol === 'https:';
-      Cookies.set("token", data.authorization.token, { 
+      const cookieOptions = { 
         expires: 7, 
         secure: isProduction, 
-        sameSite: "Strict" 
-      });
+        sameSite: "Lax" as const, // Changed from Strict to Lax for better compatibility
+        path: '/' // Ensure cookie is available across all paths
+      };
+      
+      console.log('[useLogin] Setting token cookie with options:', cookieOptions);
+      Cookies.set("token", data.authorization.token, cookieOptions);
+      
+      // Verify cookie was set
+      const verifyToken = Cookies.get("token");
+      console.log('[useLogin] Token verification after set:', verifyToken ? 'Token set successfully' : 'ERROR: Token not set!');
+      
       return data.user;
     },
     onSuccess: async (user) => {
       console.log('[useLogin] Login successful, setting user:', user.email);
+      
+      // Verify token is still there before proceeding
+      const tokenCheck = Cookies.get("token");
+      console.log('[useLogin] Token check before state update:', tokenCheck ? 'Token exists' : 'ERROR: Token missing!');
       
       // Update state before navigation
       dispatch(setUser(user));
@@ -103,6 +123,11 @@ export const useLogin = () => {
       // Small delay to ensure state is persisted
       await new Promise(resolve => setTimeout(resolve, 200));
       
+      // Final token verification before navigation
+      const finalTokenCheck = Cookies.get("token");
+      console.log('[useLogin] Final token check before navigation:', finalTokenCheck ? 'Token exists' : 'ERROR: Token missing!');
+      console.log('[useLogin] All cookies before navigation:', document.cookie);
+      
       console.log('[useLogin] Navigating to dashboard...');
       
       // Use replace instead of push to prevent back navigation to login
@@ -110,8 +135,9 @@ export const useLogin = () => {
     },
     onError: (error: any) => {
       // Remove token if there's an error
+      console.log('[useLogin] Login error, removing token');
       Cookies.remove("token");
-      console.error('Login failed:', error);
+      console.error('[useLogin] Login failed:', error);
     }
   });
 };

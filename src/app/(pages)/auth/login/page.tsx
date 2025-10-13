@@ -46,7 +46,13 @@ export default function Login() {
       
       // Set the token in cookies first
       const isProduction = window.location.protocol === 'https:';
-      Cookies.set("token", token, { expires: 7, secure: isProduction, sameSite: "Strict" });
+      Cookies.set("token", token, { 
+        expires: 7, 
+        secure: isProduction, 
+        sameSite: "Lax" as const,
+        path: '/'
+      });
+      console.log('[Login] Token from URL set in cookie:', token);
       
       // Try to fetch profile with the token
       axiosRequest.get(`${BASE_API_URL}/profile`)
@@ -191,7 +197,7 @@ export default function Login() {
                 <Icon icon="f7:eye-slash" className="text-black" onClick={togglePassword} />
               )}
             </div>
-            {validator.message("password", password, "required|password")}
+            {validator.message("password", password, "required|min:6")}
           </div>
           <div className="mt-2 flex justify-center">
             <div className="w-2/3">
