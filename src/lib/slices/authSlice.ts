@@ -3,56 +3,11 @@ import { IUser, IUserProfile, IWallet } from "../types";
 import { KycStatus, UserRole } from "../enums";
 
 interface AuthState {
-  user: IUser;
-}
-
-const initialProfileState: IUserProfile = {
-  id: 0,
-  userId: 0,
-  firstName: "",
-  lastName: "",
-  gender: "",
-  bio: "",
-  address: "",
-  city: "",
-  state: "",
-  country: "",
-  kycStatus: KycStatus.PENDING,
-  averageRating: "",
-  createdAt: "",
-  updatedAt: "",
-  dob: "",
-  profileImage: "",
-  nin: "",
-  bvn: ""
-}
-
-const initialWalletState: IWallet = {
-  id: "",
-  userId: 0,
-  balance: "",
-  pendingCash: "",
-  currency: "",
-  createdAt: "",
-  updatedAt: ""
+  user: IUser | null;
 }
 
 export const initialState: AuthState = {
-  user: {
-    id: 0,
-    email: "",
-    phone: "",
-    role: UserRole.AGENT,
-    verificationToken: "",
-    isVerified: true,
-    createdAt: "",
-    updatedAt: "",
-    isActive: true,
-    lastLogin: "",
-    profile: initialProfileState,
-    kyc: [],
-    wallets: [initialWalletState],
-  }
+  user: null
 };
 
 const authSlice = createSlice({
@@ -63,7 +18,7 @@ const authSlice = createSlice({
       state.user = action.payload;
     },
     clearUser: (state) => {
-      state.user = initialState.user;
+      state.user = null;
     },
   },
 });

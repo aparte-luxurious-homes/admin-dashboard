@@ -45,7 +45,8 @@ export const useAuth = () => {
 
   // Sync Redux only if data exists and is different from the current user
   useEffect(() => {
-    if (data && data.id !== user?.id) {
+    if (data && data.id && data.id !== user?.id) {
+      console.log('[useAuth] Setting user in Redux:', data.email);
       dispatch(setUser(data));
     }
   }, [data, dispatch, user]);
@@ -53,9 +54,14 @@ export const useAuth = () => {
   // Log errors but don't crash - let the persisted Redux user data work
   useEffect(() => {
     if (error && !user) {
-      console.error('Failed to fetch user profile:', error);
+      console.error('[useAuth] Failed to fetch user profile:', error);
     }
   }, [error, user]);
+
+  // Log current auth state
+  useEffect(() => {
+    console.log('[useAuth] Current state - User:', user?.email || 'None', 'Token:', !!token, 'Fetching:', isFetching);
+  }, [user, token, isFetching]);
 
   return { user, isFetching };
 };
@@ -86,12 +92,18 @@ export const useLogin = () => {
       return data.user;
     },
     onSuccess: async (user) => {
+      console.log('[useLogin] Login successful, setting user:', user.email);
+      
       // Update state before navigation
       dispatch(setUser(user));
       queryClient.setQueryData(["authUser"], user);
       
+      console.log('[useLogin] State updated, waiting for persistence...');
+      
       // Small delay to ensure state is persisted
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      console.log('[useLogin] Navigating to dashboard...');
       
       // Use replace instead of push to prevent back navigation to login
       router.replace(PAGE_ROUTES.dashboard.base);

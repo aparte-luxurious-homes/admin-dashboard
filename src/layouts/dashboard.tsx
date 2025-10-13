@@ -40,18 +40,21 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     
     // If no token and no user in Redux, redirect to login
     if (!token && !user) {
+      console.log('[Dashboard] No token and no user - redirecting to login');
       router.replace(PAGE_ROUTES.auth.login);
       return;
     }
 
     // If we have user data (either from Redux persistence or fresh fetch), show dashboard
-    if (user) {
+    if (user && user.id) {
+      console.log('[Dashboard] User authenticated:', user.email);
       setIsCheckingAuth(false);
       return;
     }
 
     // If we have a token but no user, wait for fetch to complete
     if (token && !user) {
+      console.log('[Dashboard] Token exists, waiting for user fetch...');
       setIsCheckingAuth(true);
       return;
     }
