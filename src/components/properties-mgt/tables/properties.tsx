@@ -21,7 +21,7 @@ export default function PropertiesTable() {
     const { user } = useAuth();
     const [page, setPage] = useState<number>(1);
     const [searchTerm , setSearchTerm] = useState<string>("");
-    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user.role!, user.id!);
+    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || '', user?.id || 0);
     const [propertyList, setPropertyList] = useState<IProperty[]>(properties?.data?.data?.data);
     const router = useRouter();
 

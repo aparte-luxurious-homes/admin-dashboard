@@ -31,7 +31,7 @@ export default function CreateBookingView() {
     const searchParams = useSearchParams();
     const [userSearchTerm, setUserSearchTerm] = useState<string>('')
     const [propertySearchTerm, setPropertySearchTerm] = useState<string>('')
-    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(1, 12, propertySearchTerm, user.role, user.id);
+    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(1, 12, propertySearchTerm, user?.role || '', user?.id || 0);
     const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
     const [selectionMode, setSelectionMode] = useState<boolean>(true)
     const [properties, setProperties] = useState<IProperty[]>(propertyList?.data?.data?.data)

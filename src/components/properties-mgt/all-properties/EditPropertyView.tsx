@@ -303,7 +303,7 @@ export default function EditPropertyView({
                         <div className="w-full flex justify-between gap-10 items-center">
                             <div className="flex flex-col gap-5 justify-between items-left w-fit mt-4">
                                 {
-                                    user.role === UserRole.ADMIN && propertyData?.verifications[0]?.status === PropertyVerificationStatus.VERIFIED &&
+                                    user?.role === UserRole.ADMIN && propertyData?.verifications[0]?.status === PropertyVerificationStatus.VERIFIED &&
                                     <CustomCheckbox 
                                         label="Is verified"
                                         checked={formik.values.isVerified}
@@ -311,7 +311,7 @@ export default function EditPropertyView({
                                     />
                                 }
                                 {
-                                    user.role === UserRole.ADMIN &&
+                                    user?.role === UserRole.ADMIN &&
                                     <CustomCheckbox 
                                         label="Is Featured"
                                         checked={formik.values.isFeatured}

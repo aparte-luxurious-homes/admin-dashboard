@@ -277,7 +277,7 @@ export default function PropertyDetailsView({
                                 </div>
 
                                 {
-                                    user.role === UserRole.ADMIN && (!property?.isVerified || !property?.agent) &&
+                                    user?.role === UserRole.ADMIN && (!property?.isVerified || !property?.agent) &&
                                     <div className="flex justify-between items-center gap-4 mt-7 mb-5 w-full px-4 py-3 border-dashed border-2 border-zinc-400 rounded-lg">
                                         <p className="text-xl text-zinc-500">
                                             This property has not been verified yet! 
@@ -366,7 +366,7 @@ export default function PropertyDetailsView({
                                     <div className="flex gap-4 items-center mt-4 justify-between w-[90%]">
                                         
                                         {
-                                            user.role !== UserRole.OWNER &&
+                                            user?.role !== UserRole.OWNER &&
                                             <div className="">
                                                 <p className="font-medium">
                                                     Owner
@@ -387,7 +387,7 @@ export default function PropertyDetailsView({
                                         }
 
                                         {
-                                            property?.agent && user.role !== UserRole.AGENT &&
+                                            property?.agent && user?.role !== UserRole.AGENT &&
                                             <div className="">
                                                 <p className="font-medium">
                                                     Agent

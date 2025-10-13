@@ -34,7 +34,7 @@ export default function VerificationDetails({
     const  { user } = useAuth();
     const { mutate: assignAgent, isPending: assignmentLoading } = AssignToProperty(propertyId)
     const  { mutate: updateVerification, isPending: verificationUdateLoading } = UpdatePropertyVerification()
-    const { data: verificationData, isLoading: verificationLoading } = GetPropertyVerification(verificationId, user.role)
+    const { data: verificationData, isLoading: verificationLoading } = GetPropertyVerification(verificationId, user?.role || '')
     const [verification, setVerification] = useState<IPropertyVerification | null>(null);
     const [property, setProperty] = useState<IProperty | null>(null);
     const [editMode, setEditMode] = useState<boolean>(false)
@@ -258,7 +258,7 @@ export default function VerificationDetails({
                 </div>
                 
                 <section className="flex  justify-between gap-6 w-full px-10">
-                    <div className={`${user.role !== UserRole.AGENT ? 'w-[70%]' : 'w-full'} relative`}>
+                    <div className={`${user?.role !== UserRole.AGENT ? 'w-[70%]' : 'w-full'} relative`}>
                         <Swiper
                             loop={true}
                             modules={[Navigation, Autoplay]}
@@ -296,7 +296,7 @@ export default function VerificationDetails({
                         </Swiper>
                     </div>
                     {
-                        user.role !== UserRole.AGENT &&
+                        user?.role !== UserRole.AGENT &&
                         <div className='w-full flex flex-col gap-y-3'>
                             <div className='size-full flex flex-col justify-center items-center bg-background rounded-xl'>
                                 <p className='text-base text-zinc-800 font-medium text-center mb-1'>

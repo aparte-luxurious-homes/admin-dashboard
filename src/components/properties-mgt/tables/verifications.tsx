@@ -25,7 +25,7 @@ export default function AllVerificationsTable() {
     const modalRef = useRef(null);
     const [page, setPage] = useState<number>(1);
     const [searchTerm , setSearchTerm] = useState<string>("");
-    const { data: verificationList, isLoading: verificationsLoading } = GetAllVerifications(page, 12, searchTerm, user.role)
+    const { data: verificationList, isLoading: verificationsLoading } = GetAllVerifications(page, 12, searchTerm, user?.role || '')
     const [verifications, setVerifications] = useState<IPropertyVerification[]>(verificationList?.data?.data?.data);
 
     const [selectedRow, setSelectedRow] = useState<number|null>(null);
