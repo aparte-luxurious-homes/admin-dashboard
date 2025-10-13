@@ -19,7 +19,7 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isFetching } = useAuth();
   const router = useRouter();
   const currentRoute = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
