@@ -91,19 +91,43 @@ export const useLogin = () => {
       // Only set token if user is not a guest
       // Use secure cookies only in production (HTTPS)
       const isProduction = window.location.protocol === 'https:';
-      const cookieOptions = { 
+      
+      // Extract domain for cookie (for production)
+      const hostname = window.location.hostname;
+      const domain = hostname.includes('aparte.ng') ? '.aparte.ng' : undefined;
+      
+      const cookieOptions: any = { 
         expires: 7, 
         secure: isProduction, 
         sameSite: "Lax" as const, // Changed from Strict to Lax for better compatibility
         path: '/' // Ensure cookie is available across all paths
       };
       
+      // Only set domain for production (don't set for localhost)
+      if (domain) {
+        cookieOptions.domain = domain;
+      }
+      
       console.log('[useLogin] Setting token cookie with options:', cookieOptions);
+      console.log('[useLogin] Current location:', { hostname, protocol: window.location.protocol });
+      
+      // Try setting the cookie
       Cookies.set("token", data.authorization.token, cookieOptions);
       
       // Verify cookie was set
       const verifyToken = Cookies.get("token");
       console.log('[useLogin] Token verification after set:', verifyToken ? 'Token set successfully' : 'ERROR: Token not set!');
+      console.log('[useLogin] document.cookie after set:', document.cookie);
+      
+      // If token still not set, try without domain
+      if (!verifyToken && domain) {
+        console.warn('[useLogin] Token not set with domain, trying without domain...');
+        const fallbackOptions = { ...cookieOptions };
+        delete fallbackOptions.domain;
+        Cookies.set("token", data.authorization.token, fallbackOptions);
+        const recheckToken = Cookies.get("token");
+        console.log('[useLogin] Fallback token check:', recheckToken ? 'Success!' : 'Still failed');
+      }
       
       return data.user;
     },

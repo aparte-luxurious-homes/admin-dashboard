@@ -46,13 +46,23 @@ export default function Login() {
       
       // Set the token in cookies first
       const isProduction = window.location.protocol === 'https:';
-      Cookies.set("token", token, { 
+      const hostname = window.location.hostname;
+      const domain = hostname.includes('aparte.ng') ? '.aparte.ng' : undefined;
+      
+      const cookieOptions: any = { 
         expires: 7, 
         secure: isProduction, 
         sameSite: "Lax" as const,
         path: '/'
-      });
-      console.log('[Login] Token from URL set in cookie:', token);
+      };
+      
+      if (domain) {
+        cookieOptions.domain = domain;
+      }
+      
+      Cookies.set("token", token, cookieOptions);
+      console.log('[Login] Token from URL set in cookie with options:', cookieOptions);
+      console.log('[Login] document.cookie:', document.cookie);
       
       // Try to fetch profile with the token
       axiosRequest.get(`${BASE_API_URL}/profile`)
