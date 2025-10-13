@@ -11,6 +11,7 @@ import { toast } from "react-hot-toast";
 import Cookies from "js-cookie";
 import axiosRequest from "@/lib/api";
 import { BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/src/lib/slices/authSlice";
 import { useQueryClient } from "@tanstack/react-query";
@@ -48,7 +49,7 @@ export default function Login() {
       
       // Try to fetch profile with the token
       axiosRequest.get(`${BASE_API_URL}/profile`)
-        .then((response) => {
+        .then(async (response) => {
           const user = response.data.data;
           
           // Check for guest role
@@ -56,16 +57,16 @@ export default function Login() {
             throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
           }
           
-          // Batch our state updates before navigation
-          Promise.all([
-            // Update Redux store
-            dispatch(setUser(user)),
-            // Update React Query cache
-            queryClient.setQueryData(["authUser"], user)
-          ]).then(() => {
-            // Immediate redirect after state updates
-            window.location.href = '/';
-          });
+          // Update Redux store
+          dispatch(setUser(user));
+          // Update React Query cache
+          queryClient.setQueryData(["authUser"], user);
+          
+          // Small delay to ensure state is persisted
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Use router for navigation
+          router.replace(PAGE_ROUTES.dashboard.base);
         })
         .catch((error) => {
           // Token is invalid, remove it and show error
@@ -85,7 +86,7 @@ export default function Login() {
           setIsTokenAuthenticating(false);
         });
     }
-  }, [searchParams, dispatch, queryClient]);
+  }, [searchParams, dispatch, queryClient, router]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

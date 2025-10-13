@@ -4,19 +4,19 @@ import Image from "next/image";
 import { BellIcon, SettingsIcon } from "@/components/icons";
 import { NAV_LINKS } from "../lib/routes/nav_links";
 import SideNav from "../components/sidenav";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { useAuth } from "../hooks/useAuth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { IoMenu, IoClose } from "react-icons/io5";
-import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearUser } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import Loader from "../components/loader";
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -31,6 +31,41 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const handleClick = () => {
     router.push(`/settings`);
   };
+
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const token = Cookies.get("token");
+    
+    // If no token and no user in Redux, redirect to login
+    if (!token && !user) {
+      router.replace(PAGE_ROUTES.auth.login);
+      return;
+    }
+
+    // If we have a token but no user yet, wait for the fetch to complete
+    if (token && !user && !isFetching) {
+      // Query should be running, wait for it
+      setIsCheckingAuth(true);
+      return;
+    }
+
+    // If we have user data (either from Redux persistence or fresh fetch)
+    if (user) {
+      setIsCheckingAuth(false);
+    }
+  }, [user, isFetching, router]);
+
+  // Show loader while checking authentication or fetching user
+  if (isCheckingAuth || (isFetching && !user)) {
+    return <Loader message="Loading dashboard..." />;
+  }
+
+  // Don't render dashboard if no user (safety check)
+  if (!user) {
+    return null;
+  }
 
   const handleLogOut = () => {
     Promise.all([
