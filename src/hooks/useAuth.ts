@@ -33,12 +33,13 @@ export const useAuth = () => {
   const user = useSelector((state: RootState) => state.auth.user);
   const token = Cookies.get("token");
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, error } = useQuery({
     queryKey: ["authUser"],
     queryFn: fetchUser,
     refetchInterval: 1000 * 60 * 5, // 5 minutes
-    retry: false, // Don't retry on failure
-    enabled: !!token, // Only fetch if token exists
+    retry: 1, // Retry once on failure
+    retryDelay: 1000, // Wait 1 second before retry
+    enabled: !!token && !user, // Only fetch if token exists and we don't have user data yet
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 
@@ -48,6 +49,13 @@ export const useAuth = () => {
       dispatch(setUser(data));
     }
   }, [data, dispatch, user]);
+
+  // Log errors but don't crash - let the persisted Redux user data work
+  useEffect(() => {
+    if (error && !user) {
+      console.error('Failed to fetch user profile:', error);
+    }
+  }, [error, user]);
 
   return { user, isFetching };
 };
@@ -68,7 +76,13 @@ export const useLogin = () => {
       }
 
       // Only set token if user is not a guest
-      Cookies.set("token", data.authorization.token, { expires: 7, secure: true, sameSite: "Strict" });
+      // Use secure cookies only in production (HTTPS)
+      const isProduction = window.location.protocol === 'https:';
+      Cookies.set("token", data.authorization.token, { 
+        expires: 7, 
+        secure: isProduction, 
+        sameSite: "Strict" 
+      });
       return data.user;
     },
     onSuccess: async (user) => {

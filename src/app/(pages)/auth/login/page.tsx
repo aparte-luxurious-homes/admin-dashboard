@@ -45,7 +45,8 @@ export default function Login() {
       setIsTokenAuthenticating(true);
       
       // Set the token in cookies first
-      Cookies.set("token", token, { expires: 7, secure: true, sameSite: "Strict" });
+      const isProduction = window.location.protocol === 'https:';
+      Cookies.set("token", token, { expires: 7, secure: isProduction, sameSite: "Strict" });
       
       // Try to fetch profile with the token
       axiosRequest.get(`${BASE_API_URL}/profile`)

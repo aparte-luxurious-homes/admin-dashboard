@@ -44,16 +44,16 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // If we have a token but no user yet, wait for the fetch to complete
-    if (token && !user && !isFetching) {
-      // Query should be running, wait for it
-      setIsCheckingAuth(true);
+    // If we have user data (either from Redux persistence or fresh fetch), show dashboard
+    if (user) {
+      setIsCheckingAuth(false);
       return;
     }
 
-    // If we have user data (either from Redux persistence or fresh fetch)
-    if (user) {
-      setIsCheckingAuth(false);
+    // If we have a token but no user, wait for fetch to complete
+    if (token && !user) {
+      setIsCheckingAuth(true);
+      return;
     }
   }, [user, isFetching, router]);
 
