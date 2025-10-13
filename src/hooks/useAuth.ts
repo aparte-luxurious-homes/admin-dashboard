@@ -31,12 +31,15 @@ export const fetchUser = async (): Promise<IUser> => {
 export const useAuth = () => {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
+  const token = Cookies.get("token");
 
   const { data, isFetching } = useQuery({
     queryKey: ["authUser"],
     queryFn: fetchUser,
     refetchInterval: 1000 * 60 * 5, // 5 minutes
     retry: false, // Don't retry on failure
+    enabled: !!token, // Only fetch if token exists
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 
   // Sync Redux only if data exists and is different from the current user
@@ -68,10 +71,13 @@ export const useLogin = () => {
       Cookies.set("token", data.authorization.token, { expires: 7, secure: true, sameSite: "Strict" });
       return data.user;
     },
-    onSuccess: (user) => {
+    onSuccess: async (user) => {
       // Update state before navigation
       dispatch(setUser(user));
       queryClient.setQueryData(["authUser"], user);
+      
+      // Small delay to ensure state is persisted
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Use replace instead of push to prevent back navigation to login
       router.replace(PAGE_ROUTES.dashboard.base);
