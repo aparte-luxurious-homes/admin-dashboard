@@ -16,6 +16,7 @@ import { BookingStatus } from "../../booking-mgt/types";
 import { MdOutlineVerified } from "react-icons/md";
 import { ImCancelCircle } from "react-icons/im";
 import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
 import { Icon } from "@iconify/react/dist/iconify.js";
 
 
@@ -25,7 +26,7 @@ export default function AllVerificationsTable() {
     const modalRef = useRef(null);
     const [page, setPage] = useState<number>(1);
     const [searchTerm , setSearchTerm] = useState<string>("");
-    const { data: verificationList, isLoading: verificationsLoading } = GetAllVerifications(page, 12, searchTerm, user?.role || '')
+    const { data: verificationList, isLoading: verificationsLoading } = GetAllVerifications(page, 12, searchTerm, user?.role || UserRole.GUEST)
     const [verifications, setVerifications] = useState<IPropertyVerification[]>(verificationList?.data?.data?.data);
 
     const [selectedRow, setSelectedRow] = useState<number|null>(null);

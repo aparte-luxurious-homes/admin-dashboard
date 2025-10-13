@@ -34,7 +34,7 @@ export default function VerificationDetails({
     const  { user } = useAuth();
     const { mutate: assignAgent, isPending: assignmentLoading } = AssignToProperty(propertyId)
     const  { mutate: updateVerification, isPending: verificationUdateLoading } = UpdatePropertyVerification()
-    const { data: verificationData, isLoading: verificationLoading } = GetPropertyVerification(verificationId, user?.role || '')
+    const { data: verificationData, isLoading: verificationLoading } = GetPropertyVerification(verificationId, user?.role || UserRole.GUEST)
     const [verification, setVerification] = useState<IPropertyVerification | null>(null);
     const [property, setProperty] = useState<IProperty | null>(null);
     const [editMode, setEditMode] = useState<boolean>(false)

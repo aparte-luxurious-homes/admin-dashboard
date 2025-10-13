@@ -24,6 +24,7 @@ import { CreateBooking } from "@/src/lib/request-handlers/bookingMgt";
 import Spinner from "../../ui/Spinner";
 import { useAuth } from "@/src/hooks/useAuth";
 import toast from "react-hot-toast";
+import { UserRole } from "@/src/lib/enums";
 
 export default function CreateBookingView() {
     const router = useRouter();
@@ -31,7 +32,7 @@ export default function CreateBookingView() {
     const searchParams = useSearchParams();
     const [userSearchTerm, setUserSearchTerm] = useState<string>('')
     const [propertySearchTerm, setPropertySearchTerm] = useState<string>('')
-    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(1, 12, propertySearchTerm, user?.role || '', user?.id || 0);
+    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(1, 12, propertySearchTerm, user?.role || UserRole.GUEST, user?.id || 0);
     const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
     const [selectionMode, setSelectionMode] = useState<boolean>(true)
     const [properties, setProperties] = useState<IProperty[]>(propertyList?.data?.data?.data)

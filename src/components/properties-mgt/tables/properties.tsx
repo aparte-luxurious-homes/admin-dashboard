@@ -16,12 +16,13 @@ import { FiPlus } from "react-icons/fi";
 import Link from "next/link";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
 
 export default function PropertiesTable() {
     const { user } = useAuth();
     const [page, setPage] = useState<number>(1);
     const [searchTerm , setSearchTerm] = useState<string>("");
-    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || '', user?.id || 0);
+    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id || 0);
     const [propertyList, setPropertyList] = useState<IProperty[]>(properties?.data?.data?.data);
     const router = useRouter();
 
