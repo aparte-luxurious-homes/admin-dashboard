@@ -27,21 +27,31 @@ axiosRequest.interceptors.request.use((config) => {
 axiosRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Only redirect on 401 if we're not already on the login page
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
-      
+      const requestUrl: string = error.config?.url || '';
+
+      // Only force logout for auth-critical endpoints
+      const isAuthEndpoint =
+        requestUrl.includes('/profile') ||
+        requestUrl.includes('/auth/me') ||
+        requestUrl.includes('/auth/refresh');
+
       console.log('[Axios Interceptor] 401 error detected:', {
         path: currentPath,
-        url: error.config?.url,
-        willRemoveToken: !currentPath.includes('/auth/login') && !error.config?.url?.includes('/auth/login')
+        url: requestUrl,
+        isAuthEndpoint,
       });
-      
-      // Don't redirect if already on login page or if this is a login attempt
-      if (!currentPath.includes('/auth/login') && !error.config?.url?.includes('/auth/login')) {
-        console.log('[Axios Interceptor] Removing token due to 401');
-        Cookies.remove("token"); // Auto logout
+
+      // Avoid redirect loop on login route and don't logout for non-auth endpoints
+      const onLoginRoute = currentPath.includes('/auth/login') || requestUrl.includes('/auth/login');
+
+      if (isAuthEndpoint && !onLoginRoute) {
+        console.log('[Axios Interceptor] Removing token and redirecting due to auth 401');
+        Cookies.remove('token');
         window.location.href = PAGE_ROUTES.auth.login;
+      } else {
+        console.warn('[Axios Interceptor] 401 on non-auth endpoint - not logging out.');
       }
     }
     return Promise.reject(error);
