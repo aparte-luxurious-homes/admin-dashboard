@@ -38,6 +38,13 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = Cookies.get("token");
     
+    console.log('[Dashboard] Auth check:', { 
+      hasToken: !!token, 
+      hasUser: !!user, 
+      userId: user?.id, 
+      isFetching 
+    });
+    
     // If no token and no user in Redux, redirect to login
     if (!token && !user) {
       console.log('[Dashboard] No token and no user - redirecting to login');
@@ -52,13 +59,31 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // If we have a token but no user, wait for fetch to complete
+    // If we have a token but no user, wait briefly for fetch to complete
     if (token && !user) {
-      console.log('[Dashboard] Token exists, waiting for user fetch...');
-      setIsCheckingAuth(true);
-      return;
+      if (isFetching) {
+        console.log('[Dashboard] Token exists, fetching user...');
+        setIsCheckingAuth(true);
+      } else {
+        console.log('[Dashboard] Token exists but no user and not fetching - might be invalid token');
+        // Give it a moment for query to start
+        const timeout = setTimeout(() => {
+          // Re-check token and user after timeout
+          const currentToken = Cookies.get("token");
+          const currentUser = user;
+          
+          if (currentToken && !currentUser) {
+            console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
+            Cookies.remove("token");
+            router.replace(PAGE_ROUTES.auth.login);
+          }
+        }, 2000); // Wait 2 seconds for profile fetch
+        
+        return () => clearTimeout(timeout);
+      }
     }
-  }, [user, isFetching, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isFetching, router]);
 
   // Show loader while checking authentication or fetching user
   if (isCheckingAuth || (isFetching && !user)) {
