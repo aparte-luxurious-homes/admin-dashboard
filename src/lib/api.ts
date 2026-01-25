@@ -16,6 +16,13 @@ const axiosRequest = axios.create({
 
 // 🔹 Attach token from cookies to every request
 axiosRequest.interceptors.request.use((config) => {
+  if (process.env.NEXT_PUBLIC_NODE_ENV !== 'production') {
+    console.log(`[Axios] Request: ${config.method?.toUpperCase()} ${config.url}`, {
+      baseURL: config.baseURL,
+      fullPath: `${config.baseURL}${config.url}`
+    });
+  }
+
   const token = Cookies.get("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
