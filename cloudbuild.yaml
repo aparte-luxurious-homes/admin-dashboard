@@ -8,7 +8,9 @@ steps:
       - '-t'
       - 'europe-west1-docker.pkg.dev/$PROJECT_ID/aparte/admin-dashboard:latest'
       - '--build-arg'
-      - 'NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}'
+      - 'NEXT_PUBLIC_NODE_ENV=${_NEXT_PUBLIC_NODE_ENV}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_BASE_API_URL=${_NEXT_PUBLIC_BASE_API_URL}'
       - '.'
 
   # Push the container image to Artifact Registry
@@ -43,13 +45,14 @@ steps:
       
       # Environment variables
       - '--update-env-vars'
-      - 'NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}'
+      - 'NEXT_PUBLIC_NODE_ENV=${_NEXT_PUBLIC_NODE_ENV},NEXT_PUBLIC_BASE_API_URL=${_NEXT_PUBLIC_BASE_API_URL}'
 
 images:
   - 'europe-west1-docker.pkg.dev/$PROJECT_ID/aparte/admin-dashboard'
 
 substitutions:
-  _NEXT_PUBLIC_API_URL: 'https://api.aparteng.com'
+  _NEXT_PUBLIC_NODE_ENV: 'production'
+  _NEXT_PUBLIC_BASE_API_URL: 'https://api.aparteng.com/api/v1'
 
 options:
   logging: CLOUD_LOGGING_ONLY
