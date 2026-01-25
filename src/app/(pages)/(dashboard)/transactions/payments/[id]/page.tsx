@@ -3,7 +3,7 @@
 import BreadCrumb from "@/src/components/breadcrumb";
 import Grid from "@mui/material/Grid2";
 import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axiosRequest from "@/src/lib/api";
 import { toast } from "react-hot-toast";
 import InputGroup from "@/src/components/formcomponent/InputGroup";
@@ -58,7 +58,7 @@ const AgentInfo = () => {
     }
   };
 
-  const fetchApaymentInfo = async () => {
+  const fetchApaymentInfo = useCallback(async () => {
     if (!id) return;
 
     setPaymentInfoLoading(true);
@@ -80,11 +80,11 @@ const AgentInfo = () => {
     } finally {
       setPaymentInfoLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchApaymentInfo();
-  }, []);
+  }, [fetchApaymentInfo]);
 
   return (
     <>

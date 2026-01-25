@@ -3,7 +3,7 @@
 import BreadCrumb from "@/src/components/breadcrumb";
 import Grid from "@mui/material/Grid2";
 import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axiosRequest from "@/src/lib/api";
 import { toast } from "react-hot-toast";
 import InputGroup from "@/src/components/formcomponent/InputGroup";
@@ -35,7 +35,7 @@ const RefundInfo = () => {
   const params = useParams();
   const id = params?.id;
 
-  const fetchAtransactionInfo = async () => {
+  const fetchAtransactionInfo = useCallback(async () => {
     if (!id) return;
 
     setTransactionInfoLoading(true);
@@ -57,11 +57,11 @@ const RefundInfo = () => {
     } finally {
       setTransactionInfoLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchAtransactionInfo();
-  }, []);
+  }, [fetchAtransactionInfo]);
 
   return (
     <>

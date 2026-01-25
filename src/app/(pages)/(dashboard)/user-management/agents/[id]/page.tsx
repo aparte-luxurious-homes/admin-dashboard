@@ -113,7 +113,7 @@ const AgentInfo = () => {
   const id = params?.id;
   console.log("params", params?.id);
 
-  const fetchAUserInfo = async () => {
+  const fetchAUserInfo = useCallback(async () => {
     if (!id) return;
 
     setUserLoading(true);
@@ -135,11 +135,11 @@ const AgentInfo = () => {
     } finally {
       setUserLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchAUserInfo();
-  }, []);
+  }, [fetchAUserInfo]);
 
   const fetchProperties = useCallback(async () => {
     if (!id) return;
@@ -204,10 +204,10 @@ const AgentInfo = () => {
       },
     },
     { field: "propertyType", headerName: "Type", width: 150 },
-    { 
-      field: "owner", 
-      headerName: "Owner's Name", 
-      width: 150, 
+    {
+      field: "owner",
+      headerName: "Owner's Name",
+      width: 150,
       renderCell: (params) => `${params.row?.owner?.name || "--/--"}`
     },
     {
@@ -286,9 +286,8 @@ const AgentInfo = () => {
                     label="Legal Name"
                     required
                     disabled
-                    defaultValue={`${userInfo?.profile?.lastName || "--/--"} ${
-                      userInfo?.profile?.firstName || "--/--"
-                    }`}
+                    defaultValue={`${userInfo?.profile?.lastName || "--/--"} ${userInfo?.profile?.firstName || "--/--"
+                      }`}
                     inputType="text"
                     inputName="name"
                   />

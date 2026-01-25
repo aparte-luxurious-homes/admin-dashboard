@@ -57,7 +57,7 @@ const GuestInfo = () => {
   const id = params?.id;
   console.log("params", params?.id);
 
-  const fetchAUserInfo = async () => {
+  const fetchAUserInfo = useCallback(async () => {
     if (!id) return; // Ensure id exists before making the request
 
     setUserLoading(true);
@@ -80,11 +80,11 @@ const GuestInfo = () => {
     } finally {
       setUserLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchAUserInfo();
-  }, []);
+  }, [fetchAUserInfo]);
 
   console.log("userInfo", userInfo);
 
@@ -129,9 +129,8 @@ const GuestInfo = () => {
                     label="Legal Name"
                     required
                     disabled
-                    defaultValue={`${userInfo?.profile?.lastName || "--/--"} ${
-                      userInfo?.profile?.firstName || "--/--"
-                    }`}
+                    defaultValue={`${userInfo?.profile?.lastName || "--/--"} ${userInfo?.profile?.firstName || "--/--"
+                      }`}
                     inputType="text"
                     inputName="name"
                   />
