@@ -10,7 +10,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from "react-hot-toast";
 import Cookies from "js-cookie";
 import axiosRequest from "@/lib/api";
-import { BASE_API_URL } from "@/src/lib/routes/endpoints";
+// import { BASE_API_URL } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/src/lib/slices/authSlice";
@@ -21,7 +21,7 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 import useValidator from "@/src/hooks/useValidator";
 
 export default function Login() {
-  const { mutate: loginMutation, isPending } = useLogin(); 
+  const { mutate: loginMutation, isPending } = useLogin();
   const [email, setEmail] = useState<string>('')
   const [password, setPassword] = useState<string>('')
   const [validator, triggerValidation] = useValidator();
@@ -43,45 +43,45 @@ export default function Login() {
     const token = searchParams.get('token');
     if (token) {
       setIsTokenAuthenticating(true);
-      
+
       // Set the token in cookies first
       const isProduction = window.location.protocol === 'https:';
       const hostname = window.location.hostname;
       const domain = hostname.includes('aparte.ng') ? '.aparte.ng' : undefined;
-      
-      const cookieOptions: any = { 
-        expires: 7, 
-        secure: isProduction, 
+
+      const cookieOptions: any = {
+        expires: 7,
+        secure: isProduction,
         sameSite: "Lax" as const,
         path: '/'
       };
-      
+
       if (domain) {
         cookieOptions.domain = domain;
       }
-      
+
       Cookies.set("token", token, cookieOptions);
       console.log('[Login] Token from URL set in cookie with options:', cookieOptions);
       console.log('[Login] document.cookie:', document.cookie);
-      
+
       // Try to fetch profile with the token
-      axiosRequest.get(`${BASE_API_URL}/profile`)
+      axiosRequest.get("/profile")
         .then(async (response) => {
           const user = response.data.data;
-          
+
           // Check for guest role
           if (user.role === UserRole.GUEST) {
             throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
           }
-          
+
           // Update Redux store
           dispatch(setUser(user));
           // Update React Query cache
           queryClient.setQueryData(["authUser"], user);
-          
+
           // Small delay to ensure state is persisted
           await new Promise(resolve => setTimeout(resolve, 100));
-          
+
           // Use router for navigation
           router.replace(PAGE_ROUTES.dashboard.base);
         })
@@ -89,10 +89,10 @@ export default function Login() {
           // Token is invalid, remove it and show error
           Cookies.remove("token");
           console.error('Token validation failed:', error);
-          
-          const errorMessage = error?.response?.data?.message || 
+
+          const errorMessage = error?.response?.data?.message ||
             (error.message?.includes('Access Denied') ? error.message : 'Authentication failed. Please login with your credentials.');
-          
+
           toast.error(errorMessage, {
             duration: 6000,
             style: {
@@ -112,9 +112,9 @@ export default function Login() {
         { email, password },
         {
           onError: (error: any) => {
-            const errorMessage = error?.response?.data?.message || 
+            const errorMessage = error?.response?.data?.message ||
               (error.message?.includes('Access Denied') ? error.message : 'Login failed. Please check your credentials.');
-            
+
             toast.error(errorMessage, {
               duration: 6000,
               style: {
@@ -146,7 +146,7 @@ export default function Login() {
           priority
         />
       </div>
-      
+
       {/* Mobile watermark - centered and subtle */}
       <div className="absolute md:hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] transform scale-[2]">
         <Image
@@ -157,7 +157,7 @@ export default function Login() {
           priority
         />
       </div>
-      
+
       <main className="w-full max-w-md animate-fadeIn relative z-10">
         <div className="mx-auto w-fit mb-8 md:mb-10 transform hover:scale-105 transition-transform duration-300">
           <div className="relative">
@@ -176,7 +176,7 @@ export default function Login() {
             />
           </div>
         </div>
-        
+
         <form
           className="flex flex-col gap-5 p-6 md:p-8 rounded-xl bg-[#ffffff] text-gray-200 w-full 
           shadow-[4px_4px_10px_rgba(255,255,255,0.5)] transition-all duration-300"

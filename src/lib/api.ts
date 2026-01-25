@@ -6,7 +6,7 @@ import { BASE_API_URL } from "./routes/endpoints";
 import { PAGE_ROUTES } from "./routes/page_routes";
 
 const axiosRequest = axios.create({
-  baseURL: BASE_API_URL || "https://v1-api-9mba.onrender.com/api/v1",
+  baseURL: BASE_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
