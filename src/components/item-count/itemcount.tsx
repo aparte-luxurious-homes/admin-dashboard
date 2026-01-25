@@ -6,8 +6,9 @@ interface ItemCountProps {
 
 const ItemCount: React.FC<ItemCountProps> = ({ count }) => {
   return (
-    <div className="bg-[#124452] text-white text-sm px-3 py-2 rounded-md">
-      {count}
+    <div className="inline-flex items-center gap-1 text-sm text-gray-600">
+      <span className="font-medium text-gray-900">{count}</span>
+      <span>results</span>
     </div>
   );
 };

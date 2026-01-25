@@ -13,47 +13,77 @@ export default function TablePagination({
     setPage: (page: number) => void,
     currentPage: number,
 }) {
-    const lastPage = Math.ceil(total / itemsPerPage);
+    const safeTotal = Number.isFinite(total) && total > 0 ? total : 0;
+    const safeItemsPerPage = Number.isFinite(itemsPerPage) && itemsPerPage > 0 ? itemsPerPage : 1;
+    const lastPage = Math.max(firstPage, Math.ceil(safeTotal / safeItemsPerPage));
+    const safeCurrentPage = Math.min(Math.max(currentPage, firstPage), lastPage);
 
     const generatePages = () => {
         let pages: (number | string)[] = [firstPage];
 
-        if (currentPage > firstPage + 2) pages.push("...");
-        if (currentPage > firstPage + 1) pages.push(currentPage - 1);
-        if (currentPage !== firstPage && currentPage !== lastPage) pages.push(currentPage);
-        if (currentPage < lastPage - 1) pages.push(currentPage + 1);
-        if (currentPage < lastPage - 2) pages.push("...");
+        if (safeCurrentPage > firstPage + 2) pages.push("...");
+        if (safeCurrentPage > firstPage + 1) pages.push(safeCurrentPage - 1);
+        if (safeCurrentPage !== firstPage && safeCurrentPage !== lastPage) pages.push(safeCurrentPage);
+        if (safeCurrentPage < lastPage - 1) pages.push(safeCurrentPage + 1);
+        if (safeCurrentPage < lastPage - 2) pages.push("...");
         if (lastPage !== firstPage) pages.push(lastPage);
 
         return pages.filter((item, index, arr) => item !== arr[index - 1]);
     };
 
     return (
-        <div className="mt-10 w-1/3 mx-auto">
-            <div className="w-full flex justify-between items-center">
-                <div 
-                    className={`bg-zinc-900 hover:bg-black p-2 rounded-md ${currentPage === firstPage ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} 
-                    onClick={() => currentPage > firstPage && setPage(currentPage - 1)}
+        <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+                Showing <span className="font-medium">{safeTotal === 0 ? 0 : Math.min((safeCurrentPage - firstPage) * safeItemsPerPage + 1, safeTotal)}</span> to{" "}
+                <span className="font-medium">{safeTotal === 0 ? 0 : Math.min(safeCurrentPage * safeItemsPerPage, safeTotal)}</span> of{" "}
+                <span className="font-medium">{safeTotal}</span> results
+            </div>
+            
+            <div className="flex items-center gap-1">
+                <button
+                    className={`px-3 py-1.5 rounded-lg border border-gray-300 flex items-center gap-1 text-sm ${
+                        safeCurrentPage === firstPage 
+                            ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400' 
+                            : 'cursor-pointer bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => safeCurrentPage > firstPage && setPage(safeCurrentPage - 1)}
+                    disabled={safeCurrentPage === firstPage}
                 >
-                    <ArrowIcon className="w-4" color="white" />
+                    <ArrowIcon className="w-3.5 h-3.5" color="currentColor" />
+                    <span>Previous</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                    {generatePages().map((page, index) => (
+                        <button
+                            key={index}
+                            className={`min-w-[2.5rem] h-9 rounded-lg text-sm font-medium ${
+                                page === "..." 
+                                    ? "text-gray-400 cursor-default" 
+                                    : safeCurrentPage === page
+                                        ? "bg-primary text-white"
+                                        : "text-gray-700 hover:bg-gray-100 cursor-pointer"
+                            }`}
+                            onClick={() => typeof page === "number" && setPage(page)}
+                            disabled={page === "..."}
+                        >
+                            {page}
+                        </button>
+                    ))}
                 </div>
 
-                {generatePages().map((page, index) => (
-                    <div
-                        key={index}
-                        className={`p-2 rounded-md ${page === "..." ? "text-zinc-700" : "cursor-pointer text-zinc-700 hover:text-zinc-900 hover:font-medium"} ${currentPage === page ? "text-zinc-900 font-bold" : ""}`}
-                        onClick={() => typeof page === "number" && setPage(page)}
-                    >
-                        <p className="text-sm font-normal">{page}</p>
-                    </div>
-                ))}
-
-                <div 
-                    className={`bg-zinc-900 hover:bg-black p-2 rounded-md ${currentPage === lastPage ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} 
-                    onClick={() => currentPage < lastPage && setPage(currentPage + 1)}
+                <button
+                    className={`px-3 py-1.5 rounded-lg border border-gray-300 flex items-center gap-1 text-sm ${
+                        safeCurrentPage === lastPage 
+                            ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400' 
+                            : 'cursor-pointer bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => safeCurrentPage < lastPage && setPage(safeCurrentPage + 1)}
+                    disabled={safeCurrentPage === lastPage}
                 >
-                    <ArrowIcon className="w-4 rotate-180" color="white" />
-                </div>
+                    <span>Next</span>
+                    <ArrowIcon className="w-3.5 h-3.5 rotate-180" color="currentColor" />
+                </button>
             </div>
         </div>
     );

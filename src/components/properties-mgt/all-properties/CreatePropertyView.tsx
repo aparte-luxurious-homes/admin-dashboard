@@ -101,13 +101,15 @@ export default function CreatePropertyView({}) {
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
 
-    const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
-        const sortedAmenities = []
-        let prevAmenityNames = amenities.map((a) => a.name);
-        for (const amenity of newAmeities) {
+    const sortAmenities = (amenities: IAmenity[] = [], newAmeities: string[] = []): number[] => {
+        const sortedAmenities: number[] = []
+        const safeAmenities = Array.isArray(amenities) ? amenities : [];
+        const safeNew = Array.isArray(newAmeities) ? newAmeities : [];
+        const prevAmenityNames = safeAmenities.map((a) => a.name);
+        for (const amenity of safeNew) {
             if (prevAmenityNames.includes(amenity)) {
                 const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos].id)
+                sortedAmenities.push(safeAmenities[pos].id)
             }
         }
 
@@ -115,7 +117,7 @@ export default function CreatePropertyView({}) {
     }
 
     useEffect(() => {
-        setAvailableAmenities(fetchedAmenites?.data?.data)
+        setAvailableAmenities(fetchedAmenites?.data?.data ?? fixedAmenities)
     }, [fetchedAmenites])
 
     const formik = 
@@ -192,8 +194,8 @@ export default function CreatePropertyView({}) {
                         router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId))
                     }
                 },
-                onError: () => 
-                    toast.error('Something went wrong', {
+                onError: (error: any) => 
+                    toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Something went wrong', {
                         duration: 6000,
                         style: {
                             maxWidth: '500px',
@@ -359,7 +361,7 @@ export default function CreatePropertyView({}) {
                     </form>
 
                     <div className="flex justify-end items-center gap-5 mt-3">
-                        <button onClick={() => formik.handleSubmit()} disabled={ isPending }  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
+                        <button type="button" onClick={() => formik.handleSubmit()} disabled={ isPending }  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
                             {isPending ? <Spinner /> : 'Save'}
                         </button>
                     </div>

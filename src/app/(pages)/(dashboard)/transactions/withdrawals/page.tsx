@@ -102,8 +102,8 @@ const Withdrawals = () => {
       const response = await axiosRequest.get(
         `${BASE_API_URL}${API_ROUTES?.transactions?.base}`
       );
-      console.log("response", response);
-      const BookingData = response?.data?.data?.filter((data: Transaction) => data?.transaction_type?.toLocaleLowerCase() === "withdrawal");
+      const items = response?.data?.data?.items ?? response?.data?.data ?? [];
+      const BookingData = items?.filter((data: Transaction) => data?.transaction_type?.toLocaleLowerCase() === "withdrawal");
 
       setTableData(BookingData);
       setSearchResult(BookingData);

@@ -32,11 +32,14 @@ export default function CreateBookingView() {
     const searchParams = useSearchParams();
     const [userSearchTerm, setUserSearchTerm] = useState<string>('')
     const [propertySearchTerm, setPropertySearchTerm] = useState<string>('')
-    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(1, 12, propertySearchTerm, user?.role || UserRole.GUEST, user?.id || 0);
+    const [propPage, setPropPage] = useState<number>(1);
+    const propSize = 12;
+    // Fetch all properties paginated; no role/user filter so dropdown always has results
+    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm);
     const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
     const [selectionMode, setSelectionMode] = useState<boolean>(true)
-    const [properties, setProperties] = useState<IProperty[]>(propertyList?.data?.data?.data)
-    const [users, setUsers] = useState<IUser[]>(userList?.data?.data?.data)
+    const [properties, setProperties] = useState<IProperty[]>([])
+    const [users, setUsers] = useState<IUser[]>([])
     const [selectedProperty, setSeletedProperty] = useState<IProperty | any | null>(null)
     const [selectedUnit, setSeletedUnit] = useState<IPropertyUnit | null>(null)
     const [selectedUser, setSeletedUser] = useState<IUser | null>(null)
@@ -116,21 +119,35 @@ export default function CreateBookingView() {
 
     
     useEffect(() => {
-        setProperties(propertyList?.data?.data?.data)
+        const fromItems = (propertyList as any)?.data?.data?.items ?? (propertyList as any)?.data?.items;
+        const fromData = (propertyList as any)?.data?.data?.data ?? [];
+        const next = Array.isArray(fromItems) ? fromItems : (Array.isArray(fromData) ? fromData : []);
+        setProperties(next as IProperty[])
     }, [propertyList])
 
     
     useEffect(() => {
-        setUsers(userList?.data?.data?.data)
+        const fromItems = (userList as any)?.data?.data?.items ?? (userList as any)?.data?.items;
+        const fromData = (userList as any)?.data?.data?.data ?? [];
+        const next = Array.isArray(fromItems) ? fromItems : (Array.isArray(fromData) ? fromData : []);
+        setUsers(next as IUser[])
     }, [userList])
 
+    const { values, setFieldValue } = formik;
     useEffect(() => {
-        const days = getDayDifference(formik.values.start_date!, formik.values.end_date!)
-        const firstPrice = days * formik.values.unit_count * Number(selectedUnit?.pricePerNight)
+        const days = getDayDifference(values.start_date as any, values.end_date as any)
+        const firstPrice = days * (values.unit_count || 0) * Number(selectedUnit?.pricePerNight)
         const grandPrice = firstPrice + Number(selectedUnit?.cautionFee)
-        formik.setFieldValue('total_price', grandPrice)
+        setFieldValue('total_price', grandPrice)
 
-    }, [formik.values.unit_count, formik.values.start_date, formik.values.end_date])
+    }, [
+        values.unit_count,
+        values.start_date,
+        values.end_date,
+        selectedUnit?.pricePerNight,
+        selectedUnit?.cautionFee,
+        setFieldValue,
+    ])
 
 
     return(
@@ -171,6 +188,19 @@ export default function CreateBookingView() {
                                         setSearchTerm={setPropertySearchTerm}
                                         isLoading={propertiesLoading}
                                     />
+                                    <div className="flex justify-end items-center gap-2 mt-2">
+                                        <button type="button" className="px-2 py-1 text-sm border rounded disabled:opacity-50" disabled={propPage===1} onClick={()=> setPropPage(p => Math.max(1, p-1))}>Prev</button>
+                                        <span className="text-sm text-zinc-600">
+                                            Page { (propertyList as any)?.data?.data?.meta?.currentPage ?? propPage }
+                                            { (propertyList as any)?.data?.data?.meta?.lastPage ? ` of ${(propertyList as any)?.data?.data?.meta?.lastPage}` : '' }
+                                        </span>
+                                        <button type="button" className="px-2 py-1 text-sm border rounded disabled:opacity-50" 
+                                            disabled={Boolean((propertyList as any)?.data?.data?.meta?.lastPage) && propPage >= Number((propertyList as any)?.data?.data?.meta?.lastPage)}
+                                            onClick={()=> setPropPage(p => p+1)}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="col-span-1 relative">
                                     <label htmlFor="city" className="text-lg zinc-900 font-medium">Unit</label>
@@ -182,6 +212,7 @@ export default function CreateBookingView() {
                                             (val) => handleUnitSelection(selectedProperty, val)
                                         }
                                         selected={selectedUnit?.name!}
+                                        disabled={!selectedProperty}
                                     />
                                 </div>
                                 <div className="col-span-1 relative">
@@ -196,6 +227,7 @@ export default function CreateBookingView() {
                                         searchTerm={userSearchTerm}
                                         setSearchTerm={setUserSearchTerm}
                                         isLoading={usersLoading}
+                                        disabled={users.length === 0}
                                     />
                                 </div>
                             </div>
@@ -359,6 +391,12 @@ export default function CreateBookingView() {
                                     showTwoMonths={true}
                                     width="100%"
                                 />
+                                {!formik.values.start_date && (
+                                    <p className="text-xs text-red-500 mt-1">Select a check-in date</p>
+                                )}
+                                {!formik.values.end_date && (
+                                    <p className="text-xs text-red-500 mt-1">Select a check-out date</p>
+                                )}
                             </div>
                             <div className="mt-10">
                                 <div className="grid grid-cols-3 grid-flow-row gap-y-5 gap-x-10 size-full">
@@ -375,7 +413,10 @@ export default function CreateBookingView() {
                                                 value={formik.values.guests_count}
                                                 onChange={(e) => formik.setFieldValue('guests_count', (e.target.value))}
                                                 className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
+                                                min={1}
+                                                max={10}
                                             />
+                                            <p className="text-xs text-zinc-500 mt-1">Min 1, Max 10 guests per booking</p>
                                         </div>
                                     </div>
                                     
@@ -425,10 +466,24 @@ export default function CreateBookingView() {
                                     </div>
                                 </div>
                                 <div className="w-3/6 flex justify-end items-center gap-6">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => formik.handleSubmit()} 
-                                        disabled={isPending} 
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (!(selectedProperty && selectedUnit && selectedUser)) {
+                                                toast.error('Select a property, unit and guest to continue', { duration: 4000, style: { maxWidth: '500px', width: 'max-content' } });
+                                                return;
+                                            }
+                                            if (!(formik.values.start_date && formik.values.end_date)) {
+                                                toast.error('Select check-in and check-out dates', { duration: 4000, style: { maxWidth: '500px', width: 'max-content' } });
+                                                return;
+                                            }
+                                            if ((formik.values.guests_count || 0) < 1 || (formik.values.unit_count || 0) < 1) {
+                                                toast.error('Guests and units must be at least 1', { duration: 4000, style: { maxWidth: '500px', width: 'max-content' } });
+                                                return;
+                                            }
+                                            formik.handleSubmit();
+                                        }}
+                                        disabled={isPending}
                                         className="border border-teal-700 bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed"
                                     >
                                         {isPending ? <Spinner /> : 'Proceed'}

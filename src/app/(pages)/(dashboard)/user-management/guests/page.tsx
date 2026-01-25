@@ -14,6 +14,8 @@ import Link from "next/link";
 import jsPDF from "jspdf";
 import "jspdf-autotable";import autoTable from "jspdf-autotable";
 import ItemCount from "@/src/components/item-count/itemcount";
+import { CreateUser, UpdateUser } from "@/src/lib/request-handlers/userMgt";
+import { toast } from "react-hot-toast";
 
 interface UserProfile {
   address: string | null;
@@ -57,6 +59,36 @@ const Guest = () => {
   const [error, setError] = useState<string>("");
   const [searchValue, setSearchValue] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+
+  // Create form state
+  const [createForm, setCreateForm] = useState<any>({
+    role: 'GUEST',
+    email: '',
+    phone: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    gender: '',
+    is_active: true,
+    is_verified: false,
+  });
+
+  // Edit form state
+  const [editForm, setEditForm] = useState<any>({
+    email: '',
+    phone: '',
+    first_name: '',
+    last_name: '',
+    gender: '',
+    is_active: true,
+    is_verified: false,
+  });
+
+  const { mutate: createUser, isPending: creating } = CreateUser();
+  const { mutate: updateUser, isPending: updating } = UpdateUser();
 
   const handleDownload = (type: "CSV" | "PDF") => {
     console.log(`Downloading ${type}...`);
@@ -133,8 +165,10 @@ const Guest = () => {
       headerName: "Full Name",
       width: 250,
       renderCell: (params) => {
-        const { firstName, lastName } = params?.row?.profile;
-        return `${firstName || "--/--"}, ${lastName || "--/--"}`;
+        const p = params?.row?.profile ?? {} as any;
+        const first = (p.first_name ?? p.firstName) || "--/--";
+        const last = (p.last_name ?? p.lastName) || "--/--";
+        return `${first} ${last}`;
       },
     },
     {
@@ -161,13 +195,13 @@ const Guest = () => {
       field: "gender",
       headerName: "Gender",
       width: 100,
-      renderCell: (params) => params?.row?.profile?.gender || "--/--",
+      renderCell: (params) => (params?.row?.profile?.gender ?? params?.row?.profile?.gender)?.toString() || "--/--",
     },
     {
       field: "createdAt",
-      headerName: "Phone Number",
+      headerName: "Date Created",
       width: 150,
-      renderCell: (params) => params?.value?.substring(0, 10) || "--/--",
+      renderCell: (params) => (params?.row?.created_at ?? params?.row?.createdAt)?.toString()?.substring(0, 10) || "--/--",
     },
     {
       field: "isActive",
@@ -184,9 +218,31 @@ const Guest = () => {
       sortable: false,
       align: "center",
       renderCell: (params) => (
-        <Link href={`/user-management/guests/${params.row.id}`}>
-          <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A] mt-4" />
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/user-management/guests/${params.row.id}`}>
+            <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A]" />
+          </Link>
+          <button
+            onClick={() => {
+              const p = (params?.row?.profile ?? {}) as any;
+              setEditUserId(params?.row?.id);
+              setEditForm({
+                email: params?.row?.email ?? '',
+                phone: params?.row?.phone ?? '',
+                first_name: p.first_name ?? p.firstName ?? '',
+                last_name: p.last_name ?? p.lastName ?? '',
+                gender: p.gender ?? '',
+                is_active: params?.row?.isActive ?? true,
+                is_verified: params?.row?.isVerified ?? false,
+              });
+              setIsEditOpen(true);
+            }}
+            className=""
+            aria-label="Edit user"
+          >
+            <Icon icon="mdi:pencil" className="cursor-pointer text-[#514A4A]" />
+          </button>
+        </div>
       ),
     },
   ];
@@ -197,7 +253,8 @@ const Guest = () => {
       const response = await axiosRequest.get(
         `${BASE_API_URL}${API_ROUTES?.admin?.users?.base}`
       );
-      const ownerData = response?.data?.data?.data?.filter((user: User ) => user?.role === "GUEST") || [];
+      const rows = response?.data?.data?.items ?? response?.data?.data?.data ?? response?.data?.data ?? [];
+      const ownerData = rows?.filter((user: User ) => user?.role === "GUEST") || [];
 
       setOwnerInfo(ownerData);
       setSearchResult(ownerData);
@@ -226,93 +283,350 @@ const Guest = () => {
 
     const valArray = value.split(" ");
     // --| Filter data by partial match onchange in the search input box
-    const result = ownerInfo?.filter((data) =>
-      valArray?.every(
-        (word: string) =>
-          data?.email?.toLowerCase().includes(word.toLowerCase()) ||
-          data?.profile?.lastName?.toLowerCase().includes(word.toLowerCase()) ||
-          data?.profile?.firstName?.toLowerCase().includes(word.toLowerCase()) ||
-          data?.profile?.gender?.toLowerCase().includes(word.toLowerCase())
-      )
-    );
+    const result = ownerInfo?.filter((data) => {
+      const email = (data?.email || '').toLowerCase();
+      const p = (data?.profile ?? {}) as any;
+      const last = ((p.lastName ?? p.last_name) || '').toString().toLowerCase();
+      const first = ((p.firstName ?? p.first_name) || '').toString().toLowerCase();
+      const gender = (p.gender || '').toString().toLowerCase();
+      return valArray?.every((word: string) => {
+        const w = word.toLowerCase();
+        return email.includes(w) || last.includes(w) || first.includes(w) || gender.includes(w);
+      });
+    });
     setSearchResult(result);
   };
   return (
     <>
-
-      <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
+      <div className="p-6">
         {loading ? (
-          <Skeleton className="h-[300px] w-full rounded-md" />
+          <Skeleton className="h-[500px] w-full rounded-lg" />
         ) : (
-          <>
-            <div className="flex justify-between gap-4 items-start md:items-center flex-col md:flex-row">
-              <div className="flex items-center md:items-center flex-col md:flex-row">
-                <h4 className="mr-4 font-medium max-[400px]:mb-2">Guest Management</h4>
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div>
+                    <h1 className="text-xl font-semibold text-gray-900">Guest Management</h1>
+                    <p className="text-sm text-gray-500 mt-1">Manage all guest accounts and permissions</p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    buttonSize="small"
+                    color="btnwhite"
+                    type="button"
+                    onClick={() => setIsCreateOpen(true)}
+                    buttonName={<span>Create Guest</span>}
+                  />
+                  <Button
+                    variant="primaryoutline"
+                    buttonSize="small"
+                    color="btnfontprimary"
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    buttonName={
+                      <span className="flex items-center gap-1">
+                        <Icon icon="mdi:printer" className="text-base" />
+                        <span>Export</span>
+                      </span>
+                    } 
+                  />
+                  {isOpen && (
+                    <div className="absolute right-8 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                      <button
+                        onClick={() => handleDownload("CSV")}
+                        className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 rounded-t-lg"
+                      >
+                        Export as CSV
+                      </button>
+                      <button
+                        onClick={() => handleDownload("PDF")}
+                        className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 rounded-b-lg"
+                      >
+                        Export as PDF
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 mt-4">
+                <div className="flex-1 max-w-md">
                   <TableSearch
-                    placeholder="Search here..."
+                    placeholder="Search guests..."
                     searchTableFunc={handleSearchProperty}
                     value={searchValue}
                   />
-                  <ItemCount count={searchResult?.length} />
                 </div>
-              </div>
-              <div>
-                <Button
-                  variant="primaryoutline"
-                  buttonSize="full"
-                  color="btnfontprimary"
-                  // isLoading={isPending}
-                  onClick={() => setIsOpen(!isOpen)}
-                  // type="submit"
-                  buttonName={
-                    <>
-                      <span>Print CSV/PDF</span>
-                      <Icon icon="mdi:printer" className="text-lg" />
-                    </>
-                  } 
-                />
-                {isOpen && (
-                  <div className="absolute right-16 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                    <button
-                      onClick={() => handleDownload("CSV")}
-                      className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
-                    >
-                      Export as CSV
-                    </button>
-                    <button
-                      onClick={() => handleDownload("PDF")}
-                      className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
-                    >
-                      Export as PDF
-                    </button>
-                  </div>
-                )}
+                <ItemCount count={searchResult?.length} />
               </div>
             </div>
+            
             {searchResult?.length > 0 ? (
-              <Table
-                columns={anAgentColumns}
-                rows={searchResult}
-                getRowId={(row) => row?.id}
-                pagination={false}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-2 mt-[20%]">
-                <Icon
-                  icon="hugeicons:album-not-found-01"
-                  width="40"
-                  height="40"
-                  className="text-gray-400"
+              <div className="overflow-x-auto">
+                <Table
+                  columns={anAgentColumns}
+                  rows={searchResult}
+                  getRowId={(row) => row?.id}
+                  pagination={false}
                 />
-                <p className="text-gray-500 text-sm font-medium">
-                  No Data Found
-                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <Icon icon="hugeicons:album-not-found-01" width="32" height="32" className="text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No guests found</h3>
+                <p className="text-sm text-gray-500">Try adjusting your search or create a new guest</p>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
+
+      {/* Create User Modal */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Create Guest</h2>
+                <button onClick={()=>setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <Icon icon="mdi:close" width="24" height="24" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="John" 
+                    value={createForm.first_name} 
+                    onChange={e=>setCreateForm({...createForm, first_name:e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="Doe" 
+                    value={createForm.last_name} 
+                    onChange={e=>setCreateForm({...createForm, last_name:e.target.value})} 
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="john@example.com" 
+                    type="email"
+                    value={createForm.email} 
+                    onChange={e=>setCreateForm({...createForm, email:e.target.value})} 
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="+234 800 000 0000" 
+                    value={createForm.phone} 
+                    onChange={e=>setCreateForm({...createForm, phone:e.target.value})} 
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="••••••••" 
+                    type="password" 
+                    value={createForm.password} 
+                    onChange={e=>setCreateForm({...createForm, password:e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <select 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    value={createForm.gender} 
+                    onChange={e=>setCreateForm({...createForm, gender:e.target.value})}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={createForm.is_active} 
+                      onChange={e=>setCreateForm({...createForm, is_active:e.target.checked})} 
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <span className="text-sm text-gray-700">Active account</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={createForm.is_verified} 
+                      onChange={e=>setCreateForm({...createForm, is_verified:e.target.checked})} 
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <span className="text-sm text-gray-700">Verified</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+              <button 
+                onClick={()=>setIsCreateOpen(false)} 
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={()=>{
+                  createUser({ payload: createForm }, { 
+                    onSuccess: ()=>{ toast.success('User created successfully'); setIsCreateOpen(false); fetchownerInfo(); }, 
+                    onError: (e:any)=> {
+                      const detail = e?.response?.data?.detail;
+                      const msg = Array.isArray(detail) ? detail.map((d:any)=> d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
+                      toast.error(msg);
+                    }
+                  });
+                }}
+                disabled={creating}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creating ? 'Creating...' : 'Create Guest'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {isEditOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Edit Guest</h2>
+                <button onClick={()=>setIsEditOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <Icon icon="mdi:close" width="24" height="24" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="John" 
+                    value={editForm.first_name} 
+                    onChange={e=>setEditForm({...editForm, first_name:e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="Doe" 
+                    value={editForm.last_name} 
+                    onChange={e=>setEditForm({...editForm, last_name:e.target.value})} 
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="john@example.com" 
+                    type="email"
+                    value={editForm.email} 
+                    onChange={e=>setEditForm({...editForm, email:e.target.value})} 
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    placeholder="+234 800 000 0000" 
+                    value={editForm.phone} 
+                    onChange={e=>setEditForm({...editForm, phone:e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <select 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                    value={editForm.gender} 
+                    onChange={e=>setEditForm({...editForm, gender:e.target.value})}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={editForm.is_active} 
+                      onChange={e=>setEditForm({...editForm, is_active:e.target.checked})} 
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <span className="text-sm text-gray-700">Active account</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={editForm.is_verified} 
+                      onChange={e=>setEditForm({...editForm, is_verified:e.target.checked})} 
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <span className="text-sm text-gray-700">Verified</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+              <button 
+                onClick={()=>setIsEditOpen(false)} 
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={()=>{
+                  if(!editUserId){ toast.error('Missing user id'); return; }
+                  updateUser({ userId: editUserId, payload: editForm }, { 
+                    onSuccess: ()=>{ toast.success('User updated successfully'); setIsEditOpen(false); fetchownerInfo(); }, 
+                    onError: (e:any)=> {
+                      const detail = e?.response?.data?.detail;
+                      const msg = Array.isArray(detail) ? detail.map((d:any)=> d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
+                      toast.error(msg);
+                    }
+                  });
+                }}
+                disabled={updating}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updating ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

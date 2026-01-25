@@ -30,7 +30,7 @@ export default function EditBookingDetails({
     const { user } = useAuth();
     const [details, setDetails] = useState<IBooking>(bookingData);
     const [status, setStatus] = useState<BookingStatus>(bookingData?.status??BookingStatus.COMPLETED)
-    const { data: bookingDetails, isLoading } = GetBookingDetails(bookingId);
+    const { data: bookingDetails, isLoading } = GetBookingDetails(String(bookingId));
     const { mutate, isPending } = UpdateBookingDetails();
 
     const removeParam = (param: string) => {

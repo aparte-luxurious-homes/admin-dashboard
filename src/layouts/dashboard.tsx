@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { clearUser } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
+import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   const { user, isFetching } = useAuth();
@@ -172,14 +173,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               ) : null
             )}
           </div>
-          <div className="absolute bottom-0 w-full flex items-center h-14 border-t-2 border-teal-700/70 bg-primary">
-            <Link
-              href={PAGE_ROUTES.dashboard.settings.base}
-              className="flex gap-4 pl-7 py-2 hover:bg-teal-600/60 w-full"
+          {/* Footer: Logout only */}
+          <div className="absolute bottom-0 w-full flex items-center border-t-2 border-teal-700/70 bg-primary">
+            <button
+              onClick={handleLogOut}
+              className="text-left flex gap-4 pl-7 py-3 hover:bg-teal-600/60 w-full text-white"
             >
-              <SettingsIcon className="w-5" color="white" />
-              <p className="text-base flex items-center">Settings</p>
-            </Link>
+              <Icon icon="ic:baseline-logout" width="20" height="20" style={{ color: "white" }} />
+              <span className="text-base">Logout</span>
+            </button>
           </div>
         </div>
       </div>
@@ -193,29 +195,9 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       >
         <div className="w-full h-20 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
           <div className="w-1/2 hidden md:block">
-            <p className="text-2xl font-medium">
-              {currentRoute.split("/").length === 2 &&
-              currentRoute.split("/")[1] === ""
-                ? "Dashboard"
-                : currentRoute
-                    .split("/")[1]
-                    .replace(/-/g, " ")
-                    .replace(/^./, (c) => c.toUpperCase())}
-            </p>
+            <AutoBreadcrumb />
           </div>
           <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-3 items-center">
-            {/* <Link
-              href={PAGE_ROUTES.dashboard.settings.base}
-              className="size-10 rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20"
-            >
-              <SettingsIcon className="w-4" color="black" />
-            </Link> */}
-            <div className="hidden md:block">
-              <div className="size-10 relative rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20">
-                <BellIcon className="w-4" color="black" />
-                <div className="size-2 bg-teal-700 absolute -top-1 left-auto right-auto rounded-full" />
-              </div>
-            </div>
             <div
               className="flex items-center cursor-pointer"
               onClick={handleClick}
@@ -238,14 +220,6 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 <p className="">{user?.profile?.firstName || "Welcome Back"}</p>
                 <p className="-mt-1 text-zinc-400">{user?.email}</p>
               </div>
-            </div>
-            <div className="cursor-pointer" onClick={handleLogOut}>
-              <Icon
-                icon="ic:baseline-logout"
-                width="20"
-                height="20"
-                style={{ color: "#f21717" }}
-              />
             </div>
           </div>
         </div>

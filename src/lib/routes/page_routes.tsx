@@ -32,7 +32,7 @@ export const PAGE_ROUTES = {
             bookings: {
                 base: '/booking-management/bookings',
                 create: '/booking-management/bookings/create',
-                details: (id: number) => `/booking-management/bookings/${id}`,
+                details: (id: string) => `/booking-management/bookings/${id}`,
             },
         },
         propertyManagement: {

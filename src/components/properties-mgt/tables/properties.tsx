@@ -22,8 +22,8 @@ export default function PropertiesTable() {
     const { user } = useAuth();
     const [page, setPage] = useState<number>(1);
     const [searchTerm , setSearchTerm] = useState<string>("");
-    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id || 0);
-    const [propertyList, setPropertyList] = useState<IProperty[]>(properties?.data?.data?.data);
+    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id);
+    const [propertyList, setPropertyList] = useState<IProperty[]>([]);
     const router = useRouter();
 
     const [selectedRow, setSelectedRow] = useState<number|null>(null);
@@ -73,7 +73,7 @@ export default function PropertiesTable() {
     };
 
     useEffect(() => {
-        setPropertyList(properties?.data?.data?.data);
+        setPropertyList(properties?.data?.data?.data?.data ?? []);
     }, [properties])
 
     useEffect(() => {
@@ -81,207 +81,153 @@ export default function PropertiesTable() {
     }, [searchTerm])
 
     return (
-        <div className="w-full p-10">
-            <div className="w-full border border-zinc-500/20 bg-white rounded-xl px-6 py-7 min-h-[70vh] flex flex-col items-center">
-                
-                
-                <div className="w-full flex justify-between items-center">
-                    <div className="w-[80%] flex items-center gap-5">
-                        <p className="text-2xl font-medium mr-10">Property Listings</p>
-                        <div className="relative w-[40%]">
-                            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="border border-zinc-500/20 bg-background rounded-lg w-full h-10 p-3 pl-10" placeholder="Search properties "/>
-                            <SearchIcon className="absolute top-[25%] left-3 w-5" color="black" />
+        <div className="p-6">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="p-6 border-b border-gray-200">
+                    <div className="flex justify-between items-center gap-4 flex-wrap mb-4">
+                        <div>
+                            <h1 className="text-xl font-semibold text-gray-900">Property Listings</h1>
+                            <p className="text-sm text-gray-500 mt-1">Manage all properties and their verification status</p>
                         </div>
-                        <div className="flex justify-center items-center gap-2 border border-zinc-500/20 bg-background hover:bg-zinc-300/70 cursor-pointer rounded-lg h-10 px-3 w-[10%]">
-                            <p className="text-zinc-700 text-base">
-                                Filter
-                            </p>
-                            <FilterIcon className="w-5" color="black" />
-                        </div>
+                        <Link
+                            href={`${PAGE_ROUTES.dashboard.propertyManagement.allProperties.create}`}
+                            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2"
+                        >
+                            <FiPlus className="w-4 h-4"/>
+                            <span>New Property</span>
+                        </Link>
                     </div>
-                    <Link
-                        href={`${PAGE_ROUTES.dashboard.propertyManagement.allProperties.create}`}
-                        className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-44 p-1.5 h-10"
-                    >
-                        <FiPlus className="w-4" color="white"/>
-                        <p className="text-sm">
-                            New property
-                        </p>
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1 max-w-md relative">
+                            <input 
+                                type="text" 
+                                value={searchTerm} 
+                                onChange={(e) => setSearchTerm(e.target.value)} 
+                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                                placeholder="Search properties..."
+                            />
+                            <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
+                        </div>
+                        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700">
+                            <FilterIcon className="w-4 h-4" color="#6B7280" />
+                            <span>Filter</span>
+                        </button>
+                    </div>
                 </div>
 
-                {
-                    isLoading ?
-                    <Loader />
-                    : propertyList  && propertyList.length > 0 ?
-                    <div className="w-full mt-6">
-                        <table className="w-full border-collapse">
-                            <thead className="">
-                                <tr className="text-teal-600 text-[12px]">
-                                    <th className="bg-[#0280901A] h-10 p-5 flex justify-start items-center gap-3 rounded-tl-xl rounded-bl-xl font-medium w-full">
-                                        {/* <input 
-                                            type="checkbox"
-                                            className={`
-                                                size-4 border-2 border-teal-600 rounded-md bg-transparent appearance-none
-                                                checked:bg-teal-600 checked:border-teal-600 checked:text-[#0280901A]
-                                            `}
-                                        /> */}
-                                        <p>
-                                            Property ID
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Property Name
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Property Type
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            {"Owner's Name"}
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-center">
-                                        <p>
-                                            Verification status
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Assigned agent
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium  text-left">
-                                        <p className="pr-2">
-                                            Submission date
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10">{''}</th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl w-3">{''}</th>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader />
+                    </div>
+                ) : propertyList && propertyList.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left">Property ID</th>
+                                    <th className="px-6 py-3 text-left">Property Name</th>
+                                    <th className="px-6 py-3 text-left">Type</th>
+                                    <th className="px-6 py-3 text-left">Owner</th>
+                                    <th className="px-6 py-3 text-center">Status</th>
+                                    <th className="px-6 py-3 text-left">Agent</th>
+                                    <th className="px-6 py-3 text-left">Created</th>
+                                    <th className="px-6 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-[13px]">
-                                {
-                                    propertyList &&
-                                    propertyList?.map((property, index) => (
-                                        <tr key={index} className="hover:bg-background/50 cursor-pointer"  onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                {/* <input 
-                                                    type="checkbox"
-                                                    className={`
-                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
-                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
-                                                    `}
-                                                /> */}
-                                                <p className="pt-1 pl-5">
-                                                    APRT25-{property?.id}
-                                                </p>  
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    {property?.name?? '--/--'}
-                                                </p>   
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <p className="pt-1 font-medium">
-                                                    {property?.propertyType}
-                                                </p>
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <p className="pt-1 ">
-                                                    {`${property?.owner?.profile?.firstName??'--/--'} ${property?.owner?.profile?.lastName??'--/--'}`}
-                                                </p>
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <div className="py-2.5 w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={property?.isVerified ? 'Verified' : 'Unverified'} 
-                                                        textColour={property?.isVerified ? "text-[#028090]" : "text-red-600" }
-                                                        backgroundColour={property?.isVerified ? "bg-[#0280901A]" : "bg-red-200"}
-                                                    />
-                                                </div>
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                {
-                                                    property?.agent ?
-                                                    <p className="pt-1 ">
-                                                        {`${property?.agent?.profile?.firstName??'--/--'} ${property?.agent?.profile?.lastName??'--/--'}`}
-                                                    </p>
-                                                    :
-                                                    <p className='pl-8'>
-                                                        {property?.agent?.email??'--/--'}
-                                                    </p>
-                                                }
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                {property?.verifications[0]?.createdAt ? formatDate(property?.verifications[0]?.createdAt) : '--/--'}
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <div className="flex justify-center items-center w-fit" onClick={(event) => handleDotsClick(event, index)}>
-                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                }
+                            <tbody className="divide-y divide-gray-200">
+                                {propertyList.map((property, index) => (
+                                    <tr 
+                                        key={index} 
+                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                        onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
+                                    >
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            APRT25-{String(property?.id ?? '').substring(0, 8)}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                                            {property?.name ?? '--/--'}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {property?.property_type ?? '--/--'}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {`${property?.owner?.profile?.firstName ?? '--/--'} ${property?.owner?.profile?.lastName ?? '--/--'}`}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                property?.is_verified 
+                                                    ? 'bg-green-100 text-green-800' 
+                                                    : 'bg-red-100 text-red-800'
+                                            }`}>
+                                                {property?.is_verified ? 'Verified' : 'Unverified'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {property?.assigned_agent ?? '--/--'}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {property?.created_at ? formatDate(property?.created_at) : '--/--'}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end items-center" onClick={(event) => handleDotsClick(event, index)}>
+                                                <DotsIcon className="w-5 cursor-pointer" color="#6B7280" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
-                    : propertyList && propertyList.length === 0 ? 
-                    <div className="size-full m-auto text-center">
-                        <div className="m-auto w-fit">
-                            <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                ) : propertyList && propertyList.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                            <Icon icon="hugeicons:album-not-found-01" width="32" height="32" className="text-gray-400" />
                         </div>
-                        <p className="text-center text-gray-500 pt-10">No properties found</p>
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">No properties found</h3>
+                        <p className="text-sm text-gray-500">Try adjusting your search or create a new property</p>
                     </div>
-                    : 
-                    <p className="size-full text-center text-gray-500 pt-10 self-center">
-                        <div className="m-auto w-fit">
-                            <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                            <Icon icon="mynaui:danger-octagon" width="32" height="32" className="text-red-600" />
                         </div>
-                        <p className="text-center text-gray-500">
-                            Error loading properties
-                        </p>
-                    </p>
-                }
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">Error loading properties</h3>
+                        <p className="text-sm text-gray-500">Please try again later</p>
+                    </div>
+                )}
+
+                {!isLoading && propertyList && propertyList.length > 0 && (
+                    <div className="px-6 py-4 border-t border-gray-200">
+                        <TablePagination
+                            total={properties?.data?.data?.data?.meta?.total ?? 0}
+                            currentPage={page}
+                            setPage={setPage}
+                            firstPage={properties?.data?.data?.data?.meta?.firstPage ?? 1}
+                            itemsPerPage={10}
+                        />
+                    </div>
+                )}
             </div>
 
-
-            {/* Modal */}
+            {/* Context Menu */}
             {selectedRow !== null && modalPosition && (
                 <div
                     ref={modalRef}
-                    className="absolute bg-white shadow-md rounded-md z-50 border border-gray-300 w-[9em]"
+                    className="absolute bg-white shadow-lg rounded-lg z-50 border border-gray-200 overflow-hidden"
                     style={{ top: modalPosition.top, left: modalPosition.left }}
                 >
                     {detailButtons.map((button, idx) => (
                         <div
                             key={idx}
-                            className="flex items-center gap-2 px-4 py-3 hover:bg-zinc-100 cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
                             onClick={button.onClick}
                         >
                             {button.Icon}
-                            <p>{button.label}</p>
+                            <span>{button.label}</span>
                         </div>
                     ))}
                 </div>
             )}
-            
-            {
-                !isLoading && propertyList &&
-                <TablePagination
-                    total={properties?.data?.data?.meta?.total}
-                    currentPage={page}
-                    setPage={setPage}
-                    firstPage={properties?.data?.data?.meta?.firstPage}
-                    itemsPerPage={10}
-                />
-            }   
-
         </div>
     );
 };

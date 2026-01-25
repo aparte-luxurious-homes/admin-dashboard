@@ -1,390 +1,483 @@
+"use client";
+
 import { IoLocationOutline } from "react-icons/io5";
 import { LiaPrintSolid } from "react-icons/lia";
-
-import { CalendarIcon, CancelStampIcon, CardClockIcon, CardsCycleIcon, ClockIcon, MailIcon, OpenWalletIcon, PhoneIcon, PriceTagIcon, PropertiesIcon, ReturnIcon, TornPaperIcon, UnitIcon, UserIcon, UsersIcon } from "../../icons";
+import { MdEdit } from "react-icons/md";
+import { FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaClock, FaUsers, FaHome, FaBed, FaMoneyBillWave } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import { downloadScreenAsPDF, formatDate, formatMoney, getDayDifference } from "@/src/lib/utils";
 import EditBookingDetails from "./EditBookingDetails";
 import { BookingBadge } from "../../badge";
 import { BookingStatus, IBooking } from "../types";
 import { GetBookingDetails } from "@/src/lib/request-handlers/bookingMgt";
-import { PropertyType } from "../../properties-mgt/types";
 import Loader from "../../loader";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import Image from "next/image";
 
-export default function BookingDetailView({ bookingId }: { bookingId: number }) {
-    const pathname = usePathname(); // Get current path
-    const urlSearchParams = new URLSearchParams(window.location.search); 
+export default function BookingDetailView({ bookingId }: { bookingId: string }) {
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const router = useRouter();
     const targetRef = useRef<HTMLDivElement>(null);
     const [editMode, setEditMode] = useState<boolean>(Boolean(searchParams.get('edit')));
     const [status, setStatus] = useState(BookingStatus.PENDING)
-    const { data: bookingData, isLoading } = GetBookingDetails(bookingId);
-    const [bookingDetails, setBookingDetails] = useState<IBooking>(bookingData?.data?.data);
-
-
-
+    const { data: bookingData, isLoading, error } = GetBookingDetails(bookingId);
+    const [bookingDetails, setBookingDetails] = useState<IBooking | null>(null);
 
     useEffect(() => {
-        setBookingDetails(bookingData?.data?.data)
-        setStatus(bookingData?.data?.data?.status)
+        if (bookingData?.data?.data) {
+            setBookingDetails(bookingData.data.data);
+            setStatus(bookingData.data.data.status);
+        }
     }, [bookingData])
 
     const setQueryParam = (key: string, value: string) => {
-        urlSearchParams.set(key, value); // Add or update query param
-        router.push(`${pathname}?${urlSearchParams.toString()}`); // Update the URL
+        const params = new URLSearchParams(searchParams.toString());
+        params.set(key, value);
+        router.push(`${pathname}?${params.toString()}`);
     };
-    
 
-    const textHue = status === BookingStatus.CANCELLED 
-      ? 'text-red-600' 
-      : status === BookingStatus.COMPLETED
-        ? 'text-zinc-600'
-        : status === BookingStatus.PENDING
-          ? 'text-[#FFAE00]'
-          : status === BookingStatus.CONFIRMED
-            ? 'text-[#028090]'
-            : "";
-  
-    const bgHue = status === BookingStatus.CANCELLED 
-        ? 'bg-red-200' 
-        : status === BookingStatus.COMPLETED
-            ? 'bg-zinc-300'
-            : status === BookingStatus.PENDING
-                ? 'bg-[#FFAE0033]'
-                : status === BookingStatus.CONFIRMED
-                ? 'bg-[#0280901A]'
-                : "";
+    const getStatusColors = (status: BookingStatus) => {
+        switch (status) {
+            case BookingStatus.CANCELLED:
+                return { text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', icon: '#dc2626' };
+            case BookingStatus.COMPLETED:
+                return { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-200', icon: '#52525b' };
+            case BookingStatus.PENDING:
+                return { text: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', icon: '#FFAE00' };
+            case BookingStatus.CONFIRMED:
+                return { text: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200', icon: '#028090' };
+            default:
+                return { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-200', icon: '#191919' };
+        }
+    };
+
+    const colors = getStatusColors(status);
+    const nights = bookingDetails ? getDayDifference(bookingDetails.endDate, bookingDetails.startDate) : 0;
+    const pricePerNight = Number(bookingDetails?.unit?.pricePerNight || 0);
+    const cautionFee = Number(bookingDetails?.unit?.cautionFee || 0);
+    const unitCount = bookingDetails?.unitCount || 1;
 
     return(
-        <div className="p-10 w-full">
-            <div className="w-full border border-zinc-500/20 bg-white rounded-xl p-10 pt-0 min-h-[50vh]">
+        <div className="p-4 md:p-10 w-full">
+            <div className="w-full bg-white rounded-xl min-h-[50vh]">
                 {
                     isLoading ?
-                    <Loader />
+                    <div className="flex items-center justify-center min-h-[50vh]">
+                        <Loader />
+                    </div>
+                    : error ?
+                    <div className="flex flex-col items-center justify-center min-h-[50vh] p-10">
+                        <p className="text-red-600 text-xl mb-4">Failed to load booking details</p>
+                        <p className="text-zinc-500 text-sm mb-6">Please try again or contact support if the issue persists</p>
+                        <button 
+                            onClick={() => window.location.reload()} 
+                            className="px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                    : !bookingDetails ?
+                    <div className="flex items-center justify-center min-h-[50vh]">
+                        <div className="text-center">
+                            <p className="text-zinc-600 text-xl mb-2">No booking found</p>
+                            <p className="text-zinc-400 text-sm">The booking you're looking for doesn't exist or has been removed</p>
+                        </div>
+                    </div>
                     :
                     <>
-                        <div ref={targetRef}>
-                            <div className="w-full mt-10 items-center flex justify-between">
-                                <div>
-                                    <h3 className="text-3xl font-normal text-zinc-800 leading-3 my-4">
-                                        {bookingDetails?.unit?.name}
-                                    </h3>
-                                    <div className="flex gap-2 items-center mt-2 text-md text-zinc-500">
-                                        <IoLocationOutline className="text-zinc-700"/>
-                                        <p>
-                                            {bookingDetails?.unit?.property?.address}
-                                        </p>
+                        <div ref={targetRef} className="p-6 md:p-10">
+                            {/* Header Section */}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <h1 className="text-2xl md:text-3xl font-semibold text-zinc-800">
+                                            {bookingDetails.bookingId || `Booking #${bookingDetails.id}`}
+                                        </h1>
+                                        <BookingBadge status={status} />
                                     </div>
-                                </div>
-                                {
-                                    editMode ?
-                                    <p className="text-zinc-700 text-3xl cursor-pointer">
-                                        Edit booking details
+                                    <p className="text-zinc-500 text-sm">
+                                        Created on {formatDate(bookingDetails.createdAt)}
                                     </p>
-                                    :
-                                    <div onClick={() => downloadScreenAsPDF({ name: "booding.pdf", element: targetRef })} className="cursor-pointer size-12 border-2 border-[#124452] rounded-full flex justify-center items-center p-2 mr-5 group hover:bg-[#124452]/90">
-                                        <LiaPrintSolid className="text-[#124452] size-10 group-hover:text-white stroke-[0.3px]"/>
+                                </div>
+                                
+                                {!editMode && (
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => {setEditMode(true); setQueryParam('edit', 'true')}}
+                                            className="flex items-center gap-2 px-4 py-2.5 border-2 border-zinc-300 text-zinc-700 rounded-lg hover:bg-zinc-50 transition-colors"
+                                        >
+                                            <MdEdit className="text-lg" />
+                                            <span className="hidden md:inline">Edit</span>
+                                        </button>
+                                        <button
+                                            onClick={() => downloadScreenAsPDF({ name: `booking-${bookingDetails.bookingId}.pdf`, element: targetRef })}
+                                            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                                        >
+                                            <LiaPrintSolid className="text-xl" />
+                                            <span className="hidden md:inline">Print</span>
+                                        </button>
                                     </div>
-
-                                }
+                                )}
                             </div>
 
-                            <div className="h-px bg-zinc-200/70 w-full my-8"/>
-
-                            <div className="w-full flex items-center gap-10 my-3 mx-0">
-                                <div className="flex items-center">
-                                    <p className="text-zinc-500 text-base">PropertyID:</p>
-                                    <p className="text-zinc-900 text-base ml-3">APRT-{bookingDetails?.unit?.property?.id}</p>
-                                </div>
-                                <div className="flex items-center">
-                                    <p className="text-zinc-500 text-sm">Status:</p>
-                                    <BookingBadge status={status} classNames="ml-2" />
-                                </div>
-                                <div className="flex items-center">
-                                    <CalendarIcon color="#a6a4a4"/>
-                                    <p className="text-zinc-900 text-sm ml-2">24th November, 2024</p>
-                                </div>
-                                <div className="flex items-center">
-                                    <p className="text-zinc-500 text-base">Property Type</p>
-                                    <p className="text-zinc-900 text-base ml-3">{bookingDetails?.unit?.property?.propertyType}</p>
-                                </div>
-                                <div className="flex items-center">
-                                    <p className="text-zinc-500 text-base">Agent</p>
-                                    <p className="text-zinc-900 text-base ml-3">{`${bookingDetails?.user?.profile?.firstName} ${bookingDetails?.user?.profile?.lastName}`}</p>
-                                </div>
-                            </div>
-                            
-                            {/* Detail view */}
-                            {
-                                !editMode ?
-                                <>
-                                    <section className="w-full my-8">
-                                        <div className={`w-full p-5 ${bgHue} flex gap-3`}>
-                                            <UsersIcon color={`
-                                                ${ 
-                                                    status === BookingStatus.PENDING 
-                                                        ? '#FFAE00' 
-                                                        : status === BookingStatus.CANCELLED
-                                                            ? '#dc2626'
-                                                            : status === BookingStatus.CONFIRMED
-                                                                ? '#028090'
-                                                                : status === BookingStatus.COMPLETED
-                                                                    && '#52525b'
-                                                }
-                                            `}/>
-                                            <p className={`text-base ${textHue}`}>
-                                                Guest Information
-                                            </p>
-                                        </div>
-                                        <div className="mt-2 p-5">
-                                            <div className="grid grid-cols-3 grid-cols grid-flow-row gap-y-6">
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <UserIcon className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Guest name</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                        {`${bookingDetails?.user?.profile?.firstName?? 'Adigun'} ${bookingDetails?.user?.profile?.lastName??'Samuel'}`}
-                                                    </p>
-                                                </div>
-
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <MailIcon className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Email</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                        {bookingDetails?.user?.email}
-                                                    </p>
-                                                </div>
-
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <PhoneIcon className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-lg">Phone number</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                        {bookingDetails?.user?.phone ?? "+234 802 6712 0067"}
-                                                    </p>
-                                                </div>
-
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <IoLocationOutline className="size-4 text-zinc-900" />
-                                                        <p className="mt-1 ml-2 text-lg">Address</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                        {bookingDetails?.unit?.property?.address ??`1134 Johnson Close Suite 33b, Oshodi-Isolo. Lagos, Nigeria`}
-                                                    </p>
-                                                </div>
-
-                                            </div>
-
-                                        </div>
-                                    </section>
-
-                                    <section className="w-full my-8">
-                                        <div className={`w-full p-5 ${bgHue} flex gap-3`}>
-                                            <TornPaperIcon color={`
-                                                ${ 
-                                                    status === BookingStatus.PENDING 
-                                                        ? '#FFAE00' 
-                                                        : status === BookingStatus.CANCELLED
-                                                            ? '#dc2626'
-                                                            : status === BookingStatus.CONFIRMED
-                                                                ? '#028090'
-                                                                : status === BookingStatus.COMPLETED
-                                                                    && '#52525b'
-                                                }
-                                            `}/>
-                                            <p className={`text-base ${textHue}`}>
-                                                Booking Information
-                                            </p>
-                                        </div>
-                                        <div className="mt-2 p-5">
-                                            <div className="grid grid-cols-3 grid-cols grid-flow-row gap-y-6">
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <ReturnIcon className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Check-in</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-base pl-1 mt-1.5">
-                                                        {formatDate(bookingDetails?.startDate)??`Sunday 23rd March, 2025`}
-                                                    </p>
-                                                </div>
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <ReturnIcon className="size-4 scale-x-[-1]"/>
-                                                        <p className="mt-1 ml-2 text-lg">Check-out</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                        {formatDate(bookingDetails?.endDate)??'Monday 24td March, 2025'}
-                                                    </p>
-                                                </div>
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <ClockIcon color="#191919"  className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-lg">Stay</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                        {getDayDifference(bookingDetails?.endDate, bookingDetails?.startDate) ?? 2} {getDayDifference(bookingDetails?.endDate, bookingDetails?.startDate) > 1 ? 'Nights' : 'Night'}
-                                                    </p>
-                                                </div>
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <UsersIcon color="#191919"  className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-lg">Guests</p>
-                                                    </div>
-                                                    <div className="flex gap-8 first:pl-1">
-                                                        <p className="text-zinc-900 text-lg mt-1.5 w-fit">
-                                                            Adults <em className="text-base text-zinc-700">x{bookingDetails?.guestsCount}</em>
-                                                        </p>
-                                                        {/* <p className="text-zinc-900 text-lg mt-1.5 w-fit">
-                                                            Children <em className="text-base text-zinc-700">x0</em>
-                                                        </p> */}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    <section className="w-full my-8">
-                                        <div className={`w-full p-5 ${bgHue} flex gap-3`}>
-                                            <OpenWalletIcon className="size-4" color={`
-                                                ${
-                                                    status === BookingStatus.PENDING 
-                                                        ? '#FFAE00' 
-                                                        : status === BookingStatus.CANCELLED
-                                                            ? '#dc2626'
-                                                            : status === BookingStatus.CONFIRMED
-                                                                ? '#028090'
-                                                                : status === BookingStatus.COMPLETED
-                                                                    && '#52525b'
-                                                }
-                                            `}/>
-                                            <p className={`text-base ${textHue}`}>
-                                                Payment Information
-                                            </p>
-                                        </div>
-                                        <div className="mt-2 p-5">
-                                            <div className="grid grid-cols-3 grid-cols grid-flow-row gap-y-6">
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <PropertiesIcon color="#191919" className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Property type</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                        {bookingDetails?.unit?.property?.propertyType??PropertyType.BUNGALOW}
-                                                    </p>
-                                                </div>
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <UnitIcon color="#191919" className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Units</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-1 mt-1.5">
-                                                        {bookingDetails?.unitCount??1}
-                                                    </p>
-                                                </div>
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <PriceTagIcon color="#191919" className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Price per night</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
-                                                        ₦ {formatMoney(bookingDetails?.unit?.pricePerNight??0)}
-                                                    </p>
-                                                </div>
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <CancelStampIcon className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Caution Fee</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
-                                                        ₦ {formatMoney(bookingDetails?.unit?.cautionFee??0)}
-                                                    </p>
-                                                </div>
-                                                {/* <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <RateIcon className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-lg">5% TAX</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
-                                                        ₦ 17,625
-                                                    </p>
-                                                </div> */}
-                                                
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <CardsCycleIcon className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Total payable</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
-                                                        ₦ {formatMoney(bookingDetails?.totalPrice??0)}
-                                                    </p>
-                                                </div>
-                                                
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <CalendarIcon color="#191919" className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-lg">Expires on</p>
-                                                    </div>
-                                                    <p className="text-zinc-900 text-lg pl-2 mt-1.5">
-                                                        {formatDate(bookingDetails?.endDate)}
-                                                    </p>
-                                                </div>
-                                                
-                                                <div className="">
-                                                    <div className="text-zinc-500 text-sm flex items-center">
-                                                        <CardClockIcon className="size-4"/>
-                                                        <p className="mt-1 ml-2 text-base">Payment Status</p>
-                                                    </div>
-                                                    <BookingBadge status={status} classNames="w-fit" />
-                                                </div>
-
-                                            </div>
-                                        </div>
-                                    </section>
-                                </>
-                                :
+                            {editMode ? (
                                 <EditBookingDetails
-                                    bookingId={bookingId} 
+                                    bookingId={Number(bookingId)} 
                                     bookingData={bookingDetails}
                                     handleEditMode={setEditMode}            
                                 />
-                            }
-                            {/* Detail view */}
+                            ) : (
+                                <div className="space-y-6">
+                                    {/* Property & Unit Info Card */}
+                                    <div className="border border-zinc-200 rounded-xl overflow-hidden">
+                                        <div className={`px-6 py-4 ${colors.bg} ${colors.border} border-b`}>
+                                            <h2 className={`text-lg font-semibold ${colors.text} flex items-center gap-2`}>
+                                                <FaHome />
+                                                Property & Unit Information
+                                            </h2>
+                                        </div>
+                                        <div className="p-6">
+                                            {bookingDetails.unit?.property && (
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                                                    <div>
+                                                        <h3 className="text-xl font-semibold text-zinc-800 mb-2">
+                                                            {bookingDetails.unit.property.name || 'Property Name Not Available'}
+                                                        </h3>
+                                                        <div className="flex items-start gap-2 text-zinc-600 mb-4">
+                                                            <IoLocationOutline className="text-xl mt-0.5 flex-shrink-0" />
+                                                            <p className="text-sm">
+                                                                {bookingDetails.unit.property.address || 'Address not available'}
+                                                                {bookingDetails.unit.property.city && `, ${bookingDetails.unit.property.city}`}
+                                                                {bookingDetails.unit.property.state && `, ${bookingDetails.unit.property.state}`}
+                                                            </p>
+                                                        </div>
+                                                        <div className="space-y-2 text-sm">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-zinc-500">Property Type:</span>
+                                                                <span className="font-medium text-zinc-700">{bookingDetails.unit.property.propertyType || 'N/A'}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-zinc-500">Property ID:</span>
+                                                                <span className="font-medium text-zinc-700">APRT-{String(bookingDetails.unit.property.id).substring(0, 8)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-zinc-500">Verified:</span>
+                                                                <span className={`font-medium ${bookingDetails.unit.property.isVerified ? 'text-green-600' : 'text-red-600'}`}>
+                                                                    {bookingDetails.unit.property.isVerified ? 'Yes' : 'No'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="border-l border-zinc-200 pl-6">
+                                                        <h4 className="text-lg font-semibold text-zinc-800 mb-3">Unit: {bookingDetails.unit.name || 'Unit Name Not Available'}</h4>
+                                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                                            <div className="flex items-center gap-2">
+                                                                <FaBed className="text-zinc-400" />
+                                                                <span className="text-zinc-600">{bookingDetails.unit.bedroomCount || 0} Bedroom(s)</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <FaUsers className="text-zinc-400" />
+                                                                <span className="text-zinc-600">Max {bookingDetails.unit.maxGuests || 0} Guests</span>
+                                                            </div>
+                                                            <div className="text-zinc-600">
+                                                                {bookingDetails.unit.livingRoomCount || 0} Living Room(s)
+                                                            </div>
+                                                            <div className="text-zinc-600">
+                                                                {bookingDetails.unit.bathroomCount || 0} Bathroom(s)
+                                                            </div>
+                                                            <div className="text-zinc-600">
+                                                                {bookingDetails.unit.kitchenCount || 0} Kitchen(s)
+                                                            </div>
+                                                            <div className={`font-medium ${bookingDetails.unit.isVerified ? 'text-green-600' : 'text-red-600'}`}>
+                                                                {bookingDetails.unit.isVerified ? 'Verified' : 'Not Verified'}
+                                                            </div>
+                                                        </div>
+                                                        {bookingDetails.unit.description && (
+                                                            <p className="text-sm text-zinc-600 mt-3 line-clamp-2">
+                                                                {bookingDetails.unit.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
 
-                            {/* Edit view */}
+                                    {/* Guest Information Card */}
+                                    <div className="border border-zinc-200 rounded-xl overflow-hidden">
+                                        <div className={`px-6 py-4 ${colors.bg} ${colors.border} border-b`}>
+                                            <h2 className={`text-lg font-semibold ${colors.text} flex items-center gap-2`}>
+                                                <FaUser />
+                                                Guest Information
+                                            </h2>
+                                        </div>
+                                        <div className="p-6">
+                                            {bookingDetails.user && (
+                                                <div className="flex flex-col md:flex-row gap-6">
+                                                    <div className="flex-shrink-0">
+                                                        {bookingDetails.user.profile?.profileImage ? (
+                                                            <Image
+                                                                src={bookingDetails.user.profile.profileImage}
+                                                                alt={`${bookingDetails.user.profile.firstName} ${bookingDetails.user.profile.lastName}`}
+                                                                width={120}
+                                                                height={120}
+                                                                className="rounded-lg object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-24 h-24 md:w-28 md:h-28 bg-zinc-200 rounded-lg flex items-center justify-center">
+                                                                <FaUser className="text-4xl text-zinc-400" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 space-y-3">
+                                                        <div>
+                                                            <h3 className="text-xl font-semibold text-zinc-800 mb-1">
+                                                                {bookingDetails.user.profile?.firstName || 'N/A'} {bookingDetails.user.profile?.lastName || ''}
+                                                            </h3>
+                                                            <p className="text-sm text-zinc-500">Guest ID: {bookingDetails.user.id}</p>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                                            <div className="flex items-center gap-2">
+                                                                <FaEnvelope className="text-zinc-400" />
+                                                                <span className="text-zinc-700">{bookingDetails.user.email || 'Not provided'}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <FaPhone className="text-zinc-400" />
+                                                                <span className="text-zinc-700">{bookingDetails.user.phone || 'Not provided'}</span>
+                                                            </div>
+                                                            {bookingDetails.user.profile?.city && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <IoLocationOutline className="text-zinc-400" />
+                                                                    <span className="text-zinc-700">
+                                                                        {bookingDetails.user.profile.city}
+                                                                        {bookingDetails.user.profile.state && `, ${bookingDetails.user.profile.state}`}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <Link 
+                                                            href={PAGE_ROUTES.dashboard.userManagement.guests.details(bookingDetails.user.id)}
+                                                            className="inline-flex items-center gap-2 text-primary hover:underline text-sm font-medium mt-2"
+                                                        >
+                                                            View Full Profile →
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
 
-                            {/* Edit view */}
+                                    {/* Booking Details Card */}
+                                    <div className="border border-zinc-200 rounded-xl overflow-hidden">
+                                        <div className={`px-6 py-4 ${colors.bg} ${colors.border} border-b`}>
+                                            <h2 className={`text-lg font-semibold ${colors.text} flex items-center gap-2`}>
+                                                <FaCalendarAlt />
+                                                Booking Details
+                                            </h2>
+                                        </div>
+                                        <div className="p-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-zinc-500 flex items-center gap-2">
+                                                        <FaCalendarAlt className="text-xs" />
+                                                        Check-in
+                                                    </p>
+                                                    <p className="text-lg font-semibold text-zinc-800">
+                                                        {formatDate(bookingDetails.startDate)}
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-zinc-500 flex items-center gap-2">
+                                                        <FaCalendarAlt className="text-xs" />
+                                                        Check-out
+                                                    </p>
+                                                    <p className="text-lg font-semibold text-zinc-800">
+                                                        {formatDate(bookingDetails.endDate)}
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-zinc-500 flex items-center gap-2">
+                                                        <FaClock className="text-xs" />
+                                                        Duration
+                                                    </p>
+                                                    <p className="text-lg font-semibold text-zinc-800">
+                                                        {nights} {nights === 1 ? 'Night' : 'Nights'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-zinc-200">
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-zinc-500">Guests</p>
+                                                    <p className="text-lg font-semibold text-zinc-800">{bookingDetails.guestsCount || 0}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-zinc-500">Units</p>
+                                                    <p className="text-lg font-semibold text-zinc-800">{unitCount}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-zinc-500">Booking Status</p>
+                                                    <BookingBadge status={status} />
+                                                </div>
+                                                {bookingDetails.verificationDate && (
+                                                    <div className="space-y-1">
+                                                        <p className="text-sm text-zinc-500">Verified On</p>
+                                                        <p className="text-sm font-medium text-zinc-700">{formatDate(bookingDetails.verificationDate)}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
 
+                                    {/* Payment Information Card */}
+                                    <div className="border border-zinc-200 rounded-xl overflow-hidden">
+                                        <div className={`px-6 py-4 ${colors.bg} ${colors.border} border-b`}>
+                                            <h2 className={`text-lg font-semibold ${colors.text} flex items-center gap-2`}>
+                                                <FaMoneyBillWave />
+                                                Payment Information
+                                            </h2>
+                                        </div>
+                                        <div className="p-6">
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center py-2">
+                                                    <span className="text-zinc-600">Price per night</span>
+                                                    <span className="font-medium text-zinc-800">₦{formatMoney(pricePerNight)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2">
+                                                    <span className="text-zinc-600">Number of nights</span>
+                                                    <span className="font-medium text-zinc-800">×{nights}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2">
+                                                    <span className="text-zinc-600">Number of units</span>
+                                                    <span className="font-medium text-zinc-800">×{unitCount}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2 border-t border-zinc-200">
+                                                    <span className="text-zinc-600">Subtotal</span>
+                                                    <span className="font-medium text-zinc-800">₦{formatMoney(pricePerNight * nights * unitCount)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2">
+                                                    <span className="text-zinc-600">Caution fee</span>
+                                                    <span className="font-medium text-zinc-800">₦{formatMoney(cautionFee)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-3 border-t-2 border-zinc-300 mt-2">
+                                                    <span className="text-lg font-semibold text-zinc-800">Total Amount</span>
+                                                    <span className="text-2xl font-bold text-primary">₦{formatMoney(bookingDetails.totalPrice)}</span>
+                                                </div>
+                                                {bookingDetails.transactionRef && (
+                                                    <div className="mt-4 pt-4 border-t border-zinc-200">
+                                                        <div className="flex justify-between items-center text-sm">
+                                                            <span className="text-zinc-500">Transaction Reference</span>
+                                                            <span className="font-mono text-zinc-700">{bookingDetails.transactionRef}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
 
+                                    {/* Owner & Agent Info Card */}
+                                    {(bookingDetails.unit?.property?.owner || bookingDetails.unit?.property?.agent) && (
+                                        <div className="border border-zinc-200 rounded-xl overflow-hidden">
+                                            <div className="px-6 py-4 bg-zinc-50 border-b border-zinc-200">
+                                                <h2 className="text-lg font-semibold text-zinc-800 flex items-center gap-2">
+                                                    <FaUsers />
+                                                    Owner & Agent Information
+                                                </h2>
+                                            </div>
+                                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 divide-y md:divide-y-0 md:divide-x divide-zinc-200">
+                                                {/* Owner */}
+                                                {bookingDetails.unit.property.owner && (
+                                                    <div className="pb-6 md:pb-0 md:pr-6">
+                                                        <h3 className="text-sm font-semibold text-zinc-500 uppercase mb-3">Property Owner</h3>
+                                                        <div className="space-y-2">
+                                                            <p className="font-semibold text-zinc-800 text-lg">
+                                                                {bookingDetails.unit.property.owner.profile?.firstName || 'N/A'} {bookingDetails.unit.property.owner.profile?.lastName || ''}
+                                                            </p>
+                                                            <p className="text-sm text-zinc-600 flex items-center gap-2">
+                                                                <FaEnvelope className="text-xs" />
+                                                                {bookingDetails.unit.property.owner.email || 'Not provided'}
+                                                            </p>
+                                                            <p className="text-sm text-zinc-600 flex items-center gap-2">
+                                                                <FaPhone className="text-xs" />
+                                                                {bookingDetails.unit.property.owner.phone || 'Not provided'}
+                                                            </p>
+                                                            <Link 
+                                                                href={PAGE_ROUTES.dashboard.userManagement.owners.details(bookingDetails.unit.property.owner.id)}
+                                                                className="inline-flex items-center gap-2 text-primary hover:underline text-sm font-medium mt-2"
+                                                            >
+                                                                View Owner Profile →
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Agent */}
+                                                {bookingDetails.unit.property.agent && (
+                                                    <div className="pt-6 md:pt-0 md:pl-6">
+                                                        <h3 className="text-sm font-semibold text-zinc-500 uppercase mb-3">Assigned Agent</h3>
+                                                        <div className="space-y-2">
+                                                            <p className="font-semibold text-zinc-800 text-lg">
+                                                                {bookingDetails.unit.property.agent.profile?.firstName || 'N/A'} {bookingDetails.unit.property.agent.profile?.lastName || ''}
+                                                            </p>
+                                                            <p className="text-sm text-zinc-600 flex items-center gap-2">
+                                                                <FaEnvelope className="text-xs" />
+                                                                {bookingDetails.unit.property.agent.email || 'Not provided'}
+                                                            </p>
+                                                            <p className="text-sm text-zinc-600 flex items-center gap-2">
+                                                                <FaPhone className="text-xs" />
+                                                                {bookingDetails.unit.property.agent.phone || 'Not provided'}
+                                                            </p>
+                                                            <Link 
+                                                                href={PAGE_ROUTES.dashboard.userManagement.agents.details(bookingDetails.unit.property.agent.id)}
+                                                                className="inline-flex items-center gap-2 text-primary hover:underline text-sm font-medium mt-2"
+                                                            >
+                                                                View Agent Profile →
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Cancellation Info (if cancelled) */}
+                                    {status === BookingStatus.CANCELLED && bookingDetails.cancellationReason && (
+                                        <div className="border border-red-200 bg-red-50 rounded-xl p-6">
+                                            <h3 className="text-lg font-semibold text-red-800 mb-2">Cancellation Reason</h3>
+                                            <p className="text-red-700">{bookingDetails.cancellationReason}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
-                        
-                        {
-                            !editMode &&
-                            <>
-                                <div className="h-px bg-zinc-200/80 w-full my-8" />
-                                <div className="flex justify-end items-center my-3">
-                                    <div className="w-3/6 flex justify-end items-center gap-6">
-                                        <button type="button" onClick={() => {setEditMode(true); setQueryParam('edit', 'true')}} className="bg-transparent border border-zinc-500 text-zinc-500 hover:text-white hover:bg-zinc-500 rounded-lg px-5 py-2.5 text-lg font-medium">
-                                            Edit
+                        {/* Action Buttons */}
+                        {!editMode && (
+                            <div className="px-6 md:px-10 pb-10">
+                                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-zinc-200">
+                                    <button
+                                        onClick={() => router.back()}
+                                        className="px-6 py-2.5 border-2 border-zinc-300 text-zinc-700 rounded-lg hover:bg-zinc-50 transition-colors font-medium"
+                                    >
+                                        Go Back
+                                    </button>
+                                    {status !== BookingStatus.CANCELLED && (
+                                        <button
+                                            onClick={() => setStatus(BookingStatus.CANCELLED)}
+                                            className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                                        >
+                                            Cancel Booking
                                         </button>
-                                        <button type="button" onClick={() => setStatus(BookingStatus.CANCELLED)} className="bg-red-600 text-white hover:bg-red-500 rounded-lg px-5 py-2.5  text-lg font-medium">
-                                           Cancel booking
-                                        </button>
-                                    </div>
+                                    )}
                                 </div>
-                            </>
-                        }
+                            </div>
+                        )}
                     </>
                 }
-
             </div>
         </div>
     );
-};
+}

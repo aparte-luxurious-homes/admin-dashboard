@@ -27,7 +27,8 @@ export const API_ROUTES = {
         },
         users: {
             base: '/admin/users',
-            userById: (id: number) => `/admin/users/${id}`
+            userById: (id: number) => `/admin/users/${id}`,
+            userByUuid: (id: string) => `/admin/users/${id}`
         }
     },
     profile: {
@@ -55,10 +56,10 @@ export const API_ROUTES = {
                 media: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/media`,
                 availability: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/availability`,
             },
-            verifications: {
-                base: (propertyId: number) => `/properties/${propertyId}/verifications`,
-                details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
-            }
+            // verifications: {
+            //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
+            //     details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
+            // }
         },
         amenities: {
             base: '/amenities',
@@ -70,7 +71,7 @@ export const API_ROUTES = {
     },
     bookings: {
         base: '/bookings',
-        details: (id: number) => `/bookings/${id}`,
+        details: (id: string) => `/bookings/${id}`,
         status: (id: number) => `/bookings/${id}/status`,
         pdf: (id: number) => `/bookings/${id}/pdf`,
     },

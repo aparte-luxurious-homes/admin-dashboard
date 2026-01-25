@@ -30,7 +30,7 @@ export function GetAllBookings(page = 1, limit = 10, searchQuery = '', unitId?: 
 }
 
 
-export function GetBookingDetails(bookingId: number) {
+export function GetBookingDetails(bookingId: string) {
     return useQuery({
         queryKey: [BookingRequestKeys.createBooking], 
         queryFn: () => axiosRequest.get(
@@ -60,7 +60,7 @@ export function UpdateBookingDetails() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ bookingId, payload }: { bookingId: number, payload: IUpdateBooking }) =>
-        axiosRequest.put(API_ROUTES.bookings.details(bookingId), payload),
+        axiosRequest.put(API_ROUTES.bookings.details(String(bookingId)), payload),
 
         onSuccess: () => {
             // Invalidate the specific property query so it refetches

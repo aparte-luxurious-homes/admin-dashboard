@@ -21,11 +21,19 @@ enum PropertyRequestKeys {
     getPropertiesVerifications = "getPropertiesVerifications",
 }
 
-export function GetAllProperties(page=1, limit=10, searchTerm='', role: UserRole, id?: number) {
+export function GetAllProperties(page=1, limit=10, searchTerm='', role?: UserRole, id?: number) {
+    const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        search: searchTerm,
+    });
+    if (role) params.append('role', role);
+    if (typeof id === 'number') params.append('user', String(id));
+
     return useQuery({
-        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role, id], 
+        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role ?? null, id ?? null], 
         queryFn: () => axiosRequest.get(
-            `${API_ROUTES.propertyManagement.properties.base}?page=${page}&limit=${limit}&search=${searchTerm}&role=${role}&user=${id}`
+            `${API_ROUTES.propertyManagement.properties.base}?${params.toString()}`
         ),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
@@ -45,19 +53,14 @@ export function GetSingleProperty(propertyId: number) {
 }
 
 
-export function GetAllVerifications(page: number=1, limit: number=10, searchQuery: string='', role?: UserRole) {
+export function GetAllVerifications(page: number=1, limit: number=10, _searchQuery: string='', _role?: UserRole) {
     const queryParams = new URLSearchParams({
         page: String(page),
         limit: String(limit),
-        search: searchQuery,
     });
 
-    if (role !== undefined) {
-        queryParams.append('role', String(role));
-    }
-
     return useQuery({
-        queryKey: [PropertyRequestKeys.getAllVerifications, page, limit, searchQuery, role], 
+        queryKey: [PropertyRequestKeys.getAllVerifications, page, limit], 
         queryFn: () => axiosRequest.get(`${API_ROUTES.verifications.base}?${queryParams.toString()}`),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
@@ -88,7 +91,8 @@ export function GetPropertyVerifications(page: number=1, limit: number=10, searc
 
     return useQuery({
         queryKey: [PropertyRequestKeys.getPropertiesVerifications, page, limit, searchQuery, propertyId, role], 
-        queryFn: () => axiosRequest.get(`${API_ROUTES.propertyManagement.properties.verifications.base(propertyId)}?${queryParams.toString()}`),
+        // Use global verifications endpoint and filter by property via query param
+        queryFn: () => axiosRequest.get(`${API_ROUTES.verifications.base}?${queryParams.toString()}&property=${propertyId}`),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
         refetchInterval: 10000 * 60 * 5,

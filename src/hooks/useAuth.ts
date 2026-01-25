@@ -7,7 +7,7 @@ import axiosRequest from "@/lib/api";
 import { setUser, clearUser } from "@/lib/slices/authSlice";
 import { useEffect } from "react";
 import { BASE_API_URL } from "../lib/routes/endpoints";
-import { ILoginResponse, IUser } from "../lib/types";
+import { ILoginResponse, IUser, IBaseResponse } from "../lib/types";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { RootState } from "../lib/store";
@@ -81,10 +81,20 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
-      const { data } = await axiosRequest.post<ILoginResponse>(`${BASE_API_URL}/auth/login`, credentials);
-      
+      const response = await axiosRequest.post<IBaseResponse<ILoginResponse> | ILoginResponse>(
+        `${BASE_API_URL}/auth/login`,
+        credentials
+      );
+
+      const raw = response.data as any;
+      const payload: ILoginResponse = raw?.data?.user ? raw.data : raw;
+
+      if (!payload?.user || !payload?.authorization) {
+        throw new Error("Invalid login response from server");
+      }
+
       // Check for guest role before setting any state
-      if (data.user.role === UserRole.GUEST) {
+      if (payload.user.role === UserRole.GUEST) {
         throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
       }
 
@@ -112,7 +122,7 @@ export const useLogin = () => {
       console.log('[useLogin] Current location:', { hostname, protocol: window.location.protocol });
       
       // Try setting the cookie
-      Cookies.set("token", data.authorization.token, cookieOptions);
+      Cookies.set("token", payload.authorization.token, cookieOptions);
       
       // Verify cookie was set
       const verifyToken = Cookies.get("token");
@@ -124,12 +134,12 @@ export const useLogin = () => {
         console.warn('[useLogin] Token not set with domain, trying without domain...');
         const fallbackOptions = { ...cookieOptions };
         delete fallbackOptions.domain;
-        Cookies.set("token", data.authorization.token, fallbackOptions);
+        Cookies.set("token", payload.authorization.token, fallbackOptions);
         const recheckToken = Cookies.get("token");
         console.log('[useLogin] Fallback token check:', recheckToken ? 'Success!' : 'Still failed');
       }
       
-      return data.user;
+      return payload.user;
     },
     onSuccess: async (user) => {
       console.log('[useLogin] Login successful, setting user:', user.email);

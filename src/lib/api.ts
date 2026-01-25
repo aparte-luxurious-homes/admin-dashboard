@@ -20,6 +20,26 @@ axiosRequest.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Strip empty query params like role=& is_verified=
+  if (typeof config.url === 'string') {
+    // Remove occurrences of ?role=& or &role=& (same for is_verified)
+    config.url = config.url
+      .replace(/([?&])(role|is_verified)=(&|$)/g, (match, sep, key, tail) => {
+        // If another param follows, keep the separator; otherwise, drop the key completely
+        return tail === '&' ? sep : '';
+      })
+      // Clean up any trailing ? or &
+      .replace(/[?&]$/, '');
+  }
+  // Also sanitize params object if used
+  if (config.params && typeof config.params === 'object') {
+    Object.keys(config.params).forEach((k) => {
+      const v = (config.params as any)[k];
+      if (v === '' || v === undefined || v === null) {
+        delete (config.params as any)[k];
+      }
+    });
+  }
   return config;
 });
 

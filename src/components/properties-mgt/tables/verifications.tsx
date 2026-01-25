@@ -250,14 +250,14 @@ export default function AllVerificationsTable() {
                         <p className="text-center text-gray-500 pt-10">No verifications found</p>
                     </div>
                     : 
-                    <p className="size-full text-center text-gray-500 pt-10 self-center">
+                    <div className="size-full text-center text-gray-500 pt-10 self-center">
                         <div className="m-auto w-fit">
                             <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
                         </div>
                         <p className="text-center text-gray-500">
                             Error loading verifications
                         </p>
-                    </p>
+                    </div>
                 }
             </div>
 

@@ -8,6 +8,7 @@ type CustomDropdownProps = {
     searchTerm: string;
     setSearchTerm: (term: string) => void;
     isLoading: boolean;
+    disabled?: boolean;
 };
 
 export default function CustomDropdown({
@@ -17,6 +18,7 @@ export default function CustomDropdown({
     options,
     handleSelection,
     isLoading,
+    disabled,
 }: CustomDropdownProps) {
     const [filteredOptions, setFilteredOptions] = useState<string[]>(options);
     const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -46,11 +48,12 @@ export default function CustomDropdown({
                 type="text" 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
-                onFocus={() => setIsOpen(true)}
+                onFocus={() => !disabled && setIsOpen(true)}
                 placeholder={placeholder} 
-                className="w-full border border-zinc-400 rounded-lg p-4 h-14 text-lg"
+                disabled={disabled}
+                className={`w-full border border-zinc-400 rounded-lg p-4 h-14 text-lg ${disabled ? 'bg-zinc-100 cursor-not-allowed' : ''}`}
             />
-            {isOpen && (
+            {isOpen && !disabled && (
                 <div 
                     className="absolute w-full bg-white border border-zinc-400 rounded-lg mt-1 z-50 shadow-md 
                     max-h-40 overflow-auto transition-all ease-in-out duration-200"

@@ -19,7 +19,7 @@ export default function SideNav({ index, link, route, role }: { index: number, l
     const router = useRouter();
 
     return (
-        <div className="relative w-full cursor-pointer mb-3">
+        <div className="relative w-full cursor-pointer mb-1">
             {
                 <div>
                     <div 
@@ -30,9 +30,10 @@ export default function SideNav({ index, link, route, role }: { index: number, l
                         <div className="w-full">
                             <div 
                                 onClick={() => !link.secondary && router.push(link.link)}
-                                className={`flex items-center gap-4 pt-3 pb-2 pl-3 xl:pl-6  hover:bg-teal-600/60 ${!link.secondary && route === '/' && link.name === 'Dashboard' && 'bg-teal-600/60'}`}>
+                                className={`flex items-center gap-4 pt-3 pb-2 pl-3 xl:pl-6 rounded-md transition-colors
+                                 hover:bg-white/10 focus:bg-white/10 ${!link.secondary && route === '/' && link.name === 'Dashboard' && 'bg-white/10'}`}>
                                 {link.icon}
-                                <p className="text-base flex items-center pr-8">
+                                <p className="text-base flex items-center pr-8 text-white/95">
                                     {link.name}
                                 </p>
                             </div>
@@ -50,8 +51,9 @@ export default function SideNav({ index, link, route, role }: { index: number, l
                             link.secondary && 
                             link.children?.map((child, index) => 
                                 child.allow.includes(role) ?
-                                <Link key={index} href={child.link} className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem]  py-2 hover:bg-teal-600/60 ${getPathName(route, child.pathName) && 'bg-teal-600/60'}`}>
-                                    <p className="text-[14px] text-background/95">
+                                <Link key={index} href={child.link} className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] py-2 rounded-md transition-colors
+                                 hover:bg-white/10 ${getPathName(route, child.pathName) && 'bg-white/10'}`}>
+                                    <p className="text-[14px] text-white/90">
                                         {child.name}
                                     </p>
                                 </Link>

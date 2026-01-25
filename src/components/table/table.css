@@ -64,6 +64,15 @@
 
     /* letter-spacing: 0.1px; */
     max-width: 100% !important;
+    background-color: #FFFFFF;
+}
+
+.rdt_TableRow:nth-child(even) {
+    background-color: #FAFAFA;
+}
+
+.rdt_TableRow:hover {
+    background-color: #F3F4F6;
 }
 
 .rdt_Pagination {

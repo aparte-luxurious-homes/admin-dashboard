@@ -113,7 +113,7 @@ const OwnerInfo = () => {
   const id = params?.id;
   console.log("params", params?.id);
 
-  const fetchAUserInfo = async () => {
+  const fetchAUserInfo = useCallback(async () => {
     if (!id) return; // Ensure id exists before making the request
 
     setUserLoading(true);
@@ -136,11 +136,11 @@ const OwnerInfo = () => {
     } finally {
       setUserLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchAUserInfo();
-  }, []);
+  }, [fetchAUserInfo]);
 
   console.log("userInfo", userInfo);
 
