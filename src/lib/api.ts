@@ -14,13 +14,24 @@ const axiosRequest = axios.create({
   timeoutErrorMessage: 'Request timed out'
 });
 
-// 🔹 Attach token from cookies to every request
+// 🔹 Forceful normalization and token attachment
 axiosRequest.interceptors.request.use((config) => {
+  // 1. Ensure baseURL always has the correct prefix
+  if (config.baseURL && !config.baseURL.includes("/api/v")) {
+    const base = config.baseURL.replace(/\/+$/, "");
+    config.baseURL = base.endsWith("/api") ? `${base}/v1` : `${base}/api/v1`;
+  }
+
+  // 2. Ensure baseURL has NO trailing slash for consistent combination
+  config.baseURL = config.baseURL?.replace(/\/+$/, "");
+
+  // 3. Ensure url has NO leading slash to prevent Axios's path replacement behavior
+  if (config.url?.startsWith("/")) {
+    config.url = config.url.substring(1);
+  }
+
   if (process.env.NEXT_PUBLIC_NODE_ENV !== 'production') {
-    console.log(`[Axios] Request: ${config.method?.toUpperCase()} ${config.url}`, {
-      baseURL: config.baseURL,
-      fullPath: `${config.baseURL}${config.url}`
-    });
+    console.log(`[Axios] Final Request URL: ${config.baseURL}/${config.url}`);
   }
 
   const token = Cookies.get("token");

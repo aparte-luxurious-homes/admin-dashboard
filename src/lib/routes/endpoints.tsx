@@ -106,36 +106,13 @@ export const API_ROUTES = {
 };
 
 
-const normalizeApiUrl = (url: string | undefined): string => {
-    if (!url || url === "undefined") return "";
-
-    // Remove trailing slashes
-    let normalized = url.trim().replace(/\/+$/, "");
-
-    // If it already ends with /api/v1, return it
-    if (normalized.endsWith("/api/v1")) {
-        return normalized;
-    }
-
-    // If it ends with /api, append /v1
-    if (normalized.endsWith("/api")) {
-        return `${normalized}/v1`;
-    }
-
-    // Otherwise, append /api/v1
-    return `${normalized}/api/v1`;
-};
-
-// Simplified resolution: Default to NEXT_PUBLIC_BASE_API_URL as the primary source of truth
-// This matches our Cloud Build substitution patterns.
 const rawUrl = process.env.NEXT_PUBLIC_BASE_API_URL ||
     process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
     process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
     "";
 
-export const BASE_API_URL = normalizeApiUrl(rawUrl);
+export const BASE_API_URL = rawUrl.trim().replace(/\/+$/, "");
 
-// Debug log for development/staging environments
-if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_NODE_ENV !== 'production') {
+if (typeof window !== 'undefined') {
     console.log('[Endpoints] Initialized BASE_API_URL:', BASE_API_URL);
 }
