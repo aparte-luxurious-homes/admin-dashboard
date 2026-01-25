@@ -106,6 +106,26 @@ export const API_ROUTES = {
 };
 
 
+const normalizeApiUrl = (url: string | undefined): string => {
+    if (!url) return "";
+
+    // Remove trailing slashes
+    let normalized = url.replace(/\/+$/, "");
+
+    // If it already ends with /api/v1, return it
+    if (normalized.endsWith("/api/v1")) {
+        return normalized;
+    }
+
+    // If it ends with /api, append /v1
+    if (normalized.endsWith("/api")) {
+        return `${normalized}/v1`;
+    }
+
+    // Otherwise, append /api/v1
+    return `${normalized}/api/v1`;
+};
+
 const getApiUrl = (env: string) => {
     switch (env) {
         case 'test':
@@ -119,4 +139,4 @@ const getApiUrl = (env: string) => {
     }
 }
 
-export const BASE_API_URL = getApiUrl(process.env.NEXT_PUBLIC_NODE_ENV!) || process.env.NEXT_PUBLIC_BASE_API_URL || "";
+export const BASE_API_URL = normalizeApiUrl(getApiUrl(process.env.NEXT_PUBLIC_NODE_ENV!) || process.env.NEXT_PUBLIC_BASE_API_URL);
