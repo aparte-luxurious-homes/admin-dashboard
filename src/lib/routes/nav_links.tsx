@@ -33,7 +33,7 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'User Management',
         pathName: 'user-management',
-        link: '/user-management',
+        link: PAGE_ROUTES.dashboard.userManagement.guests.base,
         icon: <UsersIcon className={"w-5"} color={"white"} />,
         allow: [UserRole.ADMIN],
         secondary: true,
@@ -61,7 +61,7 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'Properties Management',
         pathName: 'properties-management',
-        link: '/property-management',
+        link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.base,
         icon: <PropertiesIcon className={"w-5"} color={"white"} />,
         allow: Object.values(UserRole),
         secondary: true,
@@ -89,7 +89,7 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'Booking Management',
         pathName: 'booking-management',
-        link: '/booking-management',
+        link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
         icon: <BookingIcon className={"w-5"} color={"white"} />,
         allow: [UserRole.ADMIN],
         secondary: true,
@@ -139,7 +139,7 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'Transactions',
         pathName: 'transactions',
-        link: '/transactions',
+        link: PAGE_ROUTES.dashboard.transactions.payments.base,
         allow: [UserRole.ADMIN],
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
         secondary: true,
