@@ -3,15 +3,9 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-RUN \
-    if [ -f sarif.json ]; then npm ci; \
-    elif [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then npm ci; \
-    elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-    else echo "Lockfile not found." && exit 1; \
-    fi
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci || npm install
 
 COPY . .
 
@@ -27,7 +21,7 @@ ARG NEXT_PUBLIC_BASE_API_URL
 ENV NEXT_PUBLIC_NODE_ENV=$NEXT_PUBLIC_NODE_ENV
 ENV NEXT_PUBLIC_BASE_API_URL=$NEXT_PUBLIC_BASE_API_URL
 
-RUN yarn build
+RUN npm run build
 
 # Stage 2: Run
 FROM node:18-alpine AS runner
