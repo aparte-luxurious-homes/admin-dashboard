@@ -53,11 +53,15 @@ interface User {
 }
 
 const Agent = () => {
-  const [searchResult, setSearchResult] = useState<User[]>([]);
-  const [ownerInfo, setOwnerInfo] = useState<User[]>([]);
+  const [data, setData] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>("");
   const [searchValue, setSearchValue] = useState<string>("");
+  const [rowCount, setRowCount] = useState(0);
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 10,
+  });
+
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -92,34 +96,23 @@ const Agent = () => {
 
   const handleDownload = (type: "CSV" | "PDF") => {
     console.log(`Downloading ${type}...`);
-
     if (type === "CSV") {
-      downloadCSV(ownerInfo);
+      downloadCSV(data);
     } else if (type === "PDF") {
-      downloadPDF(ownerInfo);
+      downloadPDF(data);
     }
-
     setIsOpen(false);
   };
 
   const downloadCSV = (data: User[]) => {
     if (!data.length) return;
-
-    // Extract headers dynamically
     const headers = Object.keys(data[0]).join(",");
-
-    // Convert array of objects to CSV format
     const csvContent = data.map(row =>
       Object.values(row).map(value => `"${value}"`).join(",")
     );
-
-    // Combine headers and rows
     const csvString = [headers, ...csvContent].join("\n");
-
-    // Create a Blob and trigger download
     const blob = new Blob([csvString], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download = "agent_info.csv";
@@ -127,17 +120,11 @@ const Agent = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Download PDF(Error in creation format)
   const downloadPDF = (data: User[]) => {
     if (!data.length) return;
-
     const doc = new jsPDF();
     doc.text("Agent Information", 10, 10);
-
-    // Defind table headers
     const headers = ["ID", "First Name", "Last Name", "KYC Status", "Email", "Created At"];
-
-    // Format data properly
     const rows = data.map(user => [
       user.id || "--/--",
       user?.profile?.firstName || "--/--",
@@ -146,18 +133,14 @@ const Agent = () => {
       user.email || "--/--",
       user.createdAt ? new Date(user.createdAt).toLocaleString() : "--/--"
     ]);
-
-    // Generate table
     autoTable(doc, {
       head: [headers],
       body: rows,
       styles: { fontSize: 10, cellPadding: 3 },
       theme: "grid",
     });
-
     doc.save("agent_info.pdf");
   };
-
 
   const anAgentColumns: GridColDef[] = [
     {
@@ -165,9 +148,8 @@ const Agent = () => {
       headerName: "Full Name",
       width: 250,
       renderCell: (params) => {
-        const p = params?.row?.profile ?? {} as any;
-        const first = (p.first_name ?? p.firstName) || "--/--";
-        const last = (p.last_name ?? p.lastName) || "--/--";
+        const first = params.row.firstName || "--/--";
+        const last = params.row.lastName || "--/--";
         return `${first} ${last}`;
       },
     },
@@ -175,214 +157,152 @@ const Agent = () => {
       field: "email",
       headerName: "Email",
       width: 200,
-      renderCell: (params) => params?.row?.email || "--/--",
     },
     {
       field: "phone",
       headerName: "Phone Number",
-      width: 130,
-      renderCell: (params) => params?.row?.phone || "--/--",
+      width: 150,
     },
     {
       field: "isVerified",
       headerName: "Verification Status",
-      width: 150,
-      renderCell: (params) => {
-        return <Badge status={params?.value} />;
-      },
-    },
-    {
-      field: "gender",
-      headerName: "Gender",
-      width: 100,
-      renderCell: (params) => (params?.row?.profile?.gender ?? params?.row?.profile?.gender)?.toString() || "--/--",
+      width: 180,
+      renderCell: (params) => <Badge status={params.value} />,
     },
     {
       field: "createdAt",
       headerName: "Date Created",
-      width: 150,
-      renderCell: (params) => (params?.row?.created_at ?? params?.row?.createdAt)?.toString()?.substring(0, 10) || "--/--",
-    },
-    {
-      field: "isActive",
-      headerName: "Account Status",
-      width: 150,
-      renderCell: (params) => {
-        return <Badge status={params?.value} />;
-      },
+      width: 180,
+      renderCell: (params) => (params.value ? new Date(params.value).toLocaleDateString() : "--/--"),
     },
     {
       field: "actions",
       headerName: "",
-      width: 30,
+      width: 100,
       sortable: false,
-      align: "center",
       renderCell: (params) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Link href={`/user-management/agents/${params.row.id}`}>
-            <Icon icon="mdi:eye" className="cursor-pointer text-[#514A4A]" />
+            <Icon icon="mdi:eye" className="cursor-pointer text-gray-500 hover:text-primary transition-colors" width="20" />
           </Link>
           <button
             onClick={() => {
-              const p = (params?.row?.profile ?? {}) as any;
-              setEditUserId(params?.row?.id);
+              setEditUserId(params.row.id);
               setEditForm({
-                email: params?.row?.email ?? '',
-                phone: params?.row?.phone ?? '',
-                first_name: p.first_name ?? p.firstName ?? '',
-                last_name: p.last_name ?? p.lastName ?? '',
-                gender: p.gender ?? '',
-                is_active: params?.row?.isActive ?? true,
-                is_verified: params?.row?.isVerified ?? false,
+                email: params.row.email || '',
+                phone: params.row.phone || '',
+                first_name: params.row.firstName || '',
+                last_name: params.row.lastName || '',
+                gender: params.row.gender || '',
+                is_active: params.row.isActive ?? true,
+                is_verified: params.row.isVerified ?? false,
               });
               setIsEditOpen(true);
             }}
-            className=""
-            aria-label="Edit user"
+            className="text-gray-500 hover:text-blue-600 transition-colors"
           >
-            <Icon icon="mdi:pencil" className="cursor-pointer text-[#514A4A]" />
+            <Icon icon="mdi:pencil" width="20" />
           </button>
         </div>
       ),
     },
   ];
 
-  const fetchownerInfo = async () => {
+  const fetchAgents = async () => {
     setLoading(true);
     try {
-      const response = await axiosRequest.get(
-        `${API_ROUTES?.admin?.users?.base}`
-      );
-      const rows = response?.data?.data?.items ?? response?.data?.data?.data ?? response?.data?.data ?? [];
-      const ownerData = rows?.filter((user: User) => user?.role === "AGENT") || [];
-
-      setOwnerInfo(ownerData);
-      setSearchResult(ownerData);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
+      const response = await axiosRequest.get(API_ROUTES.admin.users.base, {
+        params: {
+          page: paginationModel.page + 1,
+          size: paginationModel.pageSize,
+          search: searchValue || undefined,
+          role: "AGENT",
+        },
+      });
+      const result = response.data.data;
+      setData(result.data);
+      setRowCount(result.meta.total);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to fetch agents");
     } finally {
       setLoading(false);
     }
   };
 
-
   useEffect(() => {
-    fetchownerInfo();
-  }, []);
+    const timer = setTimeout(() => {
+      fetchAgents();
+    }, 500); // Debounce search
+    return () => clearTimeout(timer);
+  }, [paginationModel, searchValue]);
 
-  console.log("loading", loading);
-  console.log("searchResult", searchResult);
-  // --| Filter Property table using name, state and and all
-  const handleSearchProperty = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    setSearchValue(value);
-
-    const valArray = value.split(" ");
-    // --| Filter data by partial match onchange in the search input box
-    const result = ownerInfo?.filter((data) => {
-      const email = (data?.email || '').toLowerCase();
-      const p = (data?.profile ?? {}) as any;
-      const last = ((p.lastName ?? p.last_name) || '').toString().toLowerCase();
-      const first = ((p.firstName ?? p.first_name) || '').toString().toLowerCase();
-      const gender = (p.gender || '').toString().toLowerCase();
-      return valArray?.every((word: string) => {
-        const w = word.toLowerCase();
-        return email.includes(w) || last.includes(w) || first.includes(w) || gender.includes(w);
-      });
-    });
-    setSearchResult(result);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchValue(e.target.value);
+    setPaginationModel(prev => ({ ...prev, page: 0 })); // Reset to first page on search
   };
+
   return (
     <>
       <div className="p-6">
-        {loading ? (
-          <Skeleton className="h-[500px] w-full rounded-lg" />
-        ) : (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex justify-between items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div>
-                    <h1 className="text-xl font-semibold text-gray-900">Agent Management</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage agents and property assignments</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="primary"
-                    buttonSize="small"
-                    color="btnwhite"
-                    type="button"
-                    onClick={() => setIsCreateOpen(true)}
-                    buttonName={<span>Create Agent</span>}
-                  />
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+            <div className="flex justify-between items-center gap-4 flex-wrap">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Agent Management</h1>
+                <p className="text-sm text-gray-500 mt-1">Manage and monitor all your platform agents</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  buttonSize="small"
+                  onClick={() => setIsCreateOpen(true)}
+                  buttonName={<span className="flex items-center gap-2"><Icon icon="mdi:plus" /> Create Agent</span>}
+                />
+                <div className="relative">
                   <Button
                     variant="primaryoutline"
                     buttonSize="small"
-                    color="btnfontprimary"
-                    type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    buttonName={
-                      <span className="flex items-center gap-1">
-                        <Icon icon="mdi:printer" className="text-base" />
-                        <span>Export</span>
-                      </span>
-                    }
+                    buttonName={<span className="flex items-center gap-2"><Icon icon="mdi:printer" /> Export</span>}
                   />
                   {isOpen && (
-                    <div className="absolute right-8 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                      <button
-                        onClick={() => handleDownload("CSV")}
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 rounded-t-lg"
-                      >
-                        Export as CSV
-                      </button>
-                      <button
-                        onClick={() => handleDownload("PDF")}
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 rounded-b-lg"
-                      >
-                        Export as PDF
-                      </button>
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-20">
+                      <button onClick={() => handleDownload("CSV")} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100">Export as CSV</button>
+                      <button onClick={() => handleDownload("PDF")} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors">Export as PDF</button>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-4">
-                <div className="flex-1 max-w-md">
-                  <TableSearch
-                    placeholder="Search agents..."
-                    searchTableFunc={handleSearchProperty}
-                    value={searchValue}
-                  />
-                </div>
-                <ItemCount count={searchResult?.length} />
-              </div>
             </div>
 
-            {searchResult?.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table
-                  columns={anAgentColumns}
-                  rows={searchResult}
-                  getRowId={(row) => row?.id}
-                  pagination={false}
+            <div className="flex items-center gap-4 mt-6">
+              <div className="flex-1 max-w-md relative">
+                <TableSearch
+                  placeholder="Search by name, email or phone..."
+                  searchTableFunc={handleSearchChange}
+                  value={searchValue}
                 />
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <Icon icon="hugeicons:album-not-found-01" width="32" height="32" className="text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No agents found</h3>
-                <p className="text-sm text-gray-500">Try adjusting your search or create a new agent</p>
+              <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                Total Agents: <span className="text-primary">{rowCount}</span>
               </div>
-            )}
+            </div>
           </div>
-        )}
+
+          <div className="p-0">
+            <Table
+              columns={anAgentColumns}
+              rows={data}
+              getRowId={(row) => row.id}
+              loading={loading}
+              pagination
+              paginationMode="server"
+              rowCount={rowCount}
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Create User Modal */}
@@ -493,7 +413,7 @@ const Agent = () => {
               <button
                 onClick={() => {
                   createUser({ payload: createForm }, {
-                    onSuccess: () => { toast.success('User created successfully'); setIsCreateOpen(false); fetchownerInfo(); },
+                    onSuccess: () => { toast.success('User created successfully'); setIsCreateOpen(false); fetchAgents(); },
                     onError: (e: any) => {
                       const detail = e?.response?.data?.detail;
                       const msg = Array.isArray(detail) ? detail.map((d: any) => d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
@@ -610,7 +530,7 @@ const Agent = () => {
                 onClick={() => {
                   if (!editUserId) { toast.error('Missing user id'); return; }
                   updateUser({ userId: editUserId, payload: editForm }, {
-                    onSuccess: () => { toast.success('User updated successfully'); setIsEditOpen(false); fetchownerInfo(); },
+                    onSuccess: () => { toast.success('User updated successfully'); setIsEditOpen(false); fetchAgents(); },
                     onError: (e: any) => {
                       const detail = e?.response?.data?.detail;
                       const msg = Array.isArray(detail) ? detail.map((d: any) => d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
