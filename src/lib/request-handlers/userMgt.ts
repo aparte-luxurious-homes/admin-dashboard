@@ -7,9 +7,10 @@ enum UsersRequestKeys {
     getAllUsers = "getAllUsers",
     createUser = "createUser",
     updateUser = "updateUser",
+    deleteUser = "deleteUser",
 }
 
-export function GetAllUsers(page=1, size=10, searchQuery = '', role: UserRole | string = '', isVerified: string = '') {
+export function GetAllUsers(page = 1, size = 10, searchQuery = '', role: UserRole | string = '', isVerified: string = '') {
     const queryParams = new URLSearchParams({
         page: String(page),
         size: String(size),
@@ -19,7 +20,7 @@ export function GetAllUsers(page=1, size=10, searchQuery = '', role: UserRole | 
     });
 
     return useQuery({
-        queryKey: [UsersRequestKeys.getAllUsers, page, size, searchQuery, role, isVerified], 
+        queryKey: [UsersRequestKeys.getAllUsers, page, size, searchQuery, role, isVerified],
         queryFn: () => axiosRequest.get(`${API_ROUTES.admin.users.base}?${queryParams.toString()}`),
         refetchOnWindowFocus: true,
     });
@@ -41,6 +42,17 @@ export function UpdateUser() {
     return useMutation({
         mutationFn: ({ userId, payload }: { userId: string, payload: any }) =>
             axiosRequest.put(API_ROUTES.admin.users.userByUuid(userId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.getAllUsers] });
+        },
+    });
+}
+
+export function DeleteUser() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId }: { userId: string | number }) =>
+            axiosRequest.delete(API_ROUTES.admin.users.userByUuid(userId)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.getAllUsers] });
         },

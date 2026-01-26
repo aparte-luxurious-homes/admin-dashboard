@@ -27,7 +27,7 @@ import { BsHouses } from "react-icons/bs";
 import toast from "react-hot-toast";
 
 
-export default function CreateUnitView({ propertyId } : { propertyId: number }) {
+export default function CreateUnitView({ propertyId }: { propertyId: string | number }) {
     const { user } = useAuth();
     const { mutate, isPending } = CreatePropertyUnit();
     const { data: fetchedAmenites } = GetAmenities();
@@ -57,16 +57,16 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
     useEffect(() => {
         setAvailableAmenities(fetchedAmenites?.data?.data)
     }, [fetchedAmenites])
-    
+
     useEffect(() => {
         setLoadedProperty(propertyData?.data?.data)
     }, [propertyData])
 
-    const formik = 
+    const formik =
         useFormik({
             initialValues: {
                 name: "",
-                description:  "",
+                description: "",
                 price_per_night: "",
                 max_guests: 0,
                 count: 0,
@@ -80,74 +80,74 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                 amenityNames: [],
             },
 
-        onSubmit: (values) => {
-            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames);
+            onSubmit: (values) => {
+                const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames);
 
-            const payload: ICreatePropertyUnit[] = [{
-                ...values,
-                amenities: sortedAmenities,
-            }]
-            
-            mutate({
-                propertyId,
-                payload
-            },
-            {
-                onSuccess: (response) => {
-                    const unitId = response?.data?.data[0]?.id
-                    const formData = new FormData();
+                const payload: ICreatePropertyUnit[] = [{
+                    ...values,
+                    amenities: sortedAmenities,
+                }]
 
-                    if (unitId) {
-                        if (uploadedMedia.length > 0) {  
-                            uploadedMedia?.forEach(file => {
-                                formData.append("media_file", file);
-                            });
-                        
-                            formData.append("media_type", MediaType.IMAGE);
-                            formData.append("is_featured", "true");
+                mutate({
+                    propertyId,
+                    payload
+                },
+                    {
+                        onSuccess: (response) => {
+                            const unitId = response?.data?.data[0]?.id
+                            const formData = new FormData();
 
-                            uploadMedia(
-                                {
-                                    propertyId,
-                                    unitId,
-                                    payload: formData,
-                                },
-                                {
-                                    onError: (error: any) => 
-                                        toast.error(error.status === 422 ? 'Media file(s) include Invalid format' : 'Media upload failed', {
-                                            duration: 6000,
-                                            style: {
-                                                maxWidth: '500px',
-                                                width: 'max-content'
-                                            }
-                                        }),
+                            if (unitId) {
+                                if (uploadedMedia.length > 0) {
+                                    uploadedMedia?.forEach(file => {
+                                        formData.append("media_file", file);
+                                    });
+
+                                    formData.append("media_type", MediaType.IMAGE);
+                                    formData.append("is_featured", "true");
+
+                                    uploadMedia(
+                                        {
+                                            propertyId,
+                                            unitId,
+                                            payload: formData,
+                                        },
+                                        {
+                                            onError: (error: any) =>
+                                                toast.error(error.status === 422 ? 'Media file(s) include Invalid format' : 'Media upload failed', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+                                        }
+                                    );
+
+
+                                    toast.success('Property unit created successfully', {
+                                        duration: 6000,
+                                        style: {
+                                            maxWidth: '500px',
+                                            width: 'max-content'
+                                        }
+                                    })
                                 }
-                            );
+                            }
 
-                            
-                            toast.success('Property unit created successfully', {
+                            router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(propertyId, unitId))
+                        },
+                        onError: () =>
+                            toast.error('Something went wrong', {
                                 duration: 6000,
                                 style: {
                                     maxWidth: '500px',
                                     width: 'max-content'
                                 }
                             })
-                        }
-                    }
-
-                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(propertyId, unitId))
-                },
-                onError: () => 
-                    toast.error('Something went wrong', {
-                        duration: 6000,
-                        style: {
-                            maxWidth: '500px',
-                            width: 'max-content'
-                        }
                     })
-            })         
-        },
-    });
+            },
+        });
 
 
     return (
@@ -182,10 +182,10 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             <div className="col-span-3 relative">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Name</label>
                                 <div className="reative mt-2">
-                                    <FaRegBuilding className="absolute top-[60%] left-3 text-zinc-400"/>
+                                    <FaRegBuilding className="absolute top-[60%] left-3 text-zinc-400" />
                                     <input
                                         id="name"
-                                        type="text" 
+                                        type="text"
                                         placeholder="Magodo Crystal Springs Hotel and Resort"
                                         value={formik.values.name}
                                         onChange={formik.handleChange}
@@ -212,10 +212,10 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             <div className="col-span-1">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Bedroom</label>
                                 <div className="relative mt-2">
-                                    <IoBedOutline className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
+                                    <IoBedOutline className="text-xl absolute top-[30%] left-3 text-zinc-400" />
                                     <input
                                         id="bedroom"
-                                        type="number" 
+                                        type="number"
                                         placeholder=""
                                         value={formik.values.bedroom_count}
                                         onChange={(e) => formik.setFieldValue('bedroom_count', (e.target.value))}
@@ -226,10 +226,10 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             <div className="col-span-1 ">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Kitchen</label>
                                 <div className="relative mt-2">
-                                    <TbToolsKitchen className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
+                                    <TbToolsKitchen className="text-xl absolute top-[30%] left-3 text-zinc-400" />
                                     <input
                                         id="kitchen"
-                                        type="number" 
+                                        type="number"
                                         placeholder=""
                                         value={formik.values.kitchen_count}
                                         onChange={(e) => formik.setFieldValue('kitchen_count', (e.target.value))}
@@ -240,10 +240,10 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             <div className="col-span-1">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Bathroom</label>
                                 <div className="relative mt-2">
-                                    <PiBathtub className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
+                                    <PiBathtub className="text-xl absolute top-[30%] left-3 text-zinc-400" />
                                     <input
                                         id="bathroom"
-                                        type="number" 
+                                        type="number"
                                         placeholder=""
                                         value={formik.values.bathroom_count}
                                         onChange={(e) => formik.setFieldValue('bathroom_count', (e.target.value))}
@@ -254,10 +254,10 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             <div className="col-span-1">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Living room</label>
                                 <div className="relative mt-2">
-                                    <LuSofa className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
+                                    <LuSofa className="text-xl absolute top-[30%] left-3 text-zinc-400" />
                                     <input
                                         id="living-room"
-                                        type="number" 
+                                        type="number"
                                         placeholder=""
                                         value={formik.values.living_room_count}
                                         onChange={(e) => formik.setFieldValue('living_room_count', (e.target.value))}
@@ -268,10 +268,10 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             <div className="col-span-1">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Guests <span className="font-normal text-base"><em>(max)</em></span></label>
                                 <div className="relative mt-2">
-                                    <LuUsers className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
+                                    <LuUsers className="text-xl absolute top-[30%] left-3 text-zinc-400" />
                                     <input
                                         id="max-guests"
-                                        type="number" 
+                                        type="number"
                                         placeholder=""
                                         value={formik.values.max_guests}
                                         onChange={(e) => formik.setFieldValue('max_guests', (e.target.value))}
@@ -282,10 +282,10 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             <div className="col-span-1">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Units available</label>
                                 <div className="relative mt-2">
-                                    <BsHouses className="text-xl absolute top-[30%] left-3 text-zinc-400"/>
+                                    <BsHouses className="text-xl absolute top-[30%] left-3 text-zinc-400" />
                                     <input
                                         id="count"
-                                        type="number" 
+                                        type="number"
                                         placeholder=""
                                         value={formik.values.count}
                                         onChange={(e) => formik.setFieldValue('count', (e.target.value))}
@@ -293,23 +293,23 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                                     />
                                 </div>
                             </div>
-                            
+
                             <div className="col-span-3 relative flex flex-col items-start mt-10">
                                 <label htmlFor="amenities" className="text-lg zinc-900 font-medium mb-4">Amenities</label>
                                 <MultipleChoice
-                                    options={availableAmenities?.map(el => 
+                                    options={availableAmenities?.map(el =>
                                         el.name
                                     )}
                                     selected={formik.values.amenityNames}
                                     onChange={(val) => {
                                         formik.setFieldValue("amenityNames", [...val]); // Ensure a new array reference
-                                    }} 
+                                    }}
                                 />
 
                                 {
                                     user?.role === UserRole.ADMIN &&
                                     <div onClick={() => setShowAmenityForm(true)} className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer">
-                                        <FaPlus className="text-base "/>
+                                        <FaPlus className="text-base " />
                                         <span>
                                             New Amenity
                                         </span>
@@ -318,20 +318,20 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                             </div>
 
 
-                            
+
                             <div className="col-span-3 relative flex flex-col items-start mt-10 mb-20">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Upload unit images</label>
                                 <div className="w-full mt-5 mx-auto">
-                                    <CustomDropzone 
+                                    <CustomDropzone
                                         onDrop={setUploadedMedia}
                                         multiple
-                                        previewsRef={uploadRef}              
+                                        previewsRef={uploadRef}
                                     />
                                 </div>
                             </div>
 
 
-                            
+
                             <div className="col-span-3 relative mt-5 mb-10">
                                 <label htmlFor="name" className="text-lg zinc-900 font-medium">Prices</label>
                                 <div className="flex flex-col justify-center w-full p-2">
@@ -340,7 +340,7 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                                             Price per night
                                         </p>
                                         <div className="relative mt-2">
-                                            <TbCurrencyNaira className="absolute top-[25%] left-2.5 text-[25px]"/>
+                                            <TbCurrencyNaira className="absolute top-[25%] left-2.5 text-[25px]" />
                                             <input
                                                 id="price-per-night"
                                                 type="number"
@@ -371,7 +371,7 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                                             Total
                                         </p>
                                         <div className="relative mt-4 pl-2">
-                                            <TbCurrencyNaira className="absolute top-[25%] left-2.5 text-[25px]"/>
+                                            <TbCurrencyNaira className="absolute top-[25%] left-2.5 text-[25px]" />
                                             <input
                                                 id="total"
                                                 type="text"
@@ -388,7 +388,7 @@ export default function CreateUnitView({ propertyId } : { propertyId: number }) 
                     </form>
 
                     <div className="flex justify-end items-center gap-5 mt-3">
-                        <button onClick={() => formik.handleSubmit()} disabled={ isPending }  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
+                        <button onClick={() => formik.handleSubmit()} disabled={isPending} className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
                             {isPending ? <Spinner /> : 'Save'}
                         </button>
                     </div>

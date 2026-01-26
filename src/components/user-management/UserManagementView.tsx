@@ -6,9 +6,11 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
-import { CreateUser, UpdateUser } from "@/src/lib/request-handlers/userMgt";
+import { CreateUser, DeleteUser, UpdateUser } from "@/src/lib/request-handlers/userMgt";
 import { toast } from "react-hot-toast";
-import { DotsIcon, FilterIcon, SearchIcon } from "@/src/components/icons";
+import { DotsIcon, FilterIcon, SearchIcon, TrashIcon } from "@/src/components/icons";
+import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { useDispatch } from "react-redux";
 import TablePagination from "@/src/components/TablePagination";
 import { LuEye } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
@@ -117,12 +119,14 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
         firstName: '',
         lastName: '',
         gender: '',
-        isActive: true,
-        isVerified: false,
+        is_active: true,
+        is_verified: false,
     });
 
+    const dispatch = useDispatch();
     const { mutate: createUser, isPending: creating } = CreateUser();
     const { mutate: updateUser, isPending: updating } = UpdateUser();
+    const { mutate: deleteUser, isPending: deleting } = DeleteUser();
 
     const handleDownload = (type: "CSV" | "PDF") => {
         if (type === "CSV") {
@@ -257,6 +261,38 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                         isVerified: user.is_verified ?? user.isVerified ?? false,
                     });
                     setIsEditOpen(true);
+                }
+                setSelectedRow(null);
+            },
+        },
+        {
+            label: "Delete",
+            Icon: <TrashIcon className="w-4 h-4" color="#EF4444" />,
+            onClick: () => {
+                if (selectedRow !== null) {
+                    const user = data[selectedRow];
+                    dispatch(
+                        showAlert({
+                            title: `Delete ${role.charAt(0) + role.slice(1).toLowerCase()}?`,
+                            description: `Are you sure you want to delete ${user.profile?.first_name || user.firstName || 'this user'}? This action cannot be undone.`,
+                            confirmText: "Delete",
+                            cancelText: "Cancel",
+                            onConfirm: () => {
+                                deleteUser(
+                                    { userId: user.id },
+                                    {
+                                        onSuccess: () => {
+                                            toast.success('User deleted successfully');
+                                            fetchUsers();
+                                        },
+                                        onError: (err: any) => {
+                                            toast.error(err.response?.data?.message || 'Failed to delete user');
+                                        }
+                                    }
+                                );
+                            },
+                        })
+                    );
                 }
                 setSelectedRow(null);
             },

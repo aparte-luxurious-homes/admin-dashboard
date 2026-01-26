@@ -6,9 +6,9 @@ import { useParams } from "next/navigation";
 export default function CreateUnit() {
     const params = useParams();
 
-    return(
+    return (
         <CreateUnitView
-            propertyId={Number(params.propertyId)}        
+            propertyId={params.propertyId as string}
         />
     );
 };

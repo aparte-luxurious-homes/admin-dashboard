@@ -27,13 +27,13 @@ export default function VerificationDetails({
     propertyId,
     verificationId
 }: {
-    propertyId: number,
-    verificationId: number
-}){
+    propertyId: string | number,
+    verificationId: string | number
+}) {
     const dispatch = useDispatch();
-    const  { user } = useAuth();
+    const { user } = useAuth();
     const { mutate: assignAgent, isPending: assignmentLoading } = AssignToProperty(propertyId)
-    const  { mutate: updateVerification, isPending: verificationUdateLoading } = UpdatePropertyVerification()
+    const { mutate: updateVerification, isPending: verificationUdateLoading } = UpdatePropertyVerification()
     const { data: verificationData, isLoading: verificationLoading } = GetPropertyVerification(verificationId, user?.role || UserRole.GUEST)
     const [verification, setVerification] = useState<IPropertyVerification | null>(null);
     const [property, setProperty] = useState<IProperty | null>(null);
@@ -43,14 +43,14 @@ export default function VerificationDetails({
 
     const { data: agentsList, isLoading: agentsLoading } = GetAllUsers(1, 12, agentSearchTerm, UserRole.AGENT);
     const [agents, setAgents] = useState<IUser[]>(agentsList?.data?.data?.data)
-    const [selectedAgent, setSelectedAgent] = useState<IUser|null>(null)
+    const [selectedAgent, setSelectedAgent] = useState<IUser | null>(null)
     const [showAgentSelection, setShowAgentSelecteion] = useState(false);
 
 
-    const formik = 
+    const formik =
         useFormik({
             initialValues: {
-                feedback: verification?.feedback??``
+                feedback: verification?.feedback ?? ``
             },
             onSubmit: async () => {
                 updateVerification(
@@ -58,11 +58,11 @@ export default function VerificationDetails({
                         propertyId,
                         payload: {
                             feedback: formik.values.feedback,
-                            status: verification?.status??PropertyVerificationStatus.PENDING,
+                            status: verification?.status ?? PropertyVerificationStatus.PENDING,
                         }
                     },
                     {
-                        onSuccess: () =>{ 
+                        onSuccess: () => {
                             toast.success('Property verification updated successfuly', {
                                 duration: 6000,
                                 style: {
@@ -72,7 +72,7 @@ export default function VerificationDetails({
                             });
                             setEditMode(false)
                         },
-                        onError: (error) => 
+                        onError: (error) =>
                             toast.error('Something went wrong', {
                                 duration: 6000,
                                 style: {
@@ -80,7 +80,7 @@ export default function VerificationDetails({
                                     width: 'max-content'
                                 }
                             }),
-                        
+
                     }
                 )
             },
@@ -102,7 +102,7 @@ export default function VerificationDetails({
                         }
                     },
                     {
-                        onSuccess: () => 
+                        onSuccess: () =>
                             toast.success('Property verification updated successfuly', {
                                 duration: 6000,
                                 style: {
@@ -110,7 +110,7 @@ export default function VerificationDetails({
                                     width: 'max-content'
                                 }
                             }),
-                        onError: (error) => 
+                        onError: (error) =>
                             toast.error('Something went wrong', {
                                 duration: 6000,
                                 style: {
@@ -123,12 +123,12 @@ export default function VerificationDetails({
             })
         );
     };
-    
+
     const handleVerification = () => {
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: "This will verify delete the property.",
+                description: "This will verify this property.",
                 confirmText: "Verify",
                 cancelText: "Cancel",
                 onConfirm: () => updateVerification(
@@ -140,7 +140,7 @@ export default function VerificationDetails({
                         }
                     },
                     {
-                        onSuccess: () => 
+                        onSuccess: () =>
                             toast.success('Property verification updated successfuly', {
                                 duration: 6000,
                                 style: {
@@ -148,7 +148,7 @@ export default function VerificationDetails({
                                     width: 'max-content'
                                 }
                             }),
-                        onError: (error) => 
+                        onError: (error) =>
                             toast.error('Something went wrong', {
                                 duration: 6000,
                                 style: {
@@ -161,7 +161,7 @@ export default function VerificationDetails({
             })
         );
     };
-    
+
     const handleApproval = (name: string) => {
         dispatch(
             showAlert({
@@ -178,7 +178,7 @@ export default function VerificationDetails({
                         }
                     },
                     {
-                        onSuccess: () => 
+                        onSuccess: () =>
                             toast.success('Property verification approved successfuly', {
                                 duration: 6000,
                                 style: {
@@ -186,7 +186,7 @@ export default function VerificationDetails({
                                     width: 'max-content'
                                 }
                             }),
-                        onError: () => 
+                        onError: () =>
                             toast.error('Something went wrong', {
                                 duration: 6000,
                                 style: {
@@ -202,7 +202,7 @@ export default function VerificationDetails({
 
     const handleAgentSelection = (email: string) => {
         const filteredUsers = agents?.filter(el => {
-            if (el?.email === email ) return el;
+            if (el?.email === email) return el;
         })
         setSelectedAgent(filteredUsers[0])
     }
@@ -210,7 +210,7 @@ export default function VerificationDetails({
 
     const handleAgentAssignment = (agentId: number) => {
         assignAgent(
-            { 
+            {
                 payload: { agent_id: agentId }
             },
             {
@@ -225,18 +225,19 @@ export default function VerificationDetails({
 
                     setShowAgentSelecteion(false)
                 },
-                onError: (error: any) =>{
+                onError: (error: any) => {
                     toast.error(error.status === 409 ? 'Agent already assigned with pending verification' : 'Something went wrong', {
                         duration: 6000,
                         style: {
                             maxWidth: '500px',
                             width: 'max-content'
                         }
-                    })}
+                    })
+                }
             }
         )
     }
-    
+
 
     useEffect(() => {
         setAgents(agentsList?.data?.data?.data)
@@ -247,7 +248,7 @@ export default function VerificationDetails({
         setProperty(verificationData?.data?.data?.property)
         setSelectedAgent(verificationData?.data?.data?.property?.agent)
     }, [verificationData, verificationId])
-    
+
     return (
         <div className="p-10 w-full">
             <div className="w-full border border-zinc-500/20 bg-white rounded-xl min-h-[50vh]">
@@ -256,7 +257,7 @@ export default function VerificationDetails({
                         Verification Details
                     </h4>
                 </div>
-                
+
                 <section className="flex  justify-between gap-6 w-full px-10">
                     <div className={`${user?.role !== UserRole.AGENT ? 'w-[70%]' : 'w-full'} relative`}>
                         <Swiper
@@ -267,31 +268,31 @@ export default function VerificationDetails({
                             navigation
                             autoplay
                             className="rewind"
-                        >   
+                        >
                             {
                                 property?.media && property?.media.length > 0 ?
-                                property?.media?.map((el: any, index: any) => (
-                                    <SwiperSlide key={index}>
+                                    property?.media?.map((el: any, index: any) => (
+                                        <SwiperSlide key={index}>
+                                            <Image
+                                                alt={`${property?.name}_img_${index}`}
+                                                src={el.mediaUrl}
+                                                className="w-full rounded-xl"
+                                                width={900}
+                                                height={900}
+                                            />
+                                        </SwiperSlide>
+                                    ))
+                                    :
+                                    <SwiperSlide>
                                         <Image
-                                            alt={`${property?.name}_img_${index}`}
-                                            src={el.mediaUrl}
+                                            alt={`img_`}
+                                            src={`/png/sample_properties.png`}
                                             className="w-full rounded-xl"
                                             width={900}
                                             height={900}
                                         />
                                     </SwiperSlide>
-                                ))
-                                :
-                                <SwiperSlide>
-                                    <Image
-                                        alt={`img_`}
-                                        src={`/png/sample_properties.png`}
-                                        className="w-full rounded-xl"
-                                        width={900}
-                                        height={900}
-                                    />
-                                </SwiperSlide>
-                                
+
                             }
                         </Swiper>
                     </div>
@@ -302,32 +303,32 @@ export default function VerificationDetails({
                                 <p className='text-base text-zinc-800 font-medium text-center mb-1'>
                                     Assigned agent
                                 </p>
-                                <Image 
+                                <Image
                                     alt={`owner_img`}
-                                    src={selectedAgent?.profile?.profileImage??`/png/sample_owner.png`}
+                                    src={selectedAgent?.profile?.profileImage ?? `/png/sample_owner.png`}
                                     className="w-full max-w-[10rem] rounded-xl my-3"
                                     width={400}
                                     height={400}
                                 />
                                 <p className='text-base text-zinc-800 font-medium text-center mb-1'>
-                                    {`${selectedAgent?.profile?.firstName??`--/--`} ${selectedAgent?.profile?.lastName??`--/--`}`}
+                                    {`${selectedAgent?.profile?.firstName ?? `--/--`} ${selectedAgent?.profile?.lastName ?? `--/--`}`}
                                 </p>
                                 <p className='text-sm text-zinc-800 font-medium text-center'>
-                                    {selectedAgent?.email??'--/--'}
+                                    {selectedAgent?.email ?? '--/--'}
                                 </p>
                             </div>
-                            
+
                             <div className='flex justify-between items-center gap-5 w-full'>
-                                <button type='button'  className="w-full text-center cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed">
-                                    View Agent 
+                                <button type='button' className="w-full text-center cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed">
+                                    View Agent
                                 </button>
                                 {
-                                    verification?.status !==  PropertyVerificationStatus.PENDING && user?.role !== UserRole.OWNER &&
-                                    <button 
-                                        type='button' 
+                                    verification?.status !== PropertyVerificationStatus.PENDING && user?.role !== UserRole.OWNER &&
+                                    <button
+                                        type='button'
                                         onClick={() => {
                                             setShowAgentSelecteion(true);
-                                        }} 
+                                        }}
                                         className="text-center w-full cursor-pointer bg-primary/90 rounded-lg px-5 py-2.5 text-lg font-medium text-white hover:bg-primary disabled:hover:bg-primary/90 disabled:opacity-75 disabled:cursor-not-allowed"
                                     >
                                         Re-assign
@@ -364,10 +365,10 @@ export default function VerificationDetails({
                         </div>
                         <div className="flex items-center">
                             <p className="text-zinc-500 text-sm">Status:</p>
-                            <VerificationBadge status={verification?.status??PropertyVerificationStatus.REJECTED} classNames="ml-2" />
+                            <VerificationBadge status={verification?.status ?? PropertyVerificationStatus.REJECTED} classNames="ml-2" />
                         </div>
                         <div className="flex items-center">
-                            <CalendarIcon color="#a6a4a4"/>
+                            <CalendarIcon color="#a6a4a4" />
                             <p className="text-zinc-900 text-sm ml-2">{verification?.verificationDate ? formatDate(verification?.verificationDate) : '--/--'}</p>
                         </div>
                         <div className="flex items-center">
@@ -379,7 +380,7 @@ export default function VerificationDetails({
                         <div className="flex items-center">
                             <p className="text-zinc-500 text-base">Owner</p>
                             <p className="text-teal-800 text-base ml-3 cursor-pointer hover:underline">
-                                {`${property?.owner?.profile?.firstName??'--/--'} ${property?.owner?.profile?.lastName??'--/--'}`}
+                                {`${property?.owner?.profile?.firstName ?? '--/--'} ${property?.owner?.profile?.lastName ?? '--/--'}`}
                             </p>
                         </div>
                     </div>
@@ -387,7 +388,7 @@ export default function VerificationDetails({
                         <div className="w-full flex gap-3">
                             {
                                 property?.amenities &&
-                                property?.amenities.map((el, index) => 
+                                property?.amenities.map((el, index) =>
                                     <div key={index} className="w-fit flex items-center justify-center px-5 py-2  bg-zinc-200 rounded-lg text-[14px]">
                                         {el.name}
                                     </div>
@@ -407,28 +408,28 @@ export default function VerificationDetails({
                 <section className='w-full  px-10 pb-5'>
                     <p className="text-lg zinc-900 font-medium my-1 pl-1">{user?.id === property?.agent?.id ? 'Your' : 'Agent'} feedback</p>
                     {
-                        !editMode ? 
-                        <div className='p-6 bg-background/70 min-h-[14rem] w-full rounded-xl'>
-                            <p>
-                                {
-                                    verification?.feedback??
-                                    <em className='text-lg text-zinc-400'>No comments yet</em>
-                                }
-                            </p>
-                        </div>
-                        :
-                        <div className="relative mt-2">
-                            <span className="absolute bottom-3 right-3 text-base font-normal">{`${formik.values.feedback.length}/1000`}</span>
-                            <textarea
-                                id="description"
-                                maxLength={300}
-                                rows={6}
-                                placeholder={'Unique attractive details about your property...'}
-                                value={formik.values.feedback}
-                                onChange={e => formik.setFieldValue('feedback', e.target.value)}
-                                className="size-full border border-zinc-400 bg-background/70 rounded-xl p-6 text-lg"
-                            />
-                        </div>
+                        !editMode ?
+                            <div className='p-6 bg-background/70 min-h-[14rem] w-full rounded-xl'>
+                                <p>
+                                    {
+                                        verification?.feedback ??
+                                        <em className='text-lg text-zinc-400'>No comments yet</em>
+                                    }
+                                </p>
+                            </div>
+                            :
+                            <div className="relative mt-2">
+                                <span className="absolute bottom-3 right-3 text-base font-normal">{`${formik.values.feedback.length}/1000`}</span>
+                                <textarea
+                                    id="description"
+                                    maxLength={300}
+                                    rows={6}
+                                    placeholder={'Unique attractive details about your property...'}
+                                    value={formik.values.feedback}
+                                    onChange={e => formik.setFieldValue('feedback', e.target.value)}
+                                    className="size-full border border-zinc-400 bg-background/70 rounded-xl p-6 text-lg"
+                                />
+                            </div>
                     }
                 </section>
                 <section className='my-10 w-full px-10'>
@@ -436,80 +437,80 @@ export default function VerificationDetails({
                         <div className='flex justify-between gap-4 items-center w-full'>
                             {
                                 !editMode && verification?.status !== PropertyVerificationStatus.REJECTED &&
-                                <button 
-                                    type='button' 
-                                    disabled={verificationLoading || verificationUdateLoading} 
-                                    onClick={() => handleRejection()} 
+                                <button
+                                    type='button'
+                                    disabled={verificationLoading || verificationUdateLoading}
+                                    onClick={() => handleRejection()}
                                     className="bg-red-600 text-white hover:bg-red-700 rounded-lg px-5 py-2.5  text-lg font-medium disabled:opacity-75 disabled:hover:bg-red-600 disabled:cursor-not-allowed"
                                 >
-                                    Reject 
+                                    Reject
                                 </button>
                             }
                             {
                                 editMode ?
-                                <div className='w-full justify-end flex gap-4 items-center'>
-                                    <button 
-                                        type='button' 
-                                        onClick={() => setEditMode(false)} 
-                                        className="text-center cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed"
-                                    >
-                                        Cancel 
-                                    </button>
-                                    {/* pending | rejected ? */}
-                                    <button 
-                                        type='button'  
-                                        onClick={() => formik.handleSubmit()}
-                                        disabled={verificationLoading || verificationUdateLoading} 
-                                        className="border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90 disabled:opacity-75 disabled:cursor-not-allowed"
-                                    >
-                                        Save 
-                                    </button>
-                                </div> 
-                                : !property?.isVerified &&
-                                <div className=' w-ful justify-end flex gap-4 items-center'>
-                                    {
-                                        verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
-                                        <button 
-                                            type='button' 
-                                            disabled={verificationLoading || verificationUdateLoading} 
-                                            onClick={() => setEditMode(true)} 
+                                    <div className='w-full justify-end flex gap-4 items-center'>
+                                        <button
+                                            type='button'
+                                            onClick={() => setEditMode(false)}
                                             className="text-center cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed"
                                         >
-                                            Edit 
+                                            Cancel
                                         </button>
-                                    }
-
-                                    {
-                                        verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.ADMIN &&
-                                        <button 
+                                        {/* pending | rejected ? */}
+                                        <button
                                             type='button'
-                                            disabled={verificationLoading || verificationUdateLoading} 
-                                            onClick={() => handleApproval(`${selectedAgent?.profile?.firstName} ${selectedAgent?.profile?.lastName}`)} 
-                                            className="border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90  disabled:opacity-75 disabled:cursor-not-allowed"
+                                            onClick={() => formik.handleSubmit()}
+                                            disabled={verificationLoading || verificationUdateLoading}
+                                            className="border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90 disabled:opacity-75 disabled:cursor-not-allowed"
                                         >
-                                            Approve 
+                                            Save
                                         </button>
-                                    }
+                                    </div>
+                                    : !property?.isVerified &&
+                                    <div className=' w-ful justify-end flex gap-4 items-center'>
+                                        {
+                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
+                                            <button
+                                                type='button'
+                                                disabled={verificationLoading || verificationUdateLoading}
+                                                onClick={() => setEditMode(true)}
+                                                className="text-center cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed"
+                                            >
+                                                Edit
+                                            </button>
+                                        }
 
-                                    {
-                                        verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
-                                        <button 
-                                            type='button'
-                                            disabled={verificationLoading || verificationUdateLoading} 
-                                            onClick={() => handleVerification()}  
-                                            className="border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90  disabled:opacity-75 disabled:cursor-not-allowed"
-                                        >
-                                            Verify
-                                        </button>
-                                    }
-                                </div> 
+                                        {
+                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.ADMIN &&
+                                            <button
+                                                type='button'
+                                                disabled={verificationLoading || verificationUdateLoading}
+                                                onClick={() => handleApproval(`${selectedAgent?.profile?.firstName} ${selectedAgent?.profile?.lastName}`)}
+                                                className="border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90  disabled:opacity-75 disabled:cursor-not-allowed"
+                                            >
+                                                Approve
+                                            </button>
+                                        }
+
+                                        {
+                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
+                                            <button
+                                                type='button'
+                                                disabled={verificationLoading || verificationUdateLoading}
+                                                onClick={() => handleVerification()}
+                                                className="border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90  disabled:opacity-75 disabled:cursor-not-allowed"
+                                            >
+                                                Verify
+                                            </button>
+                                        }
+                                    </div>
                             }
                         </div>
                     </div>
                 </section>
 
 
-                <CustomModal 
+                <CustomModal
                     isOpen={showAgentSelection}
                     onClose={() => {
                         setShowAgentSelecteion(false)
@@ -520,61 +521,61 @@ export default function VerificationDetails({
                     <div className="w-full">
                         {
                             !selectedAgent ?
-                            <div className="relative my-3">
-                                <label htmlFor="city" className="text-lg zinc-900 font-normal">Search agents</label>
-                                <AdjustableFilterDropdown
-                                    placeholder={`E.g. Abiola Graham`} 
-                                    options={agents?.map(el => el?.email)}
-                                    handleSelection={
-                                        (val) => handleAgentSelection(val)
-                                    }
-                                    searchTerm={agentSearchTerm}
-                                    setSearchTerm={setAgentSearchTerm}
-                                    isLoading={agentsLoading}
-                                />
-                            </div>
-                            :
-                            <div>
-                                <div className="my-8">
-                                    <div className="flex gap-4 items-center rounded-full mt-3">
-                                        <Image 
-                                            alt="agent-image"
-                                            src={selectedAgent?.profile?.profileImage??'/png/sample_profile.png'}
-                                            height={50}
-                                            width={60}
-                                        />
-                                        <div>
-                                            <p className="text-lg text-zinc-900 m-0">{`${selectedAgent?.profile?.firstName??'Kunle'} ${selectedAgent?.profile?.lastName??'Aina'}`}</p>
-                                            <p className="text-base text-zinc-500">{`${selectedAgent?.email}`}</p>
+                                <div className="relative my-3">
+                                    <label htmlFor="city" className="text-lg zinc-900 font-normal">Search agents</label>
+                                    <AdjustableFilterDropdown
+                                        placeholder={`E.g. Abiola Graham`}
+                                        options={agents?.map(el => el?.email)}
+                                        handleSelection={
+                                            (val) => handleAgentSelection(val)
+                                        }
+                                        searchTerm={agentSearchTerm}
+                                        setSearchTerm={setAgentSearchTerm}
+                                        isLoading={agentsLoading}
+                                    />
+                                </div>
+                                :
+                                <div>
+                                    <div className="my-8">
+                                        <div className="flex gap-4 items-center rounded-full mt-3">
+                                            <Image
+                                                alt="agent-image"
+                                                src={selectedAgent?.profile?.profileImage ?? '/png/sample_profile.png'}
+                                                height={50}
+                                                width={60}
+                                            />
+                                            <div>
+                                                <p className="text-lg text-zinc-900 m-0">{`${selectedAgent?.profile?.firstName ?? 'Kunle'} ${selectedAgent?.profile?.lastName ?? 'Aina'}`}</p>
+                                                <p className="text-base text-zinc-500">{`${selectedAgent?.email}`}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <p className="text-base text-zinc-800 font-normal my-5">
-                                    You're about to {selectedAgent?.id === verificationData?.data?.data?.property?.assignedAgent ? 're-assign' : 'assign' } {`${selectedAgent?.profile?.firstName??'James'} ${selectedAgent?.profile?.lastName??'Bond'}`} to this property. 
-                                    <br />
-                                    <strong>Are you sure?</strong>
-                                </p>
-                                <div className="flex justify-between items-center gap-5 mt-10 w-full">
-                                    <button
-                                        type='button' 
-                                        onClick={() => {
-                                            setSelectedAgent(null)
-                                        }}
-                                        disabled={assignmentLoading}
-                                        className="font-medium rounded-lg px-5 py-2.5 text-lg bg-zinc-600 text-white hover:bg-zinc-700 disabled:hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed"
-                                    >
-                                        Change
-                                    </button>
-                                    <button 
-                                        onClick={() => handleAgentAssignment(selectedAgent?.id)} 
-                                        disabled={assignmentLoading} 
-                                        type='button'
-                                        className="rounded-lg px-5 py-2.5 text-lg font-medium bg-primary/90 text-white hover:bg-primary disabled:hover:bg-primary/90 disabled:opacity-75 disabled:cursor-not-allowed">
-                                        {assignmentLoading ? <Spinner /> : 'Assign'}
-                                    </button>
-                                </div>
+                                    <p className="text-base text-zinc-800 font-normal my-5">
+                                        You're about to {selectedAgent?.id === verificationData?.data?.data?.property?.assignedAgent ? 're-assign' : 'assign'} {`${selectedAgent?.profile?.firstName ?? 'James'} ${selectedAgent?.profile?.lastName ?? 'Bond'}`} to this property.
+                                        <br />
+                                        <strong>Are you sure?</strong>
+                                    </p>
+                                    <div className="flex justify-between items-center gap-5 mt-10 w-full">
+                                        <button
+                                            type='button'
+                                            onClick={() => {
+                                                setSelectedAgent(null)
+                                            }}
+                                            disabled={assignmentLoading}
+                                            className="font-medium rounded-lg px-5 py-2.5 text-lg bg-zinc-600 text-white hover:bg-zinc-700 disabled:hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed"
+                                        >
+                                            Change
+                                        </button>
+                                        <button
+                                            onClick={() => handleAgentAssignment(selectedAgent?.id)}
+                                            disabled={assignmentLoading}
+                                            type='button'
+                                            className="rounded-lg px-5 py-2.5 text-lg font-medium bg-primary/90 text-white hover:bg-primary disabled:hover:bg-primary/90 disabled:opacity-75 disabled:cursor-not-allowed">
+                                            {assignmentLoading ? <Spinner /> : 'Assign'}
+                                        </button>
+                                    </div>
 
-                            </div>
+                                </div>
                         }
                     </div>
                 </CustomModal>

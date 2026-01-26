@@ -23,17 +23,17 @@ import { UserRole } from "@/src/lib/enums";
 export default function PropertyVerificationsTable({
     propertyId,
 }: {
-    propertyId: number,
+    propertyId: string | number,
 }) {
-    const  { user } = useAuth();
+    const { user } = useAuth();
     const router = useRouter();
     const modalRef = useRef(null);
     const [page, setPage] = useState<number>(1);
-    const [searchTerm , setSearchTerm] = useState<string>("");
+    const [searchTerm, setSearchTerm] = useState<string>("");
     const { data: verificationList, isLoading: verificationsLoading } = GetPropertyVerifications(page, 12, searchTerm, propertyId, user?.role || UserRole.GUEST)
     const [verifications, setVerifications] = useState<IPropertyVerification[]>(verificationList?.data?.data?.data);
 
-    const [selectedRow, setSelectedRow] = useState<number|null>(null);
+    const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
 
     const detailButtons = [
@@ -105,17 +105,17 @@ export default function PropertyVerificationsTable({
     return (
         <div className="w-full p-10">
             <div className="w-full border border-zinc-500/20 bg-white rounded-xl px-6 py-7 min-h-[70vh] flex flex-col items-center">
-                
-                
+
+
                 <div className="w-full flex justify-between items-center">
                     <div className="w-[80%] flex items-center gap-5">
                         <p className="text-2xl font-medium mr-10">Property verifications</p>
                         <div className="relative w-[40%]">
-                            <input 
-                                type="text" 
-                                value={searchTerm} 
-                                onChange={(e) => setSearchTerm(e.target.value)} 
-                                className="border border-zinc-500/20 bg-background rounded-lg w-full h-10 p-3 pl-10" 
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="border border-zinc-500/20 bg-background rounded-lg w-full h-10 p-3 pl-10"
                                 placeholder="Search property "
                             />
                             <SearchIcon className="absolute top-[25%] left-3 w-5" color="black" />
@@ -131,137 +131,137 @@ export default function PropertyVerificationsTable({
 
                 {
                     verificationsLoading ?
-                    <Loader />
-                    : verifications  && verifications.length > 0 ?
-                    <div className="w-full mt-6">
-                        <table className="w-full border-collapse">
-                            <thead className="">
-                                <tr className="text-teal-600 text-[12px]">
-                                    <th className="bg-[#0280901A] h-10 p-5 flex justify-start items-center gap-3 rounded-tl-xl rounded-bl-xl font-medium w-full">
-                                        {/* <input 
+                        <Loader />
+                        : verifications && verifications.length > 0 ?
+                            <div className="w-full mt-6">
+                                <table className="w-full border-collapse">
+                                    <thead className="">
+                                        <tr className="text-teal-600 text-[12px]">
+                                            <th className="bg-[#0280901A] h-10 p-5 flex justify-start items-center gap-3 rounded-tl-xl rounded-bl-xl font-medium w-full">
+                                                {/* <input 
                                             type="checkbox"
                                             className={`
                                                 size-4 border-2 border-teal-600 rounded-md bg-transparent appearance-none
                                                 checked:bg-teal-600 checked:border-teal-600 checked:text-[#0280901A]
                                             `}
                                         /> */}
-                                        <p>
-                                            PropertyID
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Property name
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Feedback
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Assigned agent
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium  text-left">
-                                        <p className="pr-2">
-                                            Created on
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium  text-left">
-                                        <p className="pr-2">
-                                            Verified on
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-center">
-                                        <p>
-                                            Status
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10">{''}</th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl  w-3">{' '}</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-[13px]">
-                                {
-                                    verifications &&
-                                    verifications?.map((verification, index) => (
-                                        <tr 
-                                            key={index} 
-                                            className="hover:bg-background/50 cursor-pointer"  
-                                            onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(verification?.propertyId, verification?.id))}
-                                        >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
-                                                {/* <input 
+                                                <p>
+                                                    PropertyID
+                                                </p>
+                                            </th>
+                                            <th className="bg-[#0280901A] h-10 font-medium text-left">
+                                                <p>
+                                                    Property name
+                                                </p>
+                                            </th>
+                                            <th className="bg-[#0280901A] h-10 font-medium text-left">
+                                                <p>
+                                                    Feedback
+                                                </p>
+                                            </th>
+                                            <th className="bg-[#0280901A] h-10 font-medium text-left">
+                                                <p>
+                                                    Assigned agent
+                                                </p>
+                                            </th>
+                                            <th className="bg-[#0280901A] h-10 font-medium  text-left">
+                                                <p className="pr-2">
+                                                    Created on
+                                                </p>
+                                            </th>
+                                            <th className="bg-[#0280901A] h-10 font-medium  text-left">
+                                                <p className="pr-2">
+                                                    Verified on
+                                                </p>
+                                            </th>
+                                            <th className="bg-[#0280901A] h-10 font-medium text-center">
+                                                <p>
+                                                    Status
+                                                </p>
+                                            </th>
+                                            <th className="bg-[#0280901A] h-10">{''}</th>
+                                            <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl  w-3">{' '}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-[13px]">
+                                        {
+                                            verifications &&
+                                            verifications?.map((verification, index) => (
+                                                <tr
+                                                    key={index}
+                                                    className="hover:bg-background/50 cursor-pointer"
+                                                    onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(verification?.propertyId, verification?.id))}
+                                                >
+                                                    <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
+                                                        {/* <input 
                                                     type="checkbox"
                                                     className={`
                                                         size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
                                                         checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
                                                     `}
                                                 /> */}
-                                                <p className="pt-1 pl-5">
-                                                    {verification?.propertyId}
-                                                </p>  
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    {verification?.property?.name}
-                                                </p>   
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    {verification?.feedback}
-                                                </p>   
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <p className="pt-1 font-medium">
-                                                    {`${verification?.agent?.profile.firstName??'--/--'} ${verification?.agent?.profile.lastName??'--/--'}`}
-                                                </p>
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                            {verification?.verificationDate ? formatDate(verification?.createdAt) : '--/--'}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                {verification?.verificationDate ? formatDate(verification?.verificationDate) : '--/--'}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <VerificationBadge
-                                                        status={verification?.status}
-                                                    />
-                                                </div>
-                                            </td>                                          
-                                            <td className="border-b border-b-gray-200">
-                                                <div 
-                                                    className="flex justify-center items-center w-fit" 
-                                                    onClick={(event) => handleDotsClick(event, index)}
-                                                >
-                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                    : verifications && verifications.length === 0 ? 
-                    <div className="size-full m-auto text-center">
-                        <div className="m-auto w-fit">
-                            <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
-                        </div>
-                        <p className="text-center text-gray-500 pt-10">No verifications found</p>
-                    </div>
-                    : 
-                    <p className="size-full text-center text-gray-500 pt-10 self-center">
-                        <div className="m-auto w-fit">
-                            <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
-                        </div>
-                        <p className="text-center text-gray-500">
-                            Error verifications properties
-                        </p>
-                    </p>
+                                                        <p className="pt-1 pl-5">
+                                                            {verification?.propertyId}
+                                                        </p>
+                                                    </td>
+                                                    <td className="border-b border-b-gray-200">
+                                                        <p className="pt-1 truncate max-w-[13rem]">
+                                                            {verification?.property?.name}
+                                                        </p>
+                                                    </td>
+                                                    <td className="border-b border-b-gray-200">
+                                                        <p className="pt-1 truncate max-w-[13rem]">
+                                                            {verification?.feedback}
+                                                        </p>
+                                                    </td>
+                                                    <td className="border-b border-b-gray-200">
+                                                        <p className="pt-1 font-medium">
+                                                            {`${verification?.agent?.profile.firstName ?? '--/--'} ${verification?.agent?.profile.lastName ?? '--/--'}`}
+                                                        </p>
+                                                    </td>
+                                                    <td className="border-b border-b-gray-200">
+                                                        {verification?.verificationDate ? formatDate(verification?.createdAt) : '--/--'}
+                                                    </td>
+                                                    <td className="border-b border-b-gray-200">
+                                                        {verification?.verificationDate ? formatDate(verification?.verificationDate) : '--/--'}
+                                                    </td>
+                                                    <td className="border-b border-b-gray-200">
+                                                        <div className="w-2/3 m-auto text-center">
+                                                            <VerificationBadge
+                                                                status={verification?.status}
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                    <td className="border-b border-b-gray-200">
+                                                        <div
+                                                            className="flex justify-center items-center w-fit"
+                                                            onClick={(event) => handleDotsClick(event, index)}
+                                                        >
+                                                            <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            : verifications && verifications.length === 0 ?
+                                <div className="size-full m-auto text-center">
+                                    <div className="m-auto w-fit">
+                                        <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                                    </div>
+                                    <p className="text-center text-gray-500 pt-10">No verifications found</p>
+                                </div>
+                                :
+                                <p className="size-full text-center text-gray-500 pt-10 self-center">
+                                    <div className="m-auto w-fit">
+                                        <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
+                                    </div>
+                                    <p className="text-center text-gray-500">
+                                        Error verifications properties
+                                    </p>
+                                </p>
                 }
             </div>
 
@@ -285,7 +285,7 @@ export default function PropertyVerificationsTable({
                     ))}
                 </div>
             )}
-            
+
             {
                 !verificationsLoading && verificationList &&
                 <TablePagination
@@ -295,7 +295,7 @@ export default function PropertyVerificationsTable({
                     firstPage={verificationList?.data?.data?.meta?.firstPage}
                     itemsPerPage={10}
                 />
-            }   
+            }
 
         </div>
     );

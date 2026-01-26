@@ -15,29 +15,29 @@ export type BookingBageProps = {
     backgroundColour?: string;
     classNames?: string;
 }
-  
+
 
 export interface IAvailability {
-  id: number
-  unitId: number
-  date: string
-  count: number
-  isBlackout: boolean
-  pricing?: number | null
+    id: string | number
+    unitId: string | number
+    date: string
+    count: number
+    isBlackout: boolean
+    pricing?: number | null
 }
 
 
 export interface IBooking {
-    id: number
+    id: string | number
     bookingId: string
-    userId: number
-    unitId: number
+    userId: string | number
+    unitId: string | number
     transactionId: string
     transactionRef: string | null
     startDate: string
     endDate: string
     guestsCount: number
-    unitCount: number  
+    unitCount: number
     totalPrice: number
     status: BookingStatus
     cancellationReason: string
@@ -48,8 +48,8 @@ export interface IBooking {
     unit: IPropertyUnit
 }
 export interface ICreateBooking {
-    user_id: number
-    unit_id: number
+    user_id: string | number
+    unit_id: string | number
     start_date: string
     end_date: string
     guests_count: number
@@ -58,7 +58,7 @@ export interface ICreateBooking {
 }
 
 export interface IUpdateBooking {
-    unit_id: number
+    unit_id: string | number
     start_date: string
     end_date: string
     guests_count: number

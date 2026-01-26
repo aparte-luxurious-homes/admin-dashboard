@@ -11,24 +11,24 @@ export const API_ROUTES = {
     admin: {
         kyc: {
             base: '/admin/kyc',
-            update: (docId: number) => `/admin/kyc/${docId}`,
+            update: (docId: string | number) => `/admin/kyc/${docId}`,
         },
         properties: {
-            assign: (id: number) => `/admin/properties/${id}/assign`,
-            verificationStatus: (id: number) => `/admin/properties/${id}/verify`,
-            feature: (id: number) => `/admin/properties/${id}/feature`,
+            assign: (id: string | number) => `/admin/properties/${id}/assign`,
+            verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
+            feature: (id: string | number) => `/admin/properties/${id}/feature`,
         },
         bookings: {
             base: '/bookings',
-            update: (id: number) => `/admin/bookings/${id}`,
+            update: (id: string | number) => `/admin/bookings/${id}`,
         },
         auditLogs: {
             index: '/admin/audit-logs',
         },
         users: {
             base: '/admin/users',
-            userById: (id: number) => `/admin/users/${id}`,
-            userByUuid: (id: string) => `/admin/users/${id}`
+            userById: (id: string | number) => `/admin/users/${id}`,
+            userByUuid: (id: string | number) => `/admin/users/${id}`
         }
     },
     profile: {
@@ -39,22 +39,22 @@ export const API_ROUTES = {
         verifyGovId: '/profile/verify-gov-id',
         kyc: {
             upload: '/kyc/upload',
-            details: (docId: number) => `/kyc/${docId}/details`,
+            details: (docId: string | number) => `/kyc/${docId}/details`,
         }
     },
     propertyManagement: {
         properties: {
             base: '/properties',
-            details: (propertyId: number) => `/properties/${propertyId}`,
-            amenities: (propertyId: number) => `/properties/${propertyId}/amenities`,
-            media: (propertyId: number) => `/properties/${propertyId}/media`,
-            verify: (id: number) => `/properties/${id}/verify`,
+            details: (propertyId: string | number) => `/properties/${propertyId}`,
+            amenities: (propertyId: string | number) => `/properties/${propertyId}/amenities`,
+            media: (propertyId: string | number) => `/properties/${propertyId}/media`,
+            verify: (id: string | number) => `/properties/${id}/verify`,
             units: {
-                base: (propertyId: number) => `/properties/${propertyId}/units`,
-                details: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}`,
-                amenities: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/amenities`,
-                media: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/media`,
-                availability: (propertyId: number, unitId: number) => `/properties/${propertyId}/units/${unitId}/availability`,
+                base: (propertyId: string | number) => `/properties/${propertyId}/units`,
+                details: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}`,
+                amenities: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/amenities`,
+                media: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/media`,
+                availability: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/availability`,
             },
             // verifications: {
             //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
@@ -67,19 +67,19 @@ export const API_ROUTES = {
     },
     verifications: {
         base: '/verifications',
-        details: (verificationId: number) => `/verifications/${verificationId}`
+        details: (verificationId: string | number) => `/verifications/${verificationId}`
     },
     bookings: {
         base: '/bookings',
         details: (id: string) => `/bookings/${id}`,
-        status: (id: number) => `/bookings/${id}/status`,
-        pdf: (id: number) => `/bookings/${id}/pdf`,
+        status: (id: string | number) => `/bookings/${id}/status`,
+        pdf: (id: string | number) => `/bookings/${id}/pdf`,
     },
     wallet: {
         base: '/wallets',
         details: (id: string) => `/wallets/${id}`,
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
-        validateWithdrawal: (id: number) => `/wallets/${id}/validate-withdrawal`,
+        validateWithdrawal: (id: string | number) => `/wallets/${id}/validate-withdrawal`,
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,
             details: (walletId: string, transactionId: string) => `/wallets/${walletId}/transactions/${transactionId}`,
@@ -92,16 +92,16 @@ export const API_ROUTES = {
         },
     },
     payments: {
-        base: '/payments',
-        details: (paymentId: string) => `/payments/${paymentId}`,
-        validate: (paymentId: string) => `/payments/${paymentId}/validate`,
+        base: '/wallets/payments',
+        details: (paymentId: string) => `/wallets/payments/${paymentId}`,
+        validate: (paymentId: string) => `/wallets/payments/${paymentId}/validate`,
     },
     statistic: {
         base: '/stats'
     },
     transactions: {
-        base: '/transactions',
-        details: (transactionId: string) => `/transactions/${transactionId}`
+        base: '/wallets/transactions',
+        details: (transactionId: string) => `/wallets/transactions/${transactionId}`
     },
 };
 

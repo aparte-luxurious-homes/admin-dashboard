@@ -37,10 +37,10 @@ const BookingWithdrawals = () => {
 
   const transactionColumn: GridColDef[] = [
     {
-      field: "userId",
+      field: "user_id",
       headerName: "User Id",
       width: 200,
-      renderCell: (params) => params?.row?.userId || "--/--",
+      renderCell: (params) => params?.row?.user_id || "--/--",
     },
     {
       field: "amount",
@@ -63,10 +63,10 @@ const BookingWithdrawals = () => {
       renderCell: (params) => params?.value || "--/--",
     },
     {
-      field: "createdAt",
+      field: "created_at",
       headerName: "Date Created",
       width: 150,
-      renderCell: (params) => params?.value?.substring(0, 10) || "--/--",
+      renderCell: (params) => params?.row?.created_at?.substring(0, 10) || "--/--",
     },
     {
       field: "comment",
@@ -79,7 +79,7 @@ const BookingWithdrawals = () => {
       headerName: "Status",
       width: 150,
       renderCell: (params) => {
-        return <Badge status={params?.value?.toLowerCase()} />;
+        return <Badge status={params?.row?.status?.toLowerCase()} />;
       },
     },
     {
@@ -102,8 +102,8 @@ const BookingWithdrawals = () => {
       const response = await axiosRequest.get(
         `${API_ROUTES?.transactions?.base}`
       );
-      console.log("response", response);
-      const BookingData = response?.data?.data?.filter((data: Transaction) => data?.transaction_type?.toLowerCase() === "booking");
+      const items = response?.data?.data?.items || response?.data?.data || [];
+      const BookingData = items?.filter((data: Transaction) => data?.transaction_type?.toLowerCase() === "booking");
 
       setTableData(BookingData);
       setSearchResult(BookingData);

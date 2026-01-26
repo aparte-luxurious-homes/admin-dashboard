@@ -85,10 +85,10 @@ const WithdrawalInfo = () => {
                     required
                     disabled
                     defaultValue={
-                      transactionInfo?.userId || "--/--"
+                      transactionInfo?.user_id || (transactionInfo as any)?.userId || "--/--"
                     }
                     inputType="text"
-                    inputName="name"
+                    inputName="userId"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
@@ -96,7 +96,7 @@ const WithdrawalInfo = () => {
                     label="Transaction Type"
                     required
                     disabled
-                    defaultValue={transactionInfo?.transactionType || "--/--"}
+                    defaultValue={transactionInfo?.transaction_type || (transactionInfo as any)?.transactionType || "--/--"}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
@@ -138,7 +138,7 @@ const WithdrawalInfo = () => {
                     disabled
                     inputType="text"
                     defaultValue={
-                      transactionInfo?.createdAt?.substring(0, 10) || "--/--"
+                      (transactionInfo?.created_at || transactionInfo?.createdAt)?.substring(0, 10) || "--/--"
                     }
                   />
                 </Grid>
@@ -148,7 +148,7 @@ const WithdrawalInfo = () => {
                     required
                     disabled
                     defaultValue={
-                      transactionInfo?.updatedAt?.substring(0, 10) || "--/--"
+                      (transactionInfo?.updated_at || transactionInfo?.updatedAt)?.substring(0, 10) || "--/--"
                     }
                   />
                 </Grid>

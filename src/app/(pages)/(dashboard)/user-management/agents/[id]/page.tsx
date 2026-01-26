@@ -7,7 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import axiosRequest from "@/src/lib/api";
 import { toast } from "react-hot-toast";
 import { Icon } from "@iconify/react";
-// import Button from "@/src/components/button";
+import Button from "@/src/components/button";
 import InputGroup from "@/src/components/formcomponent/InputGroup";
 import { TableSearch } from "@/src/components/table/tableAction";
 import Table from "@/src/components/table/table";
@@ -129,6 +129,9 @@ const AgentInfo = () => {
   const [userLoading, setUserLoading] = useState(false);
   const [searchValue, setSearchValue] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedData, setEditedData] = useState<any>({});
+  const [isSaving, setIsSaving] = useState(false);
   const params = useParams();
   const id = params?.id;
   console.log("params", params?.id);
@@ -265,6 +268,65 @@ const AgentInfo = () => {
       ),
     },
   ];
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      setIsEditing(false);
+      setEditedData({});
+    } else {
+      setIsEditing(true);
+      setEditedData({
+        firstName: userInfo?.profile?.first_name || userInfo?.profile?.firstName || userInfo?.first_name || userInfo?.firstName || "",
+        lastName: userInfo?.profile?.last_name || userInfo?.profile?.lastName || userInfo?.last_name || userInfo?.lastName || "",
+        email: userInfo?.email || "",
+        phone: userInfo?.phone || "",
+        state: userInfo?.profile?.state || "",
+        address: userInfo?.profile?.address || "",
+        gender: userInfo?.profile?.gender || "",
+      });
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setEditedData((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await axiosRequest.put(
+        `${API_ROUTES.admin.users.userByUuid(String(id))}`,
+        {
+          profile: {
+            first_name: editedData.firstName,
+            last_name: editedData.lastName,
+            state: editedData.state,
+            address: editedData.address,
+            gender: editedData.gender,
+          },
+          email: editedData.email,
+          phone: editedData.phone,
+        }
+      );
+      toast.success("User updated successfully", {
+        duration: 4000,
+      });
+      setIsEditing(false);
+      fetchAUserInfo();
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      toast.error(error.response?.data?.message || "Failed to update user", {
+        duration: 6000,
+        style: {
+          maxWidth: "500px",
+          width: "max-content",
+        },
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <>
       <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
@@ -275,9 +337,38 @@ const AgentInfo = () => {
           link_one_name="All Agents"
         />
         <div className="mt-0">
-          <h3 className="mb-[50px] mt-[10px] font-semibold">
-            Agent Info
-          </h3>
+          <div className="flex justify-between items-center mb-[50px] mt-[10px]">
+            <h3 className="font-semibold">Agent Info</h3>
+            <div className="flex gap-2">
+              {isEditing ? (
+                <>
+                  <Button
+                    buttonName="Cancel"
+                    onClick={handleEditToggle}
+                    variant="primaryoutline"
+                    disabled={isSaving}
+                  />
+                  <Button
+                    buttonName={isSaving ? "Saving..." : "Save Changes"}
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    variant="primary"
+                  />
+                </>
+              ) : (
+                <Button
+                  buttonName={
+                    <>
+                      <Icon icon="mdi:pencil" className="mr-2" />
+                      Edit
+                    </>
+                  }
+                  onClick={handleEditToggle}
+                  variant="primary"
+                />
+              )}
+            </div>
+          </div>
           {userLoading ? (
             <Skeleton className="h-[500px]  mt-5 bw-full rounded-md" />
           ) : (
@@ -303,21 +394,33 @@ const AgentInfo = () => {
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
                   <InputGroup
-                    label="Legal Name"
+                    label="First Name"
                     required
-                    disabled
-                    defaultValue={`${userInfo?.profile?.last_name || userInfo?.profile?.lastName || userInfo?.last_name || userInfo?.lastName || "--/--"} ${userInfo?.profile?.first_name || userInfo?.profile?.firstName || userInfo?.first_name || userInfo?.firstName || "--/--"
-                      }`}
+                    disabled={!isEditing}
+                    value={isEditing ? editedData.firstName : (userInfo?.profile?.first_name || userInfo?.profile?.firstName || userInfo?.first_name || userInfo?.firstName || "--/--")}
+                    onChange={(e: any) => handleInputChange("firstName", e.target.value)}
                     inputType="text"
-                    inputName="name"
+                    inputName="firstName"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
+                  <InputGroup
+                    label="Last Name"
+                    required
+                    disabled={!isEditing}
+                    value={isEditing ? editedData.lastName : (userInfo?.profile?.last_name || userInfo?.profile?.lastName || userInfo?.last_name || userInfo?.lastName || "--/--")}
+                    onChange={(e: any) => handleInputChange("lastName", e.target.value)}
+                    inputType="text"
+                    inputName="lastName"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
                   <InputGroup
                     label="Email Address"
                     required
-                    disabled
-                    defaultValue={userInfo?.email || "--/--"}
+                    disabled={!isEditing}
+                    value={isEditing ? editedData.email : (userInfo?.email || "--/--")}
+                    onChange={(e: any) => handleInputChange("email", e.target.value)}
                     inputType="email"
                     inputName="email"
                   />
@@ -326,8 +429,9 @@ const AgentInfo = () => {
                   <InputGroup
                     label="Phone Number"
                     required
-                    disabled
-                    defaultValue={userInfo?.phone || "--/--"}
+                    disabled={!isEditing}
+                    value={isEditing ? editedData.phone : (userInfo?.phone || "--/--")}
+                    onChange={(e: any) => handleInputChange("phone", e.target.value)}
                     inputType="text"
                     inputName="phoneNumber"
                   />
@@ -336,19 +440,21 @@ const AgentInfo = () => {
                   <InputGroup
                     label="State"
                     required
-                    disabled
-                    defaultValue={userInfo?.profile?.state || "--/--"}
+                    disabled={!isEditing}
+                    value={isEditing ? editedData.state : (userInfo?.profile?.state || "--/--")}
+                    onChange={(e: any) => handleInputChange("state", e.target.value)}
                     inputType="text"
-                    inputName="verification"
+                    inputName="state"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
                   <InputGroup
                     label="Address"
                     required
-                    disabled
+                    disabled={!isEditing}
+                    value={isEditing ? editedData.address : (userInfo?.profile?.address || "--/--")}
+                    onChange={(e: any) => handleInputChange("address", e.target.value)}
                     inputType="text"
-                    defaultValue={userInfo?.profile?.address || "--/--"}
                     inputName="address"
                   />
                 </Grid>
@@ -356,10 +462,11 @@ const AgentInfo = () => {
                   <InputGroup
                     label="Gender"
                     required
-                    disabled
-                    defaultValue={userInfo?.profile?.gender || "--/--"}
+                    disabled={!isEditing}
+                    value={isEditing ? editedData.gender : (userInfo?.profile?.gender || "--/--")}
+                    onChange={(e: any) => handleInputChange("gender", e.target.value)}
                     inputType="text"
-                    inputName="text"
+                    inputName="gender"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>

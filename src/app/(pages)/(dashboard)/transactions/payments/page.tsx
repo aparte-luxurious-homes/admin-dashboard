@@ -44,22 +44,22 @@ const Payments = () => {
 
   const paymentColumn: GridColDef[] = [
     {
-      field: "userId",
+      field: "user_id",
       headerName: "User Id",
       width: 200,
-      renderCell: (params) => params?.row?.userId || "--/--",
+      renderCell: (params) => params?.row?.user_id || "--/--",
     },
     {
-      field: "customerEmail",
+      field: "user",
       headerName: "Customer Email",
       width: 200,
-      renderCell: (params) => params?.row?.customerEmail || "--/--",
+      renderCell: (params) => params?.row?.user?.email || params?.row?.customer_email || params?.row?.customerEmail || "--/--",
     },
     {
-      field: "provider",
-      headerName: "Provider",
+      field: "action",
+      headerName: "Action",
       width: 150,
-      renderCell: (params) => params?.row?.provider || "--/--",
+      renderCell: (params) => params?.row?.action || "--/--",
     },
     {
       field: "currency",
@@ -80,17 +80,17 @@ const Payments = () => {
       }
     },
     {
-      field: "createdAt",
-      headerName: "Phone Number",
+      field: "created_at",
+      headerName: "Date Created",
       width: 150,
-      renderCell: (params) => params?.value?.substring(0, 10) || "--/--",
+      renderCell: (params) => params?.row?.created_at?.substring(0, 10) || "--/--",
     },
     {
       field: "status",
       headerName: "Status",
       width: 150,
       renderCell: (params) => {
-        return <Badge status={params?.value?.toLowerCase()} />;
+        return <Badge status={params?.row?.status?.toLowerCase()} />;
       },
     },
     {
@@ -113,8 +113,7 @@ const Payments = () => {
       const response = await axiosRequest.get(
         `${API_ROUTES?.payments?.base}`
       );
-      console.log("response", response);
-      const BookingData = response?.data?.data;
+      const BookingData = response?.data?.data?.items || response?.data?.data || [];
 
       setTableData(BookingData);
       setSearchResult(BookingData);

@@ -37,10 +37,10 @@ const Withdrawals = () => {
 
   const transactionColumn: GridColDef[] = [
     {
-      field: "userId",
+      field: "user_id",
       headerName: "User Id",
       width: 200,
-      renderCell: (params) => params?.row?.userId || "--/--",
+      renderCell: (params) => params?.row?.user_id || "--/--",
     },
     {
       field: "amount",
@@ -63,10 +63,10 @@ const Withdrawals = () => {
       renderCell: (params) => params?.value || "--/--",
     },
     {
-      field: "createdAt",
+      field: "created_at",
       headerName: "Date Created",
       width: 150,
-      renderCell: (params) => params?.value?.substring(0, 10) || "--/--",
+      renderCell: (params) => params?.row?.created_at?.substring(0, 10) || "--/--",
     },
     {
       field: "comment",
@@ -79,7 +79,7 @@ const Withdrawals = () => {
       headerName: "Status",
       width: 150,
       renderCell: (params) => {
-        return <Badge status={params?.value?.toLowerCase()} />;
+        return <Badge status={params?.row?.status?.toLowerCase()} />;
       },
     },
     {

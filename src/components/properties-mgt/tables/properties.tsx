@@ -1,34 +1,39 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
+import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon, TrashIcon } from "../../icons";
 import { useRouter } from "next/navigation";
 import { IProperty, PropertyType } from "../types";
-import { GetAllProperties } from "@/src/lib/request-handlers/propertyMgt";
+import { GetAllProperties, DeleteProperty } from "@/src/lib/request-handlers/propertyMgt";
 import Loader from "../../loader";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { BookingBadge } from "../../badge";
 import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
-import { LuEye } from "react-icons/lu";
+import { LuEye, LuTrash2 } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import { FiPlus } from "react-icons/fi";
 import Link from "next/link";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
+import { useDispatch } from "react-redux";
+import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { toast } from "react-hot-toast";
 
 export default function PropertiesTable() {
     const { user } = useAuth();
     const [page, setPage] = useState<number>(1);
-    const [searchTerm , setSearchTerm] = useState<string>("");
+    const [searchTerm, setSearchTerm] = useState<string>("");
     const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id);
     const [propertyList, setPropertyList] = useState<IProperty[]>([]);
     const router = useRouter();
 
-    const [selectedRow, setSelectedRow] = useState<number|null>(null);
+    const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef(null);
+    const dispatch = useDispatch();
+    const { mutate: deleteProperty } = DeleteProperty();
 
     const detailButtons = [
         {
@@ -49,6 +54,31 @@ export default function PropertiesTable() {
                     `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow!].id)}?edit=true`
                 )
                 setSelectedRow(null)
+            },
+        },
+        {
+            label: "Delete",
+            Icon: <LuTrash2 className="text-red-500" />,
+            onClick: () => {
+                const property = propertyList[selectedRow!];
+                dispatch(
+                    showAlert({
+                        title: "Delete Property?",
+                        description: `Are you sure you want to delete ${property?.name || 'this property'}? This action cannot be undone.`,
+                        confirmText: "Delete",
+                        cancelText: "Cancel",
+                        onConfirm: () => {
+                            deleteProperty(
+                                { propertyId: property.id },
+                                {
+                                    onSuccess: () => toast.success('Property deleted successfully'),
+                                    onError: () => toast.error('Failed to delete property')
+                                }
+                            );
+                        },
+                    })
+                );
+                setSelectedRow(null);
             },
         }
     ]
@@ -93,17 +123,17 @@ export default function PropertiesTable() {
                             href={`${PAGE_ROUTES.dashboard.propertyManagement.allProperties.create}`}
                             className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2"
                         >
-                            <FiPlus className="w-4 h-4"/>
+                            <FiPlus className="w-4 h-4" />
                             <span>New Property</span>
                         </Link>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex-1 max-w-md relative">
-                            <input 
-                                type="text" 
-                                value={searchTerm} 
-                                onChange={(e) => setSearchTerm(e.target.value)} 
-                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 placeholder="Search properties..."
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
@@ -136,8 +166,8 @@ export default function PropertiesTable() {
                             </thead>
                             <tbody className="divide-y divide-gray-200">
                                 {propertyList.map((property, index) => (
-                                    <tr 
-                                        key={index} 
+                                    <tr
+                                        key={index}
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
                                         onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
                                     >
@@ -154,11 +184,10 @@ export default function PropertiesTable() {
                                             {`${property?.owner?.profile?.firstName ?? '--/--'} ${property?.owner?.profile?.lastName ?? '--/--'}`}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                property?.is_verified 
-                                                    ? 'bg-green-100 text-green-800' 
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${property?.is_verified
+                                                    ? 'bg-green-100 text-green-800'
                                                     : 'bg-red-100 text-red-800'
-                                            }`}>
+                                                }`}>
                                                 {property?.is_verified ? 'Verified' : 'Unverified'}
                                             </span>
                                         </td>

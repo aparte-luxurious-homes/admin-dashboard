@@ -2,34 +2,39 @@
 
 import { formatDate, formatMoney } from "@/src/lib/utils";
 import { DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
-import { GetAllBookings } from "@/src/lib/request-handlers/bookingMgt";
+import { DeleteBooking, GetAllBookings } from "@/src/lib/request-handlers/bookingMgt";
 import { useEffect, useRef, useState } from "react";
 import { IBooking } from "../types";
 import { BookingBadge } from "../../badge";
 import TablePagination from "../../TablePagination";
 import Loader from "@/src/components/loader";
-import { LuEye } from "react-icons/lu";
+import { LuEye, LuTrash2 } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import Link from "next/link";
 import { FiPlus } from "react-icons/fi";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import { useDispatch } from "react-redux";
+import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { toast } from "react-hot-toast";
 
 export default function BookingsTable({
     unitId
 }: {
-    unitId?: number
+    unitId?: string | number
 }) {
     const [page, setPage] = useState<number>(1);
-    const [searchTerm , setSearchTerm] = useState<string>("");
+    const [searchTerm, setSearchTerm] = useState<string>("");
     const { data: bookings, isLoading } = GetAllBookings(page, 10, searchTerm, unitId);
     const [bookingList, setBookingList] = useState<IBooking[]>([]);
     const router = useRouter();
 
-    const [selectedRow, setSelectedRow] = useState<number|null>(null);
+    const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef(null);
+    const dispatch = useDispatch();
+    const { mutate: deleteBooking } = DeleteBooking();
 
     const detailButtons = [
         {
@@ -45,6 +50,31 @@ export default function BookingsTable({
             onClick: () => router.push(
                 `${PAGE_ROUTES.dashboard.bookingManagement.bookings.details(String((bookingList[selectedRow!] as any).id))}?edit=true`
             ),
+        },
+        {
+            label: "Delete",
+            Icon: <LuTrash2 className="text-red-500" />,
+            onClick: () => {
+                const booking = bookingList[selectedRow!];
+                dispatch(
+                    showAlert({
+                        title: "Delete Booking?",
+                        description: `Are you sure you want to delete booking ${booking?.bookingId}? This action cannot be undone.`,
+                        confirmText: "Delete",
+                        cancelText: "Cancel",
+                        onConfirm: () => {
+                            deleteBooking(
+                                { bookingId: booking.id },
+                                {
+                                    onSuccess: () => toast.success('Booking deleted successfully'),
+                                    onError: () => toast.error('Failed to delete booking')
+                                }
+                            );
+                        },
+                    })
+                );
+                setSelectedRow(null);
+            },
         }
     ];
 
@@ -79,24 +109,39 @@ export default function BookingsTable({
                 <div className="p-6 border-b border-gray-200">
                     <div className="flex justify-between items-center gap-4 flex-wrap mb-4">
                         <div>
-                            <h1 className="text-xl font-semibold text-gray-900">All Bookings</h1>
-                            <p className="text-sm text-gray-500 mt-1">Manage and track all property bookings</p>
+                            <div className="flex items-center gap-3">
+                                {unitId && (
+                                    <button
+                                        onClick={() => router.back()}
+                                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                        title="Go back"
+                                    >
+                                        <Icon icon="lucide:arrow-left" width="20" height="20" className="text-gray-600" />
+                                    </button>
+                                )}
+                                <h1 className="text-xl font-semibold text-gray-900">
+                                    {unitId ? "Unit Bookings" : "All Bookings"}
+                                </h1>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {unitId ? "View and manage bookings for this specific unit" : "Manage and track all property bookings"}
+                            </p>
                         </div>
                         <Link
                             href={`${PAGE_ROUTES.dashboard.bookingManagement.bookings.create}`}
                             className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2"
                         >
-                            <FiPlus className="w-4 h-4"/>
+                            <FiPlus className="w-4 h-4" />
                             <span>New Booking</span>
                         </Link>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex-1 max-w-md relative">
-                            <input 
-                                type="text" 
-                                value={searchTerm} 
-                                onChange={(e) => setSearchTerm(e.target.value)} 
-                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 placeholder="Search bookings..."
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
@@ -123,8 +168,8 @@ export default function BookingsTable({
                             </thead>
                             <tbody className="divide-y divide-gray-200">
                                 {bookingList.map((booking, index) => (
-                                    <tr 
-                                        key={index} 
+                                    <tr
+                                        key={index}
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
                                         onClick={() => router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(String((booking as any)?.id)))}
                                     >
@@ -132,19 +177,18 @@ export default function BookingsTable({
                                             {(booking as any)?.booking_id ?? '--/--'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">
-                                            {(booking as any)?.user_id ?? '--/--'}
+                                            {booking?.user?.profile?.first_name || (booking?.user as any)?.firstName || (booking as any)?.user_id || '--/--'} {booking?.user?.profile?.last_name || (booking?.user as any)?.lastName || ''}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900 font-medium">
                                             ₦ {formatMoney(Number((booking as any)?.total_price ?? 0))}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                (booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
                                                 (booking as any)?.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                                (booking as any)?.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                                                (booking as any)?.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
-                                                'bg-gray-100 text-gray-800'
-                                            }`}>
+                                                    (booking as any)?.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                                        (booking as any)?.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                }`}>
                                                 {(booking as any)?.status ?? '--/--'}
                                             </span>
                                         </td>

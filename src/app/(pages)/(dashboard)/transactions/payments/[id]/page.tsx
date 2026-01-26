@@ -108,7 +108,7 @@ const AgentInfo = () => {
                     required
                     disabled
                     defaultValue={
-                      paymentInfo?.amount?.toLocaleLowerCase() || "--/--"
+                      `${paymentInfo?.currency || '₦'} ${new Intl.NumberFormat("en-US").format(Number(paymentInfo?.amount ?? 0))}` || "--/--"
                     }
                     inputType="text"
                     inputName="name"
@@ -119,9 +119,9 @@ const AgentInfo = () => {
                     label="User ID"
                     required
                     disabled
-                    defaultValue={paymentInfo?.userId || "--/--"}
-                    inputType="email"
-                    inputName="email"
+                    defaultValue={paymentInfo?.user_id || (paymentInfo as any)?.userId || "--/--"}
+                    inputType="text"
+                    inputName="userId"
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
@@ -129,7 +129,7 @@ const AgentInfo = () => {
                     label="Email Address"
                     required
                     disabled
-                    defaultValue={paymentInfo?.customerEmail || "--/--"}
+                    defaultValue={paymentInfo?.user?.email || paymentInfo?.customerEmail || "--/--"}
                     inputType="email"
                     inputName="email"
                   />
@@ -161,7 +161,7 @@ const AgentInfo = () => {
                     disabled
                     inputType="text"
                     defaultValue={
-                      paymentInfo?.createdAt?.substring(0, 10) || "--/--"
+                      (paymentInfo?.created_at || paymentInfo?.createdAt)?.substring(0, 10) || "--/--"
                     }
                     inputName="address"
                   />
@@ -172,7 +172,7 @@ const AgentInfo = () => {
                     required
                     disabled
                     defaultValue={
-                      paymentInfo?.updatedAt?.substring(0, 10) || "--/--"
+                      (paymentInfo?.updated_at || paymentInfo?.updatedAt)?.substring(0, 10) || "--/--"
                     }
                     inputType="text"
                     inputName="text"

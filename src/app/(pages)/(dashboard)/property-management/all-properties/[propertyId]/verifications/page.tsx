@@ -5,12 +5,12 @@ import { useParams } from "next/navigation";
 
 export default function PropertyVerificationTable() {
     const params = useParams();
-    
+
     return (
         <div className="w-full">
             <PropertyVerificationsTable
-                propertyId={Number(params?.propertyId)}
-                // verificationId={Number(params?.verificationId)}
+                propertyId={params?.propertyId as string}
+            // verificationId={Number(params?.verificationId)}
             />
         </div>
     );
