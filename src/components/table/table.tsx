@@ -41,7 +41,7 @@ const Table = <T,>({
         paginationModel={paginationModel}
         onPaginationModelChange={onPaginationModelChange}
         paginationMode={paginationMode}
-        pagination={pagination}
+        {...(pagination && { pagination: true })}
         pageSizeOptions={[5, 10, 25, 50]}
         hideFooter={!pagination}
         disableRowSelectionOnClick

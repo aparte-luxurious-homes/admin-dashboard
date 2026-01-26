@@ -3,7 +3,7 @@
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { TableSearch } from "@/src/components/table/tableAction";
 import Table from "@/src/components/table/table";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
@@ -208,7 +208,7 @@ const Owner = () => {
     },
   ];
 
-  const fetchOwners = async () => {
+  const fetchOwners = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axiosRequest.get(API_ROUTES.admin.users.base, {
@@ -227,14 +227,15 @@ const Owner = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paginationModel, searchValue]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchOwners();
     }, 500); // Debounce search
     return () => clearTimeout(timer);
-  }, [paginationModel, searchValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchOwners]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value);
