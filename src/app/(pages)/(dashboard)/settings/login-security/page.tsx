@@ -66,7 +66,7 @@ const LoginandSecurity = () => {
       setResetLoading(true);
 
       const response = await axiosRequest.post(
-        `${BASE_API_URL}${API_ROUTES.auth.passwordReset}`,
+        `${API_ROUTES.auth.passwordReset}`,
         { ...resetInfo, otp: otp }
       );
 
@@ -125,7 +125,7 @@ const LoginandSecurity = () => {
       const requestBody = email ? { email } : { phone };
 
       const response = await axiosRequest.post(
-        `${BASE_API_URL}${API_ROUTES.auth.requestPasswordReset}`,
+        `${API_ROUTES.auth.requestPasswordReset}`,
         requestBody
       );
       toast(response?.data?.message, {

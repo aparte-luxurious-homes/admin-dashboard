@@ -2,7 +2,7 @@
 
 import BreadCrumb from "@/src/components/breadcrumb";
 import Grid from "@mui/material/Grid2";
-import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { useEffect, useState, useCallback } from "react";
 import axiosRequest from "@/src/lib/api";
 import { toast } from "react-hot-toast";
@@ -63,7 +63,7 @@ const GuestInfo = () => {
     setUserLoading(true);
     try {
       const response = await axiosRequest.get(
-        `${BASE_API_URL}${API_ROUTES.admin.users.userById(Number(id))}`
+        `${API_ROUTES.admin.users.userById(Number(id))}`
       );
       console.log("response", response);
       setUserInfo(response?.data?.data);

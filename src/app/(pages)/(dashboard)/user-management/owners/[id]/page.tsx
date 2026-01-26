@@ -2,7 +2,7 @@
 
 import BreadCrumb from "@/src/components/breadcrumb";
 import Grid from "@mui/material/Grid2";
-import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { useEffect, useState, useCallback } from "react";
 import axiosRequest from "@/src/lib/api";
 import { toast } from "react-hot-toast";
@@ -119,7 +119,7 @@ const OwnerInfo = () => {
     setUserLoading(true);
     try {
       const response = await axiosRequest.get(
-        `${BASE_API_URL}${API_ROUTES.admin.users.userById(Number(id))}`
+        `${API_ROUTES.admin.users.userById(Number(id))}`
       );
       console.log("response", response);
       setUserInfo(response?.data?.data);
@@ -150,7 +150,7 @@ const OwnerInfo = () => {
     setLoading(true);
     try {
       const response = await axiosRequest.get(
-        `${BASE_API_URL}${API_ROUTES.propertyManagement.properties.base}`
+        `${API_ROUTES.propertyManagement.properties.base}`
       );
       console.log("response prop", response);
 
@@ -290,9 +290,8 @@ const OwnerInfo = () => {
                     label="Legal Name"
                     required
                     disabled
-                    defaultValue={`${userInfo?.profile?.lastName || "--/--"} ${
-                      userInfo?.profile?.firstName || "--/--"
-                    }`}
+                    defaultValue={`${userInfo?.profile?.lastName || "--/--"} ${userInfo?.profile?.firstName || "--/--"
+                      }`}
                     inputType="text"
                     inputName="name"
                   />

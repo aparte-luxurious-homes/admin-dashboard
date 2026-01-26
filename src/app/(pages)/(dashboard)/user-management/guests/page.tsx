@@ -4,7 +4,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import { TableSearch } from "@/src/components/table/tableAction";
 import Table from "@/src/components/table/table";
 import { useState, useEffect } from "react";
-import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
@@ -12,7 +12,7 @@ import { GridColDef } from "@mui/x-data-grid";
 import Button from "@/src/components/button";
 import Link from "next/link";
 import jsPDF from "jspdf";
-import "jspdf-autotable";import autoTable from "jspdf-autotable";
+import "jspdf-autotable"; import autoTable from "jspdf-autotable";
 import ItemCount from "@/src/components/item-count/itemcount";
 import { CreateUser, UpdateUser } from "@/src/lib/request-handlers/userMgt";
 import { toast } from "react-hot-toast";
@@ -92,61 +92,61 @@ const Guest = () => {
 
   const handleDownload = (type: "CSV" | "PDF") => {
     console.log(`Downloading ${type}...`);
-    
+
     if (type === "CSV") {
       downloadCSV(ownerInfo);
     } else if (type === "PDF") {
       downloadPDF(ownerInfo);
     }
-  
+
     setIsOpen(false);
   };
 
   const downloadCSV = (data: User[]) => {
     if (!data.length) return;
-  
+
     // Extract headers dynamically
     const headers = Object.keys(data[0]).join(",");
-    
+
     // Convert array of objects to CSV format
     const csvContent = data.map(row =>
       Object.values(row).map(value => `"${value}"`).join(",")
     );
-  
+
     // Combine headers and rows
     const csvString = [headers, ...csvContent].join("\n");
-  
+
     // Create a Blob and trigger download
     const blob = new Blob([csvString], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement("a");
     a.href = url;
     a.download = "user_info.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
-  
+
   // Download PDF(Error in creation format)
   const downloadPDF = (data: User[]) => {
     if (!data.length) return;
-  
+
     const doc = new jsPDF();
     doc.text("Guest Information", 10, 10);
-  
+
     // Defind table headers
     const headers = ["ID", "First Name", "Last Name", "KYC Status", "Email", "Created At"];
-  
+
     // Format data properly
     const rows = data.map(user => [
-      user.id || "--/--", 
-      user?.profile?.firstName || "--/--", 
+      user.id || "--/--",
+      user?.profile?.firstName || "--/--",
       user?.profile?.lastName || "--/--",
       user?.profile?.kycStatus || "--/--",
-      user.email || "--/--", 
+      user.email || "--/--",
       user.createdAt ? new Date(user.createdAt).toLocaleString() : "--/--"
     ]);
-  
+
     // Generate table
     autoTable(doc, {
       head: [headers],
@@ -154,7 +154,7 @@ const Guest = () => {
       styles: { fontSize: 10, cellPadding: 3 },
       theme: "grid",
     });
-  
+
     doc.save("guest_info.pdf");
   };
 
@@ -251,10 +251,10 @@ const Guest = () => {
     setLoading(true);
     try {
       const response = await axiosRequest.get(
-        `${BASE_API_URL}${API_ROUTES?.admin?.users?.base}`
+        `${API_ROUTES?.admin?.users?.base}`
       );
       const rows = response?.data?.data?.items ?? response?.data?.data?.data ?? response?.data?.data ?? [];
-      const ownerData = rows?.filter((user: User ) => user?.role === "GUEST") || [];
+      const ownerData = rows?.filter((user: User) => user?.role === "GUEST") || [];
 
       setOwnerInfo(ownerData);
       setSearchResult(ownerData);
@@ -269,7 +269,7 @@ const Guest = () => {
     }
   };
 
-  
+
   useEffect(() => {
     fetchownerInfo();
   }, []);
@@ -331,7 +331,7 @@ const Guest = () => {
                         <Icon icon="mdi:printer" className="text-base" />
                         <span>Export</span>
                       </span>
-                    } 
+                    }
                   />
                   {isOpen && (
                     <div className="absolute right-8 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
@@ -362,7 +362,7 @@ const Guest = () => {
                 <ItemCount count={searchResult?.length} />
               </div>
             </div>
-            
+
             {searchResult?.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table
@@ -392,67 +392,67 @@ const Guest = () => {
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">Create Guest</h2>
-                <button onClick={()=>setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600">
                   <Icon icon="mdi:close" width="24" height="24" />
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="John" 
-                    value={createForm.first_name} 
-                    onChange={e=>setCreateForm({...createForm, first_name:e.target.value})} 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="John"
+                    value={createForm.first_name}
+                    onChange={e => setCreateForm({ ...createForm, first_name: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="Doe" 
-                    value={createForm.last_name} 
-                    onChange={e=>setCreateForm({...createForm, last_name:e.target.value})} 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Doe"
+                    value={createForm.last_name}
+                    onChange={e => setCreateForm({ ...createForm, last_name: e.target.value })}
                   />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="john@example.com" 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="john@example.com"
                     type="email"
-                    value={createForm.email} 
-                    onChange={e=>setCreateForm({...createForm, email:e.target.value})} 
+                    value={createForm.email}
+                    onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
                   />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="+234 800 000 0000" 
-                    value={createForm.phone} 
-                    onChange={e=>setCreateForm({...createForm, phone:e.target.value})} 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="+234 800 000 0000"
+                    value={createForm.phone}
+                    onChange={e => setCreateForm({ ...createForm, phone: e.target.value })}
                   />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="••••••••" 
-                    type="password" 
-                    value={createForm.password} 
-                    onChange={e=>setCreateForm({...createForm, password:e.target.value})} 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="••••••••"
+                    type="password"
+                    value={createForm.password}
+                    onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                  <select 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    value={createForm.gender} 
-                    onChange={e=>setCreateForm({...createForm, gender:e.target.value})}
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    value={createForm.gender}
+                    onChange={e => setCreateForm({ ...createForm, gender: e.target.value })}
                   >
                     <option value="">Select gender</option>
                     <option value="male">Male</option>
@@ -462,19 +462,19 @@ const Guest = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={createForm.is_active} 
-                      onChange={e=>setCreateForm({...createForm, is_active:e.target.checked})} 
+                    <input
+                      type="checkbox"
+                      checked={createForm.is_active}
+                      onChange={e => setCreateForm({ ...createForm, is_active: e.target.checked })}
                       className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                     />
                     <span className="text-sm text-gray-700">Active account</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={createForm.is_verified} 
-                      onChange={e=>setCreateForm({...createForm, is_verified:e.target.checked})} 
+                    <input
+                      type="checkbox"
+                      checked={createForm.is_verified}
+                      onChange={e => setCreateForm({ ...createForm, is_verified: e.target.checked })}
                       className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                     />
                     <span className="text-sm text-gray-700">Verified</span>
@@ -482,21 +482,21 @@ const Guest = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
-              <button 
-                onClick={()=>setIsCreateOpen(false)} 
+              <button
+                onClick={() => setIsCreateOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
-                onClick={()=>{
-                  createUser({ payload: createForm }, { 
-                    onSuccess: ()=>{ toast.success('User created successfully'); setIsCreateOpen(false); fetchownerInfo(); }, 
-                    onError: (e:any)=> {
+                onClick={() => {
+                  createUser({ payload: createForm }, {
+                    onSuccess: () => { toast.success('User created successfully'); setIsCreateOpen(false); fetchownerInfo(); },
+                    onError: (e: any) => {
                       const detail = e?.response?.data?.detail;
-                      const msg = Array.isArray(detail) ? detail.map((d:any)=> d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
+                      const msg = Array.isArray(detail) ? detail.map((d: any) => d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
                       toast.error(msg);
                     }
                   });
@@ -518,57 +518,57 @@ const Guest = () => {
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">Edit Guest</h2>
-                <button onClick={()=>setIsEditOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <button onClick={() => setIsEditOpen(false)} className="text-gray-400 hover:text-gray-600">
                   <Icon icon="mdi:close" width="24" height="24" />
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="John" 
-                    value={editForm.first_name} 
-                    onChange={e=>setEditForm({...editForm, first_name:e.target.value})} 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="John"
+                    value={editForm.first_name}
+                    onChange={e => setEditForm({ ...editForm, first_name: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="Doe" 
-                    value={editForm.last_name} 
-                    onChange={e=>setEditForm({...editForm, last_name:e.target.value})} 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Doe"
+                    value={editForm.last_name}
+                    onChange={e => setEditForm({ ...editForm, last_name: e.target.value })}
                   />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="john@example.com" 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="john@example.com"
                     type="email"
-                    value={editForm.email} 
-                    onChange={e=>setEditForm({...editForm, email:e.target.value})} 
+                    value={editForm.email}
+                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
                   />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    placeholder="+234 800 000 0000" 
-                    value={editForm.phone} 
-                    onChange={e=>setEditForm({...editForm, phone:e.target.value})} 
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="+234 800 000 0000"
+                    value={editForm.phone}
+                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                  <select 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary" 
-                    value={editForm.gender} 
-                    onChange={e=>setEditForm({...editForm, gender:e.target.value})}
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    value={editForm.gender}
+                    onChange={e => setEditForm({ ...editForm, gender: e.target.value })}
                   >
                     <option value="">Select gender</option>
                     <option value="male">Male</option>
@@ -578,19 +578,19 @@ const Guest = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={editForm.is_active} 
-                      onChange={e=>setEditForm({...editForm, is_active:e.target.checked})} 
+                    <input
+                      type="checkbox"
+                      checked={editForm.is_active}
+                      onChange={e => setEditForm({ ...editForm, is_active: e.target.checked })}
                       className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                     />
                     <span className="text-sm text-gray-700">Active account</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={editForm.is_verified} 
-                      onChange={e=>setEditForm({...editForm, is_verified:e.target.checked})} 
+                    <input
+                      type="checkbox"
+                      checked={editForm.is_verified}
+                      onChange={e => setEditForm({ ...editForm, is_verified: e.target.checked })}
                       className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                     />
                     <span className="text-sm text-gray-700">Verified</span>
@@ -598,22 +598,22 @@ const Guest = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
-              <button 
-                onClick={()=>setIsEditOpen(false)} 
+              <button
+                onClick={() => setIsEditOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
-                onClick={()=>{
-                  if(!editUserId){ toast.error('Missing user id'); return; }
-                  updateUser({ userId: editUserId, payload: editForm }, { 
-                    onSuccess: ()=>{ toast.success('User updated successfully'); setIsEditOpen(false); fetchownerInfo(); }, 
-                    onError: (e:any)=> {
+                onClick={() => {
+                  if (!editUserId) { toast.error('Missing user id'); return; }
+                  updateUser({ userId: editUserId, payload: editForm }, {
+                    onSuccess: () => { toast.success('User updated successfully'); setIsEditOpen(false); fetchownerInfo(); },
+                    onError: (e: any) => {
                       const detail = e?.response?.data?.detail;
-                      const msg = Array.isArray(detail) ? detail.map((d:any)=> d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
+                      const msg = Array.isArray(detail) ? detail.map((d: any) => d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
                       toast.error(msg);
                     }
                   });

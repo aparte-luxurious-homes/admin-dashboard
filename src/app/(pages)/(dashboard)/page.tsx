@@ -15,7 +15,7 @@ import Grid from "@mui/material/Grid2";
 import UsersChart from "@/src/components/userchart/userchart";
 import StatsCard from "@/src/components/statcard/statcard";
 import LineChart from "@/src/components/linecharts/linecharts";
-import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link";
 import ItemCount from "@/src/components/item-count/itemcount";
@@ -129,7 +129,7 @@ const Home = () => {
   const fetchProperties = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.propertyManagement.properties.base}`);
+      const response = await axiosRequest.get(`${API_ROUTES.propertyManagement.properties.base}`);
       let DataByRole: Property[] = [];
       if (user?.role === "OWNER") {
         DataByRole = response?.data?.data?.data?.filter(
@@ -159,7 +159,7 @@ const Home = () => {
   const fetchStatistics = useCallback(async () => {
     setIsStatLoading(true);
     try {
-      const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.statistic.base}`);
+      const response = await axiosRequest.get(`${API_ROUTES.statistic.base}`);
       setStats(response?.data?.data);
     } catch (err) {
       if (err instanceof Error) {

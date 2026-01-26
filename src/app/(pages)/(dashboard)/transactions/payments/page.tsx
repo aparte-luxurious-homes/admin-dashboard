@@ -4,7 +4,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import { TableSearch } from "@/src/components/table/tableAction";
 import Table from "@/src/components/table/table";
 import { useState, useEffect } from "react";
-import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
@@ -111,7 +111,7 @@ const Payments = () => {
     setLoading(true);
     try {
       const response = await axiosRequest.get(
-        `${BASE_API_URL}${API_ROUTES?.payments?.base}`
+        `${API_ROUTES?.payments?.base}`
       );
       console.log("response", response);
       const BookingData = response?.data?.data;

@@ -19,27 +19,27 @@ const PersonalInfoPage = () => {
 
   const handleEditProfile = () => {
     setIsEditing(true);
-    axiosRequest.patch(`${BASE_API_URL}${API_ROUTES?.profile?.update}`, personalInfo)
-    .then((res) => {
-      setIsEditing(false);
-      toast.success(res?.data?.message, {
-        duration: 3000,
-        style: {
-          maxWidth: "500px",
-          width: "max-content",
-        },
+    axiosRequest.patch(`${API_ROUTES?.profile?.update}`, personalInfo)
+      .then((res) => {
+        setIsEditing(false);
+        toast.success(res?.data?.message, {
+          duration: 3000,
+          style: {
+            maxWidth: "500px",
+            width: "max-content",
+          },
+        });
+      })
+      .catch((err) => {
+        setIsEditing(false);
+        toast.error(err?.response?.data?.message, {
+          duration: 3000,
+          style: {
+            maxWidth: "500px",
+            width: "max-content",
+          },
+        });
       });
-    })
-    .catch((err) => {
-      setIsEditing(false);
-      toast.error(err?.response?.data?.message, {
-        duration: 3000,
-        style: {
-          maxWidth: "500px",
-          width: "max-content",
-        },
-      });
-    });
   };
 
   console.log("personalInfo", personalInfo);

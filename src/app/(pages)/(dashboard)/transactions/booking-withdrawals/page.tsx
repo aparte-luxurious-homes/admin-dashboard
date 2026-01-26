@@ -4,7 +4,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import { TableSearch } from "@/src/components/table/tableAction";
 import Table from "@/src/components/table/table";
 import { useState, useEffect } from "react";
-import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
@@ -100,7 +100,7 @@ const BookingWithdrawals = () => {
     setLoading(true);
     try {
       const response = await axiosRequest.get(
-        `${BASE_API_URL}${API_ROUTES?.transactions?.base}`
+        `${API_ROUTES?.transactions?.base}`
       );
       console.log("response", response);
       const BookingData = response?.data?.data?.filter((data: Transaction) => data?.transaction_type?.toLowerCase() === "booking");
