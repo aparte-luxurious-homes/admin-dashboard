@@ -18,6 +18,35 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 
+interface User {
+  id: string | number;
+  email: string;
+  phone?: string | null;
+  firstName?: string | null;
+  first_name?: string | null;
+  lastName?: string | null;
+  last_name?: string | null;
+  profileImage?: string | null;
+  profile_image?: string | null;
+  isActive?: boolean;
+  is_active?: boolean;
+  isVerified?: boolean;
+  is_verified?: boolean;
+  role: string | Record<string, any>;
+  profile?: UserProfile;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
+  total_records?: number;
+  kyc_status?: string;
+  kycStatus?: string;
+  lastLogin?: string | null;
+  last_login?: string | null;
+  verificationToken?: string | null;
+  verification_token?: string | null;
+}
+
 interface Agent {
   id: number;
   email: string;
@@ -67,38 +96,29 @@ interface Property {
 }
 
 interface UserProfile {
-  address: string | null;
-  averageRating: string;
-  bio: string | null;
-  bvn: string | null;
-  city: string | null;
-  country: string | null;
-  createdAt: string;
-  dob: string | null;
-  firstName: string | null;
-  gender: string | null;
-  id: number;
-  kycStatus: string;
-  lastName: string | null;
-  nin: string | null;
-  profileImage: string | null;
-  state: string | null;
-  updatedAt: string;
-  userId: number;
-}
-
-interface User {
-  id: number;
-  email: string;
-  phone: string;
-  role: Record<string, any>;
-  profile: UserProfile;
-  verification_token: string;
-  isVerified: boolean;
-  last_login: string;
-  isActive: boolean;
-  created_at: string;
-  updated_at: string;
+  id: number | string;
+  userId: number | string;
+  firstName?: string | null;
+  first_name?: string | null;
+  lastName?: string | null;
+  last_name?: string | null;
+  gender?: string | null;
+  dob?: string | null;
+  bio?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  kycStatus?: string;
+  kyc_status?: string;
+  profileImage?: string | null;
+  profile_image?: string | null;
+  averageRating?: string | number;
+  average_rating?: string | number;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
 }
 
 const OwnerInfo = () => {
@@ -119,7 +139,7 @@ const OwnerInfo = () => {
     setUserLoading(true);
     try {
       const response = await axiosRequest.get(
-        `${API_ROUTES.admin.users.userById(Number(id))}`
+        `${API_ROUTES.admin.users.userByUuid(String(id))}`
       );
       console.log("response", response);
       setUserInfo(response?.data?.data);
@@ -267,9 +287,9 @@ const OwnerInfo = () => {
           ) : (
             <>
               <div className="relative w-[48px] h-[48px] rounded-full overflow-hidden border-2 border-gray-300">
-                {userInfo?.profile?.profileImage ? (
+                {userInfo?.profile?.profile_image || userInfo?.profile?.profileImage ? (
                   <Image
-                    src={userInfo?.profile?.profileImage}
+                    src={userInfo?.profile?.profile_image || userInfo?.profile?.profileImage || ""}
                     alt="profile"
                     layout="fill"
                     objectFit="cover"
@@ -290,7 +310,7 @@ const OwnerInfo = () => {
                     label="Legal Name"
                     required
                     disabled
-                    defaultValue={`${userInfo?.profile?.lastName || "--/--"} ${userInfo?.profile?.firstName || "--/--"
+                    defaultValue={`${userInfo?.profile?.last_name || userInfo?.profile?.lastName || userInfo?.last_name || userInfo?.lastName || "--/--"} ${userInfo?.profile?.first_name || userInfo?.profile?.firstName || userInfo?.first_name || userInfo?.firstName || "--/--"
                       }`}
                     inputType="text"
                     inputName="name"
@@ -350,11 +370,11 @@ const OwnerInfo = () => {
                   <Grid container spacing={3}>
                     <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
                       <h4>Active</h4>
-                      <Badge status={userInfo?.isActive} />
+                      <Badge status={userInfo?.is_active ?? userInfo?.isActive ?? false} />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
                       <h4>Verified</h4>
-                      <Badge status={userInfo?.isVerified} />
+                      <Badge status={userInfo?.is_verified ?? userInfo?.isVerified ?? false} />
                     </Grid>
                   </Grid>
                 </Grid>
