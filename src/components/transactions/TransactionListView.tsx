@@ -57,6 +57,13 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
     const [page, setPage] = useState(1);
     const pageSize = 10;
 
+    const [statusFilter, setStatusFilter] = useState<string>("");
+    const [typeFilter, setTypeFilter] = useState<string>(filters?.tx_type || "");
+    const [actionFilter, setActionFilter] = useState<string>(filters?.action || "");
+    const [startDate, setStartDate] = useState<string>("");
+    const [endDate, setEndDate] = useState<string>("");
+    const [showFilters, setShowFilters] = useState(false);
+
     const [isOpen, setIsOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
@@ -124,8 +131,11 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                     page: page,
                     size: pageSize,
                     search: searchValue || undefined,
-                    tx_type: filters?.tx_type,
-                    action: filters?.action,
+                    tx_type: typeFilter || undefined,
+                    action: actionFilter || undefined,
+                    status: statusFilter || undefined,
+                    start_date: startDate || undefined,
+                    end_date: endDate || undefined,
                 },
             });
 
@@ -152,7 +162,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
         } finally {
             setLoading(false);
         }
-    }, [page, searchValue, apiUrl, filters]);
+    }, [page, searchValue, apiUrl, typeFilter, actionFilter, statusFilter, startDate, endDate]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -163,6 +173,15 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchValue(e.target.value);
+        setPage(1);
+    };
+
+    const resetFilters = () => {
+        setStatusFilter("");
+        setTypeFilter(filters?.tx_type || "");
+        setActionFilter(filters?.action || "");
+        setStartDate("");
+        setEndDate("");
         setPage(1);
     };
 
@@ -224,24 +243,101 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 max-w-md relative">
-                            <input
-                                type="text"
-                                value={searchValue}
-                                onChange={handleSearchChange}
-                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white"
-                                placeholder="Search by reference or user ID..."
-                            />
-                            <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex-1 max-w-md relative">
+                                <input
+                                    type="text"
+                                    value={searchValue}
+                                    onChange={handleSearchChange}
+                                    className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white"
+                                    placeholder="Search by reference or user ID..."
+                                />
+                                <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
+                            </div>
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className={`px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-white text-gray-700'}`}
+                            >
+                                <FilterIcon className="w-4 h-4" color={showFilters ? "#028090" : "#6B7280"} />
+                                <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
+                            </button>
+                            {(statusFilter || (typeFilter !== (filters?.tx_type || "")) || (actionFilter !== (filters?.action || "")) || startDate || endDate) && (
+                                <button
+                                    onClick={resetFilters}
+                                    className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-4"
+                                >
+                                    Reset Filters
+                                </button>
+                            )}
+                            <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                                Total Records: <span className="text-primary">{rowCount}</span>
+                            </div>
                         </div>
-                        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700 font-medium bg-white">
-                            <FilterIcon className="w-4 h-4" color="#6B7280" />
-                            <span>Filter</span>
-                        </button>
-                        <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
-                            Total Records: <span className="text-primary">{rowCount}</span>
-                        </div>
+
+                        {showFilters && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-white rounded-xl border border-gray-100 shadow-inner animate-in fade-in slide-in-from-top-2">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</label>
+                                    <select
+                                        value={statusFilter}
+                                        onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="">All Statuses</option>
+                                        <option value="PENDING">Pending</option>
+                                        <option value="SUCCESSFUL">Successful</option>
+                                        <option value="FAILED">Failed</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Type</label>
+                                    <select
+                                        value={typeFilter}
+                                        onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+                                        disabled={!!filters?.tx_type}
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                    >
+                                        <option value="">All Types</option>
+                                        <option value="PAYMENT">Payment</option>
+                                        <option value="REFUND">Refund</option>
+                                        <option value="BOOKING">Booking</option>
+                                        <option value="WITHDRAWAL">Withdrawal</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Action</label>
+                                    <select
+                                        value={actionFilter}
+                                        onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
+                                        disabled={!!filters?.action}
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                    >
+                                        <option value="">All Actions</option>
+                                        <option value="CREDIT">Credit</option>
+                                        <option value="DEBIT">Debit</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Start Date</label>
+                                    <input
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-primary/20"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">End Date</label>
+                                    <input
+                                        type="date"
+                                        value={endDate}
+                                        onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-primary/20"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
