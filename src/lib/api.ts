@@ -69,27 +69,20 @@ axiosRequest.interceptors.response.use(
       const currentPath = window.location.pathname;
       const requestUrl: string = error.config?.url || '';
 
-      // Only force logout for auth-critical endpoints
-      const isAuthEndpoint =
-        requestUrl.includes('/profile') ||
-        requestUrl.includes('/auth/me') ||
-        requestUrl.includes('/auth/refresh');
-
       console.log('[Axios Interceptor] 401 error detected:', {
         path: currentPath,
         url: requestUrl,
-        isAuthEndpoint,
       });
 
       // Avoid redirect loop on login route and don't logout for non-auth endpoints
       const onLoginRoute = currentPath.includes('/auth/login') || requestUrl.includes('/auth/login');
 
-      if (isAuthEndpoint && !onLoginRoute) {
+      if (!onLoginRoute) {
         console.log('[Axios Interceptor] Removing token and redirecting due to auth 401');
         Cookies.remove('token');
         window.location.href = PAGE_ROUTES.auth.login;
       } else {
-        console.warn('[Axios Interceptor] 401 on non-auth endpoint - not logging out.');
+        console.warn('[Axios Interceptor] 401 received while on login route or performing login - ignoring.');
       }
     }
     return Promise.reject(error);

@@ -385,7 +385,7 @@ export default function PropertyDetailsView({
                                                                     width={60}
                                                                 />
                                                                 <div>
-                                                                    <p className="text-lg text-zinc-900 m-0">{`${property?.owner?.profile?.firstName ?? `--/--`} ${property?.owner?.profile?.lastName ?? `--/--`}`}</p>
+                                                                    <p className="text-lg text-zinc-900 m-0">{property?.owner?.profile?.firstName ? `${property?.owner?.profile?.firstName} ${property?.owner?.profile?.lastName}` : property?.owner?.email || '--/--'}</p>
                                                                     <p className="text-base text-zinc-500">{`${property?.owner?.email ?? '--/--'}`}</p>
                                                                 </div>
                                                             </div>
@@ -406,7 +406,7 @@ export default function PropertyDetailsView({
                                                                     width={60}
                                                                 />
                                                                 <div>
-                                                                    <p className="text-lg text-zinc-900 m-0">{`${property?.agent?.profile?.firstName ?? '--/--'} ${property?.agent?.profile?.lastName ?? '--/--'}`}</p>
+                                                                    <p className="text-lg text-zinc-900 m-0">{property?.agent?.profile?.firstName ? `${property?.agent?.profile?.firstName} ${property?.agent?.profile?.lastName}` : property?.agent?.email || '--/--'}</p>
                                                                     <p className="text-base text-zinc-500">{`${property?.agent?.email ?? '--/--'}`}</p>
                                                                 </div>
                                                             </div>
@@ -506,7 +506,7 @@ export default function PropertyDetailsView({
                                                     width={60}
                                                 />
                                                 <div>
-                                                    <p className="text-xl font-medium text-zinc-900 m-0">{`${property?.agent?.profile?.firstName ?? '--/--'} ${property?.agent?.profile?.lastName ?? '--/--'}`} <span className="text-base font-normal text-zinc-600"><em> (Assigned agent)</em></span></p>
+                                                    <p className="text-xl font-medium text-zinc-900 m-0">{property?.agent?.profile?.firstName ? `${property?.agent?.profile?.firstName} ${property?.agent?.profile?.lastName}` : property?.agent?.email || '--/--'} <span className="text-base font-normal text-zinc-600"><em> (Assigned agent)</em></span></p>
                                                     <p className="text-lg text-zinc-700">{`${property?.agent?.email ?? '--/--'}`}</p>
                                                 </div>
                                             </div>
@@ -569,7 +569,7 @@ export default function PropertyDetailsView({
                                                                 width={60}
                                                             />
                                                             <div>
-                                                                <p className="text-lg text-zinc-900 m-0">{`${selectedAgent?.profile?.firstName ?? '--/--'} ${selectedAgent?.profile?.lastName ?? '--/--'}`}</p>
+                                                                <p className="text-lg text-zinc-900 m-0">{selectedAgent?.profile?.firstName ? `${selectedAgent?.profile?.firstName} ${selectedAgent?.profile?.lastName}` : selectedAgent?.email || '--/--'}</p>
                                                                 <p className="text-base text-zinc-500">{`${selectedAgent?.email}`}</p>
                                                             </div>
                                                         </div>

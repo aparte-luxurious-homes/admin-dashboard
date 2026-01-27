@@ -181,18 +181,18 @@ export default function PropertiesTable() {
                                             {property?.property_type ?? '--/--'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">
-                                            {`${property?.owner?.profile?.firstName ?? '--/--'} ${property?.owner?.profile?.lastName ?? '--/--'}`}
+                                            {property?.owner?.email || `${property?.owner?.profile?.firstName ?? ''} ${property?.owner?.profile?.lastName ?? ''}` || '--/--'}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${property?.is_verified
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-red-100 text-red-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
                                                 }`}>
                                                 {property?.is_verified ? 'Verified' : 'Unverified'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">
-                                            {property?.assigned_agent ?? '--/--'}
+                                            {property?.agent?.email || property?.assigned_agent || '--/--'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">
                                             {property?.created_at ? formatDate(property?.created_at) : '--/--'}

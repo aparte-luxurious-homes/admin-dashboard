@@ -400,7 +400,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                                     <h3 className="text-sm font-semibold text-zinc-500 uppercase mb-3">Property Owner</h3>
                                                                     <div className="space-y-2">
                                                                         <p className="font-semibold text-zinc-800 text-lg">
-                                                                            {bookingDetails.unit.property.owner.profile?.firstName || 'N/A'} {bookingDetails.unit.property.owner.profile?.lastName || ''}
+                                                                            {bookingDetails.unit.property.owner.profile?.firstName ? `${bookingDetails.unit.property.owner.profile.firstName} ${bookingDetails.unit.property.owner.profile?.lastName || ''}` : bookingDetails.unit.property.owner.email || 'N/A'}
                                                                         </p>
                                                                         <p className="text-sm text-zinc-600 flex items-center gap-2">
                                                                             <FaEnvelope className="text-xs" />
@@ -426,7 +426,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                                     <h3 className="text-sm font-semibold text-zinc-500 uppercase mb-3">Assigned Agent</h3>
                                                                     <div className="space-y-2">
                                                                         <p className="font-semibold text-zinc-800 text-lg">
-                                                                            {bookingDetails.unit.property.agent.profile?.firstName || 'N/A'} {bookingDetails.unit.property.agent.profile?.lastName || ''}
+                                                                            {bookingDetails.unit.property.agent.profile?.firstName ? `${bookingDetails.unit.property.agent.profile.firstName} ${bookingDetails.unit.property.agent.profile?.lastName || ''}` : bookingDetails.unit.property.agent.email || 'N/A'}
                                                                         </p>
                                                                         <p className="text-sm text-zinc-600 flex items-center gap-2">
                                                                             <FaEnvelope className="text-xs" />

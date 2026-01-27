@@ -311,7 +311,7 @@ export default function VerificationDetails({
                                     height={400}
                                 />
                                 <p className='text-base text-zinc-800 font-medium text-center mb-1'>
-                                    {`${selectedAgent?.profile?.firstName ?? `--/--`} ${selectedAgent?.profile?.lastName ?? `--/--`}`}
+                                    {selectedAgent?.profile?.firstName ? `${selectedAgent?.profile?.firstName} ${selectedAgent?.profile?.lastName}` : selectedAgent?.email || '--/--'}
                                 </p>
                                 <p className='text-sm text-zinc-800 font-medium text-center'>
                                     {selectedAgent?.email ?? '--/--'}
@@ -380,7 +380,7 @@ export default function VerificationDetails({
                         <div className="flex items-center">
                             <p className="text-zinc-500 text-base">Owner</p>
                             <p className="text-teal-800 text-base ml-3 cursor-pointer hover:underline">
-                                {`${property?.owner?.profile?.firstName ?? '--/--'} ${property?.owner?.profile?.lastName ?? '--/--'}`}
+                                {property?.owner?.profile?.firstName ? `${property?.owner?.profile?.firstName} ${property?.owner?.profile?.lastName}` : property?.owner?.email || '--/--'}
                             </p>
                         </div>
                     </div>
@@ -545,13 +545,13 @@ export default function VerificationDetails({
                                                 width={60}
                                             />
                                             <div>
-                                                <p className="text-lg text-zinc-900 m-0">{`${selectedAgent?.profile?.firstName ?? 'Kunle'} ${selectedAgent?.profile?.lastName ?? 'Aina'}`}</p>
+                                                <p className="text-lg text-zinc-900 m-0">{selectedAgent?.profile?.firstName ? `${selectedAgent?.profile?.firstName} ${selectedAgent?.profile?.lastName}` : selectedAgent?.email || 'Kunle Aina'}</p>
                                                 <p className="text-base text-zinc-500">{`${selectedAgent?.email}`}</p>
                                             </div>
                                         </div>
                                     </div>
                                     <p className="text-base text-zinc-800 font-normal my-5">
-                                        You're about to {selectedAgent?.id === verificationData?.data?.data?.property?.assignedAgent ? 're-assign' : 'assign'} {`${selectedAgent?.profile?.firstName ?? 'James'} ${selectedAgent?.profile?.lastName ?? 'Bond'}`} to this property.
+                                        You're about to {selectedAgent?.id === verificationData?.data?.data?.property?.assignedAgent ? 're-assign' : 'assign'} {selectedAgent?.profile?.firstName ? `${selectedAgent?.profile?.firstName} ${selectedAgent?.profile?.lastName}` : selectedAgent?.email || 'James Bond'} to this property.
                                         <br />
                                         <strong>Are you sure?</strong>
                                     </p>

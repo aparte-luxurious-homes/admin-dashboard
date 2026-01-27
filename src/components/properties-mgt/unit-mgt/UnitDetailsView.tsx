@@ -278,7 +278,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                                                     width={60}
                                                                 />
                                                                 <div>
-                                                                    <p className="text-lg text-zinc-900 m-0">{`${propertyUnit?.property?.owner?.profile?.firstName ?? '--/--'} ${propertyUnit?.property?.owner?.profile?.lastName ?? '--/--'}`}</p>
+                                                                    <p className="text-lg text-zinc-900 m-0">{propertyUnit?.property?.owner?.profile?.firstName ? `${propertyUnit?.property?.owner?.profile?.firstName} ${propertyUnit?.property?.owner?.profile?.lastName}` : propertyUnit?.property?.owner?.email || '--/--'}</p>
                                                                     <p className="text-base text-zinc-500">{`${propertyUnit?.property?.owner?.email}`}</p>
                                                                 </div>
                                                             </div>
@@ -299,7 +299,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                                                     width={60}
                                                                 />
                                                                 <div>
-                                                                    <p className="text-lg text-zinc-900 m-0">{`${propertyUnit?.property?.agent.profile?.firstName ?? '--/--'} ${propertyUnit?.property?.agent.profile?.lastName ?? '--/--'}`}</p>
+                                                                    <p className="text-lg text-zinc-900 m-0">{propertyUnit?.property?.agent.profile?.firstName ? `${propertyUnit?.property?.agent.profile?.firstName} ${propertyUnit?.property?.agent.profile?.lastName}` : propertyUnit?.property?.agent.email || '--/--'}</p>
                                                                     <p className="text-base text-zinc-500">{`${propertyUnit?.property?.agent.email}`}</p>
                                                                 </div>
                                                             </div>
