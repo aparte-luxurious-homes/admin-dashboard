@@ -15,8 +15,10 @@ interface Transaction {
   id: string;
   wallet_id: string;
   userId: number;
+  user_id?: number;
   action: string;
   transactionType: string;
+  transaction_type?: string;
   comment: string;
   currency: string;
   reference: string;
@@ -25,7 +27,9 @@ interface Transaction {
   description: string;
   status: string;
   createdAt: string;
+  created_at?: string;
   updatedAt: string;
+  updated_at?: string;
 }
 const BookingWithdrawalInfo = () => {
   const [transactionInfo, setTransactionInfo] = useState<Transaction>(

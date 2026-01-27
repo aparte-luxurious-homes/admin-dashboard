@@ -51,7 +51,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                 onConfirm: () => {
                     if (propertyId && unitId)
                         deleteMutation(
-                            { propertyId, unitId },
+                            { propertyId: Number(propertyId), unitId: Number(unitId) },
                             {
                                 onSuccess: (response) => {
                                     console.log(response)
@@ -125,16 +125,16 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                             <h3 className="text-3xl font-normal text-zinc-800 leading-3 mt-5">
                                                 {propertyUnit?.name} {propertyUnit?.count && <span className="text-base font-light"><em>{`(${propertyUnit?.count} units)`}</em></span>} <br />
                                                 <span className="underline text-primary/90 italic text-sm hover:text-primary">
-                                                    <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyUnit?.propertyId || propertyId)}>
+                                                    <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyUnit?.propertyId || propertyUnit?.property_id || propertyId)}>
                                                         See property
                                                     </Link>
                                                 </span>
                                             </h3>
 
-                                            {propertyUnit?.cautionFee && (
+                                            {(propertyUnit?.cautionFee || propertyUnit?.caution_fee) && (
                                                 <div className="flex flex-col justify-center items-center gap-0 mt-3">
                                                     <p className="text-xl font-medium text-zinc-800">
-                                                        ₦{formatMoney(propertyUnit?.cautionFee)}
+                                                        ₦{formatMoney(propertyUnit?.cautionFee || propertyUnit?.caution_fee || 0)}
                                                     </p>
                                                     <p className="text-sm font-normal">
                                                         <em>(Caution fee)</em>
@@ -142,10 +142,10 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                                 </div>
                                             )}
 
-                                            {propertyUnit?.maxGuests && (
+                                            {(propertyUnit?.maxGuests || propertyUnit?.max_guests) && (
                                                 <div className="flex flex-col justify-center items-center gap-0 mt-3">
                                                     <p className="text-xl font-medium text-zinc-800">
-                                                        {propertyUnit?.maxGuests} {propertyUnit?.maxGuests > 1 ? 'guests' : 'guest'}
+                                                        {propertyUnit?.maxGuests || propertyUnit?.max_guests || 0} {(propertyUnit?.maxGuests || propertyUnit?.max_guests || 0) > 1 ? 'guests' : 'guest'}
                                                     </p>
                                                     <p className="text-sm font-normal">
                                                         <em>(maximum)</em>
@@ -155,13 +155,13 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
 
                                             <div className="flex flex-col justify-center items-center gap-0 pr-3 leading-3 ">
                                                 <p className="text-xl text-primary font-medium mt-5 mb-0">
-                                                    ₦{formatMoney(propertyUnit?.pricePerNight || propertyUnit?.price_per_night)}
+                                                    ₦{formatMoney(propertyUnit?.pricePerNight || propertyUnit?.price_per_night || 0)}
                                                 </p>
                                                 <p className="text-sm font-medium text-zinc-600">
                                                     Per night
                                                 </p>
                                                 <span className="underline text-primary/90 italic text-sm hover:text-primary mt-1">
-                                                    <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.bookings(propertyUnit?.propertyId || propertyId, propertyUnit?.id)}>
+                                                    <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.bookings(propertyUnit?.propertyId || propertyUnit?.property_id || propertyId, propertyUnit?.id)}>
                                                         See bookings
                                                     </Link>
                                                 </span>
@@ -180,7 +180,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                             </>
                                         )}
 
-                                        {(propertyUnit?.bedroomCount > 0 || propertyUnit?.bathroomCount > 0 || propertyUnit?.kitchenCount > 0 || propertyUnit?.livingRoomCount > 0) && (
+                                        {((propertyUnit?.bedroomCount || 0) > 0 || (propertyUnit?.bedroom_count || 0) > 0 || (propertyUnit?.bathroomCount || 0) > 0 || (propertyUnit?.bathroom_count || 0) > 0 || (propertyUnit?.kitchenCount || 0) > 0 || (propertyUnit?.kitchen_count || 0) > 0 || (propertyUnit?.livingRoomCount || 0) > 0 || (propertyUnit?.living_room_count || 0) > 0) && (
                                             <>
                                                 <div className="h-px w-full bg-zinc-300/30 my-8" />
 
@@ -191,38 +191,38 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
 
                                                     <div className="w-full mt-2 p-3 grid grid-cols-4 gap-10 text-lg font-normal text-zinc-900">
                                                         {
-                                                            propertyUnit?.bedroomCount > 0 &&
+                                                            ((propertyUnit?.bedroomCount || 0) > 0 || (propertyUnit?.bedroom_count || 0) > 0) &&
                                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                                 <IoBedOutline className="text-3xl font-normal" />
                                                                 <p className="text-center">
-                                                                    Bedroom <br /><span className="text-base font-normal text-zinc-700"><em>x{propertyUnit?.bedroomCount}</em></span>
+                                                                    Bedroom <br /><span className="text-base font-normal text-zinc-700"><em>x{propertyUnit?.bedroomCount || propertyUnit?.bedroom_count || 0}</em></span>
                                                                 </p>
                                                             </div>
                                                         }
                                                         {
-                                                            propertyUnit?.bathroomCount > 0 &&
+                                                            ((propertyUnit?.bathroomCount || 0) > 0 || (propertyUnit?.bathroom_count || 0) > 0) &&
                                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                                 <PiBathtub className="text-3xl font-normal" />
                                                                 <p className="text-center">
-                                                                    Bathroom <br /><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.bathroomCount}</em></span>
+                                                                    Bathroom <br /><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.bathroomCount || propertyUnit?.bathroom_count || 0}</em></span>
                                                                 </p>
                                                             </div>
                                                         }
                                                         {
-                                                            propertyUnit?.kitchenCount > 0 &&
+                                                            ((propertyUnit?.kitchenCount || 0) > 0 || (propertyUnit?.kitchen_count || 0) > 0) &&
                                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                                 <TbToolsKitchen className="text-3xl font-normal" />
                                                                 <p className="text-center">
-                                                                    Kitchen <br /><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.kitchenCount}</em></span>
+                                                                    Kitchen <br /><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.kitchenCount || propertyUnit?.kitchen_count || 0}</em></span>
                                                                 </p>
                                                             </div>
                                                         }
                                                         {
-                                                            propertyUnit?.livingRoomCount > 0 &&
+                                                            ((propertyUnit?.livingRoomCount || 0) > 0 || (propertyUnit?.living_room_count || 0) > 0) &&
                                                             <div className="border border-zinc-300/50 rounded-xl py-5 px-2 flex flex-col justify-center items-center gap-5">
                                                                 <LuSofa className="text-3xl font-normal" />
                                                                 <p className="text-center">
-                                                                    Living Room <br /><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.livingRoomCount}</em></span>
+                                                                    Living Room <br /><span className="text-base  font-normal text-zinc-700"><em>x{propertyUnit?.livingRoomCount || propertyUnit?.living_room_count || 0}</em></span>
                                                                 </p>
                                                             </div>
                                                         }
@@ -278,7 +278,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                                                     width={60}
                                                                 />
                                                                 <div>
-                                                                    <p className="text-lg text-zinc-900 m-0">{`${propertyUnit?.property?.owner?.profile?.firstName ?? `Olutayo`} ${propertyUnit?.property?.owner?.profile?.lastName ?? `Akingbola`}`}</p>
+                                                                    <p className="text-lg text-zinc-900 m-0">{`${propertyUnit?.property?.owner?.profile?.firstName ?? '--/--'} ${propertyUnit?.property?.owner?.profile?.lastName ?? '--/--'}`}</p>
                                                                     <p className="text-base text-zinc-500">{`${propertyUnit?.property?.owner?.email}`}</p>
                                                                 </div>
                                                             </div>
@@ -299,7 +299,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                                                     width={60}
                                                                 />
                                                                 <div>
-                                                                    <p className="text-lg text-zinc-900 m-0">{`${propertyUnit?.property?.agent.profile?.firstName ?? 'Kunle'} ${propertyUnit?.property?.agent.profile?.lastName ?? 'Aina'}`}</p>
+                                                                    <p className="text-lg text-zinc-900 m-0">{`${propertyUnit?.property?.agent.profile?.firstName ?? '--/--'} ${propertyUnit?.property?.agent.profile?.lastName ?? '--/--'}`}</p>
                                                                     <p className="text-base text-zinc-500">{`${propertyUnit?.property?.agent.email}`}</p>
                                                                 </div>
                                                             </div>

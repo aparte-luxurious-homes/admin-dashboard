@@ -63,10 +63,10 @@ export default function PropertyDetailsView({
     const { data: agentsList, isLoading: agentsLoading } = GetAllUsers(1, 12, agentSearchTerm, UserRole.AGENT);
 
     const [showVerification, setShowVerification] = useState(false);
-    const [showAgentSelection, setShowAgentSelecteion] = useState(false);
+    const [showAgentSelection, setShowAgentSelection] = useState(false);
     const [editMode, setEditMode] = useState<boolean>(Boolean(searchParams.get('edit')));
     const [property, setProperty] = useState<IProperty>(data?.data?.data)
-    const [availabeUnits, setAvailableUnits] = useState<number>(0)
+    const [availableUnits, setAvailableUnits] = useState<number>(0)
     const [averageRating, setAverageRating] = useState<number>(property?.meta?.total_reviews ? (property?.meta?.total_rating / property?.meta?.total_reviews) : 0);
     const [agents, setAgents] = useState<IUser[]>(agentsList?.data?.data?.data)
     const [selectedAgent, setSelectedAgent] = useState<IUser | null>(null)
@@ -111,7 +111,7 @@ export default function PropertyDetailsView({
     const handleAgentAssignment = (agentId: string) => {
         assignAgent(
             {
-                payload: { agent_id: agentId }
+                payload: { agent_id: Number(agentId) }
             },
             {
                 onSuccess: () => {
@@ -123,7 +123,7 @@ export default function PropertyDetailsView({
                         }
                     });
 
-                    setShowAgentSelecteion(false)
+                    setShowAgentSelection(false)
                     setSelectedAgent(null)
                 },
                 onError: () =>
@@ -225,8 +225,8 @@ export default function PropertyDetailsView({
                                                             {property?.name}
                                                         </h3>
                                                         {
-                                                            property?.isVerified &&
-                                                            <span className="text-sm text-teal-800 border border-teal-800 rounded-full px-2 "><em>Verified {property?.verifications?.[0]?.verificationDate && `on ${formatDate(property?.verifications?.[0]?.verificationDate)}`}</em></span>
+                                                            (property?.isVerified || property?.is_verified) &&
+                                                            <span className="text-sm text-teal-800 border border-teal-800 rounded-full px-2 "><em>Verified {property?.verifications?.[0]?.verificationDate ? `on ${formatDate(property?.verifications?.[0]?.verificationDate)}` : ''}</em></span>
                                                         }
                                                     </div>
                                                     <div className="flex gap-2 items-center mt-2 text-xl text-zinc-700">
@@ -283,7 +283,7 @@ export default function PropertyDetailsView({
                                             </div>
 
                                             {
-                                                user?.role === UserRole.ADMIN && (!property?.isVerified || !property?.agent) &&
+                                                user?.role === UserRole.ADMIN && (!property?.isVerified && !property?.is_verified || !property?.agent) &&
                                                 <div className="flex justify-between items-center gap-4 mt-7 mb-5 w-full px-4 py-3 border-dashed border-2 border-zinc-400 rounded-lg">
                                                     <p className="text-xl text-zinc-500">
                                                         This property has not been verified yet!
@@ -293,7 +293,7 @@ export default function PropertyDetailsView({
                                                             property?.agent ?
                                                                 <span onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(property?.id, property?.verifications?.[0]?.id))} className="cursor-pointer pl-2 text-zinc-800"><u>View verification details</u></span>
                                                                 :
-                                                                <button type='button' onClick={() => setShowAgentSelecteion(!showVerification)} className="cursor-pointer  flex gap-3 items-center border border-primay/90 rounded-lg px-5 py-1.5 text-lg text-white bg-primary/90 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:bg-transparent">
+                                                                <button type='button' onClick={() => setShowAgentSelection(!showVerification)} className="cursor-pointer  flex gap-3 items-center border border-primary/90 rounded-lg px-5 py-1.5 text-lg text-white bg-primary/90 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:bg-transparent">
                                                                     <span>Assign agent</span>
                                                                     <IoCloudUploadOutline className="text-2xl text-medium" />
                                                                 </button>
@@ -441,10 +441,10 @@ export default function PropertyDetailsView({
                                                     <div>
                                                         <div className="flex gap-3 text-zinc-700">
                                                             <PiBuildingApartment className="text-2xl " />
-                                                            <span className="text-base">Total units availabe</span>
+                                                            <span className="text-base">Total units available</span>
                                                         </div>
                                                         <p className="text-2xl font-medium text-zinc-800 mt-2">
-                                                            {availabeUnits}
+                                                            {availableUnits}
                                                         </p>
                                                     </div>
                                                     <div>
@@ -453,7 +453,7 @@ export default function PropertyDetailsView({
                                                             <span className="text-base">Listed on</span>
                                                         </div>
                                                         <p className="text-xl font-medium text-zinc-800 mt-2">
-                                                            {property?.isVerified ? formatDate(property?.verifications?.[0]?.verificationDate ?? '2025-1-13') : <em className="text-base text-zinc-400 font-normal">Not listed</em>}
+                                                            {(property?.isVerified || property?.is_verified) ? (property?.verifications?.[0]?.verificationDate ? formatDate(property?.verifications?.[0]?.verificationDate) : 'Verified') : <em className="text-base text-zinc-400 font-normal">Not listed</em>}
                                                         </p>
                                                     </div>
                                                     <div>
@@ -462,7 +462,7 @@ export default function PropertyDetailsView({
                                                             <span className="text-base">Property type</span>
                                                         </div>
                                                         <p className="text-2xl font-medium text-zinc-800 mt-2 capitalize">
-                                                            {property?.propertyType?.toLocaleLowerCase()}
+                                                            {(property?.propertyType || property?.property_type)?.toLowerCase()}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -506,8 +506,8 @@ export default function PropertyDetailsView({
                                                     width={60}
                                                 />
                                                 <div>
-                                                    <p className="text-xl font-medium text-zinc-900 m-0">{`${property?.agent?.profile?.firstName ?? 'Kunle'} ${property?.agent?.profile?.lastName ?? 'Aina'}`} <span className="text-base font-normal text-zinc-600"><em> (Assigned agent)</em></span></p>
-                                                    <p className="text-lg text-zinc-700">{`${property?.agent?.email ?? 'agent007@aparteng.com'}`}</p>
+                                                    <p className="text-xl font-medium text-zinc-900 m-0">{`${property?.agent?.profile?.firstName ?? '--/--'} ${property?.agent?.profile?.lastName ?? '--/--'}`} <span className="text-base font-normal text-zinc-600"><em> (Assigned agent)</em></span></p>
+                                                    <p className="text-lg text-zinc-700">{`${property?.agent?.email ?? '--/--'}`}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -537,7 +537,7 @@ export default function PropertyDetailsView({
                                 <CustomModal
                                     isOpen={showAgentSelection}
                                     onClose={() => {
-                                        setShowAgentSelecteion(false)
+                                        setShowAgentSelection(false)
                                         setSelectedAgent(null)
                                     }}
                                     title="Assign agent to property"
@@ -569,13 +569,13 @@ export default function PropertyDetailsView({
                                                                 width={60}
                                                             />
                                                             <div>
-                                                                <p className="text-lg text-zinc-900 m-0">{`${selectedAgent?.profile?.firstName ?? 'Kunle'} ${selectedAgent?.profile?.lastName ?? 'Aina'}`}</p>
+                                                                <p className="text-lg text-zinc-900 m-0">{`${selectedAgent?.profile?.firstName ?? '--/--'} ${selectedAgent?.profile?.lastName ?? '--/--'}`}</p>
                                                                 <p className="text-base text-zinc-500">{`${selectedAgent?.email}`}</p>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <p className="text-base text-zinc-800 font-normal my-5">
-                                                        You're about to assign {`${selectedAgent?.profile?.firstName ?? 'James'} ${selectedAgent?.profile?.lastName ?? 'Bond'}`} to this property.
+                                                        You're about to assign {`${selectedAgent?.profile?.firstName ?? '--/--'} ${selectedAgent?.profile?.lastName ?? '--/--'}`} to this property.
                                                         <br />
                                                         <strong>Are you sure?</strong>
                                                     </p>

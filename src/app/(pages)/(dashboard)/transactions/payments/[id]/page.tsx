@@ -14,8 +14,12 @@ import { useParams } from "next/navigation";
 interface Transaction {
   amount: string;
   createdAt: string;
+  created_at?: string;
   currency: string;
   customerEmail: string;
+  user?: {
+    email: string;
+  };
   fees: string;
   id: string;
   metadata: {
@@ -31,8 +35,11 @@ interface Transaction {
   reference: string;
   status: string;
   updatedAt: string;
+  updated_at?: string;
   userId: number;
+  user_id?: number;
   walletId: string;
+  wallet_id?: string;
 }
 const AgentInfo = () => {
   const [paymentInfo, setPaymentInfo] = useState<Transaction>(
