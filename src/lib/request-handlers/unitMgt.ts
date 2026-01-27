@@ -58,7 +58,7 @@ export function GetSinglePropertyUnit(propertyId: string | number, unitId: strin
 export function CreatePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, payload }: { propertyId: number, payload: ICreatePropertyUnit[] }) =>
+        mutationFn: ({ propertyId, payload }: { propertyId: string, payload: ICreatePropertyUnit[] }) =>
             axiosRequest.post(API_ROUTES.propertyManagement.properties.units.base(propertyId), { units: payload }),
 
         onSuccess: (_, { propertyId }) => {
@@ -72,7 +72,7 @@ export function CreatePropertyUnit() {
 export function UpdatePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId, payload }: { propertyId: number, unitId: number, payload: IUpdatePropertyUnit }) =>
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string, unitId: number, payload: IUpdatePropertyUnit }) =>
             axiosRequest.patch(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId), payload),
 
         onSuccess: (_, { propertyId, unitId }) => {
@@ -86,7 +86,7 @@ export function UpdatePropertyUnit() {
 export function DeletePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId }: { propertyId: number, unitId: number }) =>
+        mutationFn: ({ propertyId, unitId }: { propertyId: string, unitId: number }) =>
             axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId)),
 
         onSuccess: (_, { propertyId, unitId }) => {
@@ -100,7 +100,7 @@ export function DeletePropertyUnit() {
 export function AssignUnitAmenities() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId, payload }: { propertyId: number, unitId: number, payload: IAssignAmenity }) =>
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string, unitId: number, payload: IAssignAmenity }) =>
             axiosRequest.post(API_ROUTES.propertyManagement.properties.units.amenities(propertyId, unitId), payload),
 
         onSuccess: (_, { propertyId, unitId }) => {
@@ -114,7 +114,7 @@ export function AssignUnitAmenities() {
 export function UploadPropertyUnitMedia() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId, payload }: { propertyId: number, unitId: number, payload: FormData }) =>
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string, unitId: number, payload: FormData }) =>
             axiosRequest.post(
                 API_ROUTES.propertyManagement.properties.units.media(propertyId, unitId),
                 payload,

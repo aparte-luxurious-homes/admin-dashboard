@@ -8,9 +8,11 @@ import { GoChecklist, GoVerified } from "react-icons/go";
 import { IoCloudUploadOutline, IoLocationOutline } from "react-icons/io5";
 import { PiBuildingApartment } from "react-icons/pi";
 import { RiBuilding2Line } from "react-icons/ri";
-import { IoStarSharp } from "react-icons/io5";
+import { IoStarSharp, IoBedOutline } from "react-icons/io5";
 import { IoWifi } from "react-icons/io5";
 import { PiBathtub } from "react-icons/pi";
+import { TbToolsKitchen } from "react-icons/tb";
+import { LuUsers } from "react-icons/lu";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import Link from "next/link";
@@ -330,19 +332,47 @@ export default function PropertyDetailsView({
                                                 <div className="w-full grid grid-cols-3 mt-2 p-3 gap-6">
                                                     {
                                                         property?.units.map((el, index) =>
-                                                            <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(property?.id, el.id)} key={index} className="cursor-pointer border border-zinc-300 rounded-lg flex justify-between ease-in-out duration-150 hover:border-primary/80">
-                                                                <div className="w-full px-4 py-3 text-zinc-900">
-                                                                    <p className="font-medium text-lg mt-0 mb-1">
-                                                                        {el.name}
+                                                            <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(property?.id, el.id)} key={index} className="cursor-pointer border border-zinc-300 rounded-lg flex flex-col justify-between ease-in-out duration-150 hover:border-primary/80 bg-white shadow-sm hover:shadow-md h-full">
+                                                                <div className="w-full px-5 py-4 text-zinc-900 flex-1">
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <p className="font-semibold text-xl text-zinc-800 line-clamp-1 mr-2" title={el.name}>
+                                                                            {el.name}
+                                                                        </p>
+                                                                        <p className="font-bold text-lg text-primary whitespace-nowrap">
+                                                                            ₦{Number(el.price_per_night ?? el.pricePerNight ?? 0).toLocaleString()}
+                                                                            <span className="text-xs font-normal text-zinc-500 block text-right">/night</span>
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <p className="font-normal text-sm text-zinc-600 mb-4 line-clamp-2 min-h-[2.5rem]" title={el.description}>
+                                                                        {el.description || <em className="text-zinc-400">No description</em>}
                                                                     </p>
-                                                                    <p className="font-normal text-base mt-0 truncate">
-                                                                        {el.description}
-                                                                    </p>
-                                                                    <p className="font-normal text-sm mt-1 ">
-                                                                        <em>
-                                                                            {el.count}{` ${el.count > 1 ? 'units' : 'unit'}`} available
-                                                                        </em>
-                                                                    </p>
+
+                                                                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-4 text-sm text-zinc-700">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <IoBedOutline className="text-lg text-zinc-500" />
+                                                                            <span>{el.bedroom_count ?? el.bedroomCount ?? 0} Beds</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <PiBathtub className="text-lg text-zinc-500" />
+                                                                            <span>{el.bathroom_count ?? el.bathroomCount ?? 0} Baths</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <TbToolsKitchen className="text-lg text-zinc-500" />
+                                                                            <span>{el.kitchen_count ?? el.kitchenCount ?? 0} Kitchens</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <LuUsers className="text-lg text-zinc-500" />
+                                                                            <span>Max {el.max_guests ?? el.maxGuests ?? 0}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="px-5 py-3 border-t border-zinc-100 bg-zinc-50/50 rounded-b-lg flex justify-between items-center text-sm">
+                                                                    <span className="font-medium text-zinc-600">
+                                                                        {el.count ?? 0} {(el.count ?? 0) > 1 ? 'units' : 'unit'} available
+                                                                    </span>
+                                                                    <span className="text-primary font-medium group-hover:underline">View Details</span>
                                                                 </div>
                                                             </Link>
                                                         )

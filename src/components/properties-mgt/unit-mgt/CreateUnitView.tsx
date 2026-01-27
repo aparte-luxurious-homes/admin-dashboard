@@ -89,7 +89,7 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                 }]
 
                 mutate({
-                    propertyId: Number(propertyId),
+                    propertyId: String(propertyId),
                     payload
                 },
                     {
@@ -108,7 +108,7 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
 
                                     uploadMedia(
                                         {
-                                            propertyId: Number(propertyId),
+                                            propertyId: String(propertyId),
                                             unitId,
                                             payload: formData,
                                         },
