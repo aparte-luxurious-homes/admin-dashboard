@@ -38,14 +38,14 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   // Check authentication on mount
   useEffect(() => {
     const token = Cookies.get("token");
-    
-    console.log('[Dashboard] Auth check:', { 
-      hasToken: !!token, 
-      hasUser: !!user, 
-      userId: user?.id, 
-      isFetching 
+
+    console.log('[Dashboard] Auth check:', {
+      hasToken: !!token,
+      hasUser: !!user,
+      userId: user?.id,
+      isFetching
     });
-    
+
     // If no token and no user in Redux, redirect to login
     if (!token && !user) {
       console.log('[Dashboard] No token and no user - redirecting to login');
@@ -72,18 +72,18 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
           // Re-check token and user after timeout
           const currentToken = Cookies.get("token");
           const currentUser = user;
-          
+
           if (currentToken && !currentUser) {
             console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
             Cookies.remove("token");
             router.replace(PAGE_ROUTES.auth.login);
           }
         }, 2000); // Wait 2 seconds for profile fetch
-        
+
         return () => clearTimeout(timeout);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, isFetching, router]);
 
   // Show loader while checking authentication or fetching user
@@ -130,11 +130,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 fixed lg:absolute w-[85%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%] 
                 bg-primary text-background h-full 
                 transition-transform duration-300 ease-in-out z-40
-                ${
-                  isMobileMenuOpen
-                    ? "translate-x-0"
-                    : "-translate-x-full lg:translate-x-0"
-                }
+                ${isMobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+          }
             `}
       >
         <div className="size-full">
@@ -190,10 +189,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       <div
         className={`
                 lg:ml-[26%] xl:ml-[20%] 2xl:ml-[18%] w-full lg:w-[74%] xl:w-[80%] 2xl:w-[82%] 
-                transition-all duration-300 ease-in-out
+                transition-all duration-300 ease-in-out flex flex-col h-screen overflow-hidden
             `}
       >
-        <div className="w-full h-20 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
+        <div className="w-full h-20 flex-shrink-0 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
           <div className="w-1/2 hidden md:block">
             <AutoBreadcrumb />
           </div>
@@ -223,7 +222,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
-        <div className="md:px-10 px-5 w-full h-[91vh] overflow-y-auto">{children}</div>
+        <div className="md:px-10 px-5 py-8 w-full flex-1 overflow-y-auto">{children}</div>
       </div>
 
       {/* Mobile Menu Overlay */}

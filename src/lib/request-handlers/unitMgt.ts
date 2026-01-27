@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import { IAssignAmenity, ICreatePropertyUnit, IUpdatePropertyUnit } from "@/src/components/properties-mgt/types";
+import { IAssignAmenity, ICreatePropertyUnit, IUpdatePropertyUnit, ICreateAvailabilityPayload } from "@/src/components/properties-mgt/types";
 
 enum PropertyUnitRequestKeys {
     allUnits = "getAllUnitsView",
@@ -10,6 +10,7 @@ enum PropertyUnitRequestKeys {
     assignAmenities = "assigneAmenities",
     createUnit = "createUnit",
     deleteUnit = "deleteUnit",
+    availability = "unitAvailability",
 }
 
 export function GetAllPropertyUnits(page = 1, limit = 10) {
@@ -72,7 +73,7 @@ export function CreatePropertyUnit() {
 export function UpdatePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string, unitId: number, payload: IUpdatePropertyUnit }) =>
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string | number, unitId: string | number, payload: IUpdatePropertyUnit }) =>
             axiosRequest.patch(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId), payload),
 
         onSuccess: (_, { propertyId, unitId }) => {
@@ -86,7 +87,7 @@ export function UpdatePropertyUnit() {
 export function DeletePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId }: { propertyId: string, unitId: number }) =>
+        mutationFn: ({ propertyId, unitId }: { propertyId: string | number, unitId: string | number }) =>
             axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId)),
 
         onSuccess: (_, { propertyId, unitId }) => {
@@ -100,7 +101,7 @@ export function DeletePropertyUnit() {
 export function AssignUnitAmenities() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string, unitId: number, payload: IAssignAmenity }) =>
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string | number, unitId: string | number, payload: IAssignAmenity }) =>
             axiosRequest.post(API_ROUTES.propertyManagement.properties.units.amenities(propertyId, unitId), payload),
 
         onSuccess: (_, { propertyId, unitId }) => {
@@ -114,7 +115,7 @@ export function AssignUnitAmenities() {
 export function UploadPropertyUnitMedia() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string, unitId: number, payload: FormData }) =>
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string | number, unitId: string | number, payload: FormData }) =>
             axiosRequest.post(
                 API_ROUTES.propertyManagement.properties.units.media(propertyId, unitId),
                 payload,
@@ -129,6 +130,38 @@ export function UploadPropertyUnitMedia() {
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.unitMedia, propertyId] });
+        },
+    });
+}
+
+
+export function GetUnitAvailability(propertyId: string | number, unitId: string | number, startDate?: string, endDate?: string) {
+    return useQuery({
+        queryKey: [PropertyUnitRequestKeys.availability, propertyId, unitId, startDate, endDate],
+        queryFn: () => {
+            let url = API_ROUTES.propertyManagement.properties.units.availability(propertyId, unitId);
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            if (params.toString()) url += `?${params.toString()}`;
+            return axiosRequest.get(url);
+        },
+        refetchOnWindowFocus: true,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    });
+}
+
+
+export function CreateUnitAvailability() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string, unitId: string | number, payload: ICreateAvailabilityPayload }) =>
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.units.availability(propertyId, unitId), payload),
+
+        onSuccess: (_, { propertyId, unitId }) => {
+            // Invalidate availability queries
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.availability, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
         },
     });
 }

@@ -1,5 +1,5 @@
 import { IUser } from "@/src/lib/types"
-import { IAvailability, IBooking } from "../booking-mgt/types"
+import { IBooking } from "../booking-mgt/types"
 
 
 export type VerificationBageProps = {
@@ -205,17 +205,17 @@ export interface IUpdateProperty {
 }
 
 export interface IUpdatePropertyUnit {
-    name: string,
-    description: string,
-    pricePerNight: string,
-    cautionFee: string,
-    maxGuests: number,
-    count: number,
-    isWholeProperty: boolean,
-    bedroomCount: number,
-    livingRoomCount: number,
-    kitchenCount: number,
-    bathroomCount: number,
+    name?: string,
+    description?: string,
+    price_per_night?: string,
+    caution_fee?: string,
+    max_guests?: number,
+    count?: number,
+    is_whole_property?: boolean,
+    bedroom_count?: number,
+    living_room_count?: number,
+    kitchen_count?: number,
+    bathroom_count?: number,
     amenities?: number[],
 }
 
@@ -237,4 +237,26 @@ export interface IUploadPropertyMedia {
     media_file: File
     media_type: MediaType
     is_featured: boolean
+}
+
+export interface IAvailability {
+    id: string | number
+    unit_id: string | number
+    date: string
+    count: number
+    is_blackout: boolean
+    pricing?: number | null
+    created_at?: string
+    updated_at?: string
+}
+
+export interface ICreateAvailability {
+    date: string
+    count: number
+    is_blackout: boolean
+    pricing?: number
+}
+
+export interface ICreateAvailabilityPayload {
+    dates: ICreateAvailability[]
 }

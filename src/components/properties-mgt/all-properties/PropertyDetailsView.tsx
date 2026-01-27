@@ -15,6 +15,7 @@ import { TbToolsKitchen } from "react-icons/tb";
 import { LuUsers } from "react-icons/lu";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
+import { HiOutlinePencilAlt } from "react-icons/hi";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import EditProperty from "./EditPropertyView";
@@ -191,334 +192,375 @@ export default function PropertyDetailsView({
                             </div>
                             :
                             <>
-                                <div className="w-full relative">
-                                    <Swiper
-                                        loop={true}
-                                        modules={[Navigation, Autoplay]}
-                                        spaceBetween={10}
-                                        slidesPerView={property?.media.length > 1 ? 2 : 1}
-                                        navigation
-                                        autoplay
-                                        className="rewind"
-                                    >
-                                        {
-                                            property?.media?.map((el: any, index: any) => (
-                                                <SwiperSlide key={index}>
-                                                    <Image
-                                                        alt={`${property?.name}_img_${index}`}
-                                                        src={el.mediaUrl}
-                                                        className="w-full rounded-xl"
-                                                        width={900}
-                                                        height={900}
-                                                    />
-                                                </SwiperSlide>
-                                            ))
-                                        }
-                                    </Swiper>
-                                </div>
-
-                                {
-                                    !editMode ?
-                                        <>
-                                            <div className="w-full mt-10 flex justify-between items-center">
-                                                <div>
-                                                    <div className="flex flex-wrap items-start gap-2">
-                                                        <h3 className="text-3xl font-normal text-zinc-800">
-                                                            {property?.name}
-                                                        </h3>
-                                                        {
-                                                            (property?.isVerified || property?.is_verified) &&
-                                                            <span className="text-sm text-teal-800 border border-teal-800 rounded-full px-2 "><em>Verified {property?.verifications?.[0]?.verificationDate ? `on ${formatDate(property?.verifications?.[0]?.verificationDate)}` : ''}</em></span>
-                                                        }
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                    {/* Main Content Column */}
+                                    <div className="lg:col-span-8 space-y-8">
+                                        {/* Premium Hero Section */}
+                                        <div className="relative rounded-2xl overflow-hidden group shadow-xl bg-zinc-100 min-h-[400px]">
+                                            <Swiper
+                                                loop={true}
+                                                modules={[Navigation, Autoplay]}
+                                                spaceBetween={10}
+                                                slidesPerView={1}
+                                                navigation
+                                                autoplay={{ delay: 5000 }}
+                                                className="h-full w-full"
+                                            >
+                                                {property?.media?.length > 0 ? (
+                                                    property?.media?.map((el: any, index: any) => (
+                                                        <SwiperSlide key={index}>
+                                                            <div className="relative w-full aspect-video">
+                                                                <Image
+                                                                    alt={`${property?.name}_img_${index}`}
+                                                                    src={el.mediaUrl}
+                                                                    fill
+                                                                    className="object-cover"
+                                                                    priority={index === 0}
+                                                                />
+                                                            </div>
+                                                        </SwiperSlide>
+                                                    ))
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center h-[400px] text-zinc-400">
+                                                        <PiBuildingApartment className="text-6xl mb-4" />
+                                                        <p>No images available for this property</p>
                                                     </div>
-                                                    <div className="flex gap-2 items-center mt-2 text-xl text-zinc-700">
-                                                        <IoLocationOutline />
-                                                        <p className="text-base">
-                                                            {property?.address}
+                                                )}
+                                            </Swiper>
+
+                                            {/* Floating Info Overlay */}
+                                            <div className="absolute top-4 left-4 z-10 flex gap-2">
+                                                <span className="px-3 py-1.5 bg-black/60 backdrop-blur-md text-white text-xs font-semibold rounded-full uppercase tracking-wider">
+                                                    {(property?.propertyType || property?.property_type)}
+                                                </span>
+                                                {(property?.isVerified || property?.is_verified) && (
+                                                    <span className="px-3 py-1.5 bg-teal-500/80 backdrop-blur-md text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                                                        <GoVerified className="text-sm" /> Verified
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {!editMode ? (
+                                            <>
+                                                {/* Title and Description */}
+                                                <section className="space-y-4">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <h1 className="text-4xl font-bold text-zinc-900 tracking-tight">
+                                                                {property?.name}
+                                                            </h1>
+                                                            <div className="flex items-center gap-2 text-zinc-500 mt-2">
+                                                                <IoLocationOutline className="text-xl text-primary" />
+                                                                <p className="text-lg font-medium">{property?.address}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="flex items-center gap-1.5 bg-primary/5 px-3 py-2 rounded-xl">
+                                                                <span className="text-xl font-bold text-primary">{averageRating.toFixed(1)}</span>
+                                                                <div className="flex">
+                                                                    {[...Array(5)].map((_, i) => (
+                                                                        <IoStarSharp
+                                                                            key={i}
+                                                                            className={i < Math.round(averageRating) ? 'text-primary' : 'text-zinc-200'}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                                <span className="text-zinc-400 text-sm ml-1">({property?.meta?.total_reviews ?? 0})</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-100">
+                                                        <h3 className="text-lg font-bold text-zinc-800 mb-3 flex items-center gap-2">
+                                                            <Icon icon="solar:document-text-bold-duotone" className="text-xl text-primary" />
+                                                            About this property
+                                                        </h3>
+                                                        <p className="text-zinc-600 leading-relaxed text-lg">
+                                                            {property?.description || "No description provided for this luxury property."}
                                                         </p>
                                                     </div>
-                                                    <div className="flex justify-between items-center gap-6 mt-3 ">
-                                                        {
-                                                            property?.amenities?.map((el, index) =>
-                                                                <div key={index} className="flex items-center  gap-2 ">
-                                                                    {
-                                                                        el.name === 'AIR CONDITIONER'
-                                                                            ? <TbAirConditioning className="text-xl" />
-                                                                            : el.name === 'HOT TUB'
-                                                                                ? <PiBathtub className="text-xl" />
-                                                                                : el.name === 'Wi-FI'
-                                                                                    ? <IoWifi className="text-xl" />
-                                                                                    : el.name === 'PS5'
-                                                                                        ? < IoGameControllerOutline className="text-xl" />
-                                                                                        : el?.name === 'TV'
-                                                                                            ? <FaTv className="text-xl" />
-                                                                                            : <FaSwimmer />
-                                                                    }
-                                                                    <span>{el.name}</span>
+                                                </section>
+
+                                                {/* Amenities Grid */}
+                                                <section className="space-y-4">
+                                                    <h3 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
+                                                        <Icon icon="solar:checklist-bold-duotone" className="text-2xl text-primary" />
+                                                        Luxury Amenities
+                                                    </h3>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                        {property?.amenities?.map((el, index) => (
+                                                            <div key={index} className="flex flex-col items-center justify-center p-4 bg-white border border-zinc-200 rounded-2xl hover:border-primary/50 hover:shadow-md transition-all group">
+                                                                <div className="mb-2 p-3 bg-zinc-50 rounded-xl group-hover:bg-primary/10 transition-colors">
+                                                                    {el.name === 'AIR CONDITIONER' ? <TbAirConditioning className="text-2xl text-zinc-600 group-hover:text-primary" />
+                                                                        : el.name === 'HOT TUB' ? <PiBathtub className="text-2xl text-zinc-600 group-hover:text-primary" />
+                                                                            : el.name === 'Wi-FI' ? <IoWifi className="text-2xl text-zinc-600 group-hover:text-primary" />
+                                                                                : el.name === 'PS5' ? <IoGameControllerOutline className="text-2xl text-zinc-600 group-hover:text-primary" />
+                                                                                    : el?.name === 'TV' ? <FaTv className="text-2xl text-zinc-600 group-hover:text-primary" />
+                                                                                        : <FaSwimmer className="text-2xl text-zinc-600 group-hover:text-primary" />}
                                                                 </div>
-                                                            )
-                                                        }
-                                                    </div>
-                                                    {
-                                                        <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.base(propertyId)}>
-                                                            <em className="text-teal-800 text-sm underline">
-                                                                View verifications
-                                                            </em>
-                                                        </Link>
-                                                    }
-                                                </div>
-                                                <div className="flex flex-col items-center gap-0 pr-3 mt-2">
-                                                    <p className="text-base text-primary font-medium m-0">
-                                                        {averageRating}/5
-                                                    </p>
-                                                    <div className="flex justify-center items-center gap-1 mb-1">
-                                                        {[...Array(5)].map((_, index) => (
-                                                            index < Math.round(averageRating) ?
-                                                                <IoStarSharp className="text-primary text-lg" key={index} /> :
-                                                                <IoIosStarOutline className="text-primary text-lg" key={index} />
+                                                                <span className="text-sm font-semibold text-zinc-700 text-center">{el.name}</span>
+                                                            </div>
                                                         ))}
                                                     </div>
-                                                    <p className="text-base text-primary font-medium mt-2">
-                                                        {property?.meta?.total_reviews ?? 0} Reviews
-                                                    </p>
-                                                </div>
-                                            </div>
+                                                </section>
 
-                                            {
-                                                user?.role === UserRole.ADMIN && (!property?.isVerified && !property?.is_verified || !property?.agent) &&
-                                                <div className="flex justify-between items-center gap-4 mt-7 mb-5 w-full px-4 py-3 border-dashed border-2 border-zinc-400 rounded-lg">
-                                                    <p className="text-xl text-zinc-500">
-                                                        This property has not been verified yet!
-                                                    </p>
-                                                    <div className="flex justify-center items-center gap-5">
-                                                        {
-                                                            property?.agent ?
-                                                                <span onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(property?.id, property?.verifications?.[0]?.id))} className="cursor-pointer pl-2 text-zinc-800"><u>View verification details</u></span>
-                                                                :
-                                                                <button type='button' onClick={() => setShowAgentSelection(!showVerification)} className="cursor-pointer  flex gap-3 items-center border border-primary/90 rounded-lg px-5 py-1.5 text-lg text-white bg-primary/90 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-75 disabled:hover:bg-transparent">
-                                                                    <span>Assign agent</span>
-                                                                    <IoCloudUploadOutline className="text-2xl text-medium" />
-                                                                </button>
-                                                        }
+                                                {/* Units Section */}
+                                                <section className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <h3 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
+                                                            <Icon icon="solar:home-2-bold-duotone" className="text-2xl text-primary" />
+                                                            Available Units
+                                                        </h3>
+                                                        <Link
+                                                            href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.create(property?.id)}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                                                        >
+                                                            <FaPlus className="text-xs" />
+                                                            Add New Unit
+                                                        </Link>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        {property?.units.length > 0 ? (
+                                                            property?.units.map((el, index) => (
+                                                                <Link
+                                                                    href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(property?.id, el.id)}
+                                                                    key={index}
+                                                                    className="group flex flex-col bg-white border border-zinc-200 rounded-2xl overflow-hidden hover:border-primary/50 hover:shadow-xl transition-all h-full"
+                                                                >
+                                                                    <div className="relative h-48 bg-zinc-100 overflow-hidden">
+                                                                        {el.media && el.media.length > 0 ? (
+                                                                            <Image
+                                                                                src={el.media[0].mediaUrl}
+                                                                                alt={el.name}
+                                                                                fill
+                                                                                className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="w-full h-full flex flex-col items-center justify-center text-zinc-300">
+                                                                                <PiBuildingApartment className="text-5xl" />
+                                                                                <span className="text-xs font-semibold mt-2">NO IMAGE</span>
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm">
+                                                                            <p className="text-sm font-bold text-primary">
+                                                                                ₦{Number(el.price_per_night ?? el.pricePerNight ?? 0).toLocaleString()} <span className="text-[10px] font-normal text-zinc-500">/night</span>
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="p-4 flex flex-col flex-1">
+                                                                        <h4 className="font-bold text-xl text-zinc-800 mb-1 group-hover:text-primary transition-colors">{el.name}</h4>
+                                                                        <p className="text-sm text-zinc-500 line-clamp-2 mb-4 flex-1">{el.description || "View this premium property unit."}</p>
+                                                                        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-100">
+                                                                            <div className="flex items-center gap-1.5 text-zinc-600 text-xs font-semibold">
+                                                                                <IoBedOutline className="text-primary" /> {el.bedroom_count ?? el.bedroomCount ?? 0} Beds
+                                                                            </div>
+                                                                            <div className="flex items-center gap-1.5 text-zinc-600 text-xs font-semibold">
+                                                                                <PiBathtub className="text-primary" /> {el.bathroom_count ?? el.bathroomCount ?? 0} Baths
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </Link>
+                                                            ))
+                                                        ) : (
+                                                            <div className="col-span-2 p-12 bg-zinc-50 border border-dashed border-zinc-200 rounded-3xl flex flex-col items-center justify-center text-zinc-400">
+                                                                <Icon icon="solar:box-minimalistic-bold-duotone" className="text-6xl mb-4" />
+                                                                <p className="font-semibold italic">No units created for this property yet.</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </section>
+                                            </>
+                                        ) : (
+                                            <EditProperty
+                                                propertyData={property}
+                                                handleEditMode={setEditMode}
+                                                availableAmenities={fetchedAmenites?.data?.data}
+                                            />
+                                        )}
+                                    </div>
+
+                                    {/* Sidebar Column */}
+                                    <div className="lg:col-span-4 space-y-6">
+                                        {/* Status and Visibility Alert */}
+                                        {user?.role === UserRole.ADMIN && (!property?.isVerified && !property?.is_verified || !property?.agent) && (
+                                            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 shadow-sm">
+                                                <div className="flex items-start gap-4 mb-4">
+                                                    <div className="p-3 bg-amber-100 rounded-2xl">
+                                                        <Icon icon="solar:danger-bold-duotone" className="text-2xl text-amber-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-amber-900 leading-tight">Verification Required</p>
+                                                        <p className="text-sm text-amber-700 mt-1">This property is currently not visible to public users.</p>
                                                     </div>
                                                 </div>
-                                            }
+                                                {property?.agent ? (
+                                                    <button
+                                                        onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(property?.id, property?.verifications?.[0]?.id))}
+                                                        className="w-full py-3 bg-white border border-amber-300 text-amber-800 font-bold rounded-2xl hover:bg-amber-100 transition-all text-sm"
+                                                    >
+                                                        Review Details
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setShowAgentSelection(true)}
+                                                        className="w-full py-3 bg-amber-600 text-white font-bold rounded-2xl hover:bg-amber-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-amber-200"
+                                                    >
+                                                        <IoCloudUploadOutline className="text-xl" />
+                                                        Assign Agent
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
 
-                                            <div className="h-px w-full bg-zinc-400/30 mb-5" />
-
-                                            <p className="text-2xl text-zinc-900 mt-8">
-                                                Property description
-                                            </p>
-
-                                            <p className="text-base text-zinc-700 mt-4">
-                                                {property?.description}
-                                            </p>
-
-                                            <div className="h-px w-full bg-zinc-400/30 my-5" />
-
-                                            <div className="my-10">
-                                                <div className="text-2xl text-zinc-900 flex items-center justify-between">
-                                                    <p>
-                                                        Available units
-                                                    </p>
-                                                    <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.create(property?.id)} className="cursor-pointer text-base text-primary/90 group flex items-center gap-2">
-                                                        Add Units
-                                                        <span>
-                                                            <FaPlus className="text-primary/90" />
-                                                        </span>
-                                                    </Link>
-                                                </div>
-
-                                                <div className="w-full grid grid-cols-3 mt-2 p-3 gap-6">
-                                                    {
-                                                        property?.units.map((el, index) =>
-                                                            <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(property?.id, el.id)} key={index} className="cursor-pointer border border-zinc-300 rounded-lg flex flex-col justify-between ease-in-out duration-150 hover:border-primary/80 bg-white shadow-sm hover:shadow-md h-full">
-                                                                <div className="w-full px-5 py-4 text-zinc-900 flex-1">
-                                                                    <div className="flex justify-between items-start mb-2">
-                                                                        <p className="font-semibold text-xl text-zinc-800 line-clamp-1 mr-2" title={el.name}>
-                                                                            {el.name}
-                                                                        </p>
-                                                                        <p className="font-bold text-lg text-primary whitespace-nowrap">
-                                                                            ₦{Number(el.price_per_night ?? el.pricePerNight ?? 0).toLocaleString()}
-                                                                            <span className="text-xs font-normal text-zinc-500 block text-right">/night</span>
-                                                                        </p>
-                                                                    </div>
-
-                                                                    <p className="font-normal text-sm text-zinc-600 mb-4 line-clamp-2 min-h-[2.5rem]" title={el.description}>
-                                                                        {el.description || <em className="text-zinc-400">No description</em>}
-                                                                    </p>
-
-                                                                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-4 text-sm text-zinc-700">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <IoBedOutline className="text-lg text-zinc-500" />
-                                                                            <span>{el.bedroom_count ?? el.bedroomCount ?? 0} Beds</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <PiBathtub className="text-lg text-zinc-500" />
-                                                                            <span>{el.bathroom_count ?? el.bathroomCount ?? 0} Baths</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <TbToolsKitchen className="text-lg text-zinc-500" />
-                                                                            <span>{el.kitchen_count ?? el.kitchenCount ?? 0} Kitchens</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <LuUsers className="text-lg text-zinc-500" />
-                                                                            <span>Max {el.max_guests ?? el.maxGuests ?? 0}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="px-5 py-3 border-t border-zinc-100 bg-zinc-50/50 rounded-b-lg flex justify-between items-center text-sm">
-                                                                    <span className="font-medium text-zinc-600">
-                                                                        {el.count ?? 0} {(el.count ?? 0) > 1 ? 'units' : 'unit'} available
-                                                                    </span>
-                                                                    <span className="text-primary font-medium group-hover:underline">View Details</span>
-                                                                </div>
-                                                            </Link>
-                                                        )
-                                                    }
-                                                    {
-                                                        property?.units.length === 0 && <em className="text-sm text-zinc-700 mt-4">You haven't created units for this property</em>
-                                                    }
-                                                    {
-                                                        property?.units.length > 5 &&
-                                                        <div className="flex justify-start items-end">
-                                                            <p className="underline hover:text-primary/80 cursor-pointer text-xl">
-                                                                View more
-                                                            </p>
+                                        {/* Quick Stats Card */}
+                                        <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm">
+                                            <h3 className="text-xl font-bold text-zinc-900 mb-6 flex items-center gap-2 border-b border-zinc-100 pb-4">
+                                                <Icon icon="solar:chart-2-bold-duotone" className="text-primary text-2xl" />
+                                                Property Overview
+                                            </h3>
+                                            <div className="space-y-6">
+                                                <div className="flex justify-between items-center group">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-zinc-50 rounded-lg group-hover:bg-primary/10 transition-colors">
+                                                            <GoVerified className="text-zinc-500 group-hover:text-primary" />
                                                         </div>
-                                                    }
+                                                        <span className="text-zinc-600 font-medium">Status</span>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${property?.isVerified || property?.is_verified ? 'bg-teal-100 text-teal-800' : 'bg-red-100 text-red-800'}`}>
+                                                        {property?.isVerified || property?.is_verified ? 'Verified' : 'Unverified'}
+                                                    </span>
                                                 </div>
-
+                                                <div className="flex justify-between items-center group">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-zinc-50 rounded-lg group-hover:bg-primary/10 transition-colors">
+                                                            <PiBuildingApartment className="text-zinc-500 group-hover:text-primary" />
+                                                        </div>
+                                                        <span className="text-zinc-600 font-medium">Inventory</span>
+                                                    </div>
+                                                    <span className="text-zinc-900 font-bold">{availableUnits} Units</span>
+                                                </div>
+                                                <div className="flex justify-between items-center group">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-zinc-50 rounded-lg group-hover:bg-primary/10 transition-colors">
+                                                            <GoChecklist className="text-zinc-500 group-hover:text-primary" />
+                                                        </div>
+                                                        <span className="text-zinc-600 font-medium">Listed on</span>
+                                                    </div>
+                                                    <span className="text-zinc-900 font-bold text-sm">
+                                                        {(property?.isVerified || property?.is_verified) ? (property?.verifications?.[0]?.verificationDate ? formatDate(property?.verifications?.[0]?.verificationDate) : 'Recently') : 'Not Listed'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center group">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-zinc-50 rounded-lg group-hover:bg-primary/10 transition-colors">
+                                                            <RiBuilding2Line className="text-zinc-500 group-hover:text-primary" />
+                                                        </div>
+                                                        <span className="text-zinc-600 font-medium">Type</span>
+                                                    </div>
+                                                    <span className="text-zinc-900 font-bold capitalize">{(property?.propertyType || property?.property_type)?.toLowerCase()}</span>
+                                                </div>
                                             </div>
 
-                                            <div className="h-px w-full bg-zinc-400/30 my-5" />
+                                            <div className="mt-8 pt-6 border-t border-zinc-100 flex flex-col gap-3">
+                                                {!editMode && (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => { setEditMode(true); setQueryParam('edit', 'true'); }}
+                                                            className="flex-1 h-9 bg-zinc-900 text-white font-semibold rounded-lg hover:bg-zinc-800 transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] text-[10px] uppercase tracking-wider"
+                                                        >
+                                                            <HiOutlinePencilAlt className="text-base" />
+                                                            <span>Edit</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={handleDelete}
+                                                            className="flex-1 h-9 bg-red-50 text-red-600 font-semibold rounded-lg hover:bg-red-100 transition-all flex items-center justify-center border border-red-100 gap-2 active:scale-[0.98] text-[10px] uppercase tracking-wider"
+                                                        >
+                                                            <TrashIcon className="w-3" color="#dc2626" />
+                                                            <span>Delete</span>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <Link
+                                                    href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.base(propertyId)}
+                                                    className="w-full py-3 text-center text-zinc-500 text-sm font-medium hover:text-primary transition-colors underline"
+                                                >
+                                                    View complete verification history
+                                                </Link>
+                                            </div>
+                                        </div>
 
-                                            <div className="my-10">
-                                                <p className="text-2xl text-zinc-900">
-                                                    Attached profiles
-                                                </p>
-
-                                                <div className="flex gap-4 items-center mt-4 justify-between w-[90%]">
-
-                                                    {
-                                                        user?.role !== UserRole.OWNER &&
-                                                        <div className="">
-                                                            <p className="font-medium">
-                                                                Owner
-                                                            </p>
-                                                            <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
+                                        {/* Profiles Section */}
+                                        <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm">
+                                            <h3 className="text-xl font-bold text-zinc-900 mb-6 flex items-center gap-2 border-b border-zinc-100 pb-4">
+                                                <Icon icon="solar:users-group-rounded-bold-duotone" className="text-primary text-2xl" />
+                                                Management
+                                            </h3>
+                                            <div className="space-y-8">
+                                                {user?.role !== UserRole.OWNER && (
+                                                    <div className="group">
+                                                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3">Owner</p>
+                                                        <div className="flex gap-4 items-center">
+                                                            <div className="relative">
                                                                 <Image
                                                                     alt="owner-image"
                                                                     src={property?.owner?.profile?.profileImage ?? '/png/sample_profile.png'}
-                                                                    height={50}
-                                                                    width={60}
+                                                                    height={56}
+                                                                    width={56}
+                                                                    className="rounded-full object-cover ring-2 ring-zinc-50 group-hover:ring-primary/20 transition-all"
                                                                 />
-                                                                <div>
-                                                                    <p className="text-lg text-zinc-900 m-0">{property?.owner?.profile?.firstName ? `${property?.owner?.profile?.firstName} ${property?.owner?.profile?.lastName}` : property?.owner?.email || '--/--'}</p>
-                                                                    <p className="text-base text-zinc-500">{`${property?.owner?.email ?? '--/--'}`}</p>
-                                                                </div>
+                                                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 border-2 border-white rounded-full"></div>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-lg font-bold text-zinc-900 truncate">
+                                                                    {property?.owner?.profile?.firstName ? `${property?.owner?.profile?.firstName} ${property?.owner?.profile?.lastName}` : property?.owner?.email || 'Aparte Partner'}
+                                                                </p>
+                                                                <p className="text-sm text-zinc-500 truncate">{property?.owner?.email ?? '--/--'}</p>
                                                             </div>
                                                         </div>
-                                                    }
+                                                    </div>
+                                                )}
 
-                                                    {
-                                                        property?.agent && user?.role !== UserRole.AGENT &&
-                                                        <div className="">
-                                                            <p className="font-medium">
-                                                                Agent
-                                                            </p>
-                                                            <div className="flex gap-4 items-center rounded-full mt-3 pl-5">
+                                                <div className="h-px w-full bg-zinc-50" />
+
+                                                {property?.agent && user?.role !== UserRole.AGENT ? (
+                                                    <div className="group">
+                                                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3">Assigned Agent</p>
+                                                        <div className="flex gap-4 items-center">
+                                                            <div className="relative">
                                                                 <Image
-                                                                    alt="owner-image"
+                                                                    alt="agent-image"
                                                                     src={property?.agent?.profile?.profileImage ?? '/png/sample_profile.png'}
-                                                                    height={50}
-                                                                    width={60}
+                                                                    height={56}
+                                                                    width={56}
+                                                                    className="rounded-full object-cover ring-2 ring-zinc-50 group-hover:ring-primary/20 transition-all"
                                                                 />
-                                                                <div>
-                                                                    <p className="text-lg text-zinc-900 m-0">{property?.agent?.profile?.firstName ? `${property?.agent?.profile?.firstName} ${property?.agent?.profile?.lastName}` : property?.agent?.email || '--/--'}</p>
-                                                                    <p className="text-base text-zinc-500">{`${property?.agent?.email ?? '--/--'}`}</p>
-                                                                </div>
+                                                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 border-2 border-white rounded-full"></div>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-lg font-bold text-zinc-900 truncate">
+                                                                    {property?.agent?.profile?.firstName ? `${property?.agent?.profile?.firstName} ${property?.agent?.profile?.lastName}` : property?.agent?.email || 'Verification Officer'}
+                                                                </p>
+                                                                <p className="text-sm text-zinc-500 truncate">{property?.agent?.email ?? '--/--'}</p>
                                                             </div>
                                                         </div>
-                                                    }
-                                                </div>
+                                                    </div>
+                                                ) : (
+                                                    user?.role === UserRole.ADMIN && !editMode && (
+                                                        <button
+                                                            onClick={() => setShowAgentSelection(true)}
+                                                            className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-500 font-bold hover:border-primary hover:text-primary transition-all bg-zinc-50/50"
+                                                        >
+                                                            <FaPlus className="text-xs" />
+                                                            Assign Verification Agent
+                                                        </button>
+                                                    )
+                                                )}
                                             </div>
-
-                                            <div className="h-px w-full bg-zinc-400/30 my-5" />
-
-                                            <div className="mt-10 w-2/3">
-                                                <p className="text-2xl text-zinc-900">
-                                                    Stats
-                                                </p>
-                                                <div className="mt-6 grid grid-cols-3 grid-flow-row gap-x-3 gap-y-8">
-                                                    <div>
-                                                        <div className="flex gap-3 text-zinc-700">
-                                                            <GoVerified className="text-2xl font-medium" />
-                                                            <span className="text-base">Status</span>
-                                                        </div>
-                                                        {
-                                                            property?.isVerified ?
-                                                                <p className="text-base  text-teal-900 bg-primary/20 rounded-lg px-5 py-1 mt-2 max-w-min">
-                                                                    Verified
-                                                                </p>
-                                                                :
-                                                                <p className="text-base  text-red-600 bg-red-600/15 rounded-lg px-5 py-1 mt-2 max-w-min">
-                                                                    Unverified
-                                                                </p>
-                                                        }
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex gap-3 text-zinc-700">
-                                                            <PiBuildingApartment className="text-2xl " />
-                                                            <span className="text-base">Total units available</span>
-                                                        </div>
-                                                        <p className="text-2xl font-medium text-zinc-800 mt-2">
-                                                            {availableUnits}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex gap-3 text-zinc-700">
-                                                            <GoChecklist className="text-2xl" />
-                                                            <span className="text-base">Listed on</span>
-                                                        </div>
-                                                        <p className="text-xl font-medium text-zinc-800 mt-2">
-                                                            {(property?.isVerified || property?.is_verified) ? (property?.verifications?.[0]?.verificationDate ? formatDate(property?.verifications?.[0]?.verificationDate) : 'Verified') : <em className="text-base text-zinc-400 font-normal">Not listed</em>}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex gap-3 text-zinc-700">
-                                                            <RiBuilding2Line className="text-2xl" />
-                                                            <span className="text-base">Property type</span>
-                                                        </div>
-                                                        <p className="text-2xl font-medium text-zinc-800 mt-2 capitalize">
-                                                            {(property?.propertyType || property?.property_type)?.toLowerCase()}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex justify-end items-center gap-5 mt-3">
-                                                <div
-                                                    onClick={() => {
-                                                        setEditMode(true)
-                                                        setQueryParam('edit', 'true')
-                                                    }}
-                                                    className="cursor-pointer border border-zinc-500 rounded-lg px-5 py-2.5 text-lg text-zinc-600 hover:bg-zinc-600 hover:text-white">
-                                                    Edit
-                                                </div>
-                                                <div onClick={() => handleDelete()} className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700">
-                                                    <TrashIcon className="size-6" color="white" />
-                                                </div>
-                                            </div>
-                                        </>
-                                        :
-                                        <EditProperty
-                                            propertyData={property}
-                                            handleEditMode={setEditMode}
-                                            availableAmenities={fetchedAmenites?.data?.data}
-                                        />
-                                }
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <CustomModal
                                     isOpen={showVerification}

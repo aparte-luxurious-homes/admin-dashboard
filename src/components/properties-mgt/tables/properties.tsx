@@ -154,13 +154,14 @@ export default function PropertiesTable() {
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                    <th className="px-6 py-3 text-left">Property ID</th>
                                     <th className="px-6 py-3 text-left">Property Name</th>
                                     <th className="px-6 py-3 text-left">Type</th>
                                     <th className="px-6 py-3 text-left">Owner</th>
+                                    <th className="px-6 py-3 text-center">Units</th>
+                                    <th className="px-6 py-3 text-center">Whole Property</th>
+                                    <th className="px-6 py-3 text-left">Pricing</th>
                                     <th className="px-6 py-3 text-center">Status</th>
                                     <th className="px-6 py-3 text-left">Agent</th>
-                                    <th className="px-6 py-3 text-left">Created</th>
                                     <th className="px-6 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -171,10 +172,7 @@ export default function PropertiesTable() {
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
                                         onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
                                     >
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            APRT25-{String(property?.id ?? '').substring(0, 8)}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">
                                             {property?.name ?? '--/--'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">
@@ -183,19 +181,38 @@ export default function PropertiesTable() {
                                         <td className="px-6 py-4 text-sm text-gray-700">
                                             {property?.owner?.email || `${property?.owner?.profile?.firstName ?? ''} ${property?.owner?.profile?.lastName ?? ''}` || '--/--'}
                                         </td>
+                                        <td className="px-6 py-4 text-sm text-center text-gray-900 font-medium">
+                                            {property?.units?.length || 0}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {property?.units?.some((u: any) => u.is_whole_property || u.isWholeProperty) ? (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    Yes
+                                                </span>
+                                            ) : (
+                                                <span className="text-sm text-gray-500">No</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            {property?.units && property.units.length > 0 ? (() => {
+                                                const prices = property.units.map((u: any) => parseFloat(String(u.price_per_night || u.pricePerNight || 0)));
+                                                const minPrice = Math.min(...prices);
+                                                const maxPrice = Math.max(...prices);
+                                                return minPrice === maxPrice
+                                                    ? `₦${minPrice.toLocaleString()}/night`
+                                                    : `₦${minPrice.toLocaleString()} - ₦${maxPrice.toLocaleString()}/night`;
+                                            })() : '--/--'}
+                                        </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${property?.is_verified
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-red-100 text-red-800'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-red-100 text-red-800'
                                                 }`}>
                                                 {property?.is_verified ? 'Verified' : 'Unverified'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">
                                             {property?.agent?.email || property?.assigned_agent || '--/--'}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
-                                            {property?.created_at ? formatDate(property?.created_at) : '--/--'}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end items-center" onClick={(event) => handleDotsClick(event, index)}>
