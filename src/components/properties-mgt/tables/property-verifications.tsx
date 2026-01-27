@@ -41,7 +41,7 @@ export default function PropertyVerificationsTable({
             label: "View",
             Icon: <LuEye />,
             onClick: () => {
-                const pId = verifications[selectedRow!]?.propertyId ?? verifications[selectedRow!]?.property_id;
+                const pId = verifications[selectedRow!]?.propertyId ?? verifications[selectedRow!]?.property_id ?? verifications[selectedRow!]?.property?.id;
                 router.push(
                     PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(pId, verifications[selectedRow!]?.id)
                 )
@@ -52,7 +52,7 @@ export default function PropertyVerificationsTable({
             label: "Edit",
             Icon: <HiOutlinePencilAlt />,
             onClick: () => {
-                const pId = verifications[selectedRow!]?.propertyId ?? verifications[selectedRow!]?.property_id;
+                const pId = verifications[selectedRow!]?.propertyId ?? verifications[selectedRow!]?.property_id ?? verifications[selectedRow!]?.property?.id;
                 router.push(
                     `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(pId, verifications[selectedRow!]?.id)}?edit=true`
                 )
@@ -192,7 +192,7 @@ export default function PropertyVerificationsTable({
                                                     key={index}
                                                     className="hover:bg-background/50 cursor-pointer"
                                                     onClick={() => {
-                                                        const pId = verification?.propertyId ?? verification?.property_id;
+                                                        const pId = verification?.propertyId ?? verification?.property_id ?? verification?.property?.id;
                                                         router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(pId, verification?.id));
                                                     }}
                                                 >
@@ -205,7 +205,7 @@ export default function PropertyVerificationsTable({
                                                     `}
                                                 /> */}
                                                         <p className="pt-1 pl-5">
-                                                            {verification?.propertyId ?? verification?.property_id ? `APRT25-${verification?.propertyId ?? verification?.property_id}` : '--/--'}
+                                                            {verification?.propertyId ?? verification?.property_id ?? verification?.property?.id ? `APRT25-${verification?.propertyId ?? verification?.property_id ?? verification?.property?.id}` : '--/--'}
                                                         </p>
                                                     </td>
                                                     <td className="border-b border-b-gray-200">
