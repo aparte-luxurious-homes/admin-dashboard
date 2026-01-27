@@ -10,6 +10,7 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import Image from "next/image";
 import { PriceTagIcon, TrashIcon } from "../../icons";
 import CustomDropzone from "../../ui/CustomDropzone";
+import CustomCheckbox from "../../ui/customCheckbox";
 import { IoBedOutline, IoCloudUploadOutline } from "react-icons/io5";
 import { UserRole } from "@/src/lib/enums";
 import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
@@ -305,6 +306,14 @@ export default function EditUnitView({
                                     </div>
                                 </div>
                             ))}
+                        </div>
+
+                        <div className="pt-4 mt-2 border-t border-zinc-100">
+                            <CustomCheckbox
+                                label="This unit represents the whole property"
+                                checked={formik.values.isWholeProperty}
+                                onChange={(val: boolean) => formik.setFieldValue("isWholeProperty", val)}
+                            />
                         </div>
                     </div>
 

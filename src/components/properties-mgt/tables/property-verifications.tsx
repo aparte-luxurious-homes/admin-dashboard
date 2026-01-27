@@ -41,8 +41,9 @@ export default function PropertyVerificationsTable({
             label: "View",
             Icon: <LuEye />,
             onClick: () => {
+                const pId = verifications[selectedRow!]?.propertyId ?? verifications[selectedRow!]?.property_id;
                 router.push(
-                    PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(verifications[selectedRow!]?.propertyId, verifications[selectedRow!]?.id)
+                    PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(pId, verifications[selectedRow!]?.id)
                 )
                 setSelectedRow(null)
             },
@@ -51,8 +52,9 @@ export default function PropertyVerificationsTable({
             label: "Edit",
             Icon: <HiOutlinePencilAlt />,
             onClick: () => {
+                const pId = verifications[selectedRow!]?.propertyId ?? verifications[selectedRow!]?.property_id;
                 router.push(
-                    `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(verifications[selectedRow!]?.propertyId, verifications[selectedRow!]?.id)}?edit=true`
+                    `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(pId, verifications[selectedRow!]?.id)}?edit=true`
                 )
                 setSelectedRow(null)
             },
@@ -179,8 +181,7 @@ export default function PropertyVerificationsTable({
                                                     Status
                                                 </p>
                                             </th>
-                                            <th className="bg-[#0280901A] h-10">{''}</th>
-                                            <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl  w-3">{' '}</th>
+                                            <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-[13px]">
@@ -190,7 +191,10 @@ export default function PropertyVerificationsTable({
                                                 <tr
                                                     key={index}
                                                     className="hover:bg-background/50 cursor-pointer"
-                                                    onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(verification?.propertyId, verification?.id))}
+                                                    onClick={() => {
+                                                        const pId = verification?.propertyId ?? verification?.property_id;
+                                                        router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(pId, verification?.id));
+                                                    }}
                                                 >
                                                     <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
                                                         {/* <input 
@@ -201,7 +205,7 @@ export default function PropertyVerificationsTable({
                                                     `}
                                                 /> */}
                                                         <p className="pt-1 pl-5">
-                                                            {verification?.propertyId}
+                                                            {verification?.propertyId ?? verification?.property_id ? `APRT25-${verification?.propertyId ?? verification?.property_id}` : '--/--'}
                                                         </p>
                                                     </td>
                                                     <td className="border-b border-b-gray-200">
@@ -211,19 +215,19 @@ export default function PropertyVerificationsTable({
                                                     </td>
                                                     <td className="border-b border-b-gray-200">
                                                         <p className="pt-1 truncate max-w-[13rem]">
-                                                            {verification?.feedback}
+                                                            {verification?.feedback || '--/--'}
                                                         </p>
                                                     </td>
                                                     <td className="border-b border-b-gray-200">
                                                         <p className="pt-1 font-medium">
-                                                            {`${verification?.agent?.profile.firstName ?? '--/--'} ${verification?.agent?.profile.lastName ?? '--/--'}`}
+                                                            {`${verification?.agent?.profile?.firstName ?? verification?.agent?.firstName ?? '--/--'} ${verification?.agent?.profile?.lastName ?? verification?.agent?.lastName ?? '--/--'}`}
                                                         </p>
                                                     </td>
                                                     <td className="border-b border-b-gray-200">
-                                                        {verification?.verificationDate ? formatDate(verification?.createdAt) : '--/--'}
+                                                        {verification?.createdAt || verification?.created_at ? formatDate(verification?.createdAt ?? verification?.created_at!) : '--/--'}
                                                     </td>
                                                     <td className="border-b border-b-gray-200">
-                                                        {verification?.verificationDate ? formatDate(verification?.verificationDate) : '--/--'}
+                                                        {verification?.verificationDate || verification?.verification_date ? formatDate(verification?.verificationDate ?? verification?.verification_date!) : '--/--'}
                                                     </td>
                                                     <td className="border-b border-b-gray-200">
                                                         <div className="w-2/3 m-auto text-center">

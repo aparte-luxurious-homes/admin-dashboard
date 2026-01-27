@@ -114,7 +114,7 @@ export default function PropertyDetailsView({
     const handleAgentAssignment = (agentId: string) => {
         assignAgent(
             {
-                payload: { agent_id: Number(agentId) }
+                payload: { agent_id: agentId }
             },
             {
                 onSuccess: () => {
@@ -397,7 +397,14 @@ export default function PropertyDetailsView({
                                                 </div>
                                                 {property?.agent ? (
                                                     <button
-                                                        onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(property?.id, property?.verifications?.[0]?.id))}
+                                                        onClick={() => {
+                                                            const verificationId = property?.verifications?.[0]?.id;
+                                                            if (verificationId) {
+                                                                router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.details(property?.id, verificationId));
+                                                            } else {
+                                                                router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.base(propertyId));
+                                                            }
+                                                        }}
                                                         className="w-full py-3 bg-white border border-amber-300 text-amber-800 font-bold rounded-2xl hover:bg-amber-100 transition-all text-sm"
                                                     >
                                                         Review Details
@@ -641,13 +648,13 @@ export default function PropertyDetailsView({
                                                                 width={60}
                                                             />
                                                             <div>
-                                                                <p className="text-lg text-zinc-900 m-0">{selectedAgent?.profile?.firstName ? `${selectedAgent?.profile?.firstName} ${selectedAgent?.profile?.lastName}` : selectedAgent?.email || '--/--'}</p>
+                                                                <p className="text-lg text-zinc-900 m-0">{selectedAgent?.firstName ? `${selectedAgent?.firstName} ${selectedAgent?.lastName}` : selectedAgent?.email || '--/--'}</p>
                                                                 <p className="text-base text-zinc-500">{`${selectedAgent?.email}`}</p>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <p className="text-base text-zinc-800 font-normal my-5">
-                                                        You're about to assign {`${selectedAgent?.profile?.firstName ?? '--/--'} ${selectedAgent?.profile?.lastName ?? '--/--'}`} to this property.
+                                                        You're about to assign <strong>{selectedAgent?.firstName ? `${selectedAgent?.firstName} ${selectedAgent?.lastName}` : (selectedAgent?.email || 'this agent')}</strong> to this property.
                                                         <br />
                                                         <strong>Are you sure?</strong>
                                                     </p>

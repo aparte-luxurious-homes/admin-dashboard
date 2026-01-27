@@ -2,7 +2,6 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
-import { FaMapLocationDot } from "react-icons/fa6";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
 import { IAmenity, ICreateProperty, MediaType, PropertyType } from "../types";
@@ -10,7 +9,7 @@ import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
 import { ALL_COUNTRIES } from "@/src/data/countries";
-import { FaPlus } from "react-icons/fa6";
+import { FaPlus, FaMapLocationDot, FaArrowLeftLong } from "react-icons/fa6";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
 import { CreateAmenity, CreateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
@@ -23,6 +22,8 @@ import { UserRole } from "@/src/lib/enums";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
+import { Icon } from "@iconify/react";
+import Link from "next/link";
 
 
 export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<boolean>> }) {
@@ -47,9 +48,9 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
                             width: 'max-content'
                         }
                     }),
-                    show(false);
+                        show(false);
                 },
-                onError: () => 
+                onError: () =>
                     toast.error('Something went wrong', {
                         duration: 6000,
                         style: {
@@ -89,7 +90,7 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
 }
 
 
-export default function CreatePropertyView({}) {
+export default function CreatePropertyView({ }) {
     const { user } = useAuth();
     const router = useRouter();
     const { mutate, isPending } = CreateProperty();
@@ -120,11 +121,11 @@ export default function CreatePropertyView({}) {
         setAvailableAmenities(fetchedAmenites?.data?.data ?? fixedAmenities)
     }, [fetchedAmenites])
 
-    const formik = 
+    const formik =
         useFormik({
             initialValues: {
                 name: "",
-                address:  "",
+                address: "",
                 property_type: PropertyType.DUPLEX,
                 country: "Nigeria",
                 state: "Lagos",
@@ -139,234 +140,320 @@ export default function CreatePropertyView({}) {
                 amenityIds: [],
             },
 
-        onSubmit: (values) => {
-            const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
+            onSubmit: (values) => {
+                const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
 
-            const payload: ICreateProperty = {
-                ...values,
-                amenities: sortedAmenities,
-            }
-            
-            mutate({
-                payload
-            },
-            {
-                onSuccess: (response) => {
-                    const propertyId = response?.data?.data?.id 
-                    const formData = new FormData();
+                const payload: ICreateProperty = {
+                    ...values,
+                    amenities: sortedAmenities,
+                }
 
-                    if (propertyId) {
-
-                        if (uploadedMedia.length > 0) {  
-                            uploadedMedia?.forEach(file => {
-                                formData.append("media_file", file);
-                            });
-                        
-                            formData.append("media_type", MediaType.IMAGE);
-                            formData.append("is_featured", "true");
-
-                            uploadMedia(
-                                {
-                                    propertyId,
-                                    payload: formData,
-                                },
-                                {
-                                    onError: (error: any) => 
-                                        toast.error(error.status === 422 ? 'Invalid media file format' : 'Media upload failed', {
-                                            duration: 6000,
-                                            style: {
-                                                maxWidth: '500px',
-                                                width: 'max-content'
-                                            }
-                                        }),
-                                },
-                            );
-                        }
-
-                        toast.success('Property created successfully', {
-                            duration: 6000,
-                            style: {
-                                maxWidth: '500px',
-                                width: 'max-content'
-                            }
-                        }),
-
-                        router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId))
-                    }
+                mutate({
+                    payload
                 },
-                onError: (error: any) => 
-                    toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Something went wrong', {
-                        duration: 6000,
-                        style: {
-                            maxWidth: '500px',
-                            width: 'max-content'
-                        }
-                    }),
-            })         
-        },
-    });
+                    {
+                        onSuccess: (response) => {
+                            const propertyId = response?.data?.data?.id
+                            const formData = new FormData();
+
+                            if (propertyId) {
+
+                                if (uploadedMedia.length > 0) {
+                                    uploadedMedia?.forEach(file => {
+                                        formData.append("media_file", file);
+                                    });
+
+                                    formData.append("media_type", MediaType.IMAGE);
+                                    formData.append("is_featured", "true");
+
+                                    uploadMedia(
+                                        {
+                                            propertyId,
+                                            payload: formData,
+                                        },
+                                        {
+                                            onError: (error: any) =>
+                                                toast.error(error.status === 422 ? 'Invalid media file format' : 'Media upload failed', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+                                        },
+                                    );
+                                }
+
+                                toast.success('Property created successfully', {
+                                    duration: 6000,
+                                    style: {
+                                        maxWidth: '500px',
+                                        width: 'max-content'
+                                    }
+                                }),
+
+                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId))
+                            }
+                        },
+                        onError: (error: any) =>
+                            toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Something went wrong', {
+                                duration: 6000,
+                                style: {
+                                    maxWidth: '500px',
+                                    width: 'max-content'
+                                }
+                            }),
+                    })
+            },
+        });
 
 
     return (
-        <div className="p-10 w-full">
-            <div className="w-full border border-zinc-500/20 bg-white rounded-xl p-10 min-h-[50vh]">
-                <>
-                    <div className="my-5">
-                        <p className="text-[2rem]">
-                            Create new property
-                        </p>
+        <div className="relative">
+            {/* Header section refined */}
+            <div className="flex items-center justify-between mb-8">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Link href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.base} className="text-xs font-bold text-primary hover:underline flex items-center gap-1 transition-all">
+                            <FaArrowLeftLong className="text-[10px]" /> Back to Properties
+                        </Link>
                     </div>
+                    <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">Create New Property</h2>
+                    <p className="text-sm font-medium text-zinc-500">Define the core identity and location of your new property listing</p>
+                </div>
+                <div className="p-2.5 bg-primary/10 rounded-xl">
+                    <Icon icon="solar:home-add-bold-duotone" className="text-2xl text-primary" />
+                </div>
+            </div>
 
-                    {
-                        showAmenityForm &&
-                        <CustomModal
-                            title="Create Amenity"
-                            onClose={() => setShowAmenityForm(false)}
-                            isOpen={showAmenityForm}
-                        >
-                            <CreateAmenityForm show={setShowAmenityForm} />
-                        </CustomModal>
-                    }
+            {
+                showAmenityForm &&
+                <CustomModal
+                    title="Create Amenity"
+                    onClose={() => setShowAmenityForm(false)}
+                    isOpen={showAmenityForm}
+                >
+                    <CreateAmenityForm show={setShowAmenityForm} />
+                </CustomModal>
+            }
 
-                    <form className="my-6">
-                        <div className="grid grid-cols-3 grid-flow-row gap-x-8 gap-y-5">
-                            <div className="col-span-2 relative">
-                                <label htmlFor="name" className="text-lg zinc-900 font-medium">Name</label>
-                                <div className="relative mt-2">
-                                    <FaRegBuilding className="absolute top-[35%] left-3 text-zinc-400"/>
+            <form
+                id="create-property-form"
+                className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pb-20"
+                onSubmit={(e) => { e.preventDefault(); formik.handleSubmit(); }}
+            >
+                {/* Main Form Content - Left Side */}
+                <div className="lg:col-span-8 space-y-8">
+                    {/* Basic Information Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                            <Icon icon="solar:info-circle-bold-duotone" className="text-xl text-primary" />
+                            Basic Information
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="md:col-span-1 space-y-2">
+                                <label htmlFor="name" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Property Name</label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                        <FaRegBuilding />
+                                    </div>
                                     <input
                                         id="name"
-                                        type="text" 
-                                        placeholder="Magodo Crystal Springs Hotel and Resort"
+                                        type="text"
+                                        placeholder="e.g. Aparte Luxury Suites"
                                         value={formik.values.name}
                                         onChange={formik.handleChange}
-                                        className="w-full border border-zinc-400 rounded-lg pl-10 pr-3 py-5 h-14 text-lg"
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
                                     />
                                 </div>
                             </div>
-                            <div className="col-span-1 relative">
-                                <label htmlFor="type" className="text-lg zinc-900 font-medium">Type</label>
+                            <div className="md:col-span-1 space-y-2">
+                                <label htmlFor="property_type" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Property Type</label>
                                 <CustomDropdown
                                     selected={formik.values.property_type}
                                     handleSelection={(val) => formik.setFieldValue("property_type", val)}
                                     options={Object.values(PropertyType)}
                                 />
                             </div>
-                            <div className="col-span-3 flex gap-5 justify-between items-end">
-                                <div className="relative w-full">
-                                    <label htmlFor="address" className="text-lg zinc-900 font-medium">Address</label>
-                                    <div className="reative mt-2">
-                                        <SlLocationPin className="absolute top-[57%] left-3 text-zinc-500/90 text-xl"/>
-                                        <input
-                                            id="address"
-                                            type="text" 
-                                            placeholder="Magodo Crystal Springs Hotel and Resort"
-                                            value={formik.values.address}
-                                            onChange={formik.handleChange}
-                                            className="w-full border border-zinc-400 rounded-lg pl-10 pr-3 py-5 h-14 text-lg"
-                                        />
+                            <div className="md:col-span-2 space-y-2">
+                                <label htmlFor="description" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Description</label>
+                                <div className="relative">
+                                    <textarea
+                                        id="description"
+                                        maxLength={300}
+                                        rows={4}
+                                        placeholder="Provide a compelling description of this property..."
+                                        value={formik.values.description}
+                                        onChange={formik.handleChange}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl p-4 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none"
+                                    />
+                                    <div className="absolute bottom-3 right-3 text-[10px] font-bold text-zinc-400">
+                                        {formik.values.description.length}/300
                                     </div>
                                 </div>
-                                <div className="cursor-pointer bg-primary/90 rounded-md size-14 flex justify-center items-center hover:bg-primary ease-in-out duration-200">
-                                    <FaMapLocationDot className="text-zinc-100 text-xl"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Location Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                            <Icon icon="solar:map-point-bold-duotone" className="text-xl text-primary" />
+                            Location & Address
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-3 space-y-2">
+                                <label htmlFor="address" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Physical Address</label>
+                                <div className="flex gap-3">
+                                    <div className="relative group flex-1">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                            <SlLocationPin className="text-lg" />
+                                        </div>
+                                        <input
+                                            id="address"
+                                            type="text"
+                                            placeholder="Street Number, Building Name, Area"
+                                            value={formik.values.address}
+                                            onChange={formik.handleChange}
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                    >
+                                        <FaMapLocationDot className="text-xl" />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="col-span-1 relative">
-                                <label htmlFor="country" className="text-lg zinc-900 font-medium">Country</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Country</label>
                                 <CustomFilterDropdown
                                     placeholder={`E.g. ${formik.values.country}`}
-                                    options={Object.keys(ALL_COUNTRIES)} 
+                                    options={Object.keys(ALL_COUNTRIES)}
                                     handleSelection={(val) => formik.setFieldValue("country", val)}
                                     selected={formik.values.country}
                                 />
                             </div>
-                            <div className="col-span-1 relative">
-                                <label htmlFor="state" className="text-lg zinc-900 font-medium">State</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">State</label>
                                 <CustomFilterDropdown
-                                    placeholder={`E.g. ${formik.values.state}`} 
-                                    options={Object.keys(ALL_COUNTRIES[formik.values.country])} 
+                                    placeholder={`E.g. Lagos`}
+                                    options={Object.keys(ALL_COUNTRIES[formik.values.country])}
                                     handleSelection={(val) => formik.setFieldValue("state", val)}
                                     selected={Object.keys(ALL_COUNTRIES[formik.values.country])?.includes(formik.values.state) ? formik.values.state : ''}
                                 />
                             </div>
-                            <div className="col-span-1 relative">
-                                <label htmlFor="city" className="text-lg zinc-900 font-medium">City</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">City</label>
                                 <CustomFilterDropdown
-                                    placeholder={`E.g. ${formik.values.city}`} 
-                                    options={ALL_COUNTRIES[formik.values.country][formik.values.state]} 
+                                    placeholder={`E.g. Ikeja`}
+                                    options={ALL_COUNTRIES[formik.values.country][formik.values.state]}
                                     handleSelection={(val) => formik.setFieldValue("city", val)}
                                     selected={ALL_COUNTRIES[formik.values.country][formik.values.state]?.includes(formik.values.city) ? formik.values.city : ''}
                                 />
                             </div>
-                            <div className="col-span-3 ">
-                                <label htmlFor="description" className="text-lg zinc-900 font-medium">Description</label>
-                                <div className="relative mt-2">
-                                    <span className="absolute bottom-3 right-3 text-base font-normal">{`${formik.values.description.length}/300`}</span>
-                                    <textarea
-                                        id="description"
-                                        maxLength={300}
-                                        rows={6}
-                                        placeholder={'Unique attractive details about your property...'}
-                                        value={formik.values.description}
-                                        onChange={formik.handleChange}
-                                        className="size-full border border-zinc-400 rounded-lg p-3 text-lg"
-                                    />
-                                </div>
-                            </div>
-                            <div className="col-span-2 relative mt-3">
-                                <label htmlFor="units" className="text-lg zinc-900 font-medium">Verifications</label>
-                                <div className="w-full flex justify-between gap-10 items-center">
-                                    <div className="flex flex-col gap-5 justify-between items-left w-fit mt-4">
-                                        <CustomCheckbox 
-                                            label="Pets allowed"
-                                            checked={formik.values.is_pet_allowed}
-                                            onChange={(val) => formik.setFieldValue("is_pet_allowed", val)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="col-span-3 relative flex flex-col items-start mt-5">
-                                <label htmlFor="amenities" className="text-lg zinc-900 font-medium mb-4">Amenities</label>
-                                <MultipleChoice
-                                    options={availableAmenities?.map(am => am.name)}
-                                    selected={formik.values.amenities}
-                                    onChange={(val) => {
-                                        formik.setFieldValue("amenities", [...val]); // Ensure a new array reference
-                                    }} 
-                                />
+                        </div>
+                    </div>
 
-                                {
-                                    user?.role === UserRole.ADMIN &&
-                                    <div onClick={() => setShowAmenityForm(true)} className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer">
-                                        <FaPlus />
-                                        <span>
-                                            New Amenity
-                                        </span>
-                                    </div>
-                                }
+                    {/* Verifications & Amenities Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                                <Icon icon="solar:star-bold-duotone" className="text-xl text-primary" />
+                                Amenities & Features
+                            </h3>
+                            {user?.role === UserRole.ADMIN && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAmenityForm(true)}
+                                    className="text-[10px] font-bold text-primary hover:text-primary/70 transition-colors flex items-center gap-1"
+                                >
+                                    <FaPlus className="text-[8px]" /> ADD CUSTOM AMENITY
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="bg-zinc-50/50 border border-zinc-100 rounded-2xl p-6 space-y-6">
+                            <MultipleChoice
+                                options={availableAmenities?.map(am => am.name)}
+                                selected={formik.values.amenities}
+                                onChange={(val) => {
+                                    formik.setFieldValue("amenities", [...val]);
+                                }}
+                            />
+
+                            <div className="pt-6 border-t border-zinc-100">
+                                <CustomCheckbox
+                                    label="Pets are allowed in this property"
+                                    checked={formik.values.is_pet_allowed}
+                                    onChange={(val) => formik.setFieldValue("is_pet_allowed", val)}
+                                />
                             </div>
-                            
-                            <div className="col-span-3 relative flex flex-col items-start mt-10 mb-16">
-                                <label htmlFor="Media" className="text-lg zinc-900 font-medium mb-4">Upload images of property</label>
-                                <div className="w-full mt-4 mx-auto">
-                                    <CustomDropzone 
-                                        onDrop={setUploadedMedia}
-                                        multiple
-                                        previewsRef={uploadRef}              
-                                    />
+                        </div>
+                    </div>
+
+                    {/* Media Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                            <Icon icon="solar:camera-bold-duotone" className="text-xl text-primary" />
+                            Property Gallery
+                        </h3>
+                        <div className="w-full mx-auto">
+                            <CustomDropzone
+                                onDrop={setUploadedMedia}
+                                multiple
+                                previewsRef={uploadRef}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sidebar Sticky Content - Right Side */}
+                <div className="lg:col-span-4 space-y-8 sticky top-8">
+                    {/* Info Card */}
+                    <div className="bg-zinc-900 rounded-[2.5rem] p-8 text-white shadow-xl shadow-zinc-900/20 relative overflow-hidden group border border-zinc-800">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 relative z-10">
+                            <Icon icon="solar:shield-check-bold-duotone" className="text-xl text-primary" />
+                            Listing Notice
+                        </h3>
+                        <p className="text-sm text-zinc-400 leading-relaxed mb-6 relative z-10">
+                            Listing a new property will require a verification process by an assigned agent before it becomes publicly available to guests.
+                        </p>
+                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5 relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                                    <Icon icon="solar:bell-bing-bold-duotone" className="text-xl" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Verification Status</p>
+                                    <p className="text-xs font-bold text-white">Pending Creation</p>
                                 </div>
                             </div>
                         </div>
-                    </form>
-
-                    <div className="flex justify-end items-center gap-5 mt-3">
-                        <button type="button" onClick={() => formik.handleSubmit()} disabled={ isPending }  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
-                            {isPending ? <Spinner /> : 'Save'}
-                        </button>
                     </div>
-                </>
-            </div>
+
+                    {/* Static Action Buttons Card */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                        <button
+                            form="create-property-form"
+                            type="submit"
+                            disabled={isPending}
+                            className="w-full h-14 bg-primary text-white text-sm font-bold rounded-2xl hover:bg-primary/90 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {isPending ? <Spinner /> : <><Icon icon="solar:check-read-bold" className="text-lg" /> CREATE PROPERTY</>}
+                        </button>
+
+                        <Link
+                            href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.base}
+                            className="w-full h-12 border border-zinc-200 text-zinc-600 text-[11px] font-bold rounded-xl hover:bg-zinc-50 transition-all uppercase tracking-wider flex items-center justify-center"
+                        >
+                            CANCEL
+                        </Link>
+                    </div>
+                </div>
+            </form>
         </div>
     );
 }

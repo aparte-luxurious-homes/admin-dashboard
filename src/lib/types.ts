@@ -67,6 +67,10 @@ export interface IUser {
   id: number;
   email: string;
   phone?: string | null;
+  firstName: string;
+  first_name?: string;
+  lastName?: string;
+  last_name?: string;
   isActive: boolean;
   is_active?: boolean;
   isVerified: boolean;

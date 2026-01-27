@@ -2,7 +2,7 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
-import { FaMapLocationDot } from "react-icons/fa6";
+import { FaMapLocationDot, FaPlus, FaArrowLeftLong } from "react-icons/fa6";
 import { TrashIcon } from "../../icons";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
@@ -11,7 +11,6 @@ import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
 import { ALL_COUNTRIES } from "@/src/data/countries";
-import { FaPlus } from "react-icons/fa6";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import Image from "next/image";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
@@ -28,33 +27,34 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
 import { usePathname } from 'next/navigation';
+import { Icon } from "@iconify/react";
 
 
-export default function EditPropertyView({  
+export default function EditPropertyView({
     handleEditMode,
     propertyData,
     availableAmenities,
-}: { 
-    handleEditMode: Dispatch<SetStateAction<boolean>>, 
+}: {
+    handleEditMode: Dispatch<SetStateAction<boolean>>,
     propertyData: IProperty,
     availableAmenities: IAmenity[],
 }) {
     const dispatch = useDispatch();
     const pathname = usePathname();
     const { mutate, isPending } = UpdateProperty()
-    const  { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
-    const { 
-        mutate: uploadMedia, 
-        data: uploadData, 
+    const { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
+    const {
+        mutate: uploadMedia,
+        data: uploadData,
         isPending: uploadedMediaPending
     } = UploadPropertyMedia();
-    const { mutate: featureProperty   } = FeatureProperty(); 
+    const { mutate: featureProperty } = FeatureProperty();
 
     const { user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media??[])
+    const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media ?? [])
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
@@ -73,7 +73,7 @@ export default function EditPropertyView({
         return sortedAmenities;
     }
 
-    const formik = 
+    const formik =
         useFormik({
             initialValues: {
                 name: propertyData?.name ?? "",
@@ -111,36 +111,36 @@ export default function EditPropertyView({
                     propertyId: propertyData.id,
                     payload: updatePayload,
                 },
-                {
-                    onSuccess: () => {
-                        toast.success('Property update successfull', {
-                            duration: 6000,
-                            style: {
-                                maxWidth: '500px',
-                                width: 'max-content'
-                            }
-                        }),
-                        removeParam('edit')
-                        handleEditMode(false);
-                    },
-                    onError: () => 
-                        toast.error('Something went wrong, Please try again later', {
-                            duration: 6000,
-                            style: {
-                                maxWidth: '500px',
-                                width: 'max-content'
-                            }
-                        }),
-                })            
+                    {
+                        onSuccess: () => {
+                            toast.success('Property update successfull', {
+                                duration: 6000,
+                                style: {
+                                    maxWidth: '500px',
+                                    width: 'max-content'
+                                }
+                            }),
+                                removeParam('edit')
+                            handleEditMode(false);
+                        },
+                        onError: () =>
+                            toast.error('Something went wrong, Please try again later', {
+                                duration: 6000,
+                                style: {
+                                    maxWidth: '500px',
+                                    width: 'max-content'
+                                }
+                            }),
+                    })
             },
         }
-    );
+        );
 
-      
+
     const removeParam = (param: string) => {
         const params = new URLSearchParams(searchParams.toString());
         params.delete(param); // Remove the specified query param
-    
+
         const newQueryString = params.toString();
         router.push(newQueryString ? `?${newQueryString}` : pathname, { scroll: false });
     };
@@ -179,7 +179,7 @@ export default function EditPropertyView({
                                         width: 'max-content'
                                     }
                                 });
-                                if (response.status === 204) 
+                                if (response.status === 204)
                                     router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
                             }
                         }
@@ -199,249 +199,40 @@ export default function EditPropertyView({
             }
         }
     }, [uploadData]);
-    
 
 
 
-    return(
-        <>
-            <div className="mt-10">
-                <p className="text-[2rem]">
-                    Edit details of this property
-                </p>
-            </div>
 
-            <div className="h-px w-full bg-zinc-400/30 my-5" />
-
-            <form className="my-6">
-                <div className="grid grid-cols-3 grid-flow-row gap-x-8 gap-y-5">
-                    <div className="col-span-2 relative">
-                        <label htmlFor="name" className="text-lg zinc-900 font-medium">Name</label>
-                        <div className="relative mt-2">
-                            <FaRegBuilding className="absolute top-[35%] left-3 text-zinc-400"/>
-                            <input
-                                id="name"
-                                type="text" 
-                                placeholder="Magodo Crystal Springs Hotel and Resort"
-                                value={formik.values.name}
-                                onChange={formik.handleChange}
-                                className="w-full border border-zinc-400 rounded-lg pl-10 pr-3 py-5 h-14 text-lg"
-                            />
-                        </div>
+    return (
+        <div className="relative">
+            {/* Header section refined */}
+            <div className="flex items-center justify-between mb-8">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <button
+                            onClick={() => { removeParam('edit'); handleEditMode(false); }}
+                            className="text-xs font-bold text-primary hover:underline flex items-center gap-1 transition-all"
+                        >
+                            <FaArrowLeftLong className="text-[10px]" /> Back to Details
+                        </button>
                     </div>
-                    <div className="col-span-1 relative">
-                        <label htmlFor="type" className="text-lg zinc-900 font-medium">Type</label>
-                        <CustomDropdown
-                            selected={formik.values.type}
-                            handleSelection={(val) => formik.setFieldValue("type", val)}
-                            options={Object.values(PropertyType)}
-                        />
-                    </div>
-                    <div className="col-span-3 flex gap-5 justify-between items-end">
-                        <div className="relative w-full">
-                            <label htmlFor="address" className="text-lg zinc-900 font-medium">Address</label>
-                            <div className="reative mt-2">
-                                <SlLocationPin className="absolute top-[57%] left-3 text-zinc-500/90 text-xl"/>
-                                <input
-                                    id="address"
-                                    type="text" 
-                                    placeholder="Magodo Crystal Springs Hotel and Resort"
-                                    value={formik.values.address}
-                                    onChange={formik.handleChange}
-                                    className="w-full border border-zinc-400 rounded-lg pl-10 pr-3 py-5 h-14 text-lg"
-                                />
-                            </div>
-                        </div>
-                        <div className="cursor-pointer bg-primary/90 rounded-md size-14 flex justify-center items-center hover:bg-primary ease-in-out duration-200">
-                            <FaMapLocationDot className="text-zinc-100 text-xl"/>
-                        </div>
-                    </div>
-                    <div className="col-span-1 relative">
-                        <label htmlFor="country" className="text-lg zinc-900 font-medium">Country</label>
-                        <CustomFilterDropdown
-                            placeholder={`E.g. ${formik.values.country}`}
-                            options={Object.keys(ALL_COUNTRIES)} 
-                            handleSelection={(val) => formik.setFieldValue("country", val)}
-                            selected={formik.values.country}
-                        />
-                    </div>
-                    <div className="col-span-1 relative">
-                        <label htmlFor="state" className="text-lg zinc-900 font-medium">State</label>
-                        <CustomFilterDropdown
-                            placeholder={`E.g. ${formik.values.state}`} 
-                            options={Object.keys(ALL_COUNTRIES[formik.values.country])} 
-                            handleSelection={(val) => formik.setFieldValue("state", val)}
-                            selected={Object.keys(ALL_COUNTRIES[formik.values.country])?.includes(formik.values.state) ? formik.values.state : ''}
-                        />
-                    </div>
-                    <div className="col-span-1 relative">
-                        <label htmlFor="city" className="text-lg zinc-900 font-medium">City</label>
-                        <CustomFilterDropdown
-                            placeholder={`E.g. ${formik.values.city}`} 
-                            options={ALL_COUNTRIES[formik.values.country][formik.values.state]} 
-                            handleSelection={(val) => formik.setFieldValue("city", val)}
-                            selected={ALL_COUNTRIES[formik.values.country][formik.values.state]?.includes(formik.values.city) ? formik.values.city : ''}
-                        />
-                    </div>
-                    <div className="col-span-3 ">
-                        <label htmlFor="description" className="text-lg zinc-900 font-medium">Description</label>
-                        <div className="relative mt-2">
-                            <span className="absolute bottom-3 right-3 text-base font-normal">{`${formik.values.description.length}/300`}</span>
-                            <textarea
-                                id="description"
-                                maxLength={300}
-                                rows={6}
-                                placeholder={'Unique attractive details about your property...'}
-                                value={formik.values.description}
-                                onChange={formik.handleChange}
-                                className="size-full border border-zinc-400 rounded-lg p-3 text-lg"
-                            />
-                        </div>
-                    </div>
-                    <div className="col-span-2 relative mt-3">
-                        <label htmlFor="units" className="text-lg zinc-900 font-medium">Verifications</label>
-                        <div className="w-full flex justify-between gap-10 items-center">
-                            <div className="flex flex-col gap-5 justify-between items-left w-fit mt-4">
-                                {
-                                    user?.role === UserRole.ADMIN && propertyData?.verifications[0]?.status === PropertyVerificationStatus.VERIFIED &&
-                                    <CustomCheckbox 
-                                        label="Is verified"
-                                        checked={formik.values.isVerified}
-                                        onChange={(val) => formik.setFieldValue("isVerified", val)}
-                                    />
-                                }
-                                {
-                                    user?.role === UserRole.ADMIN &&
-                                    <CustomCheckbox 
-                                        label="Is Featured"
-                                        checked={formik.values.isFeatured}
-                                        onChange={(val) => formik.setFieldValue("isFeatured", val)}
-                                    />
-                                }
-                                <CustomCheckbox 
-                                    label="Pets allowed"
-                                    checked={formik.values.petsAllowed}
-                                    onChange={(val) => formik.setFieldValue("petsAllowed", val)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="col-span-3 relative flex flex-col items-start mt-5">
-                        <label htmlFor="amenities" className="text-lg zinc-900 font-medium mb-4">Amenities</label>
-                        <MultipleChoice
-                            options={availableAmenities?.map(am => am.name)}
-                            selected={formik.values.amenityNames}
-                            onChange={(val) => {
-                                formik.setFieldValue("amenityNames", [...val]); // Ensure a new array reference
-                            }} 
-                        />
-                        <div onClick={() => setShowAmenityForm(true)} className="flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-10 cursor-pointer">
-                            <FaPlus />
-                            <span>
-                                New Amenity
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div className="col-span-3 relative flex flex-col items-start mt-10 mb-16">
-                        <label htmlFor="Media" className="text-lg zinc-900 font-medium mb-4">Media</label>
-                        <div className="flex flex-wrap gap-3">
-                            {
-                                media.map((el, index) => 
-                                    <div
-                                        key={index}
-                                        className="relative rounded-md overflow-hidden group"
-                                    >
-                                        <Image
-                                            src={el.mediaUrl}
-                                            alt={`${name}_img_${el.id}`}
-                                            width={200}
-                                            height={200}
-                                        />
-
-                                        <div
-                                            onClick={() => handleDeleteImage(el.id)}
-                                            className="cursor-pointer absolute inset-0 bg-red-600 bg-opacity-80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                                        >
-                                            <span className="text-white text-lg font-semibold pl-1">
-                                                <TrashIcon className="size-8" color="white" />
-                                            </span>
-                                        </div>
-                                    </div>
-                                )
-                            }
-                        </div>
-
-                        <div className="w-full mt-14 mx-auto">
-                            <CustomDropzone 
-                                onDrop={setUploadedMedia}
-                                multiple
-                                previewsRef={uploadRef}              
-                            />
-                        </div>
-
-                        {
-                            uploadedMedia.length > 0 &&
-                            <button 
-                                onClick={(e) => {
-                                    e.preventDefault()
-                                
-                                    const formData = new FormData();
-                                
-                                    uploadedMedia?.forEach(file => {
-                                        formData.append("media_file", file);
-                                    });
-                                
-                                    formData.append("media_type", MediaType.IMAGE);
-                                    formData.append("is_featured", "true");
-
-                                    uploadMedia(
-                                        {
-                                            propertyId: propertyData.id, 
-                                            payload: formData,
-                                        },
-                                        {
-                                            onSuccess: () => 
-                                                toast.success('Property media uploaded successfully', {
-                                                    duration: 6000,
-                                                    style: {
-                                                        maxWidth: '500px',
-                                                        width: 'max-content'
-                                                    }
-                                                }),
-                                            onError: (error: any) => 
-                                                toast.error(error.status === 422 ? 'Media file(s) include invalid format' : 'Media upload failed', {
-                                                    duration: 6000,
-                                                    style: {
-                                                        maxWidth: '500px',
-                                                        width: 'max-content'
-                                                    }
-                                                }),
-
-                                        }
-                                    );
-
-                                } }
-                                className={`flex justify-center gap-4 items-center px-5 py-3 bg-primary/90 hover:bg-primary text-white rounded-lg mt-5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75`}
-                                disabled={uploadedMediaPending}
-                            >
-                                {
-                                    uploadedMediaPending ? 
-                                    <Spinner /> 
-                                    : 
-                                    <>
-                                        <IoCloudUploadOutline className="text-2xl text-medium"/>
-                                        <span>
-                                            Upload
-                                        </span>
-                                    </>
-                                }
-                            </button>
-                        }
+                    <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">Edit {propertyData.name}</h2>
+                    <p className="text-sm font-medium text-zinc-500">Update the core identity and configuration of this property</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleDelete}
+                        disabled={deleteIsPending}
+                        className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors"
+                        title="Delete Property"
+                    >
+                        {deleteIsPending ? <Spinner /> : <Icon icon="solar:trash-bin-trash-bold-duotone" className="text-2xl" />}
+                    </button>
+                    <div className="p-2.5 bg-primary/10 rounded-xl">
+                        <Icon icon="solar:pen-new-square-bold-duotone" className="text-2xl text-primary" />
                     </div>
                 </div>
-            </form>
+            </div>
 
             {
                 showAmenityForm &&
@@ -454,17 +245,322 @@ export default function EditPropertyView({
                 </CustomModal>
             }
 
-            <div className="flex justify-end items-center gap-5 mt-3">
-                <button onClick={() => formik.handleSubmit()} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
-                    {isPending ? <Spinner /> : 'Save'}
-                </button>
-                <button onClick={() =>{removeParam('edit'); handleEditMode(false); }} disabled={isPending || uploadedMediaPending}  className="cursor-pointer rounded-lg px-5 py-2.5 text-lg font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:opacity-75 disabled:cursor-not-allowed">
-                    Cancel
-                </button>
-                <button onClick={handleDelete} disabled={isPending || uploadedMediaPending}  className="cursor-pointer border border-red-500 rounded-md px-3 py-2.5 text-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-75 disabled:cursor-not-allowed">
-                    <TrashIcon className="size-6" color="white" />
-                </button>
-            </div>
-        </>
+            <form
+                id="edit-property-form"
+                className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pb-20"
+                onSubmit={(e) => { e.preventDefault(); formik.handleSubmit(); }}
+            >
+                {/* Main Form Content - Left Side */}
+                <div className="lg:col-span-8 space-y-8">
+                    {/* Basic Information Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                            <Icon icon="solar:info-circle-bold-duotone" className="text-xl text-primary" />
+                            Basic Information
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="md:col-span-1 space-y-2">
+                                <label htmlFor="name" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Property Name</label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                        <FaRegBuilding />
+                                    </div>
+                                    <input
+                                        id="name"
+                                        type="text"
+                                        placeholder="e.g. Aparte Luxury Suites"
+                                        value={formik.values.name}
+                                        onChange={formik.handleChange}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                                    />
+                                </div>
+                            </div>
+                            <div className="md:col-span-1 space-y-2">
+                                <label htmlFor="type" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Property Type</label>
+                                <CustomDropdown
+                                    selected={formik.values.type}
+                                    handleSelection={(val) => formik.setFieldValue("type", val)}
+                                    options={Object.values(PropertyType)}
+                                />
+                            </div>
+                            <div className="md:col-span-2 space-y-2">
+                                <label htmlFor="description" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Description</label>
+                                <div className="relative">
+                                    <textarea
+                                        id="description"
+                                        maxLength={300}
+                                        rows={4}
+                                        placeholder="Provide a compelling description of this property..."
+                                        value={formik.values.description}
+                                        onChange={formik.handleChange}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl p-4 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none"
+                                    />
+                                    <div className="absolute bottom-3 right-3 text-[10px] font-bold text-zinc-400">
+                                        {formik.values.description.length}/300
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Location Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                            <Icon icon="solar:map-point-bold-duotone" className="text-xl text-primary" />
+                            Location & Address
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-3 space-y-2">
+                                <label htmlFor="address" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Physical Address</label>
+                                <div className="flex gap-3">
+                                    <div className="relative group flex-1">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                            <SlLocationPin className="text-lg" />
+                                        </div>
+                                        <input
+                                            id="address"
+                                            type="text"
+                                            placeholder="Street Number, Building Name, Area"
+                                            value={formik.values.address}
+                                            onChange={formik.handleChange}
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                    >
+                                        <FaMapLocationDot className="text-xl" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Country</label>
+                                <CustomFilterDropdown
+                                    placeholder={`E.g. ${formik.values.country}`}
+                                    options={Object.keys(ALL_COUNTRIES)}
+                                    handleSelection={(val) => formik.setFieldValue("country", val)}
+                                    selected={formik.values.country}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">State</label>
+                                <CustomFilterDropdown
+                                    placeholder={`E.g. Lagos`}
+                                    options={Object.keys(ALL_COUNTRIES[formik.values.country])}
+                                    handleSelection={(val) => formik.setFieldValue("state", val)}
+                                    selected={Object.keys(ALL_COUNTRIES[formik.values.country])?.includes(formik.values.state) ? formik.values.state : ''}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">City</label>
+                                <CustomFilterDropdown
+                                    placeholder={`E.g. Ikeja`}
+                                    options={ALL_COUNTRIES[formik.values.country][formik.values.state]}
+                                    handleSelection={(val) => formik.setFieldValue("city", val)}
+                                    selected={ALL_COUNTRIES[formik.values.country][formik.values.state]?.includes(formik.values.city) ? formik.values.city : ''}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Verifications & Amenities Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                                <Icon icon="solar:star-bold-duotone" className="text-xl text-primary" />
+                                Amenities & Features
+                            </h3>
+                            {user?.role === UserRole.ADMIN && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAmenityForm(true)}
+                                    className="text-[10px] font-bold text-primary hover:text-primary/70 transition-colors flex items-center gap-1"
+                                >
+                                    <FaPlus className="text-[8px]" /> ADD CUSTOM AMENITY
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="bg-zinc-50/50 border border-zinc-100 rounded-2xl p-6 space-y-6">
+                            <MultipleChoice
+                                options={availableAmenities?.map(am => am.name)}
+                                selected={formik.values.amenityNames}
+                                onChange={(val) => {
+                                    formik.setFieldValue("amenityNames", [...val]);
+                                }}
+                            />
+
+                            <div className="pt-6 border-t border-zinc-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <CustomCheckbox
+                                    label="Pets are allowed"
+                                    checked={formik.values.petsAllowed}
+                                    onChange={(val) => formik.setFieldValue("petsAllowed", val)}
+                                />
+                                {user?.role === UserRole.ADMIN && (
+                                    <CustomCheckbox
+                                        label="Is Featured"
+                                        checked={formik.values.isFeatured}
+                                        onChange={(val) => formik.setFieldValue("isFeatured", val)}
+                                    />
+                                )}
+                                {user?.role === UserRole.ADMIN && propertyData?.verifications?.[0]?.status === PropertyVerificationStatus.VERIFIED && (
+                                    <CustomCheckbox
+                                        label="Is verified"
+                                        checked={formik.values.isVerified}
+                                        onChange={(val) => formik.setFieldValue("isVerified", val)}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Media Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                            <Icon icon="solar:camera-bold-duotone" className="text-xl text-primary" />
+                            Property Gallery
+                        </h3>
+
+                        {/* Existing Media */}
+                        {media.length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
+                                {media.map((item) => (
+                                    <div key={item.id} className="relative group aspect-square rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200 shadow-sm">
+                                        <Image
+                                            src={item.mediaUrl}
+                                            alt="Property"
+                                            fill
+                                            className="object-cover transition-transform group-hover:scale-105"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteImage(item.id)}
+                                            className="absolute top-2 right-2 p-1.5 bg-red-500/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-sm"
+                                        >
+                                            <Icon icon="solar:trash-bin-trash-bold" className="text-lg" />
+                                        </button>
+                                        {item.isFeatured && (
+                                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-primary text-[8px] font-bold text-white rounded shadow-sm">FEATURED</div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="w-full mx-auto">
+                            <CustomDropzone
+                                onDrop={setUploadedMedia}
+                                multiple
+                                previewsRef={uploadRef}
+                            />
+                        </div>
+
+                        {
+                            uploadedMedia.length > 0 &&
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault()
+
+                                    const formData = new FormData();
+
+                                    uploadedMedia?.forEach(file => {
+                                        formData.append("media_file", file);
+                                    });
+
+                                    formData.append("media_type", MediaType.IMAGE);
+                                    formData.append("is_featured", "true");
+
+                                    uploadMedia(
+                                        {
+                                            propertyId: propertyData.id,
+                                            payload: formData,
+                                        },
+                                        {
+                                            onSuccess: () =>
+                                                toast.success('Property media uploaded successfully', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+                                            onError: (error: any) =>
+                                                toast.error(error.status === 422 ? 'Media file(s) include invalid format' : 'Media upload failed', {
+                                                    duration: 6000,
+                                                    style: {
+                                                        maxWidth: '500px',
+                                                        width: 'max-content'
+                                                    }
+                                                }),
+
+                                        }
+                                    );
+
+                                }}
+                                className={`flex justify-center gap-4 items-center px-6 py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-2xl mt-6 transition-all shadow-lg shadow-zinc-900/10 disabled:cursor-not-allowed disabled:opacity-75 tracking-widest`}
+                                disabled={uploadedMediaPending}
+                            >
+                                {
+                                    uploadedMediaPending ?
+                                        <Spinner color="white" />
+                                        :
+                                        <>
+                                            <Icon icon="solar:upload-bold-duotone" className="text-xl" />
+                                            <span>UPLOAD NEW MEDIA</span>
+                                        </>
+                                }
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                {/* Sidebar Sticky Content - Right Side */}
+                <div className="lg:col-span-4 space-y-8 sticky top-8">
+                    {/* Management Notice Card */}
+                    <div className="bg-zinc-900 rounded-[2.5rem] p-8 text-white shadow-xl shadow-zinc-900/20 relative overflow-hidden group border border-zinc-800">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 relative z-10">
+                            <Icon icon="solar:settings-bold-duotone" className="text-xl text-primary" />
+                            Management
+                        </h3>
+                        <p className="text-sm text-zinc-400 leading-relaxed mb-6 relative z-10">
+                            Keep your property information accurate. Changes here will be reflected immediately across the platform.
+                        </p>
+                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5 relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                                    <Icon icon="solar:info-circle-bold-duotone" className="text-xl" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Ownership</p>
+                                    <p className="text-xs font-bold text-white">{propertyData.owner?.profile?.firstName} {propertyData.owner?.profile?.lastName}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                        <button
+                            form="edit-property-form"
+                            type="submit"
+                            disabled={isPending || uploadedMediaPending}
+                            className="w-full h-14 bg-primary text-white text-sm font-bold rounded-2xl hover:bg-primary/90 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {isPending ? <Spinner /> : <><Icon icon="solar:check-read-bold" className="text-lg" /> SAVE CHANGES</>}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { removeParam('edit'); handleEditMode(false); }}
+                            className="w-full h-12 border border-zinc-200 text-zinc-600 text-[11px] font-bold rounded-xl hover:bg-zinc-50 transition-all uppercase tracking-wider flex items-center justify-center"
+                        >
+                            CANCEL
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
     );
 }

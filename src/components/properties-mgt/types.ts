@@ -47,11 +47,15 @@ export interface IAmenity {
 export interface IPropertyVerification {
     id: number
     propertyId: number
+    property_id?: number
     agentId: number
+    agent_id?: number
     status: PropertyVerificationStatus
     feedback: string
     verificationDate?: string
+    verification_date?: string
     createdAt: string
+    created_at?: string
     agent: IUser
     property: IProperty
 }
@@ -184,7 +188,7 @@ export interface ICreateProperty {
 }
 
 export interface IAssignProperty {
-    agent_id: number
+    agent_id: string
 }
 
 export interface IUpdateProperty {
