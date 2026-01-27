@@ -68,10 +68,10 @@ export function GetAllVerifications(page: number = 1, limit: number = 10, _searc
     });
 }
 
-export function GetPropertyVerification(verificationId: string | number, role: UserRole) {
+export function GetPropertyVerification(verificationId: string | number) {
     return useQuery({
         queryKey: [PropertyRequestKeys.getPropertyVerification, verificationId],
-        queryFn: () => axiosRequest.get(`${API_ROUTES.propertyManagement.properties.verify(verificationId)}?role=${role}`),
+        queryFn: () => axiosRequest.get(API_ROUTES.verifications.details(verificationId)),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
         refetchInterval: 10000 * 60 * 5,
