@@ -26,7 +26,7 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'admin-dashboard'
+      - '${_SERVICE_NAME}'
       - '--image'
       - 'europe-west1-docker.pkg.dev/$PROJECT_ID/aparte/admin-dashboard:$SHORT_SHA'
       - '--region'
@@ -51,6 +51,7 @@ images:
   - 'europe-west1-docker.pkg.dev/$PROJECT_ID/aparte/admin-dashboard'
 
 substitutions:
+  _SERVICE_NAME: 'admin-dashboard'
   _NEXT_PUBLIC_NODE_ENV: 'production'
   _NEXT_PUBLIC_BASE_API_URL: 'https://api.aparteng.com/api/v1'
 

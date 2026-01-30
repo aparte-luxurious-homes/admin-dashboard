@@ -24,6 +24,7 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
+import axios from "axios";
 
 
 export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<boolean>> }) {
@@ -207,6 +208,38 @@ export default function CreatePropertyView({ }) {
             },
         });
 
+    const handleGeocode = async () => {
+        const { address, city, state, country } = formik.values;
+        if (!address) {
+            toast.error("Please enter a physical address first");
+            return;
+        }
+        const fullAddress = `${address}, ${city}, ${state}, ${country}`;
+        const toastId = toast.loading("Fetching coordinates...");
+
+        try {
+            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+            const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+                params: {
+                    address: fullAddress,
+                    key: apiKey
+                }
+            });
+
+            if (response.data.status === 'OK' && response.data.results.length > 0) {
+                const { lat, lng } = response.data.results[0].geometry.location;
+                formik.setFieldValue('latitude', lat);
+                formik.setFieldValue('longitude', lng);
+                toast.success(`Coordinates found: ${lat}, ${lng}`, { id: toastId });
+            } else {
+                toast.error("Coordinates not found for this address. Please enter manually.", { id: toastId });
+            }
+        } catch (error) {
+            console.error("Geocoding failed:", error);
+            toast.error("Failed to fetch coordinates. Please enter manually.", { id: toastId });
+        }
+    };
+
 
     return (
         <div className="relative">
@@ -320,10 +353,38 @@ export default function CreatePropertyView({ }) {
                                     </div>
                                     <button
                                         type="button"
+                                        onClick={handleGeocode}
                                         className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                        title="Auto-detect coordinates from address"
                                     >
                                         <FaMapLocationDot className="text-xl" />
                                     </button>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:col-span-3 gap-6">
+                                <div className="space-y-2">
+                                    <label htmlFor="latitude" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Latitude</label>
+                                    <input
+                                        id="latitude"
+                                        type="number"
+                                        step="any"
+                                        placeholder="0.0000"
+                                        value={formik.values.latitude}
+                                        onChange={formik.handleChange}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label htmlFor="longitude" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Longitude</label>
+                                    <input
+                                        id="longitude"
+                                        type="number"
+                                        step="any"
+                                        placeholder="0.0000"
+                                        value={formik.values.longitude}
+                                        onChange={formik.handleChange}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-2">
