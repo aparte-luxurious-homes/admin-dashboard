@@ -9,9 +9,9 @@ const Payments = () => {
       title="Payment History"
       description="Track and monitor all incoming payments and transactions"
       basePath="/transactions/payments"
-      apiUrl={API_ROUTES.payments.base}
+      apiUrl={API_ROUTES.transactions.base}
       filters={{
-        tx_type: "PAYMENT"
+        tx_type: "PAYMENT,BOOKING"
       }}
     />
   );

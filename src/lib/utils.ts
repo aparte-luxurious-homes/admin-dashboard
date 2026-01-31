@@ -7,20 +7,24 @@ import { jsPDF } from "jspdf";
 
 
 export function cn(...inputs: ClassValue[]) {
- return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs))
 }
 
-export const formatMoney = (amount: string|number): string => {
-    return numeral(amount).format('₦0,0.00');
+export const formatMoney = (amount: string | number, currency: string = "NGN"): string => {
+  const symbol = currency === "USD" ? "$" : currency === "GHS" ? "GH₵" : "₦";
+  return `${symbol}${numeral(amount).format("0,0.00")}`;
 };
 
 export function areArraysEqual(arr1: any[], arr2: any[]): boolean {
-    if (arr1.length !== arr2.length) return false; // Different lengths → not equal
-    return arr1.sort().toString() === arr2.sort().toString();
+  if (arr1.length !== arr2.length) return false; // Different lengths → not equal
+  return arr1.sort().toString() === arr2.sort().toString();
 }
 
 export function formatDate(dateString: string): string {
+  if (!dateString) return "--/--";
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "--/--";
+
   const day = date.getDate();
   const month = date.toLocaleString('en-US', { month: 'short' });
   const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 > 3 || [11, 12, 13].includes(day)) ? 0 : day % 10];
@@ -31,9 +35,9 @@ export function formatDate(dateString: string): string {
 
 export function formatDateToYYYYMMDD(dateString: string): string {
   const date = new Date(dateString);
-  
+
   if (isNaN(date.getTime())) {
-      throw new Error("Invalid date format");
+    throw new Error("Invalid date format");
   }
 
   const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based
