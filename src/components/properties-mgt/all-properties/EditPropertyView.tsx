@@ -147,7 +147,21 @@ export default function EditPropertyView({
                 },
                     {
                         onSuccess: () => {
-                            toast.success('Property update successfull', {
+                            if (uploadedMedia.length > 0) {
+                                const formData = new FormData();
+                                uploadedMedia.forEach(file => {
+                                    formData.append("media_file", file);
+                                });
+                                formData.append("media_type", MediaType.IMAGE);
+                                formData.append("is_featured", "true");
+
+                                uploadMedia({
+                                    propertyId: propertyData.id,
+                                    payload: formData,
+                                });
+                            }
+
+                            toast.success('Property update successful', {
                                 duration: 6000,
                                 style: {
                                     maxWidth: '500px',
