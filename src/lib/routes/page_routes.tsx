@@ -32,32 +32,32 @@ export const PAGE_ROUTES = {
             bookings: {
                 base: '/booking-management/bookings',
                 create: '/booking-management/bookings/create',
-                details: (id: number) => `/booking-management/bookings/${id}`,
+                details: (id: string) => `/booking-management/bookings/${id}`,
             },
         },
         propertyManagement: {
             allProperties: {
                 base: '/property-management/all-properties',
                 create: '/property-management/create',
-                details: (propertyId: number) => `/property-management/all-properties/${propertyId}`,
+                details: (propertyId: number | string) => `/property-management/all-properties/${propertyId}`,
                 verifications: {
-                    base: (propertyId: number) => `/property-management/all-properties/${propertyId}/verifications`,
-                    details: (propertyId: number, verificationId: number) => `/property-management/all-properties/${propertyId}/verifications/${verificationId}`
+                    base: (propertyId: number | string) => `/property-management/all-properties/${propertyId}/verifications`,
+                    details: (propertyId: number | string, verificationId: number | string) => `/property-management/all-properties/${propertyId}/verifications/${verificationId}`
                 },
                 units: {
-                    base: (propertyId: number) => `/property-management/all-properties/${propertyId}/units`,
-                    create: (propertyId: number) => `/property-management/all-properties/${propertyId}/create-unit`,
-                    details: (propertyId: number, unitId: number) => `/property-management/all-properties/${propertyId}/units/${unitId}`,
-                    bookings: (propertyId: number, unitId: number) => `/property-management/all-properties/${propertyId}/units/${unitId}/bookings`,
+                    base: (propertyId: number | string) => `/property-management/all-properties/${propertyId}/units`,
+                    create: (propertyId: number | string) => `/property-management/all-properties/${propertyId}/create-unit`,
+                    details: (propertyId: number | string, unitId: number | string) => `/property-management/all-properties/${propertyId}/units/${unitId}`,
+                    bookings: (propertyId: number | string, unitId: number | string) => `/property-management/all-properties/${propertyId}/units/${unitId}/bookings`,
                 },
             },
             assignAgents: {
                 base: '/property-management/assign-agents',
-                details: (id: number) => `/property-management/assign-agents/${id}`,
+                details: (id: number | string) => `/property-management/assign-agents/${id}`,
             },
             manageVerifications: {
                 base: '/property-management/manage-verifications',
-                details: (verificationId: number) => `/property-management/manage-verifications/${verificationId}`,
+                details: (verificationId: number | string) => `/property-management/manage-verifications/${verificationId}`,
             },
         },
         transactions: {

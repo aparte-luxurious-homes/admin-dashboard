@@ -6,19 +6,57 @@ import { BASE_API_URL } from "./routes/endpoints";
 import { PAGE_ROUTES } from "./routes/page_routes";
 
 const axiosRequest = axios.create({
-  baseURL: BASE_API_URL || "https://v1-api-9mba.onrender.com/api/v1",
+  baseURL: BASE_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 5000,
+  timeout: 30000, // Increased to 30 seconds
   timeoutErrorMessage: 'Request timed out'
 });
 
-// 🔹 Attach token from cookies to every request
+// 🔹 Forceful normalization and token attachment
 axiosRequest.interceptors.request.use((config) => {
+  // 1. Ensure baseURL always has the correct prefix
+  if (config.baseURL && !config.baseURL.includes("/api/v")) {
+    const base = config.baseURL.replace(/\/+$/, "");
+    config.baseURL = base.endsWith("/api") ? `${base}/v1` : `${base}/api/v1`;
+  }
+
+  // 2. Ensure baseURL has NO trailing slash for consistent combination
+  config.baseURL = config.baseURL?.replace(/\/+$/, "");
+
+  // 3. Ensure url has NO leading slash to prevent Axios's path replacement behavior
+  if (config.url?.startsWith("/")) {
+    config.url = config.url.substring(1);
+  }
+
+  if (process.env.NEXT_PUBLIC_NODE_ENV !== 'production') {
+    console.log(`[Axios] Final Request URL: ${config.baseURL}/${config.url}`);
+  }
+
   const token = Cookies.get("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Strip empty query params like role=& is_verified=
+  if (typeof config.url === 'string') {
+    // Remove occurrences of ?role=& or &role=& (same for is_verified)
+    config.url = config.url
+      .replace(/([?&])(role|is_verified)=(&|$)/g, (match, sep, key, tail) => {
+        // If another param follows, keep the separator; otherwise, drop the key completely
+        return tail === '&' ? sep : '';
+      })
+      // Clean up any trailing ? or &
+      .replace(/[?&]$/, '');
+  }
+  // Also sanitize params object if used
+  if (config.params && typeof config.params === 'object') {
+    Object.keys(config.params).forEach((k) => {
+      const v = (config.params as any)[k];
+      if (v === '' || v === undefined || v === null) {
+        delete (config.params as any)[k];
+      }
+    });
   }
   return config;
 });
@@ -28,8 +66,24 @@ axiosRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      Cookies.remove("token"); // Auto logout
-      window.location.href = PAGE_ROUTES.auth.login;
+      const currentPath = window.location.pathname;
+      const requestUrl: string = error.config?.url || '';
+
+      console.log('[Axios Interceptor] 401 error detected:', {
+        path: currentPath,
+        url: requestUrl,
+      });
+
+      // Avoid redirect loop on login route and don't logout for non-auth endpoints
+      const onLoginRoute = currentPath.includes('/auth/login') || requestUrl.includes('/auth/login');
+
+      if (!onLoginRoute) {
+        console.log('[Axios Interceptor] Removing token and redirecting due to auth 401');
+        Cookies.remove('token');
+        window.location.href = PAGE_ROUTES.auth.login;
+      } else {
+        console.warn('[Axios Interceptor] 401 received while on login route or performing login - ignoring.');
+      }
     }
     return Promise.reject(error);
   }

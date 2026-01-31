@@ -8,8 +8,8 @@ interface MultipleChoiceProps {
 }
 
 export default function MultipleChoice({ options, selected = [], onChange }: MultipleChoiceProps) {
-  const [selectedArray, setSelectedArray] = useState<string[]>(selected); 
-  
+  const [selectedArray, setSelectedArray] = useState<string[]>(selected);
+
   // Sync state with prop changes
   //  useEffect(() => {
   //   setSelectedArray(selected);
@@ -17,30 +17,30 @@ export default function MultipleChoice({ options, selected = [], onChange }: Mul
 
   function toggleSelection(option: string) {
     // setSelectedArray(prev => {
-      const newSelection = selected.includes(option)
-        ? selected.filter(item => item !== option) // Remove
-        : [...selected, option]; // Add
+    const newSelection = selected.includes(option)
+      ? selected.filter(item => item !== option) // Remove
+      : [...selected, option]; // Add
 
-      console.log("Updated Selection:", newSelection); // Debugging
-      onChange(newSelection); // Ensure Formik gets the correct update
-      return newSelection;
+    console.log("Updated Selection:", newSelection); // Debugging
+    onChange(newSelection); // Ensure Formik gets the correct update
+    return newSelection;
     // });
   }
 
 
 
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-wrap gap-x-3 gap-y-3">
       {options?.map((option, index) => (
         <p
           key={index}
           className={`w-fit h-12 flex items-center justify-center p-5 border rounded-lg transition-all cursor-pointer font-medium
             ${selected?.includes(option)
-              ? "bg-primary/90 text-white border-primary/90" 
+              ? "bg-primary/90 text-white border-primary/90"
               : "border-gray-300 text-gray-700 hover:border-primary hover:text-primary"}
           `}
-          onClick={() => toggleSelection(option)} 
-      >
+          onClick={() => toggleSelection(option)}
+        >
           {option}
         </p>
       ))}

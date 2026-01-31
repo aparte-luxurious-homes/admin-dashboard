@@ -4,22 +4,23 @@ import Image from "next/image";
 import { BellIcon, SettingsIcon } from "@/components/icons";
 import { NAV_LINKS } from "../lib/routes/nav_links";
 import SideNav from "../components/sidenav";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { useAuth } from "../hooks/useAuth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { IoMenu, IoClose } from "react-icons/io5";
-import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearUser } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import Loader from "../components/loader";
+import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isFetching } = useAuth();
   const router = useRouter();
   const currentRoute = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -31,6 +32,69 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const handleClick = () => {
     router.push(`/settings`);
   };
+
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const token = Cookies.get("token");
+
+    console.log('[Dashboard] Auth check:', {
+      hasToken: !!token,
+      hasUser: !!user,
+      userId: user?.id,
+      isFetching
+    });
+
+    // If no token and no user in Redux, redirect to login
+    if (!token && !user) {
+      console.log('[Dashboard] No token and no user - redirecting to login');
+      router.replace(PAGE_ROUTES.auth.login);
+      return;
+    }
+
+    // If we have user data (either from Redux persistence or fresh fetch), show dashboard
+    if (user && user.id) {
+      console.log('[Dashboard] User authenticated:', user.email);
+      setIsCheckingAuth(false);
+      return;
+    }
+
+    // If we have a token but no user, wait briefly for fetch to complete
+    if (token && !user) {
+      if (isFetching) {
+        console.log('[Dashboard] Token exists, fetching user...');
+        setIsCheckingAuth(true);
+      } else {
+        console.log('[Dashboard] Token exists but no user and not fetching - might be invalid token');
+        // Give it a moment for query to start
+        const timeout = setTimeout(() => {
+          // Re-check token and user after timeout
+          const currentToken = Cookies.get("token");
+          const currentUser = user;
+
+          if (currentToken && !currentUser) {
+            console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
+            Cookies.remove("token");
+            router.replace(PAGE_ROUTES.auth.login);
+          }
+        }, 2000); // Wait 2 seconds for profile fetch
+
+        return () => clearTimeout(timeout);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isFetching, router]);
+
+  // Show loader while checking authentication or fetching user
+  if (isCheckingAuth || (isFetching && !user)) {
+    return <Loader message="Loading dashboard..." />;
+  }
+
+  // Don't render dashboard if no user (safety check)
+  if (!user) {
+    return null;
+  }
 
   const handleLogOut = () => {
     Promise.all([
@@ -66,11 +130,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 fixed lg:absolute w-[85%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%] 
                 bg-primary text-background h-full 
                 transition-transform duration-300 ease-in-out z-40
-                ${
-                  isMobileMenuOpen
-                    ? "translate-x-0"
-                    : "-translate-x-full lg:translate-x-0"
-                }
+                ${isMobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+          }
             `}
       >
         <div className="size-full">
@@ -109,14 +172,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               ) : null
             )}
           </div>
-          <div className="absolute bottom-0 w-full flex items-center h-14 border-t-2 border-teal-700/70 bg-primary">
-            <Link
-              href={PAGE_ROUTES.dashboard.settings.base}
-              className="flex gap-4 pl-7 py-2 hover:bg-teal-600/60 w-full"
+          {/* Footer: Logout only */}
+          <div className="absolute bottom-0 w-full flex items-center border-t-2 border-teal-700/70 bg-primary">
+            <button
+              onClick={handleLogOut}
+              className="text-left flex gap-4 pl-7 py-3 hover:bg-teal-600/60 w-full text-white"
             >
-              <SettingsIcon className="w-5" color="white" />
-              <p className="text-base flex items-center">Settings</p>
-            </Link>
+              <Icon icon="ic:baseline-logout" width="20" height="20" style={{ color: "white" }} />
+              <span className="text-base">Logout</span>
+            </button>
           </div>
         </div>
       </div>
@@ -125,34 +189,14 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       <div
         className={`
                 lg:ml-[26%] xl:ml-[20%] 2xl:ml-[18%] w-full lg:w-[74%] xl:w-[80%] 2xl:w-[82%] 
-                transition-all duration-300 ease-in-out
+                transition-all duration-300 ease-in-out flex flex-col h-screen overflow-hidden
             `}
       >
-        <div className="w-full h-20 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
+        <div className="w-full h-20 flex-shrink-0 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
           <div className="w-1/2 hidden md:block">
-            <p className="text-2xl font-medium">
-              {currentRoute.split("/").length === 2 &&
-              currentRoute.split("/")[1] === ""
-                ? "Dashboard"
-                : currentRoute
-                    .split("/")[1]
-                    .replace(/-/g, " ")
-                    .replace(/^./, (c) => c.toUpperCase())}
-            </p>
+            <AutoBreadcrumb />
           </div>
           <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-3 items-center">
-            {/* <Link
-              href={PAGE_ROUTES.dashboard.settings.base}
-              className="size-10 rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20"
-            >
-              <SettingsIcon className="w-4" color="black" />
-            </Link> */}
-            <div className="hidden md:block">
-              <div className="size-10 relative rounded-md bg-background hover:bg-zinc-200/80 flex justify-center items-center border border-zinc-500/20">
-                <BellIcon className="w-4" color="black" />
-                <div className="size-2 bg-teal-700 absolute -top-1 left-auto right-auto rounded-full" />
-              </div>
-            </div>
             <div
               className="flex items-center cursor-pointer"
               onClick={handleClick}
@@ -176,17 +220,9 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 <p className="-mt-1 text-zinc-400">{user?.email}</p>
               </div>
             </div>
-            <div className="cursor-pointer" onClick={handleLogOut}>
-              <Icon
-                icon="ic:baseline-logout"
-                width="20"
-                height="20"
-                style={{ color: "#f21717" }}
-              />
-            </div>
           </div>
         </div>
-        <div className="md:px-10 px-5 w-full h-[91vh] overflow-y-auto">{children}</div>
+        <div className="md:px-10 px-5 py-8 w-full flex-1 overflow-y-auto">{children}</div>
       </div>
 
       {/* Mobile Menu Overlay */}

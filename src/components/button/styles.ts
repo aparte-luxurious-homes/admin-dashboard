@@ -40,15 +40,18 @@ export default makeStyles(() => ({
   },
   primary: {
     backgroundColor: "#028090",
-    border: `0px solid #028090`
+    border: `0px solid #028090`,
+    color: "#FFFFFF"
   },
   secondary: {
     backgroundColor: "#028090",
-    border: `0px solid #028090`
+    border: `0px solid #028090`,
+    color: "#FFFFFF"
   },
   primaryOutline: {
     backgroundColor: "white",
-    border: `1.5px solid #028090`
+    border: `1.5px solid #028090`,
+    color: "#028090"
   },
   secondaryOutline: {
     backgroundColor: "white",
@@ -87,7 +90,8 @@ export default makeStyles(() => ({
   },
   danger: {
     backgroundColor: "#CB1A14",
-    border: "0px solid #CB1A14"
+    border: "0px solid #CB1A14",
+    color: "#FFFFFF"
   },
   btnwhite: {
     color: "white"

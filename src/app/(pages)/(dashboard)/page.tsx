@@ -1,7 +1,7 @@
 "use client"
 
 import Table from "../../../components/table/table";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useState } from "react";
 import axiosRequest from "@/src/lib/api";
@@ -15,7 +15,7 @@ import Grid from "@mui/material/Grid2";
 import UsersChart from "@/src/components/userchart/userchart";
 import StatsCard from "@/src/components/statcard/statcard";
 import LineChart from "@/src/components/linecharts/linecharts";
-import { API_ROUTES, BASE_API_URL } from "@/src/lib/routes/endpoints";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link";
 import ItemCount from "@/src/components/item-count/itemcount";
@@ -126,10 +126,10 @@ const Home = () => {
 
   console.log(isFetching ? "Fetching User" : user);
 
-  const fetchProperties = async () => {
+  const fetchProperties = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.propertyManagement.properties.base}`);
+      const response = await axiosRequest.get(`${API_ROUTES.propertyManagement.properties.base}`);
       let DataByRole: Property[] = [];
       if (user?.role === "OWNER") {
         DataByRole = response?.data?.data?.data?.filter(
@@ -142,7 +142,7 @@ const Home = () => {
       } else {
         DataByRole = response?.data?.data?.data;
       }
-      
+
       setProperties(DataByRole);
       setSearchResult(DataByRole);
     } catch (err) {
@@ -154,12 +154,12 @@ const Home = () => {
     } finally {
       setLoading(false);
     }
-  };
-  
-  const fetchStatistics = async () => {
+  }, [user]);
+
+  const fetchStatistics = useCallback(async () => {
     setIsStatLoading(true);
     try {
-      const response = await axiosRequest.get(`${BASE_API_URL}${API_ROUTES.statistic.base}`);
+      const response = await axiosRequest.get(`${API_ROUTES.statistic.base}`);
       setStats(response?.data?.data);
     } catch (err) {
       if (err instanceof Error) {
@@ -170,12 +170,12 @@ const Home = () => {
     } finally {
       setIsStatLoading(false);
     }
-  };
-  
+  }, []);
+
   useEffect(() => {
     fetchProperties();
     fetchStatistics();
-  }, []);
+  }, [fetchProperties, fetchStatistics]);
 
   console.log("stats", stats);
   console.log(error)
@@ -214,16 +214,16 @@ const Home = () => {
       renderCell: (params) => <Badge status={params.value} />,
     },
     // { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
-    { 
-      field: "agent", 
-      headerName: "Agent Name", 
-      width: 150, 
+    {
+      field: "agent",
+      headerName: "Agent Name",
+      width: 150,
       renderCell: (params) => `${params.row?.agent?.name || "--/--"}`
     },
-    { 
-      field: "owner", 
-      headerName: "Owner's Name", 
-      width: 150, 
+    {
+      field: "owner",
+      headerName: "Owner's Name",
+      width: 150,
       renderCell: (params) => `${params.row?.owner?.profile?.lastName || ""} ${params.row?.owner?.profile?.firstName}`
     },
     {
@@ -279,10 +279,10 @@ const Home = () => {
       renderCell: (params) => <Badge status={params.value} />,
     },
     // { field: "isPetAllowed", headerName: "Pets Allowed", width: 120, type: "boolean" },
-    { 
-      field: "agent", 
-      headerName: "Agent Name", 
-      width: 180, 
+    {
+      field: "agent",
+      headerName: "Agent Name",
+      width: 180,
       renderCell: (params) => `${params.row?.agent?.name || "--/--"}`
     },
     {
@@ -326,10 +326,10 @@ const Home = () => {
       },
     },
     { field: "propertyType", headerName: "Type", width: 150 },
-    { 
-      field: "owner", 
-      headerName: "Owner's Name", 
-      width: 150, 
+    {
+      field: "owner",
+      headerName: "Owner's Name",
+      width: 150,
       renderCell: (params) => `${params.row?.owner?.profile?.lastName || ""} ${params.row?.owner?.profile?.firstName}`
     },
     {
@@ -388,16 +388,16 @@ const Home = () => {
   const handleSearchProperty = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     setSearchValue(value);
-  
+
     const valArray = value.toLowerCase().split(" ");
-  
+
     // --| Filter properties based on search input
     const result = properties?.filter((data) => {
       const matchesAnyKeyword = valArray.some((word) => {
         if (word === "verified") {
           return data?.isVerified === true;
         }
-  
+
         return (
           data?.name?.toLowerCase().includes(word.toLowerCase()) ||
           data?.owner?.profile?.lastName?.toLowerCase().includes(word.toLowerCase()) ||
@@ -408,13 +408,13 @@ const Home = () => {
           data?.agent?.email?.toLowerCase().includes(word.toLowerCase())
         );
       });
-  
+
       return matchesAnyKeyword;
     });
-  
+
     setSearchResult(result);
   };
-  
+
   // --| Filter Property table using name, state and and all
   // const handleSearchProperty = (e: React.ChangeEvent<HTMLInputElement>) => {
   //   const { value } = e.target;
@@ -457,27 +457,27 @@ const Home = () => {
           <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                <StatsCard 
+                <StatsCard
                   title="Total Revenue"
                   amount={`₦${(stats?.totalRevenue?.lastMonthAmount || 0).toLocaleString()}`}
                   percentage={stats?.totalRevenue?.percentageChange || 0}
-                  isIncrease={parseFloat(stats?.totalRevenue?.percentageChange) > 0} 
+                  isIncrease={parseFloat(stats?.totalRevenue?.percentageChange) > 0}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                <StatsCard 
+                <StatsCard
                   title="Total Payments Processed"
                   amount={`₦${stats?.totalPayments?.lastMonthAmount?.toLocaleString() || "0"}`}
                   percentage={stats?.totalPayments?.percentageChange || 0}
-                  isIncrease={parseFloat(stats?.totalPayments?.percentageChange) > 0} 
+                  isIncrease={parseFloat(stats?.totalPayments?.percentageChange) > 0}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-                <StatsCard 
+                <StatsCard
                   title="Total Property Listed"
-                  amount={`${stats?.totalProperties?.lastMonthTotal?.toLocaleString()  || "0"}`}
+                  amount={`${stats?.totalProperties?.lastMonthTotal?.toLocaleString() || "0"}`}
                   percentage={stats?.totalProperties?.percentageChange || 0}
-                  isIncrease={parseFloat(stats?.totalProperties?.percentageChange) > 0} 
+                  isIncrease={parseFloat(stats?.totalProperties?.percentageChange) > 0}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
@@ -522,22 +522,22 @@ const Home = () => {
                   {isStatLoading ? (
                     <Skeleton className="h-[200px] w-full rounded-md" />
                   ) : stats?.users?.length > 0 ? (
-                      <div>
-                        <div className="flex justify-between items-center gap-1 mb-1">
-                          <h4>Properties</h4>
+                    <div>
+                      <div className="flex justify-between items-center gap-1 mb-1">
+                        <h4>Properties</h4>
+                        <div className="flex items-center gap-2">
                           <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2">
-                              <p className="text-[12px]">Verified</p>
-                              <div className="w-3 h-1 bg-[#028090]"></div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-[12px]">Unverified</p>
-                              <div className="w-3 h-1 bg-[#FF0000]"></div>
-                            </div>
+                            <p className="text-[12px]">Verified</p>
+                            <div className="w-3 h-1 bg-[#028090]"></div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[12px]">Unverified</p>
+                            <div className="w-3 h-1 bg-[#FF0000]"></div>
                           </div>
                         </div>
-                        <LineChart labels={labels} datasets={datasets} />
-                     </div>
+                      </div>
+                      <LineChart labels={labels} datasets={datasets} />
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-2 mt-20">
                       <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />

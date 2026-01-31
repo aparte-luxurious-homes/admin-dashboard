@@ -5,12 +5,12 @@ import { useParams } from "next/navigation";
 
 export default function UnitDetail() {
     const params = useParams();
-        
+
     return (
         <div className="w-full">
             <UnitDetailsView
-                propertyId={Number(params?.propertyId)}
-                unitId={Number(params?.unitId)}
+                propertyId={params?.propertyId as string}
+                unitId={params?.unitId as string}
             />
         </div>
     );

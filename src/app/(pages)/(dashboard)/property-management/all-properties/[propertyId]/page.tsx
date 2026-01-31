@@ -5,11 +5,11 @@ import PropertyDetailsView from "@/src/components/properties-mgt/all-properties/
 
 export default function PropertyDetail() {
     const params = useParams();
-    
+
     return (
         <div className="w-full">
             <PropertyDetailsView
-                propertyId={Number(params?.propertyId)}
+                propertyId={params?.propertyId as string}
             />
         </div>
     );

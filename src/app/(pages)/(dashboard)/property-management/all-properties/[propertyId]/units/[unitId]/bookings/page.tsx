@@ -5,10 +5,10 @@ import { useParams } from "next/navigation";
 
 export default function UnitBookings() {
     const params = useParams();
-    return(
+    return (
         <div className="w-full">
             <BookingsTable
-                unitId={Number(params.unitId)}
+                unitId={params.unitId as string}
             />
         </div>
     );

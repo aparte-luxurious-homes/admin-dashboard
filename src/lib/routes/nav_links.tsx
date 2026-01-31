@@ -1,5 +1,5 @@
 import { JSX } from "react";
-import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon } from "../../components/icons";
+import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
 
@@ -33,7 +33,7 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'User Management',
         pathName: 'user-management',
-        link: '/user-management',
+        link: PAGE_ROUTES.dashboard.userManagement.guests.base,
         icon: <UsersIcon className={"w-5"} color={"white"} />,
         allow: [UserRole.ADMIN],
         secondary: true,
@@ -61,7 +61,7 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'Properties Management',
         pathName: 'properties-management',
-        link: '/property-management',
+        link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.base,
         icon: <PropertiesIcon className={"w-5"} color={"white"} />,
         allow: Object.values(UserRole),
         secondary: true,
@@ -89,7 +89,7 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'Booking Management',
         pathName: 'booking-management',
-        link: '/booking-management',
+        link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
         icon: <BookingIcon className={"w-5"} color={"white"} />,
         allow: [UserRole.ADMIN],
         secondary: true,
@@ -139,7 +139,7 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'Transactions',
         pathName: 'transactions',
-        link: '/transactions',
+        link: PAGE_ROUTES.dashboard.transactions.payments.base,
         allow: [UserRole.ADMIN],
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
         secondary: true,
@@ -171,26 +171,22 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
-        name: 'Notifications',
+        name: 'Notifications (coming soon)',
         pathName: 'notifications',
-        link: '/notifications',
-        icon: <BellIcon className={"w-5"} color={"white"} />,
+        link: '#',
+        icon: <BellIcon className={"w-5 opacity-50"} color={"white"} />,
         allow: Object.values(UserRole),
         secondary: true,
-        children: [
-            {
-                name: 'Manage notifications',
-                pathName: 'manage-notifications',
-                link: PAGE_ROUTES.dashboard.notifications.manageNotifications.base,
-                allow: Object.values(UserRole),
-            },
-            {
-                name: 'Create notification',
-                pathName: 'create-notification',
-                link: PAGE_ROUTES.dashboard.notifications.createNotification.base,
-                allow: [UserRole.ADMIN],
-            },
-        ]
+        children: undefined,
+    },
+    {
+        name: 'Settings',
+        pathName: 'settings',
+        link: PAGE_ROUTES.dashboard.settings.base,
+        icon: <SettingsIcon className={"w-5"} color={"white"} />,
+        allow: Object.values(UserRole),
+        secondary: true,
+        children: undefined,
     },
 ]
 

@@ -21,11 +21,19 @@ enum PropertyRequestKeys {
     getPropertiesVerifications = "getPropertiesVerifications",
 }
 
-export function GetAllProperties(page=1, limit=10, searchTerm='', role: UserRole, id?: number) {
+export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: UserRole, id?: string | number) {
+    const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        search: searchTerm,
+    });
+    if (role) params.append('role', role);
+    if (typeof id === 'number') params.append('user', String(id));
+
     return useQuery({
-        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role, id], 
+        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role ?? null, id ?? null],
         queryFn: () => axiosRequest.get(
-            `${API_ROUTES.propertyManagement.properties.base}?page=${page}&limit=${limit}&search=${searchTerm}&role=${role}&user=${id}`
+            `${API_ROUTES.propertyManagement.properties.base}?${params.toString()}`
         ),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
@@ -34,9 +42,9 @@ export function GetAllProperties(page=1, limit=10, searchTerm='', role: UserRole
 }
 
 
-export function GetSingleProperty(propertyId: number) {
+export function GetSingleProperty(propertyId: string | number) {
     return useQuery({
-        queryKey: [PropertyRequestKeys.singleProperty, propertyId], 
+        queryKey: [PropertyRequestKeys.singleProperty, propertyId],
         queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.details(propertyId)),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
@@ -45,19 +53,14 @@ export function GetSingleProperty(propertyId: number) {
 }
 
 
-export function GetAllVerifications(page: number=1, limit: number=10, searchQuery: string='', role?: UserRole) {
+export function GetAllVerifications(page: number = 1, limit: number = 10, _searchQuery: string = '', _role?: UserRole) {
     const queryParams = new URLSearchParams({
         page: String(page),
         limit: String(limit),
-        search: searchQuery,
     });
 
-    if (role !== undefined) {
-        queryParams.append('role', String(role));
-    }
-
     return useQuery({
-        queryKey: [PropertyRequestKeys.getAllVerifications, page, limit, searchQuery, role], 
+        queryKey: [PropertyRequestKeys.getAllVerifications, page, limit],
         queryFn: () => axiosRequest.get(`${API_ROUTES.verifications.base}?${queryParams.toString()}`),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
@@ -65,17 +68,17 @@ export function GetAllVerifications(page: number=1, limit: number=10, searchQuer
     });
 }
 
-export function GetPropertyVerification(verificationId: number, role: UserRole) {
+export function GetPropertyVerification(verificationId: string | number) {
     return useQuery({
-        queryKey: [PropertyRequestKeys.getPropertyVerification, verificationId], 
-        queryFn: () => axiosRequest.get(`${API_ROUTES.propertyManagement.properties.verify(verificationId)}?role=${role}`),
+        queryKey: [PropertyRequestKeys.getPropertyVerification, verificationId],
+        queryFn: () => axiosRequest.get(API_ROUTES.verifications.details(verificationId)),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
         refetchInterval: 10000 * 60 * 5,
     });
 }
 
-export function GetPropertyVerifications(page: number=1, limit: number=10, searchQuery: string='', propertyId: number, role?: UserRole) {
+export function GetPropertyVerifications(page: number = 1, limit: number = 10, searchQuery: string = '', propertyId: string | number, role?: UserRole) {
     const queryParams = new URLSearchParams({
         page: String(page),
         limit: String(limit),
@@ -87,8 +90,9 @@ export function GetPropertyVerifications(page: number=1, limit: number=10, searc
     }
 
     return useQuery({
-        queryKey: [PropertyRequestKeys.getPropertiesVerifications, page, limit, searchQuery, propertyId, role], 
-        queryFn: () => axiosRequest.get(`${API_ROUTES.propertyManagement.properties.verifications.base(propertyId)}?${queryParams.toString()}`),
+        queryKey: [PropertyRequestKeys.getPropertiesVerifications, page, limit, searchQuery, propertyId, role],
+        // Use global verifications endpoint and filter by property via query param
+        queryFn: () => axiosRequest.get(`${API_ROUTES.verifications.base}?${queryParams.toString()}&property=${propertyId}`),
         refetchOnWindowFocus: true,
         staleTime: Infinity,
         refetchInterval: 10000 * 60 * 5,
@@ -99,8 +103,8 @@ export function GetPropertyVerifications(page: number=1, limit: number=10, searc
 export function UpdatePropertyVerification() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, payload }: { propertyId: number, payload: IUpdatePropertyVerification }) =>
-        axiosRequest.put(API_ROUTES.propertyManagement.properties.verify(propertyId), payload),
+        mutationFn: ({ propertyId, payload }: { propertyId: string | number, payload: IUpdatePropertyVerification }) =>
+            axiosRequest.put(API_ROUTES.propertyManagement.properties.verify(propertyId), payload),
 
         onSuccess: (values) => {
             console.log(values)
@@ -120,7 +124,7 @@ export function UpdatePropertyVerification() {
 
 export function GetAmenities() {
     return useQuery({
-        queryKey: [PropertyRequestKeys.getAmenities], 
+        queryKey: [PropertyRequestKeys.getAmenities],
         queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.amenities.base),
     });
 }
@@ -130,7 +134,7 @@ export function CreateAmenity() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ name }: { name: string }) =>
-        axiosRequest.post(API_ROUTES.propertyManagement.amenities.base, { name }),
+            axiosRequest.post(API_ROUTES.propertyManagement.amenities.base, { name }),
 
         onSuccess: () => {
             // Invalidate the specific property query so it refetches
@@ -143,8 +147,8 @@ export function CreateAmenity() {
 export function CreateProperty() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({payload}: { payload: ICreateProperty }) =>
-        axiosRequest.post(API_ROUTES.propertyManagement.properties.base, payload),
+        mutationFn: ({ payload }: { payload: ICreateProperty }) =>
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.base, payload),
 
         onSuccess: () => {
             // Invalidate the specific property query so it refetches
@@ -154,11 +158,11 @@ export function CreateProperty() {
 }
 
 
-export function AssignToProperty(propertyId: number) {
+export function AssignToProperty(propertyId: string | number) {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({payload}: { payload: IAssignProperty }) =>
-        axiosRequest.post(API_ROUTES.admin.properties.assign(propertyId), payload),
+        mutationFn: ({ payload }: { payload: IAssignProperty }) =>
+            axiosRequest.post(API_ROUTES.admin.properties.assign(propertyId), payload),
 
         onSuccess: (values) => {
             console.log(values)
@@ -174,8 +178,8 @@ export function AssignToProperty(propertyId: number) {
 export function UpdateProperty() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({propertyId, payload}: {propertyId: number, payload: IUpdateProperty}) =>
-        axiosRequest.put(API_ROUTES.propertyManagement.properties.details(propertyId), payload),
+        mutationFn: ({ propertyId, payload }: { propertyId: string | number, payload: IUpdateProperty }) =>
+            axiosRequest.put(API_ROUTES.propertyManagement.properties.details(propertyId), payload),
 
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
@@ -187,8 +191,8 @@ export function UpdateProperty() {
 export function DeleteProperty() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId }: { propertyId: number }) =>
-        axiosRequest.delete(API_ROUTES.propertyManagement.properties.details(propertyId)),
+        mutationFn: ({ propertyId }: { propertyId: string | number }) =>
+            axiosRequest.delete(API_ROUTES.propertyManagement.properties.details(propertyId)),
 
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
@@ -201,8 +205,8 @@ export function DeleteProperty() {
 export function AssignPropertyAmenities() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({propertyId, payload}: {propertyId: number, payload: IAssignAmenity}) =>
-        axiosRequest.post(API_ROUTES.propertyManagement.properties.amenities(propertyId), payload),
+        mutationFn: ({ propertyId, payload }: { propertyId: string | number, payload: IAssignAmenity }) =>
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.amenities(propertyId), payload),
 
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
@@ -215,8 +219,8 @@ export function AssignPropertyAmenities() {
 export function FeatureProperty() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId }: { propertyId: number }) =>
-        axiosRequest.put(API_ROUTES.admin.properties.feature(propertyId)),
+        mutationFn: ({ propertyId }: { propertyId: string | number }) =>
+            axiosRequest.put(API_ROUTES.admin.properties.feature(propertyId)),
 
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
@@ -229,17 +233,17 @@ export function FeatureProperty() {
 export function UploadPropertyMedia() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({propertyId, payload}: {propertyId: number, payload: FormData}) =>
-        axiosRequest.post(
-            API_ROUTES.propertyManagement.properties.media(propertyId), 
-            payload, 
-            {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                }
-            },
+        mutationFn: ({ propertyId, payload }: { propertyId: string | number, payload: FormData }) =>
+            axiosRequest.post(
+                API_ROUTES.propertyManagement.properties.media(propertyId),
+                payload,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    }
+                },
 
-        ),
+            ),
 
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches

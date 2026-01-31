@@ -2,49 +2,79 @@
 
 import { formatDate, formatMoney } from "@/src/lib/utils";
 import { DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
-import { GetAllBookings } from "@/src/lib/request-handlers/bookingMgt";
+import { DeleteBooking, GetAllBookings } from "@/src/lib/request-handlers/bookingMgt";
 import { useEffect, useRef, useState } from "react";
 import { IBooking } from "../types";
 import { BookingBadge } from "../../badge";
 import TablePagination from "../../TablePagination";
 import Loader from "@/src/components/loader";
-import { LuEye } from "react-icons/lu";
+import { LuEye, LuTrash2 } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import Link from "next/link";
 import { FiPlus } from "react-icons/fi";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import { useDispatch } from "react-redux";
+import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { toast } from "react-hot-toast";
 
 export default function BookingsTable({
     unitId
 }: {
-    unitId?: number
+    unitId?: string | number
 }) {
     const [page, setPage] = useState<number>(1);
-    const [searchTerm , setSearchTerm] = useState<string>("");
+    const [searchTerm, setSearchTerm] = useState<string>("");
     const { data: bookings, isLoading } = GetAllBookings(page, 10, searchTerm, unitId);
-    const [bookingList, setBookingList] = useState<IBooking[]>(bookings?.data?.data?.data);
+    const [bookingList, setBookingList] = useState<IBooking[]>([]);
     const router = useRouter();
 
-    const [selectedRow, setSelectedRow] = useState<number|null>(null);
+    const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef(null);
+    const dispatch = useDispatch();
+    const { mutate: deleteBooking } = DeleteBooking();
 
     const detailButtons = [
         {
             label: "View",
             Icon: <LuEye />,
             onClick: () => router.push(
-                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow!].id)
+                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(String((bookingList[selectedRow!] as any).id))
             ),
         },
         {
             label: "Edit",
             Icon: <HiOutlinePencilAlt />,
             onClick: () => router.push(
-                `${PAGE_ROUTES.dashboard.bookingManagement.bookings.details(bookingList[selectedRow!].id)}?edit=true`
+                `${PAGE_ROUTES.dashboard.bookingManagement.bookings.details(String((bookingList[selectedRow!] as any).id))}?edit=true`
             ),
+        },
+        {
+            label: "Delete",
+            Icon: <LuTrash2 className="text-red-500" />,
+            onClick: () => {
+                const booking = bookingList[selectedRow!];
+                dispatch(
+                    showAlert({
+                        title: "Delete Booking?",
+                        description: `Are you sure you want to delete booking ${booking?.bookingId}? This action cannot be undone.`,
+                        confirmText: "Delete",
+                        cancelText: "Cancel",
+                        onConfirm: () => {
+                            deleteBooking(
+                                { bookingId: booking.id },
+                                {
+                                    onSuccess: () => toast.success('Booking deleted successfully'),
+                                    onError: () => toast.error('Failed to delete booking')
+                                }
+                            );
+                        },
+                    })
+                );
+                setSelectedRow(null);
+            },
         }
     ];
 
@@ -69,200 +99,162 @@ export default function BookingsTable({
 
 
     useEffect(() => {
-        setBookingList(bookings?.data?.data?.data);
+        setBookingList((bookings?.data?.data?.items ?? bookings?.data?.items ?? []) as any);
     }, [bookings])
 
 
     return (
- 
-        <div className="w-full p-10">
-            <div className="w-full border border-zinc-500/20 bg-white rounded-xl px-6 py-7 min-h-[72vh] flex flex-col">
-
-                {/* {
-                    unitId && bookingList &&
-                    <p className='text-2xl font-medium my-3'>
-                        {bookingList[0]?.unit?.property?.name} - <span className="font-normal">{bookingList[0]?.unit?.name}</span>
-                    </p>
-                } */}
-                <div className="w-full flex justify-between items-center">
-                    <div className="w-[80%] flex items-center gap-5">
-                        <p className="text-2xl font-medium mr-10">All Bookings</p>
-                        <div className="relative w-[40%]">
-                            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="border border-zinc-500/20 bg-background rounded-lg w-full h-10 p-3 pl-10" placeholder="Search bookings "/>
-                            <SearchIcon className="absolute top-[25%] left-3 w-5" color="black" />
+        <div className="p-6">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="p-6 border-b border-gray-200">
+                    <div className="flex justify-between items-center gap-4 flex-wrap mb-4">
+                        <div>
+                            <div className="flex items-center gap-3">
+                                {unitId && (
+                                    <button
+                                        onClick={() => router.back()}
+                                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                        title="Go back"
+                                    >
+                                        <Icon icon="lucide:arrow-left" width="20" height="20" className="text-gray-600" />
+                                    </button>
+                                )}
+                                <h1 className="text-xl font-semibold text-gray-900">
+                                    {unitId ? "Unit Bookings" : "All Bookings"}
+                                </h1>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {unitId ? "View and manage bookings for this specific unit" : "Manage and track all property bookings"}
+                            </p>
                         </div>
-                        
+                        <Link
+                            href={`${PAGE_ROUTES.dashboard.bookingManagement.bookings.create}`}
+                            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2"
+                        >
+                            <FiPlus className="w-4 h-4" />
+                            <span>New Booking</span>
+                        </Link>
                     </div>
-                    <Link
-                        href={`${PAGE_ROUTES.dashboard.bookingManagement.bookings.create}`}
-                        className="bg-primary hover:bg-primary/95 text-background hover:bg-teal-900/ flex justify-center items-center gap-1 rounded-lg w-44 p-1.5 h-10"
-                    >
-                        <FiPlus className="w-4" color="white"/>
-                        <p className="text-sm">
-                            New Booking
-                        </p>
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1 max-w-md relative">
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                placeholder="Search bookings..."
+                            />
+                            <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
+                        </div>
+                    </div>
                 </div>
 
-
-                {
-                    isLoading ?
-                    <Loader />
-                    : bookingList && bookingList?.length > 0 ?
-                    <div className="w-full mt-6">
-                        <table className="w-full border-collapse">
-                            <thead className="">
-                                <tr className="text-teal-600 text-[13px]">
-                                    <th className="bg-[#0280901A] h-10 p-5 flex justify-start items-center gap-3 rounded-tl-xl rounded-bl-xl font-medium w-full">
-                                        {/* <input
-                                            type="checkbox"
-                                            className={`
-                                                size-4 border-2 border-teal-600 rounded-md bg-transparent appearance-none
-                                                checked:bg-teal-600 checked:border-teal-600 checked:text-[#0280901A]
-                                            `}
-                                        /> */}
-                                        <p>
-                                            Booking ID
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Unit
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Property Type
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            {"Guest's Name"}
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
-                                        <p>
-                                            Price
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-center">
-                                        <p>
-                                            Status
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium  text-center">
-                                        <p className="pr-2">
-                                            Booking date
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10">{''}</th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl  w-3">{''}</th>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader />
+                    </div>
+                ) : bookingList && bookingList.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left">Booking ID</th>
+                                    <th className="px-6 py-3 text-left">Guest</th>
+                                    <th className="px-6 py-3 text-left">Price</th>
+                                    <th className="px-6 py-3 text-center">Status</th>
+                                    <th className="px-6 py-3 text-center">Booking Date</th>
+                                    <th className="px-6 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-[13px]">
-                                {
-                                    bookingList &&
-                                    bookingList?.map((booking, index) => (
-                                        <tr key={index} className="hover:bg-background/50 cursor-pointer" 
-                                            onClick={() => router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(booking?.id))} 
-                                        >
-                                            <td className="border-b-2 border-b-gray-200">
-                                                {/* <input 
-                                                    type="checkbox"
-                                                    className={`
-                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
-                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
-                                                    `}
-                                                /> */}
-                                                <p className="pt-1 pl-5 truncate max-w-36">
-                                                    {booking?.bookingId}
-                                                </p>  
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <p className="pt-1 truncate max-w-[13rem]">
-                                                    {booking?.unit?.name}
-                                                </p>   
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <p className="pt-1 font-medium">
-                                                    {booking?.unit?.property?.propertyType}
-                                                </p>
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <p className="pt-1 ">
-                                                    {`${booking?.user?.profile?.firstName??'Fola'} ${booking?.user?.profile?.lastName??'Ogunleye'}`}
-                                                </p>
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200">{`₦ ${formatMoney(Number(booking?.totalPrice))}`}</td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <div className="py-2.5 w-2/3 m-auto text-center">
-                                                    <BookingBadge status={booking?.status} classNames="" />
-                                                </div>
-                                            </td>
-                                            <td className="border-b-2 border-b-gray-200 text-center">{formatDate(booking.startDate)}</td>
-                                            <td className="border-b-2 border-b-gray-200">
-                                                <div className="flex justify-center items-center w-fit" onClick={(event) => handleDotsClick(event, index)}>
-                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                }
+                            <tbody className="divide-y divide-gray-200">
+                                {bookingList.map((booking, index) => (
+                                    <tr
+                                        key={index}
+                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                        onClick={() => router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(String((booking as any)?.id)))}
+                                    >
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            {(booking as any)?.booking_id ?? '--/--'}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {booking?.user?.profile?.first_name || (booking?.user as any)?.firstName || (booking as any)?.user_id || '--/--'} {booking?.user?.profile?.last_name || (booking?.user as any)?.lastName || ''}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                                            ₦ {formatMoney(Number((booking as any)?.total_price ?? 0))}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                                                (booking as any)?.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                    (booking as any)?.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                                        (booking as any)?.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                {(booking as any)?.status ?? '--/--'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700 text-center">
+                                            {formatDate((booking as any)?.created_at)}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end items-center" onClick={(event) => handleDotsClick(event, index)}>
+                                                <DotsIcon className="w-5 cursor-pointer" color="#6B7280" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
-                    : bookingList && bookingList.length === 0 ? 
-                    <div className="size-full m-auto text-center">
-                        <div className="m-auto w-fit">
-                            <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                ) : bookingList && bookingList.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                            <Icon icon="hugeicons:album-not-found-01" width="32" height="32" className="text-gray-400" />
                         </div>
-                        <p className="text-center text-gray-500 pt-10">No bookings found for this unit</p>
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">No bookings found</h3>
+                        <p className="text-sm text-gray-500">Try adjusting your search or create a new booking</p>
                     </div>
-                    : 
-                    <p className="size-full text-center text-gray-500 pt-10 self-center">
-                        <div className="m-auto w-fit">
-                            <Icon icon="mynaui:danger-octagon" width="40" height="40" className="text-red-600 " />
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                            <Icon icon="mynaui:danger-octagon" width="32" height="32" className="text-red-600" />
                         </div>
-                        <p className="text-center text-gray-500">
-                            Error loading bookings
-                        </p>
-                    </p>
-                }
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">Error loading bookings</h3>
+                        <p className="text-sm text-gray-500">Please try again later</p>
+                    </div>
+                )}
 
+                {!isLoading && bookingList && bookingList.length > 0 && (
+                    <div className="px-6 py-4 border-t border-gray-200">
+                        <TablePagination
+                            total={(bookings?.data as any)?.data?.total ?? (bookings?.data as any)?.total ?? 0}
+                            currentPage={page}
+                            setPage={setPage}
+                            firstPage={1}
+                            itemsPerPage={(bookings?.data as any)?.data?.size ?? 10}
+                        />
+                    </div>
+                )}
             </div>
 
-            {/* Modal */}
+            {/* Context Menu */}
             {selectedRow !== null && modalPosition && (
                 <div
                     ref={modalRef}
-                    className="absolute bg-white shadow-md rounded-md z-50 border border-gray-300 w-[9em]"
+                    className="absolute bg-white shadow-lg rounded-lg z-50 border border-gray-200 overflow-hidden"
                     style={{ top: modalPosition.top, left: modalPosition.left }}
                 >
                     {detailButtons.map((button, idx) => (
                         <div
                             key={idx}
-                            className="flex items-center gap-2 px-4 py-3 hover:bg-zinc-100 cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
                             onClick={button.onClick}
                         >
                             {button.Icon}
-                            <p>{button.label}</p>
+                            <span>{button.label}</span>
                         </div>
                     ))}
                 </div>
             )}
-
-            {
-                !isLoading && bookingList &&
-                <TablePagination
-                    total={bookings?.data?.data?.meta?.total}
-                    currentPage={page}
-                    setPage={setPage}
-                    firstPage={bookings?.data?.data?.meta?.firstPage}
-                    itemsPerPage={10}
-                />
-            }          
-            
         </div>
-            
     );
 };

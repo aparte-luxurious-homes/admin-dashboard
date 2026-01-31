@@ -9,7 +9,7 @@ import 'swiper/css/navigation';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
-        <main className="max-w-[1920] mx-auto w-full bg-background text-zinc-900">
+        <main className="max-w-[1920px] mx-auto w-full bg-background text-zinc-900">
             <MobileOverlay />
             <Dashboard>
                 <Suspense fallback={<Loader message="Loading..." />}>

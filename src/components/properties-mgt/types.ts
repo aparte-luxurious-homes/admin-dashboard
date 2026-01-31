@@ -1,5 +1,5 @@
 import { IUser } from "@/src/lib/types"
-import { IAvailability, IBooking } from "../booking-mgt/types"
+import { IBooking } from "../booking-mgt/types"
 
 
 export type VerificationBageProps = {
@@ -47,11 +47,15 @@ export interface IAmenity {
 export interface IPropertyVerification {
     id: number
     propertyId: number
+    property_id?: number
     agentId: number
+    agent_id?: number
     status: PropertyVerificationStatus
     feedback: string
     verificationDate?: string
+    verification_date?: string
     createdAt: string
+    created_at?: string
     agent: IUser
     property: IProperty
 }
@@ -70,19 +74,22 @@ export interface IAssignAmenity {
 }
 
 export interface IPropertyReview {
-   id: number
-   unitId: number
-   userId: number
-   rating: number
-   review?: string
-   createdAt: string
+    id: number
+    unitId: number
+    userId: number
+    rating: number
+    review?: string
+    createdAt: string
 }
 
 export interface IPropertyMedia {
     id: number
-    mediaUrl: string
+    mediaUrl?: string
+    media_url?: string
     mediaType: MediaType
-    isFeatured: boolean
+    media_type?: MediaType
+    isFeatured?: boolean
+    is_featured?: boolean
     assignableId: number
     assignableType: AssignableType
     uploadedAt: string
@@ -91,20 +98,32 @@ export interface IPropertyMedia {
 export interface IPropertyUnit {
     id: number
     propertyId: number
+    property_id?: number
     name: string
     description?: string
     pricePerNight: string
+    price_per_night?: string
     cautionFee: string
+    caution_fee?: string
     maxGuests: number
+    max_guests?: number
     count: number
     isWholeProperty: boolean
+    is_whole_property?: boolean
     bedroomCount: number
+    bedroom_count?: number
     livingRoomCount: number
+    living_room_count?: number
     kitchenCount: number
+    kitchen_count?: number
     bathroomCount: number
+    bathroom_count?: number
     isVerified: boolean
+    is_verified?: boolean
     createdAt: string
+    created_at?: string
     updatedAt: string
+    updated_at?: string
     property?: IProperty
     media: IPropertyMedia[]
     reviews: IPropertyReview[]
@@ -118,22 +137,31 @@ export interface IProperty {
     [x: string]: any
     id: number
     ownerId: number
+    owner_id?: number
     assignedAgent?: number
+    assigned_agent?: number
     name: string
     description?: string
     address: string
     propertyType: PropertyType
+    property_type?: PropertyType
     city: string
     state: string
     country: string
     latitude?: number
     longitude?: number
     kycId?: number
+    kyc_id?: number
     isVerified: boolean
+    is_verified?: boolean
     isPetAllowed: boolean
+    is_pet_allowed?: boolean
     isFeatured: boolean
+    is_featured?: boolean
     createdAt: string
+    created_at?: string
     updatedAt: string
+    updated_at?: string
     owner: IUser
     agent: IUser
     units: IPropertyUnit[]
@@ -163,7 +191,7 @@ export interface ICreateProperty {
 }
 
 export interface IAssignProperty {
-    agent_id: number
+    agent_id: string
 }
 
 export interface IUpdateProperty {
@@ -184,17 +212,17 @@ export interface IUpdateProperty {
 }
 
 export interface IUpdatePropertyUnit {
-    name: string,
-    description: string,
-    pricePerNight: string,
-    cautionFee: string,
-    maxGuests: number,
-    count: number,
-    isWholeProperty: boolean,
-    bedroomCount: number,
-    livingRoomCount: number,
-    kitchenCount: number,
-    bathroomCount: number,
+    name?: string,
+    description?: string,
+    price_per_night?: string,
+    caution_fee?: string,
+    max_guests?: number,
+    count?: number,
+    is_whole_property?: boolean,
+    bedroom_count?: number,
+    living_room_count?: number,
+    kitchen_count?: number,
+    bathroom_count?: number,
     amenities?: number[],
 }
 
@@ -216,4 +244,26 @@ export interface IUploadPropertyMedia {
     media_file: File
     media_type: MediaType
     is_featured: boolean
+}
+
+export interface IAvailability {
+    id: string | number
+    unit_id: string | number
+    date: string
+    count: number
+    is_blackout: boolean
+    pricing?: number | null
+    created_at?: string
+    updated_at?: string
+}
+
+export interface ICreateAvailability {
+    date: string
+    count: number
+    is_blackout: boolean
+    pricing?: number
+}
+
+export interface ICreateAvailabilityPayload {
+    dates: ICreateAvailability[]
 }
