@@ -138,7 +138,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                                 <div className="relative w-full aspect-[16/10] md:h-[500px]">
                                                     <Image
                                                         alt={`${propertyUnit?.name}_img_${index}`}
-                                                        src={el.mediaUrl}
+                                                        src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
                                                         fill
                                                         className="object-cover"
                                                         priority={index === 0}
@@ -391,7 +391,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                                     <div className="relative">
                                                         <Image
                                                             alt={`${role.label}-image`}
-                                                            src={role.user?.profile?.profileImage ?? '/png/sample_profile.png'}
+                                                            src={(role.user?.profile?.profileImage || role.user?.profile?.profile_image) ?? '/png/sample_profile.png'}
                                                             height={52}
                                                             width={52}
                                                             className="rounded-2xl object-cover ring-2 ring-zinc-50 shadow-sm"

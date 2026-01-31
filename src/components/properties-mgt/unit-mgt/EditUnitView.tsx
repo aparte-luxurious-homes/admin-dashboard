@@ -205,7 +205,7 @@ export default function EditUnitView({
     useEffect(() => {
         if (uploadData?.data) {
             // Ensure uploadData.data is an array before spreading
-            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.mediaUrl) : [uploadData.data?.data])]);
+            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.media_url || el?.data?.mediaUrl) : [uploadData.data?.data])]);
             if (uploadData.status === 201) {
                 uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url)); // Revoke object URLs
                 uploadRef.current = []
@@ -349,7 +349,7 @@ export default function EditUnitView({
                             {media?.map((el, index) => (
                                 <div key={index} className="relative aspect-video rounded-xl overflow-hidden group shadow-sm border border-zinc-100">
                                     <Image
-                                        src={el.mediaUrl}
+                                        src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
                                         alt={`unit_img_${index}`}
                                         fill
                                         className="object-cover group-hover:scale-105 transition-transform duration-500"

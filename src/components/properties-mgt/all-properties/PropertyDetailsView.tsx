@@ -212,7 +212,7 @@ export default function PropertyDetailsView({
                                                             <div className="relative w-full aspect-video">
                                                                 <Image
                                                                     alt={`${property?.name}_img_${index}`}
-                                                                    src={el.mediaUrl}
+                                                                    src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
                                                                     fill
                                                                     className="object-cover"
                                                                     priority={index === 0}
@@ -332,7 +332,7 @@ export default function PropertyDetailsView({
                                                                     <div className="relative h-48 bg-zinc-100 overflow-hidden">
                                                                         {el.media && el.media.length > 0 ? (
                                                                             <Image
-                                                                                src={el.media[0].mediaUrl}
+                                                                                src={el.media[0].media_url || el.media[0].mediaUrl || "/png/placeholder.png"}
                                                                                 alt={el.name}
                                                                                 fill
                                                                                 className="object-cover group-hover:scale-110 transition-transform duration-500"
@@ -512,7 +512,7 @@ export default function PropertyDetailsView({
                                                             <div className="relative">
                                                                 <Image
                                                                     alt="owner-image"
-                                                                    src={property?.owner?.profile?.profileImage ?? '/png/sample_profile.png'}
+                                                                    src={(property?.owner?.profile?.profileImage || property?.owner?.profile?.profile_image) ?? '/png/sample_profile.png'}
                                                                     height={56}
                                                                     width={56}
                                                                     className="rounded-full object-cover ring-2 ring-zinc-50 group-hover:ring-primary/20 transition-all"
@@ -538,7 +538,7 @@ export default function PropertyDetailsView({
                                                             <div className="relative">
                                                                 <Image
                                                                     alt="agent-image"
-                                                                    src={property?.agent?.profile?.profileImage ?? '/png/sample_profile.png'}
+                                                                    src={(property?.agent?.profile?.profileImage || property?.agent?.profile?.profile_image) ?? '/png/sample_profile.png'}
                                                                     height={56}
                                                                     width={56}
                                                                     className="rounded-full object-cover ring-2 ring-zinc-50 group-hover:ring-primary/20 transition-all"
@@ -580,7 +580,7 @@ export default function PropertyDetailsView({
                                             <div className="flex gap-4 items-center rounded-full">
                                                 <Image
                                                     alt="agent-image"
-                                                    src={property?.agent?.profile?.profileImage ?? '/png/sample_profile.png'}
+                                                    src={(property?.agent?.profile?.profileImage || property?.agent?.profile?.profile_image) ?? '/png/sample_profile.png'}
                                                     height={50}
                                                     width={60}
                                                 />
@@ -643,7 +643,7 @@ export default function PropertyDetailsView({
                                                         <div className="flex gap-4 items-center rounded-full mt-3">
                                                             <Image
                                                                 alt="agent-image"
-                                                                src={selectedAgent?.profile?.profileImage ?? '/png/sample_profile.png'}
+                                                                src={(selectedAgent?.profile?.profileImage || selectedAgent?.profile?.profile_image) ?? '/png/sample_profile.png'}
                                                                 height={50}
                                                                 width={60}
                                                             />

@@ -240,7 +240,7 @@ export default function EditPropertyView({
     useEffect(() => {
         if (uploadData?.data) {
             // Ensure uploadData.data is an array before spreading
-            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.mediaUrl) : [uploadData.data?.data])]);
+            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.media_url || el?.data?.mediaUrl) : [uploadData.data?.data])]);
             if (uploadData.status === 201) {
                 uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url)); // Revoke object URLs
                 uploadRef.current = []
@@ -504,7 +504,7 @@ export default function EditPropertyView({
                                 {media.map((item) => (
                                     <div key={item.id} className="relative group aspect-square rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200 shadow-sm">
                                         <Image
-                                            src={item.mediaUrl}
+                                            src={item.media_url || item.mediaUrl || "/png/placeholder.png"}
                                             alt="Property"
                                             fill
                                             className="object-cover transition-transform group-hover:scale-105"

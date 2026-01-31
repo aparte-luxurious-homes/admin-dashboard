@@ -275,7 +275,7 @@ export default function VerificationDetails({
                                         <SwiperSlide key={index}>
                                             <Image
                                                 alt={`${property?.name}_img_${index}`}
-                                                src={el.mediaUrl}
+                                                src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
                                                 className="w-full rounded-xl"
                                                 width={900}
                                                 height={900}
@@ -305,7 +305,7 @@ export default function VerificationDetails({
                                 </p>
                                 <Image
                                     alt={`owner_img`}
-                                    src={selectedAgent?.profile?.profileImage ?? `/png/sample_owner.png`}
+                                    src={(selectedAgent?.profile?.profileImage || selectedAgent?.profile?.profile_image) ?? `/png/sample_owner.png`}
                                     className="w-full max-w-[10rem] rounded-xl my-3"
                                     width={400}
                                     height={400}
@@ -540,7 +540,7 @@ export default function VerificationDetails({
                                         <div className="flex gap-4 items-center rounded-full mt-3">
                                             <Image
                                                 alt="agent-image"
-                                                src={selectedAgent?.profile?.profileImage ?? '/png/sample_profile.png'}
+                                                src={(selectedAgent?.profile?.profileImage || selectedAgent?.profile?.profile_image) ?? '/png/sample_profile.png'}
                                                 height={50}
                                                 width={60}
                                             />

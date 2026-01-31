@@ -84,9 +84,12 @@ export interface IPropertyReview {
 
 export interface IPropertyMedia {
     id: number
-    mediaUrl: string
+    mediaUrl?: string
+    media_url?: string
     mediaType: MediaType
-    isFeatured: boolean
+    media_type?: MediaType
+    isFeatured?: boolean
+    is_featured?: boolean
     assignableId: number
     assignableType: AssignableType
     uploadedAt: string
