@@ -3,6 +3,7 @@ import "./globals.css";
 import { Providers } from "../components/providers";
 import { Suspense } from "react";
 import Loader from "@/src/components/loader";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Aparte Admin",
@@ -25,6 +26,7 @@ export default function RootLayout({
             {children}
           </Suspense>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
