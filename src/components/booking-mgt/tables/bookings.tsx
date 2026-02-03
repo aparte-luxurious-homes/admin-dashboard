@@ -184,12 +184,12 @@ export default function BookingsTable({
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                                                (booking as any)?.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                (booking as any)?.status === 'PENDING' || (booking as any)?.status === 'PENDING_PAYMENT' ? 'bg-yellow-100 text-yellow-800' :
                                                     (booking as any)?.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
                                                         (booking as any)?.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
                                                             'bg-gray-100 text-gray-800'
                                                 }`}>
-                                                {(booking as any)?.status ?? '--/--'}
+                                                {(booking as any)?.status?.replace('_', ' ') ?? '--/--'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700 text-center">

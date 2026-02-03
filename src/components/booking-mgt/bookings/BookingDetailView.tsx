@@ -15,6 +15,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import Image from "next/image";
+import { RetryBookingPayment } from "@/src/lib/request-handlers/bookingMgt";
+import { toast } from "react-hot-toast";
+import { MdRefresh } from "react-icons/md";
 
 export default function BookingDetailView({ bookingId }: { bookingId: string }) {
     const pathname = usePathname();
@@ -25,6 +28,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
     const [status, setStatus] = useState(BookingStatus.PENDING)
     const { data: bookingData, isLoading, error } = GetBookingDetails(bookingId);
     const [bookingDetails, setBookingDetails] = useState<IBooking | null>(null);
+    const { mutate: retryPayment, isPending: isRetrying } = RetryBookingPayment();
 
     useEffect(() => {
         if (bookingData?.data?.data) {
@@ -47,6 +51,8 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                 return { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-200', icon: '#52525b' };
             case BookingStatus.PENDING:
                 return { text: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', icon: '#FFAE00' };
+            case BookingStatus.PENDING_PAYMENT:
+                return { text: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', icon: '#FFAE00' };
             case BookingStatus.CONFIRMED:
                 return { text: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200', icon: '#028090' };
             default:
@@ -65,6 +71,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
     const unitCount = bookingDetails?.unitCount || (bookingDetails as any)?.unit_count || 1;
     const guestsCount = bookingDetails?.guestsCount || (bookingDetails as any)?.guests_count || 0;
     const totalPrice = bookingDetails?.totalPrice || (bookingDetails as any)?.total_price || 0;
+    const transactionRef = bookingDetails?.transactionRef || (bookingDetails as any)?.transaction_ref;
 
     return (
         <div className="p-4 md:p-10 w-full">
@@ -372,12 +379,46 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                                 <span className="text-lg font-semibold text-zinc-800">Total Amount</span>
                                                                 <span className="text-2xl font-bold text-primary">₦{formatMoney(totalPrice)}</span>
                                                             </div>
-                                                            {bookingDetails.transactionRef && (
+                                                            {transactionRef && (
                                                                 <div className="mt-4 pt-4 border-t border-zinc-200">
                                                                     <div className="flex justify-between items-center text-sm">
                                                                         <span className="text-zinc-500">Transaction Reference</span>
-                                                                        <span className="font-mono text-zinc-700">{bookingDetails.transactionRef}</span>
+                                                                        <span className="font-mono text-zinc-700">{transactionRef}</span>
                                                                     </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Retry Payment Button */}
+                                                            {(status === BookingStatus.PENDING || status === BookingStatus.PENDING_PAYMENT) && transactionRef && (
+                                                                <div className="mt-4 pt-4 border-t border-zinc-200">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            retryPayment(
+                                                                                { bookingId: bookingDetails.id },
+                                                                                {
+                                                                                    onSuccess: (response) => {
+                                                                                        const result = response?.data?.data;
+                                                                                        if (result?.success) {
+                                                                                            toast.success(result.message || 'Payment verified successfully!');
+                                                                                        } else {
+                                                                                            toast.error(result?.message || 'Payment verification failed');
+                                                                                        }
+                                                                                    },
+                                                                                    onError: (error: any) => {
+                                                                                        toast.error(error?.response?.data?.detail || 'Failed to verify payment');
+                                                                                    }
+                                                                                }
+                                                                            );
+                                                                        }}
+                                                                        disabled={isRetrying}
+                                                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        <MdRefresh className={`text-lg ${isRetrying ? 'animate-spin' : ''}`} />
+                                                                        <span>{isRetrying ? 'Verifying Payment...' : 'Retry Payment Verification'}</span>
+                                                                    </button>
+                                                                    <p className="text-xs text-zinc-500 mt-2 text-center">
+                                                                        Click to manually verify payment status with Monnify
+                                                                    </p>
                                                                 </div>
                                                             )}
                                                         </div>
