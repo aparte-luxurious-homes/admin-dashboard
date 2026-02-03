@@ -9,6 +9,7 @@ enum BookingRequestKeys {
     updateBookingDetails = "updateBookingDetails",
     createBooking = "createBooking",
     deleteBooking = "deleteBooking",
+    retryBookingPayment = "retryBookingPayment",
 }
 
 export function GetAllBookings(page = 1, limit = 10, searchQuery = '', unitId?: string | number) {
@@ -71,6 +72,18 @@ export function DeleteBooking() {
             axiosRequest.delete(API_ROUTES.bookings.details(String(bookingId))),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+        },
+    });
+}
+
+export function RetryBookingPayment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/retry-payment`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
         },
     });
 }

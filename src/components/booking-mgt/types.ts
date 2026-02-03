@@ -4,6 +4,7 @@ import { IPropertyUnit } from "../properties-mgt/types";
 
 export enum BookingStatus {
     PENDING = 'PENDING',
+    PENDING_PAYMENT = 'PENDING_PAYMENT',
     CONFIRMED = 'CONFIRMED',
     CANCELLED = 'CANCELLED',
     COMPLETED = 'COMPLETED',
