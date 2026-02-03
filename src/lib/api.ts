@@ -61,6 +61,9 @@ axiosRequest.interceptors.request.use((config) => {
   return config;
 });
 
+// Flag to prevent multiple simultaneous redirects
+let isRedirecting = false;
+
 // 🔹 Handle token expiration (401 errors)
 axiosRequest.interceptors.response.use(
   (response) => response,
@@ -77,12 +80,51 @@ axiosRequest.interceptors.response.use(
       // Avoid redirect loop on login route and don't logout for non-auth endpoints
       const onLoginRoute = currentPath.includes('/auth/login') || requestUrl.includes('/auth/login');
 
-      if (!onLoginRoute) {
-        console.log('[Axios Interceptor] Removing token and redirecting due to auth 401');
+      if (!onLoginRoute && !isRedirecting) {
+        console.log('[Axios Interceptor] Token expired, clearing auth state and redirecting to login');
+
+        // Set flag to prevent multiple redirects
+        isRedirecting = true;
+
+        // Clear token cookie
         Cookies.remove('token');
+
+        // Clear Redux state and React Query cache
+        try {
+          // Dynamically import to avoid circular dependencies
+          const { store } = await import('./store');
+          const { clearUser } = await import('./slices/authSlice');
+
+          // Clear Redux auth state
+          store.dispatch(clearUser());
+
+          console.log('[Axios Interceptor] Redux state cleared');
+        } catch (err) {
+          console.error('[Axios Interceptor] Error clearing Redux state:', err);
+        }
+
+        // Clear React Query cache
+        try {
+          const { QueryClient } = await import('@tanstack/react-query');
+          // Create a new query client instance to clear cache
+          const queryClient = new QueryClient();
+          queryClient.clear();
+
+          console.log('[Axios Interceptor] React Query cache cleared');
+        } catch (err) {
+          console.error('[Axios Interceptor] Error clearing React Query cache:', err);
+        }
+
+        // Small delay to ensure state is cleared
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Redirect to login
+        console.log('[Axios Interceptor] Redirecting to login page');
         window.location.href = PAGE_ROUTES.auth.login;
-      } else {
+      } else if (onLoginRoute) {
         console.warn('[Axios Interceptor] 401 received while on login route or performing login - ignoring.');
+      } else {
+        console.warn('[Axios Interceptor] Already redirecting, skipping duplicate redirect');
       }
     }
     return Promise.reject(error);

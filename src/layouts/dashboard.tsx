@@ -119,15 +119,17 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       {/* Mobile Menu Toggle */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-white hover:bg-primary/90"
+        className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-lg bg-primary text-white hover:bg-primary/90 
+                   shadow-lg active:scale-95 transition-transform min-w-[48px] min-h-[48px] flex items-center justify-center"
+        aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
       >
-        {isMobileMenuOpen ? <IoClose size={24} /> : <IoMenu size={24} />}
+        {isMobileMenuOpen ? <IoClose size={28} /> : <IoMenu size={28} />}
       </button>
 
       {/* Sidemenu */}
       <div
         className={`
-                fixed lg:absolute w-[85%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%] 
+                fixed lg:absolute w-[85%] sm:w-[75%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%] 
                 bg-primary text-background h-full 
                 transition-transform duration-300 ease-in-out z-40
                 ${isMobileMenuOpen
@@ -168,6 +170,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                   link={el}
                   role={user?.role}
                   route={currentRoute}
+                  onNavigate={() => setIsMobileMenuOpen(false)}
                 />
               ) : null
             )}
@@ -176,7 +179,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
           <div className="absolute bottom-0 w-full flex items-center border-t-2 border-teal-700/70 bg-primary">
             <button
               onClick={handleLogOut}
-              className="text-left flex gap-4 pl-7 py-3 hover:bg-teal-600/60 w-full text-white"
+              className="text-left flex gap-4 pl-7 py-4 hover:bg-teal-600/60 w-full text-white min-h-[56px] items-center"
             >
               <Icon icon="ic:baseline-logout" width="20" height="20" style={{ color: "white" }} />
               <span className="text-base">Logout</span>
@@ -192,13 +195,16 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 transition-all duration-300 ease-in-out flex flex-col h-screen overflow-hidden
             `}
       >
-        <div className="w-full h-20 flex-shrink-0 flex justify-between items-center px-10 bg-white border-b border-b-zinc-200/80">
+        <div className="w-full h-20 flex-shrink-0 flex justify-between items-center px-4 sm:px-6 lg:px-10 bg-white border-b border-b-zinc-200/80">
+          {/* Spacer for mobile menu button */}
+          <div className="w-12 lg:hidden"></div>
+
           <div className="w-1/2 hidden md:block">
             <AutoBreadcrumb />
           </div>
-          <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-3 items-center">
+          <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-2 sm:gap-3 items-center">
             <div
-              className="flex items-center cursor-pointer"
+              className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
               onClick={handleClick}
             >
               {user?.profile?.profileImage ? (
@@ -215,14 +221,14 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 </div>
               )}
 
-              <div className="ml-2 text-[12px]">
+              <div className="ml-2 text-[12px] hidden sm:block">
                 <p className="">{user?.profile?.firstName || "Welcome Back"}</p>
-                <p className="-mt-1 text-zinc-400">{user?.email}</p>
+                <p className="-mt-1 text-zinc-400 truncate max-w-[120px]">{user?.email}</p>
               </div>
             </div>
           </div>
         </div>
-        <div className="md:px-10 px-5 py-8 w-full flex-1 overflow-y-auto">{children}</div>
+        <div className="px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-full flex-1 overflow-y-auto">{children}</div>
       </div>
 
       {/* Mobile Menu Overlay */}

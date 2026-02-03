@@ -4,6 +4,7 @@ import { Providers } from "../components/providers";
 import { Suspense } from "react";
 import Loader from "@/src/components/loader";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "Aparte Admin",
@@ -27,6 +28,7 @@ export default function RootLayout({
           </Suspense>
         </Providers>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
