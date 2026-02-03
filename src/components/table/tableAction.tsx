@@ -8,8 +8,9 @@ interface TableSearchProps {
 }
 
 const TableSearch: React.FC<TableSearchProps> = ({ searchTableFunc, placeholder, value }) => (
-  <div className="flex items-center gap-2 p-3 border border-[#D9D9D9] rounded-[15px] bg-white max-w-[250px]">
-    <Icon icon="line-md:search" className="text-gray-500 text-lg" />
+  <div className="flex items-center gap-2 p-3 border border-[#D9D9D9] rounded-[15px] bg-white 
+                  w-full sm:max-w-[250px] md:max-w-[300px] min-h-[48px]">
+    <Icon icon="line-md:search" className="text-gray-500 text-lg flex-shrink-0" />
     <input
       type="search"
       placeholder={placeholder}
