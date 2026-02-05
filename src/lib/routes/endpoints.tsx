@@ -103,6 +103,14 @@ export const API_ROUTES = {
         base: '/wallets/transactions',
         details: (transactionId: string) => `/wallets/transactions/${transactionId}`
     },
+    permissions: {
+        base: '/permissions',
+        details: (permissionId: string) => `/permissions/${permissionId}`,
+        rolePermissions: (role: string) => `/permissions/roles/${role}`,
+        assignToRole: (role: string, permissionId: string) => `/permissions/roles/${role}/assign/${permissionId}`,
+        removeFromRole: (role: string, permissionId: string) => `/permissions/roles/${role}/remove/${permissionId}`,
+        seed: '/permissions/seed',
+    },
 };
 
 

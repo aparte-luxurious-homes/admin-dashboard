@@ -119,8 +119,8 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
         firstName: '',
         lastName: '',
         gender: '',
-        is_active: true,
-        is_verified: false,
+        isActive: true,
+        isVerified: false,
     });
 
     const dispatch = useDispatch();
@@ -256,7 +256,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                         phone: user.phone || '',
                         firstName: user.profile?.first_name || user.profile?.firstName || user.first_name || user.firstName || '',
                         lastName: user.profile?.last_name || user.profile?.lastName || user.last_name || user.lastName || '',
-                        gender: user.profile?.gender || '',
+                        gender: user.profile?.gender ? user.profile.gender.toLowerCase() : '',
                         isActive: user.is_active ?? user.isActive ?? true,
                         isVerified: user.is_verified ?? user.isVerified ?? false,
                     });
@@ -370,7 +370,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                         <th className="px-6 py-4">Full Name</th>
                                         <th className="px-6 py-4">Email / Phone</th>
                                         <th className="px-6 py-4 text-center">KYC Status</th>
-                                        <th className="px-6 py-4 text-center">Acc. Status</th>
+                                        {/* <th className="px-6 py-4 text-center">Acc. Status</th> */}
                                         <th className="px-6 py-4 text-center">Verified</th>
                                         <th className="px-6 py-4">Date Created</th>
                                         <th className="px-6 py-4 text-right">Actions</th>
@@ -410,12 +410,12 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                                     {user.profile?.kyc_status || user.profile?.kycStatus || 'PENDING'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-center text-sm">
+                                            {/* <td className="px-6 py-4 text-center text-sm">
                                                 <span className={`px-2 py-1 rounded-full text-[10px] font-semibold uppercase ${(user.is_active ?? user.isActive) ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
                                                     }`}>
                                                     {(user.is_active ?? user.isActive) ? 'Active' : 'Inactive'}
                                                 </span>
-                                            </td>
+                                            </td> */}
                                             <td className="px-6 py-4 text-center">
                                                 <Badge status={user.is_verified ?? user.isVerified ?? false} />
                                             </td>
@@ -530,6 +530,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                         value={createForm.phone}
                                         onChange={e => setCreateForm({ ...createForm, phone: e.target.value })}
                                     />
+                                    <p className="text-[10px] text-gray-400 mt-1 italic">Format: +234XXXXXXXXXX or 080XXXXXXXX</p>
                                 </div>
                                 <div className="md:col-span-2 space-y-1.5">
                                     <label className="block text-sm font-medium text-gray-700">Password</label>
@@ -540,6 +541,26 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                         value={createForm.password}
                                         onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
                                     />
+                                    <div className="mt-2 space-y-1">
+                                        <p className="text-[11px] font-medium text-gray-500 mb-1">Password Requirements:</p>
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                            <p className={`text-[10px] flex items-center gap-1 ${createForm.password.length >= 8 ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={createForm.password.length >= 8 ? "mdi:check-circle" : "mdi:circle-outline"} /> 8+ Characters
+                                            </p>
+                                            <p className={`text-[10px] flex items-center gap-1 ${/[A-Z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={/[A-Z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} /> One Uppercase
+                                            </p>
+                                            <p className={`text-[10px] flex items-center gap-1 ${/[a-z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={/[a-z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} /> One Lowercase
+                                            </p>
+                                            <p className={`text-[10px] flex items-center gap-1 ${/\d/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={/\d/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} /> One Digit
+                                            </p>
+                                            <p className={`text-[10px] flex items-center gap-1 ${/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} /> Special Character
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="block text-sm font-medium text-gray-700">Gender</label>
@@ -558,8 +579,8 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     <label className="flex items-center gap-2 cursor-pointer group">
                                         <input
                                             type="checkbox"
-                                            checked={createForm.is_active}
-                                            onChange={e => setCreateForm({ ...createForm, is_active: e.target.checked })}
+                                            checked={createForm.isActive}
+                                            onChange={e => setCreateForm({ ...createForm, isActive: e.target.checked })}
                                             className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                                         />
                                         <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Active account</span>
@@ -567,8 +588,8 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     <label className="flex items-center gap-2 cursor-pointer group">
                                         <input
                                             type="checkbox"
-                                            checked={createForm.is_verified}
-                                            onChange={e => setCreateForm({ ...createForm, is_verified: e.target.checked })}
+                                            checked={createForm.isVerified}
+                                            onChange={e => setCreateForm({ ...createForm, isVerified: e.target.checked })}
                                             className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                                         />
                                         <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Mark as Verified</span>
@@ -588,10 +609,16 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                 onClick={() => {
                                     createUser({ payload: createForm }, {
                                         onSuccess: () => { toast.success('User created successfully'); setIsCreateOpen(false); fetchUsers(); },
-                                        onError: (e: any) => {
-                                            const detail = e?.response?.data?.detail;
-                                            const msg = Array.isArray(detail) ? detail.map((d: any) => d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
-                                            toast.error(msg);
+                                        onError: (err: any) => {
+                                            const detail = err?.response?.data?.detail;
+                                            if (Array.isArray(detail)) {
+                                                detail.forEach((error: any) => {
+                                                    const field = error.loc[error.loc.length - 1];
+                                                    toast.error(`${field}: ${error.msg}`, { duration: 5000 });
+                                                });
+                                            } else {
+                                                toast.error(detail || err?.response?.data?.message || 'Failed to create user');
+                                            }
                                         }
                                     });
                                 }}
@@ -674,8 +701,8 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     <label className="flex items-center gap-2 cursor-pointer group">
                                         <input
                                             type="checkbox"
-                                            checked={editForm.is_active}
-                                            onChange={e => setEditForm({ ...editForm, is_active: e.target.checked })}
+                                            checked={editForm.isActive}
+                                            onChange={e => setEditForm({ ...editForm, isActive: e.target.checked })}
                                             className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                                         />
                                         <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Active account</span>
@@ -683,8 +710,8 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     <label className="flex items-center gap-2 cursor-pointer group">
                                         <input
                                             type="checkbox"
-                                            checked={editForm.is_verified}
-                                            onChange={e => setEditForm({ ...editForm, is_verified: e.target.checked })}
+                                            checked={editForm.isVerified}
+                                            onChange={e => setEditForm({ ...editForm, isVerified: e.target.checked })}
                                             className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                                         />
                                         <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Verified</span>
@@ -703,12 +730,35 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                             <button
                                 onClick={() => {
                                     if (!editUserId) { toast.error('Missing user id'); return; }
-                                    updateUser({ userId: editUserId, payload: editForm }, {
-                                        onSuccess: () => { toast.success('User updated successfully'); setIsEditOpen(false); fetchUsers(); },
-                                        onError: (e: any) => {
-                                            const detail = e?.response?.data?.detail;
-                                            const msg = Array.isArray(detail) ? detail.map((d: any) => d?.msg).join('; ') : (detail || e?.response?.data?.message || 'Failed');
-                                            toast.error(msg);
+                                    updateUser({
+                                        userId: editUserId,
+                                        payload: {
+                                            email: editForm.email,
+                                            phone: editForm.phone,
+                                            isActive: editForm.isActive,
+                                            isVerified: editForm.isVerified,
+                                            profile: {
+                                                first_name: editForm.firstName,
+                                                last_name: editForm.lastName,
+                                                gender: editForm.gender ? editForm.gender.toUpperCase() : undefined,
+                                            }
+                                        }
+                                    }, {
+                                        onSuccess: () => {
+                                            toast.success('User updated successfully');
+                                            setIsEditOpen(false);
+                                            fetchUsers();
+                                        },
+                                        onError: (err: any) => {
+                                            const detail = err?.response?.data?.detail;
+                                            if (Array.isArray(detail)) {
+                                                detail.forEach((error: any) => {
+                                                    const field = error.loc[error.loc.length - 1];
+                                                    toast.error(`${field}: ${error.msg}`, { duration: 5000 });
+                                                });
+                                            } else {
+                                                toast.error(detail || err?.response?.data?.message || 'Failed to update user');
+                                            }
                                         }
                                     });
                                 }}
@@ -719,7 +769,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                             </button>
                         </div>
                     </div>
-                </div>
+                </div >
             )}
         </>
     );

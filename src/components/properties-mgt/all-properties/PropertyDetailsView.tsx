@@ -533,7 +533,18 @@ export default function PropertyDetailsView({
 
                                                 {property?.agent && user?.role !== UserRole.AGENT ? (
                                                     <div className="group">
-                                                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3">Assigned Agent</p>
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Assigned Agent</p>
+                                                            {user?.role === UserRole.ADMIN && !editMode && (
+                                                                <button
+                                                                    onClick={() => setShowAgentSelection(true)}
+                                                                    className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors group/edit"
+                                                                    title="Change assigned agent"
+                                                                >
+                                                                    <HiOutlinePencilAlt className="text-sm text-zinc-400 group-hover/edit:text-primary" />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                         <div className="flex gap-4 items-center">
                                                             <div className="relative">
                                                                 <Image

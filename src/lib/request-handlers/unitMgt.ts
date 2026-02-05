@@ -65,6 +65,7 @@ export function CreatePropertyUnit() {
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.createUnit, propertyId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
         },
     });
 }
@@ -79,6 +80,7 @@ export function UpdatePropertyUnit() {
         onSuccess: (_, { propertyId, unitId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
         },
     });
 }
@@ -93,6 +95,7 @@ export function DeletePropertyUnit() {
         onSuccess: (_, { propertyId, unitId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.deleteUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
         },
     });
 }
@@ -107,6 +110,8 @@ export function AssignUnitAmenities() {
         onSuccess: (_, { propertyId, unitId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.assignAmenities, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
         },
     });
 }
@@ -127,9 +132,11 @@ export function UploadPropertyUnitMedia() {
 
             ),
 
-        onSuccess: (_, { propertyId }) => {
+        onSuccess: (_, { propertyId, unitId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.unitMedia, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
         },
     });
 }

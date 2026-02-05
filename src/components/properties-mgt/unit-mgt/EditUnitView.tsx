@@ -85,69 +85,69 @@ export default function EditUnitView({
     };
 
 
-    const formik =
-        useFormik({
-            initialValues: {
-                name: unit?.name ?? "",
-                description: unit?.description ?? "",
-                pricePerNight: unit?.pricePerNight ?? unit?.price_per_night ?? "0.00",
-                cautionFee: unit?.cautionFee ?? unit?.caution_fee ?? "0.00",
-                maxGuests: unit?.maxGuests ?? unit?.max_guests ?? 0,
-                count: unit?.count ?? 0,
-                isWholeProperty: unit?.isWholeProperty ?? unit?.is_whole_property ?? false,
-                bedroomCount: unit?.bedroomCount ?? unit?.bedroom_count ?? 0,
-                livingRoomCount: unit?.livingRoomCount ?? unit?.living_room_count ?? 0,
-                kitchenCount: unit?.kitchenCount ?? unit?.kitchen_count ?? 0,
-                bathroomCount: unit?.bathroomCount ?? unit?.bathroom_count ?? 0,
-                amenities: (unit?.amenities || []).map((el: any) => el.id),
-                amenityNames: (unit?.amenities || []).map((el: any) => el.name),
-            },
-            enableReinitialize: true,
-            onSubmit: (values) => {
-                const sortedAmenities = sortAmenities(amenities, values.amenityNames);
 
-                const updatePayload: IUpdatePropertyUnit = {
-                    name: values.name,
-                    description: values.description,
-                    price_per_night: values.pricePerNight,
-                    caution_fee: values.cautionFee,
-                    max_guests: values.maxGuests,
-                    count: values.count,
-                    is_whole_property: Boolean(values.isWholeProperty),
-                    bedroom_count: values.bedroomCount,
-                    living_room_count: values.livingRoomCount,
-                    kitchen_count: values.kitchenCount,
-                    bathroom_count: values.bathroomCount,
-                    amenities: sortedAmenities,
-                };
-                mutate({
-                    propertyId: String(unit?.propertyId || propertyId),
-                    unitId: String(unit?.id || unitId),
-                    payload: updatePayload,
-                },
-                    {
-                        onSuccess: () => {
-                            toast.success('Unit updated successfully', {
-                                duration: 6000,
-                                style: {
-                                    maxWidth: '500px',
-                                    width: 'max-content'
-                                }
-                            })
-                            removeParam('edit');
-                            handleEditMode(false);
-                        },
-                        onError: () =>
-                            toast.error('Failed to update unit', {
-                                duration: 6000,
-                                style: {
-                                    maxWidth: '500px',
-                                    width: 'max-content'
-                                }
-                            })
-                    })
+    const formik = useFormik({
+        initialValues: {
+            name: unit?.name ?? "",
+            description: unit?.description ?? "",
+            pricePerNight: unit?.pricePerNight ?? unit?.price_per_night ?? "0.00",
+            cautionFee: unit?.cautionFee ?? unit?.caution_fee ?? "0.00",
+            maxGuests: unit?.maxGuests ?? unit?.max_guests ?? 0,
+            count: unit?.count ?? 0,
+            isWholeProperty: unit?.isWholeProperty ?? unit?.is_whole_property ?? false,
+            bedroomCount: unit?.bedroomCount ?? unit?.bedroom_count ?? 0,
+            livingRoomCount: unit?.livingRoomCount ?? unit?.living_room_count ?? 0,
+            kitchenCount: unit?.kitchenCount ?? unit?.kitchen_count ?? 0,
+            bathroomCount: unit?.bathroomCount ?? unit?.bathroom_count ?? 0,
+            amenities: (unit?.amenities || []).map((el: any) => el.id),
+            amenityNames: (unit?.amenities || []).map((el: any) => el.name),
+        },
+        enableReinitialize: true,
+        onSubmit: (values) => {
+            const sortedAmenities = sortAmenities(amenities, values.amenityNames);
+
+            const updatePayload: IUpdatePropertyUnit = {
+                name: values.name,
+                description: values.description,
+                price_per_night: values.pricePerNight,
+                caution_fee: values.cautionFee,
+                max_guests: values.maxGuests,
+                count: values.count,
+                is_whole_property: Boolean(values.isWholeProperty),
+                bedroom_count: values.bedroomCount,
+                living_room_count: values.livingRoomCount,
+                kitchen_count: values.kitchenCount,
+                bathroom_count: values.bathroomCount,
+                amenities: sortedAmenities,
+            };
+            mutate({
+                propertyId: String(unit?.propertyId || propertyId),
+                unitId: String(unit?.id || unitId),
+                payload: updatePayload,
             },
-        });
+                {
+                    onSuccess: () => {
+                        toast.success('Unit updated successfully', {
+                            duration: 6000,
+                            style: {
+                                maxWidth: '500px',
+                                width: 'max-content'
+                            }
+                        })
+                        removeParam('edit');
+                        handleEditMode(false);
+                    },
+                    onError: () =>
+                        toast.error('Failed to update unit', {
+                            duration: 6000,
+                            style: {
+                                maxWidth: '500px',
+                                width: 'max-content'
+                            }
+                        })
+                })
+        },
+    });
 
     const handleDeleteImage = (e: number) => {
         dispatch(
@@ -282,16 +282,31 @@ export default function EditUnitView({
                             <Icon icon="solar:widget-3-bold-duotone" className="text-xl text-primary" />
                             Unit Configuration
                         </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+
+                        {/* Contextual Help Banner */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                            <div className="flex items-start gap-3">
+                                <Icon icon="solar:info-circle-bold" className="text-blue-600 text-xl flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-bold text-blue-900">Unit Template Settings</p>
+                                    <p className="text-xs text-blue-700 mt-1">
+                                        These settings apply to <strong>{formik.values.name || 'this unit'}</strong> and all <strong>{formik.values.count || 0}</strong> identical instances of this unit.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Room Configuration Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {[
                                 { id: 'bedroomCount', label: 'Bedrooms', icon: IoBedOutline },
                                 { id: 'kitchenCount', label: 'Kitchens', icon: TbToolsKitchen },
                                 { id: 'bathroomCount', label: 'Bathrooms', icon: PiBathtub },
                                 { id: 'livingRoomCount', label: 'Lounges', icon: LuSofa },
-                                { id: 'maxGuests', label: 'Max Guests', icon: LuUsers }
                             ].map((field) => (
                                 <div key={field.id} className="space-y-2">
-                                    <label htmlFor={field.id} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">{field.label}</label>
+                                    <label htmlFor={field.id} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                                        {field.label}
+                                    </label>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
                                             <field.icon className="text-lg" />
@@ -308,179 +323,241 @@ export default function EditUnitView({
                             ))}
                         </div>
 
-                        <div className="pt-4 mt-2 border-t border-zinc-100">
-                            <CustomCheckbox
-                                label="This unit represents the whole property"
-                                checked={formik.values.isWholeProperty}
-                                onChange={(val: boolean) => formik.setFieldValue("isWholeProperty", val)}
-                            />
-                        </div>
-                    </div>
+                        {/* Capacity & Count Section */}
+                        <div className="pt-4 border-t border-zinc-100">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Max Guests */}
+                                <div className="space-y-2">
+                                    <label htmlFor="maxGuests" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                                        Max Guests (per unit)
+                                    </label>
+                                    <p className="text-[9px] text-zinc-400 ml-1 -mt-1">Max capacity for ONE unit instance</p>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                            <LuUsers className="text-lg" />
+                                        </div>
+                                        <input
+                                            id="maxGuests"
+                                            type="number"
+                                            value={formik.values.maxGuests}
+                                            onChange={(e) => formik.setFieldValue('maxGuests', Number(e.target.value))}
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-11 pr-3 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+                                        />
+                                    </div>
+                                </div>
 
-                    {/* Amenities Section */}
-                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                                <Icon icon="solar:star-bold-duotone" className="text-xl text-primary" />
-                                Amenities
-                            </h3>
-                            {user?.role === UserRole.ADMIN && (
-                                <button type="button" className="text-[10px] font-bold text-primary hover:text-primary/70 transition-colors flex items-center gap-1">
-                                    <FaPlus className="text-[8px]" /> ADD CUSTOM AMENITY
-                                </button>
-                            )}
-                        </div>
-                        <div className="bg-zinc-50/50 border border-zinc-100 rounded-2xl p-6">
-                            <MultipleChoice
-                                options={amenities?.map(el => el.name)}
-                                selected={formik.values.amenityNames}
-                                onChange={(val) => formik.setFieldValue("amenityNames", [...val])}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Media Section */}
-                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
-                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                            <Icon icon="solar:camera-bold-duotone" className="text-xl text-primary" />
-                            Gallery & Media
-                        </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {media?.map((el, index) => (
-                                <div key={index} className="relative aspect-video rounded-xl overflow-hidden group shadow-sm border border-zinc-100">
-                                    <Image
-                                        src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                        alt={`unit_img_${index}`}
-                                        fill
-                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                {/* Unit Count */}
+                                <div className="space-y-2">
+                                    <label htmlFor="count" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                                        <Icon icon="solar:copy-bold-duotone" className="text-primary text-sm" />
+                                        Number of Identical Units
+                                    </label>
+                                    <p className="text-[9px] text-zinc-400 ml-1 -mt-1">How many instances of this unit template exist</p>
+                                    <input
+                                        id="count"
+                                        type="number"
+                                        min="0"
+                                        value={formik.values.count}
+                                        onChange={(e) => {
+                                            const newCount = Number(e.target.value);
+                                            formik.setFieldValue('count', newCount);
+                                            // Auto-uncheck whole property if count > 0
+                                            if (newCount > 0 && formik.values.isWholeProperty) {
+                                                formik.setFieldValue('isWholeProperty', false);
+                                            }
+                                        }}
+                                        disabled={formik.values.isWholeProperty}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
-                                    <div
-                                        onClick={() => handleDeleteImage(el.id)}
-                                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 mt-2 border-t border-zinc-100">
+                            <div className="flex items-start gap-3">
+                                <CustomCheckbox
+                                    label="This unit represents the whole property"
+                                    checked={formik.values.isWholeProperty}
+                                    disabled={formik.values.count > 0}
+                                    onChange={(val: boolean) => {
+                                        formik.setFieldValue("isWholeProperty", val);
+                                        // Auto-set count to 0 if whole property is checked
+                                        if (val && formik.values.count > 0) {
+                                            formik.setFieldValue('count', 0);
+                                        }
+                                    }}
+                                />
+                                {formik.values.count > 0 && (
+                                    <p className="text-[9px] text-amber-600 mt-1">Cannot be checked when unit count is greater than 0</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Amenities Section */}
+                        <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                                    <Icon icon="solar:star-bold-duotone" className="text-xl text-primary" />
+                                    Amenities
+                                </h3>
+                                {user?.role === UserRole.ADMIN && (
+                                    <button type="button" className="text-[10px] font-bold text-primary hover:text-primary/70 transition-colors flex items-center gap-1">
+                                        <FaPlus className="text-[8px]" /> ADD CUSTOM AMENITY
+                                    </button>
+                                )}
+                            </div>
+                            <div className="bg-zinc-50/50 border border-zinc-100 rounded-2xl p-6">
+                                <MultipleChoice
+                                    options={amenities?.map(el => el.name)}
+                                    selected={formik.values.amenityNames}
+                                    onChange={(val) => formik.setFieldValue("amenityNames", [...val])}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Media Section */}
+                        <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                            <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                                <Icon icon="solar:camera-bold-duotone" className="text-xl text-primary" />
+                                Gallery & Media
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {media?.map((el, index) => (
+                                    <div key={index} className="relative aspect-video rounded-xl overflow-hidden group shadow-sm border border-zinc-100">
+                                        <Image
+                                            src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
+                                            alt={`unit_img_${index}`}
+                                            fill
+                                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                        />
+                                        <div
+                                            onClick={() => handleDeleteImage(el.id)}
+                                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
+                                        >
+                                            <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                                                <TrashIcon className="w-4" color="white" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-8">
+                                <CustomDropzone
+                                    onDrop={setUploadedMedia}
+                                    multiple
+                                    previewsRef={uploadRef}
+                                />
+                                {uploadedMedia.length > 0 && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            const formData = new FormData();
+                                            uploadedMedia.forEach(file => formData.append("media_file", file));
+                                            formData.append("media_type", MediaType.IMAGE);
+                                            formData.append("is_featured", "true");
+                                            uploadMedia({ propertyId: String(propertyId), unitId: String(unitId), payload: formData }, {
+                                                onSuccess: () => toast.success('Media uploaded successfully'),
+                                                onError: () => toast.error('Upload failed')
+                                            });
+                                        }}
+                                        disabled={uploadedMediaPending}
+                                        className="mt-4 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50"
                                     >
-                                        <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-                                            <TrashIcon className="w-4" color="white" />
+                                        {uploadedMediaPending ? <Spinner /> : <><IoCloudUploadOutline className="text-lg" /> UPLOAD NEW MEDIA</>}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sidebar Sticky Content - Right Side */}
+                    <div className="lg:col-span-4 space-y-8 sticky top-8">
+                        {/* Pricing Strategy Card */}
+                        <div className="bg-zinc-900 rounded-[2.5rem] p-8 text-white shadow-xl shadow-zinc-900/20 relative overflow-hidden group border border-zinc-800">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
+
+                            <h3 className="text-lg font-bold mb-8 flex items-center gap-2 relative z-10">
+                                <Icon icon="solar:tag-bold-duotone" className="text-xl text-primary" />
+                                Pricing Strategy
+                            </h3>
+
+                            <div className="space-y-6 relative z-10">
+                                <div className="space-y-2">
+                                    <label htmlFor="price-per-night" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Price Per Night</label>
+                                    <div className="relative group/input">
+                                        <div className="absolute inset-y-0 left-3 flex items-center h-full pointer-events-none">
+                                            <TbCurrencyNaira className="text-2xl text-zinc-600 group-focus-within/input:text-primary transition-colors" />
+                                        </div>
+                                        <input
+                                            id="price-per-night"
+                                            type="number"
+                                            value={formik.values.pricePerNight}
+                                            onChange={(e) => formik.setFieldValue('pricePerNight', e.target.value)}
+                                            className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label htmlFor="caution-fee" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Caution Fee (Refundable)</label>
+                                    <div className="relative group/input">
+                                        <div className="absolute inset-y-0 left-3 flex items-center h-full pointer-events-none">
+                                            <TbCurrencyNaira className="text-2xl text-zinc-600 group-focus-within/input:text-primary transition-colors" />
+                                        </div>
+                                        <input
+                                            id="caution-fee"
+                                            type="number"
+                                            value={formik.values.cautionFee}
+                                            onChange={(e) => formik.setFieldValue('cautionFee', e.target.value)}
+                                            className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-white/10">
+                                    <div className="flex flex-col items-center text-center">
+                                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Total Revenue Display</p>
+                                        <div className="flex items-center justify-center gap-1">
+                                            <TbCurrencyNaira className="text-3xl text-primary" />
+                                            <span className="text-4xl font-bold tracking-tight text-white">
+                                                {formatMoney(Number(formik.values.pricePerNight) + Number(formik.values.cautionFee))}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            </div>
                         </div>
 
-                        <div className="mt-8">
-                            <CustomDropzone
-                                onDrop={setUploadedMedia}
-                                multiple
-                                previewsRef={uploadRef}
-                            />
-                            {uploadedMedia.length > 0 && (
+                        {/* Static Action Buttons Card */}
+                        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
+                            <button
+                                form="edit-unit-form"
+                                type="submit"
+                                disabled={isPending}
+                                className="w-full h-14 bg-primary text-white text-sm font-bold rounded-2xl hover:bg-primary/90 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isPending ? <Spinner /> : <><Icon icon="solar:check-read-bold" className="text-lg" /> SAVE CHANGES</>}
+                            </button>
+
+                            <div className="grid grid-cols-2 gap-3">
                                 <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData();
-                                        uploadedMedia.forEach(file => formData.append("media_file", file));
-                                        formData.append("media_type", MediaType.IMAGE);
-                                        formData.append("is_featured", "true");
-                                        uploadMedia({ propertyId: String(propertyId), unitId: String(unitId), payload: formData }, {
-                                            onSuccess: () => toast.success('Media uploaded successfully'),
-                                            onError: () => toast.error('Upload failed')
-                                        });
-                                    }}
-                                    disabled={uploadedMediaPending}
-                                    className="mt-4 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50"
+                                    type="button"
+                                    onClick={() => { removeParam('edit'); handleEditMode(false); }}
+                                    className="h-12 border border-zinc-200 text-zinc-600 text-[11px] font-bold rounded-xl hover:bg-zinc-50 transition-all uppercase tracking-wider"
                                 >
-                                    {uploadedMediaPending ? <Spinner /> : <><IoCloudUploadOutline className="text-lg" /> UPLOAD NEW MEDIA</>}
+                                    CANCEL
                                 </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sidebar Sticky Content - Right Side */}
-                <div className="lg:col-span-4 space-y-8 sticky top-8">
-                    {/* Pricing Strategy Card */}
-                    <div className="bg-zinc-900 rounded-[2.5rem] p-8 text-white shadow-xl shadow-zinc-900/20 relative overflow-hidden group border border-zinc-800">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
-
-                        <h3 className="text-lg font-bold mb-8 flex items-center gap-2 relative z-10">
-                            <Icon icon="solar:tag-bold-duotone" className="text-xl text-primary" />
-                            Pricing Strategy
-                        </h3>
-
-                        <div className="space-y-6 relative z-10">
-                            <div className="space-y-2">
-                                <label htmlFor="price-per-night" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Price Per Night</label>
-                                <div className="relative group/input">
-                                    <div className="absolute inset-y-0 left-3 flex items-center h-full pointer-events-none">
-                                        <TbCurrencyNaira className="text-2xl text-zinc-600 group-focus-within/input:text-primary transition-colors" />
-                                    </div>
-                                    <input
-                                        id="price-per-night"
-                                        type="number"
-                                        value={formik.values.pricePerNight}
-                                        onChange={(e) => formik.setFieldValue('pricePerNight', e.target.value)}
-                                        className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
-                                        placeholder="0.00"
-                                    />
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    className="h-12 border border-red-100 bg-red-50 text-red-600 text-[11px] font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-1.5 uppercase tracking-wider"
+                                >
+                                    <TrashIcon className="w-3.5" color="currentColor" /> DELETE UNIT
+                                </button>
                             </div>
-
-                            <div className="space-y-2">
-                                <label htmlFor="caution-fee" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Caution Fee (Refundable)</label>
-                                <div className="relative group/input">
-                                    <div className="absolute inset-y-0 left-3 flex items-center h-full pointer-events-none">
-                                        <TbCurrencyNaira className="text-2xl text-zinc-600 group-focus-within/input:text-primary transition-colors" />
-                                    </div>
-                                    <input
-                                        id="caution-fee"
-                                        type="number"
-                                        value={formik.values.cautionFee}
-                                        onChange={(e) => formik.setFieldValue('cautionFee', e.target.value)}
-                                        className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="pt-6 border-t border-white/10">
-                                <div className="flex flex-col items-center text-center">
-                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Total Revenue Display</p>
-                                    <div className="flex items-center justify-center gap-1">
-                                        <TbCurrencyNaira className="text-3xl text-primary" />
-                                        <span className="text-4xl font-bold tracking-tight text-white">
-                                            {formatMoney(Number(formik.values.pricePerNight) + Number(formik.values.cautionFee))}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Static Action Buttons Card */}
-                    <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-4">
-                        <button
-                            form="edit-unit-form"
-                            type="submit"
-                            disabled={isPending}
-                            className="w-full h-14 bg-primary text-white text-sm font-bold rounded-2xl hover:bg-primary/90 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {isPending ? <Spinner /> : <><Icon icon="solar:check-read-bold" className="text-lg" /> SAVE CHANGES</>}
-                        </button>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                onClick={() => { removeParam('edit'); handleEditMode(false); }}
-                                className="h-12 border border-zinc-200 text-zinc-600 text-[11px] font-bold rounded-xl hover:bg-zinc-50 transition-all uppercase tracking-wider"
-                            >
-                                CANCEL
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleDelete}
-                                className="h-12 border border-red-100 bg-red-50 text-red-600 text-[11px] font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-1.5 uppercase tracking-wider"
-                            >
-                                <TrashIcon className="w-3.5" color="currentColor" /> DELETE UNIT
-                            </button>
                         </div>
                     </div>
                 </div>

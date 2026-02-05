@@ -301,15 +301,15 @@ const OwnerInfo = () => {
       await axiosRequest.put(
         `${API_ROUTES.admin.users.userByUuid(String(id))}`,
         {
+          email: editedData.email,
+          phone: editedData.phone,
           profile: {
             first_name: editedData.firstName,
             last_name: editedData.lastName,
             state: editedData.state,
             address: editedData.address,
-            gender: editedData.gender,
+            gender: editedData.gender ? editedData.gender.toUpperCase() : undefined,
           },
-          email: editedData.email,
-          phone: editedData.phone,
         }
       );
       toast.success("User updated successfully", {

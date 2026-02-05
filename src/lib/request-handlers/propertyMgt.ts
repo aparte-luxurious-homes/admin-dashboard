@@ -170,6 +170,7 @@ export function AssignToProperty(propertyId: string | number) {
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.assignToProperty] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.getPropertyVerification, values?.data?.data?.VerificationBadge?.id] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
         },
     });
 }
@@ -184,6 +185,7 @@ export function UpdateProperty() {
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
         },
     });
 }
@@ -197,6 +199,7 @@ export function DeleteProperty() {
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.deleteProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
         },
     });
 }
@@ -211,6 +214,8 @@ export function AssignPropertyAmenities() {
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyAmenities, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
         },
     });
 }
@@ -225,6 +230,8 @@ export function FeatureProperty() {
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.featureProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
         },
     });
 }
@@ -248,6 +255,8 @@ export function UploadPropertyMedia() {
         onSuccess: (_, { propertyId }) => {
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyMedia, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
         },
     });
 }
