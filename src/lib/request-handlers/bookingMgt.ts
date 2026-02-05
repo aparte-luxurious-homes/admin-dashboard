@@ -12,7 +12,16 @@ enum BookingRequestKeys {
     retryBookingPayment = "retryBookingPayment",
 }
 
-export function GetAllBookings(page = 1, limit = 10, searchQuery = '', unitId?: string | number) {
+export function GetAllBookings(
+    page = 1,
+    limit = 10,
+    searchQuery = '',
+    unitId?: string | number,
+    propertyId?: string | number,
+    status?: string,
+    startDateFrom?: string,
+    startDateTo?: string
+) {
     const queryParams = new URLSearchParams({
         page: String(page),
         size: String(limit),
@@ -23,8 +32,24 @@ export function GetAllBookings(page = 1, limit = 10, searchQuery = '', unitId?: 
         queryParams.append('unit_id', String(unitId));
     }
 
+    if (propertyId !== undefined) {
+        queryParams.append('property_id', String(propertyId));
+    }
+
+    if (status) {
+        queryParams.append('status', status);
+    }
+
+    if (startDateFrom) {
+        queryParams.append('start_date_from', startDateFrom);
+    }
+
+    if (startDateTo) {
+        queryParams.append('start_date_to', startDateTo);
+    }
+
     return useQuery({
-        queryKey: [BookingRequestKeys.getAllBookings, page, limit, searchQuery, unitId],
+        queryKey: [BookingRequestKeys.getAllBookings, page, limit, searchQuery, unitId, propertyId, status, startDateFrom, startDateTo],
         queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.base}?${queryParams.toString()}`),
         refetchOnWindowFocus: true,
     });
@@ -68,8 +93,10 @@ export function UpdateBookingDetails() {
 export function DeleteBooking() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.delete(API_ROUTES.bookings.details(String(bookingId))),
+        mutationFn: ({ bookingId, cancellationReason }: { bookingId: string | number, cancellationReason?: string }) =>
+            axiosRequest.delete(API_ROUTES.bookings.details(String(bookingId)), {
+                data: { cancellation_reason: cancellationReason || 'Deleted by admin' }
+            }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
         },

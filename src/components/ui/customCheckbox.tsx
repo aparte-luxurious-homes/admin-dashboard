@@ -3,29 +3,31 @@ import { useState } from "react";
 interface CheckboxProps {
   label?: string;
   checked?: boolean;
+  disabled?: boolean;
   onChange?: (checked: boolean) => void;
 }
 
-export default function CustomCheckbox({ label, checked = false, onChange }: CheckboxProps) {
+export default function CustomCheckbox({ label, checked = false, disabled = false, onChange }: CheckboxProps) {
   const [isChecked, setIsChecked] = useState(checked);
 
   const handleChange = () => {
+    if (disabled) return;
     setIsChecked(!isChecked);
     if (onChange) onChange(!isChecked);
   };
 
   return (
-    <label className="flex items-center gap-x-4 cursor-pointer">
+    <label className={`flex items-center gap-x-4 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
       <input
         type="checkbox"
         checked={isChecked}
         onChange={handleChange}
+        disabled={disabled}
         className="hidden"
       />
       <div
-        className={`size-6 border-2 rounded-md flex items-center justify-center transition-all ${
-          isChecked ? "bg-primary border-primary" : "border-gray-400"
-        }`}
+        className={`size-6 border-2 rounded-md flex items-center justify-center transition-all ${isChecked ? "bg-primary border-primary" : "border-gray-400"
+          }`}
       >
         {isChecked && (
           <svg

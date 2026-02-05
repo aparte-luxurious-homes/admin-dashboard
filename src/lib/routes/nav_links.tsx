@@ -171,6 +171,15 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
+        name: 'Audit Logs',
+        pathName: 'audit-logs',
+        link: '/audit-logs',
+        icon: <FinancialsIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        secondary: false,
+        children: undefined,
+    },
+    {
         name: 'Roles & Permissions',
         pathName: 'roles-permissions',
         link: PAGE_ROUTES.dashboard.rolesPermissions.base,
