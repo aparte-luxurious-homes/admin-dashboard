@@ -100,14 +100,15 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
     const modalRef = useRef<HTMLDivElement>(null);
 
     // Create form state
-    const [createForm, setCreateForm] = useState<any>({
-        role: role,
+    const [createForm, setCreateForm] = useState({
         email: '',
         phone: '',
         password: '',
         firstName: '',
         lastName: '',
         gender: '',
+        role: role,
+        bio: '',
         isActive: true,
         isVerified: false,
     });
@@ -119,6 +120,8 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
         firstName: '',
         lastName: '',
         gender: '',
+        role: '',
+        bio: '',
         isActive: true,
         isVerified: false,
     });
@@ -256,7 +259,9 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                         phone: user.phone || '',
                         firstName: user.profile?.first_name || user.profile?.firstName || user.first_name || user.firstName || '',
                         lastName: user.profile?.last_name || user.profile?.lastName || user.last_name || user.lastName || '',
-                        gender: user.profile?.gender ? user.profile.gender.toLowerCase() : '',
+                        gender: user.profile?.gender ? user.profile.gender.toUpperCase() : '',
+                        role: user.role || '',
+                        bio: user.profile?.bio || '',
                         isActive: user.is_active ?? user.isActive ?? true,
                         isVerified: user.is_verified ?? user.isVerified ?? false,
                     });
@@ -481,140 +486,244 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
 
             {/* Create User Modal */}
             {isCreateOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 backdrop-blur-sm" onClick={() => setIsCreateOpen(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm transition-all duration-300" onClick={() => setIsCreateOpen(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="bg-gray-50/80 border-b border-gray-100 px-8 py-5">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-semibold text-gray-900">Create {role.charAt(0) + role.slice(1).toLowerCase()}</h2>
-                                <button onClick={() => setIsCreateOpen(false)} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
-                                    <Icon icon="mdi:close" width="24" height="24" className="text-gray-500" />
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <Icon icon="mdi:account-plus" width="24" height="24" className="text-primary" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Create New User</h2>
+                                        <p className="text-sm text-gray-500 font-medium">Add a new member to the platform</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsCreateOpen(false)} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all duration-200 group">
+                                    <Icon icon="mdi:close" width="22" height="22" className="text-gray-400 group-hover:text-gray-600" />
                                 </button>
                             </div>
                         </div>
 
-                        <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">First Name</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="John"
-                                        value={createForm.firstName}
-                                        onChange={e => setCreateForm({ ...createForm, firstName: e.target.value })}
-                                    />
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+
+                                {/* Section: Personal Details */}
+                                <div className="md:col-span-2">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="h-4 w-1 bg-primary rounded-full"></div>
+                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Personal Information</h3>
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Last Name</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="Doe"
-                                        value={createForm.lastName}
-                                        onChange={e => setCreateForm({ ...createForm, lastName: e.target.value })}
-                                    />
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">First Name</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:account" width="18" />
+                                        </div>
+                                        <input
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="John"
+                                            value={createForm.firstName}
+                                            onChange={e => setCreateForm({ ...createForm, firstName: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Email Address</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="john@example.com"
-                                        type="email"
-                                        value={createForm.email}
-                                        onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
-                                    />
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Last Name</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:account-outline" width="18" />
+                                        </div>
+                                        <input
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="Doe"
+                                            value={createForm.lastName}
+                                            onChange={e => setCreateForm({ ...createForm, lastName: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="+234 800 000 0000"
-                                        value={createForm.phone}
-                                        onChange={e => setCreateForm({ ...createForm, phone: e.target.value })}
-                                    />
-                                    <p className="text-[10px] text-gray-400 mt-1 italic">Format: +234XXXXXXXXXX or 080XXXXXXXX</p>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Gender</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none">
+                                            <Icon icon="mdi:gender-male-female" width="18" />
+                                        </div>
+                                        <select
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200 appearance-none pointer-events-auto"
+                                            value={createForm.gender}
+                                            onChange={e => setCreateForm({ ...createForm, gender: e.target.value })}
+                                        >
+                                            <option value="">Select Gender</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <Icon icon="mdi:chevron-down" width="18" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Password</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="••••••••"
-                                        type="password"
-                                        value={createForm.password}
-                                        onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
-                                    />
-                                    <div className="mt-2 space-y-1">
-                                        <p className="text-[11px] font-medium text-gray-500 mb-1">Password Requirements:</p>
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                            <p className={`text-[10px] flex items-center gap-1 ${createForm.password.length >= 8 ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={createForm.password.length >= 8 ? "mdi:check-circle" : "mdi:circle-outline"} /> 8+ Characters
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Default Role</label>
+                                    <div className="relative group opacity-80">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:shield-account" width="18" />
+                                        </div>
+                                        <input
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl outline-none cursor-not-allowed"
+                                            value={role}
+                                            disabled
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Email Address</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:email-outline" width="18" />
+                                        </div>
+                                        <input
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="john@example.com"
+                                            type="email"
+                                            value={createForm.email}
+                                            onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Phone Number</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:phone-outline" width="18" />
+                                        </div>
+                                        <input
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="+234 800 000 0000"
+                                            value={createForm.phone}
+                                            onChange={e => setCreateForm({ ...createForm, phone: e.target.value })}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 ml-1 italic">Format: +234XXXXXXXXXX or 080XXXXXXXX</p>
+                                </div>
+
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Password</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:lock-outline" width="18" />
+                                        </div>
+                                        <input
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="••••••••"
+                                            type="password"
+                                            value={createForm.password}
+                                            onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 mt-2">
+                                        <p className="text-[11px] font-bold text-gray-500 mb-2 uppercase tracking-tight">Security Strength:</p>
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
+                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${createForm.password.length >= 8 ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={createForm.password.length >= 8 ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> 8+ Characters
                                             </p>
-                                            <p className={`text-[10px] flex items-center gap-1 ${/[A-Z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={/[A-Z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} /> One Uppercase
+                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[A-Z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={/[A-Z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Uppercase
                                             </p>
-                                            <p className={`text-[10px] flex items-center gap-1 ${/[a-z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={/[a-z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} /> One Lowercase
+                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[a-z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={/[a-z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Lowercase
                                             </p>
-                                            <p className={`text-[10px] flex items-center gap-1 ${/\d/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={/\d/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} /> One Digit
+                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/\d/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={/\d/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Digit
                                             </p>
-                                            <p className={`text-[10px] flex items-center gap-1 ${/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} /> Special Character
+                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                <Icon icon={/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> Special Char
                                             </p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Gender</label>
-                                    <select
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white"
-                                        value={createForm.gender}
-                                        onChange={e => setCreateForm({ ...createForm, gender: e.target.value })}
-                                    >
-                                        <option value="">Select gender</option>
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div className="flex flex-col justify-center space-y-3 pt-2">
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <input
-                                            type="checkbox"
-                                            checked={createForm.isActive}
-                                            onChange={e => setCreateForm({ ...createForm, isActive: e.target.checked })}
-                                            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                                        />
-                                        <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Active account</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <input
-                                            type="checkbox"
-                                            checked={createForm.isVerified}
-                                            onChange={e => setCreateForm({ ...createForm, isVerified: e.target.checked })}
-                                            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                                        />
-                                        <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Mark as Verified</span>
-                                    </label>
+
+                                {/* Section: Account Settings */}
+                                <div className="md:col-span-2 mt-4">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <div className="h-4 w-1 bg-primary rounded-full"></div>
+                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Account Settings</h3>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between group hover:border-primary/20 transition-all duration-200">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                                                    <Icon icon="mdi:account-check-outline" width="20" className={createForm.isActive ? "text-green-500" : "text-gray-400"} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Active Account</p>
+                                                    <p className="text-xs text-gray-500 font-medium">Allow user to login</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setCreateForm({ ...createForm, isActive: !createForm.isActive })}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${createForm.isActive ? 'bg-primary' : 'bg-gray-200'}`}
+                                            >
+                                                <span className={`${createForm.isActive ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                                            </button>
+                                        </div>
+
+                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between group hover:border-primary/20 transition-all duration-200">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                                                    <Icon icon="mdi:verified-badge-outline" width="20" className={createForm.isVerified ? "text-blue-500" : "text-gray-400"} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Verified Member</p>
+                                                    <p className="text-xs text-gray-500 font-medium">Mark as trusted</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setCreateForm({ ...createForm, isVerified: !createForm.isVerified })}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${createForm.isVerified ? 'bg-primary' : 'bg-gray-200'}`}
+                                            >
+                                                <span className={`${createForm.isVerified ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3 z-10">
+                        {/* Footer */}
+                        <div className="bg-gray-50 border-t border-gray-100 px-8 py-5 flex justify-end gap-4 items-center">
                             <button
                                 onClick={() => setIsCreateOpen(false)}
-                                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={() => {
-                                    createUser({ payload: createForm }, {
+                                    createUser({
+                                        payload: {
+                                            ...createForm,
+                                            gender: createForm.gender ? createForm.gender.toUpperCase() : undefined
+                                        }
+                                    }, {
                                         onSuccess: () => { toast.success('User created successfully'); setIsCreateOpen(false); fetchUsers(); },
                                         onError: (err: any) => {
                                             const detail = err?.response?.data?.detail;
                                             if (Array.isArray(detail)) {
                                                 detail.forEach((error: any) => {
                                                     const field = error.loc[error.loc.length - 1];
-                                                    toast.error(`${field}: ${error.msg}`, { duration: 5000 });
+                                                    toast.error(`${field}: ${error.msg}`);
                                                 });
                                             } else {
                                                 toast.error(detail || err?.response?.data?.message || 'Failed to create user');
@@ -623,9 +732,19 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     });
                                 }}
                                 disabled={creating}
-                                className="px-6 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
-                                {creating ? 'Creating...' : `Create ${role.charAt(0) + role.slice(1).toLowerCase()}`}
+                                {creating ? (
+                                    <>
+                                        <Icon icon="mdi:loading" className="animate-spin" />
+                                        Creating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon icon="mdi:account-plus" />
+                                        Create Account
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -634,96 +753,212 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
 
             {/* Edit User Modal */}
             {isEditOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 backdrop-blur-sm" onClick={() => setIsEditOpen(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm transition-all duration-300" onClick={() => setIsEditOpen(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="bg-gray-50/80 border-b border-gray-100 px-8 py-5">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-semibold text-gray-900">Edit {role.charAt(0) + role.slice(1).toLowerCase()}</h2>
-                                <button onClick={() => setIsEditOpen(false)} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
-                                    <Icon icon="mdi:close" width="24" height="24" className="text-gray-500" />
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <Icon icon="mdi:account-edit" width="24" height="24" className="text-primary" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Edit User Account</h2>
+                                        <p className="text-sm text-gray-500 font-medium">Update account information and permissions</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsEditOpen(false)} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all duration-200 group">
+                                    <Icon icon="mdi:close" width="22" height="22" className="text-gray-400 group-hover:text-gray-600" />
                                 </button>
                             </div>
                         </div>
 
-                        <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">First Name</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="John"
-                                        value={editForm.firstName}
-                                        onChange={e => setEditForm({ ...editForm, firstName: e.target.value })}
-                                    />
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+
+                                {/* Section: Personal Details */}
+                                <div className="md:col-span-2">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="h-4 w-1 bg-primary rounded-full"></div>
+                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Personal Information</h3>
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Last Name</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="Doe"
-                                        value={editForm.lastName}
-                                        onChange={e => setEditForm({ ...editForm, lastName: e.target.value })}
-                                    />
-                                </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Email Address</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="john@example.com"
-                                        type="email"
-                                        value={editForm.email}
-                                        onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                                    />
-                                </div>
-                                <div className="md:col-span-2 space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Phone</label>
-                                    <input
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        placeholder="+234 800 000 0000"
-                                        value={editForm.phone}
-                                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="block text-sm font-medium text-gray-700">Gender</label>
-                                    <select
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white"
-                                        value={editForm.gender}
-                                        onChange={e => setEditForm({ ...editForm, gender: e.target.value })}
-                                    >
-                                        <option value="">Select gender</option>
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div className="flex flex-col justify-center space-y-3 pt-2">
-                                    <label className="flex items-center gap-2 cursor-pointer group">
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">First Name</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:account" width="18" />
+                                        </div>
                                         <input
-                                            type="checkbox"
-                                            checked={editForm.isActive}
-                                            onChange={e => setEditForm({ ...editForm, isActive: e.target.checked })}
-                                            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="John"
+                                            value={editForm.firstName}
+                                            onChange={e => setEditForm({ ...editForm, firstName: e.target.value })}
                                         />
-                                        <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Active account</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Last Name</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:account-outline" width="18" />
+                                        </div>
                                         <input
-                                            type="checkbox"
-                                            checked={editForm.isVerified}
-                                            onChange={e => setEditForm({ ...editForm, isVerified: e.target.checked })}
-                                            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="Doe"
+                                            value={editForm.lastName}
+                                            onChange={e => setEditForm({ ...editForm, lastName: e.target.value })}
                                         />
-                                        <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">Verified</span>
-                                    </label>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Gender</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none">
+                                            <Icon icon="mdi:gender-male-female" width="18" />
+                                        </div>
+                                        <select
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200 appearance-none pointer-events-auto"
+                                            value={editForm.gender}
+                                            onChange={e => setEditForm({ ...editForm, gender: e.target.value })}
+                                        >
+                                            <option value="">Select Gender</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <Icon icon="mdi:chevron-down" width="18" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Account Role</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none">
+                                            <Icon icon="mdi:shield-account" width="18" />
+                                        </div>
+                                        <select
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200 appearance-none"
+                                            value={editForm.role}
+                                            onChange={e => setEditForm({ ...editForm, role: e.target.value })}
+                                        >
+                                            <option value="GUEST">Guest</option>
+                                            <option value="AGENT">Agent</option>
+                                            <option value="OWNER">Owner</option>
+                                            <option value="ADMIN">Admin</option>
+                                            <option value="SUPER_ADMIN">Super Admin</option>
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <Icon icon="mdi:chevron-down" width="18" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Email Address</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:email-outline" width="18" />
+                                        </div>
+                                        <input
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="john@example.com"
+                                            type="email"
+                                            value={editForm.email}
+                                            onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Phone Number</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:phone-outline" width="18" />
+                                        </div>
+                                        <input
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                            placeholder="+234 800 000 0000"
+                                            value={editForm.phone}
+                                            onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">About User (Bio)</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-4 text-gray-400 group-focus-within:text-primary transition-colors">
+                                            <Icon icon="mdi:text-account" width="18" />
+                                        </div>
+                                        <textarea
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200 min-h-[100px] resize-none"
+                                            placeholder="Tell us a bit about this user..."
+                                            value={editForm.bio}
+                                            onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Section: Account Settings */}
+                                <div className="md:col-span-2 mt-4">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <div className="h-4 w-1 bg-primary rounded-full"></div>
+                                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Account Settings</h3>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between group hover:border-primary/20 transition-all duration-200">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                                                    <Icon icon="mdi:account-check-outline" width="20" className={editForm.isActive ? "text-green-500" : "text-gray-400"} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Active Account</p>
+                                                    <p className="text-xs text-gray-500 font-medium">Allow user to login</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setEditForm({ ...editForm, isActive: !editForm.isActive })}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editForm.isActive ? 'bg-primary' : 'bg-gray-200'}`}
+                                            >
+                                                <span className={`${editForm.isActive ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                                            </button>
+                                        </div>
+
+                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between group hover:border-primary/20 transition-all duration-200">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                                                    <Icon icon="mdi:verified-badge-outline" width="20" className={editForm.isVerified ? "text-blue-500" : "text-gray-400"} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Verified Member</p>
+                                                    <p className="text-xs text-gray-500 font-medium">Show verified status</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setEditForm({ ...editForm, isVerified: !editForm.isVerified })}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editForm.isVerified ? 'bg-primary' : 'bg-gray-200'}`}
+                                            >
+                                                <span className={`${editForm.isVerified ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3 z-10">
+                        {/* Footer */}
+                        <div className="bg-gray-50 border-t border-gray-100 px-8 py-5 flex justify-end gap-4 items-center">
                             <button
                                 onClick={() => setIsEditOpen(false)}
-                                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
                             >
                                 Cancel
                             </button>
@@ -735,12 +970,14 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                         payload: {
                                             email: editForm.email,
                                             phone: editForm.phone,
+                                            role: editForm.role,
                                             isActive: editForm.isActive,
                                             isVerified: editForm.isVerified,
                                             profile: {
                                                 first_name: editForm.firstName,
                                                 last_name: editForm.lastName,
                                                 gender: editForm.gender ? editForm.gender.toUpperCase() : undefined,
+                                                bio: editForm.bio,
                                             }
                                         }
                                     }, {
@@ -754,7 +991,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                             if (Array.isArray(detail)) {
                                                 detail.forEach((error: any) => {
                                                     const field = error.loc[error.loc.length - 1];
-                                                    toast.error(`${field}: ${error.msg}`, { duration: 5000 });
+                                                    toast.error(`${field}: ${error.msg}`);
                                                 });
                                             } else {
                                                 toast.error(detail || err?.response?.data?.message || 'Failed to update user');
@@ -763,13 +1000,23 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     });
                                 }}
                                 disabled={updating}
-                                className="px-6 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
-                                {updating ? 'Saving...' : 'Save Changes'}
+                                {updating ? (
+                                    <>
+                                        <Icon icon="mdi:loading" className="animate-spin" />
+                                        Updating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon icon="mdi:check-circle" />
+                                        Save Changes
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
-                </div >
+                </div>
             )}
         </>
     );
