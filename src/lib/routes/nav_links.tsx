@@ -171,6 +171,15 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
+        name: 'Roles & Permissions',
+        pathName: 'roles-permissions',
+        link: PAGE_ROUTES.dashboard.rolesPermissions.base,
+        icon: <UsersIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        secondary: false,
+        children: undefined,
+    },
+    {
         name: 'Notifications (coming soon)',
         pathName: 'notifications',
         link: '#',
@@ -185,7 +194,7 @@ export const NAV_LINKS: ILink[] = [
         link: PAGE_ROUTES.dashboard.settings.base,
         icon: <SettingsIcon className={"w-5"} color={"white"} />,
         allow: Object.values(UserRole),
-        secondary: true,
+        secondary: false,
         children: undefined,
     },
 ]

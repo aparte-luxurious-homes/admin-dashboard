@@ -89,6 +89,9 @@ export const PAGE_ROUTES = {
         },
         settings: {
             base: '/settings',
+        },
+        rolesPermissions: {
+            base: '/roles-permissions',
         }
     }
 }

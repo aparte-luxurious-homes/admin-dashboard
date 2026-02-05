@@ -703,7 +703,19 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                             <button
                                 onClick={() => {
                                     if (!editUserId) { toast.error('Missing user id'); return; }
-                                    updateUser({ userId: editUserId, payload: editForm }, {
+                                    updateUser({
+                                        userId: editUserId,
+                                        payload: {
+                                            email: editForm.email,
+                                            phone: editForm.phone,
+                                            is_verified: editForm.is_verified,
+                                            profile: {
+                                                first_name: editForm.firstName,
+                                                last_name: editForm.lastName,
+                                                gender: editForm.gender ? editForm.gender.toUpperCase() : undefined,
+                                            }
+                                        }
+                                    }, {
                                         onSuccess: () => { toast.success('User updated successfully'); setIsEditOpen(false); fetchUsers(); },
                                         onError: (e: any) => {
                                             const detail = e?.response?.data?.detail;
