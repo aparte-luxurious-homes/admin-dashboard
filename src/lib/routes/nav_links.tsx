@@ -91,14 +91,14 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'booking-management',
         link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
         icon: <BookingIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN],
+        allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
         secondary: true,
         children: [
             {
                 name: 'Bookings',
                 pathName: 'bookings',
                 link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
             },
             {
                 name: 'Booking disputes',
@@ -113,26 +113,20 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'financials',
         link: '/financials',
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.AGENT, UserRole.OWNER],
+        allow: [],
         secondary: true,
         children: [
-            // {
-            //     name: 'Revenue reports',
-            //     pathName: 'revenue-reports',
-            //     link: '/financials/revenue-reports',
-            //     allow: [UserRole.AGENT, UserRole.OWNER],
-            // },
             {
                 name: 'Payment processing',
                 pathName: 'payment-processing',
                 link: '/financials/payment-processing',
-                allow: [UserRole.AGENT, UserRole.OWNER],
+                allow: [],
             },
             {
                 name: 'Commission',
                 pathName: 'payment-processing',
                 link: '/financials/payment-processing',
-                allow: [UserRole.AGENT, UserRole.OWNER],
+                allow: [],
             },
         ]
     },
@@ -140,7 +134,7 @@ export const NAV_LINKS: ILink[] = [
         name: 'Transactions',
         pathName: 'transactions',
         link: PAGE_ROUTES.dashboard.transactions.payments.base,
-        allow: [UserRole.ADMIN],
+        allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
         secondary: true,
         children: [
@@ -148,7 +142,7 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Payments',
                 pathName: 'payments',
                 link: PAGE_ROUTES.dashboard.transactions.payments.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
             },
             {
                 name: 'Withdrawals',
