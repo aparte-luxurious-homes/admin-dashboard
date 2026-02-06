@@ -1,5 +1,7 @@
 "use client";
 
+import UserEditForm from "@/src/components/user-management/UserEditForm";
+
 import BreadCrumb from "@/src/components/breadcrumb";
 import Grid from "@mui/material/Grid2";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
@@ -183,149 +185,149 @@ const GuestInfo = () => {
         <div className="mt-0">
           <div className="flex justify-between items-center mb-[50px] mt-[10px]">
             <h3 className="font-semibold">Guest Info</h3>
-            <div className="flex gap-2">
-              {isEditing ? (
-                <>
-                  <Button
-                    buttonName="Cancel"
-                    onClick={handleEditToggle}
-                    variant="primaryoutline"
-                    disabled={isSaving}
-                  />
-                  <Button
-                    buttonName={isSaving ? "Saving..." : "Save Changes"}
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    variant="primary"
-                  />
-                </>
-              ) : (
-                <Button
-                  buttonName={
-                    <>
-                      <Icon icon="mdi:pencil" className="mr-2" />
-                      Edit
-                    </>
-                  }
-                  onClick={handleEditToggle}
-                  variant="primary"
-                />
-              )}
-            </div>
           </div>
           {userLoading ? (
             <Skeleton className="h-[500px]  mt-5 bw-full rounded-md" />
           ) : (
             <>
-              <div className="relative w-[48px] h-[48px] rounded-full overflow-hidden border-2 border-gray-300">
-                {userInfo?.profile?.profile_image || userInfo?.profile?.profileImage || userInfo?.profile_image || userInfo?.profileImage ? (
-                  <Image
-                    src={userInfo?.profile?.profile_image || userInfo?.profile?.profileImage || userInfo?.profile_image || userInfo?.profileImage || ""}
-                    alt="profile"
-                    layout="fill"
-                    objectFit="cover"
-                    className="rounded-full"
+              {isEditing ? (
+                <div className="bg-white rounded-2xl p-2">
+                  <UserEditForm
+                    initialData={{
+                      firstName: userInfo?.profile?.first_name || userInfo?.profile?.firstName || userInfo?.first_name || userInfo?.firstName || "",
+                      lastName: userInfo?.profile?.last_name || userInfo?.profile?.lastName || userInfo?.last_name || userInfo?.lastName || "",
+                      email: userInfo?.email || "",
+                      phone: userInfo?.phone || "",
+                      gender: userInfo?.profile?.gender || "",
+                      role: typeof userInfo?.role === 'string' ? userInfo.role : (userInfo?.role?.value || ""),
+                      bio: userInfo?.profile?.bio || "",
+                      isActive: userInfo?.is_active ?? userInfo?.isActive ?? true,
+                      isVerified: userInfo?.is_verified ?? userInfo?.isVerified ?? false,
+                    }}
+                    showRoleSelector={true}
+                    isSaving={isSaving}
+                    onCancel={() => setIsEditing(false)}
+                    onSave={async (formData: any) => {
+                      setIsSaving(true);
+                      try {
+                        await axiosRequest.put(
+                          `${API_ROUTES.admin.users.userByUuid(String(id))}`,
+                          {
+                            email: formData.email,
+                            phone: formData.phone,
+                            role: formData.role,
+                            isActive: formData.isActive,
+                            isVerified: formData.isVerified,
+                            profile: {
+                              first_name: formData.firstName,
+                              last_name: formData.lastName,
+                              gender: formData.gender ? formData.gender.toUpperCase() : undefined,
+                              bio: formData.bio,
+                            },
+                          }
+                        );
+                        toast.success("Guest profile updated successfully");
+                        setIsEditing(false);
+                        fetchAUserInfo();
+                      } catch (error: any) {
+                        toast.error(error.response?.data?.message || "Failed to update guest");
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
                   />
-                ) : (
-                  <Icon
-                    icon="gg:profile"
-                    width="48"
-                    height="48"
-                    className="text-gray-500 flex items-center justify-center"
-                  />
-                )}
-              </div>
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                  <InputGroup
-                    label="First Name"
-                    required
-                    disabled={!isEditing}
-                    value={isEditing ? editedData.firstName : (userInfo?.profile?.first_name || userInfo?.profile?.firstName || userInfo?.first_name || userInfo?.firstName || "--/--")}
-                    onChange={(e: any) => handleInputChange("firstName", e.target.value)}
-                    inputType="text"
-                    inputName="firstName"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                  <InputGroup
-                    label="Last Name"
-                    required
-                    disabled={!isEditing}
-                    value={isEditing ? editedData.lastName : (userInfo?.profile?.last_name || userInfo?.profile?.lastName || userInfo?.last_name || userInfo?.lastName || "--/--")}
-                    onChange={(e: any) => handleInputChange("lastName", e.target.value)}
-                    inputType="text"
-                    inputName="lastName"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                  <InputGroup
-                    label="Email Address"
-                    required
-                    disabled={!isEditing}
-                    value={isEditing ? editedData.email : (userInfo?.email || "--/--")}
-                    onChange={(e: any) => handleInputChange("email", e.target.value)}
-                    inputType="email"
-                    inputName="email"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                  <InputGroup
-                    label="Phone Number"
-                    required
-                    disabled={!isEditing}
-                    value={isEditing ? editedData.phone : (userInfo?.phone || "--/--")}
-                    onChange={(e: any) => handleInputChange("phone", e.target.value)}
-                    inputType="text"
-                    inputName="phoneNumber"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                  <InputGroup
-                    label="State"
-                    required
-                    disabled={!isEditing}
-                    value={isEditing ? editedData.state : (userInfo?.profile?.state || "--/--")}
-                    onChange={(e: any) => handleInputChange("state", e.target.value)}
-                    inputType="text"
-                    inputName="state"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                  <InputGroup
-                    label="Address"
-                    required
-                    disabled={!isEditing}
-                    value={isEditing ? editedData.address : (userInfo?.profile?.address || "--/--")}
-                    onChange={(e: any) => handleInputChange("address", e.target.value)}
-                    inputType="text"
-                    inputName="address"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                  <InputGroup
-                    label="Gender"
-                    required
-                    disabled={!isEditing}
-                    value={isEditing ? editedData.gender : (userInfo?.profile?.gender || "--/--")}
-                    onChange={(e: any) => handleInputChange("gender", e.target.value)}
-                    inputType="text"
-                    inputName="gender"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                  <Grid container spacing={3}>
-                    <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                      <h4>Active</h4>
-                      <Badge status={userInfo?.is_active ?? userInfo?.isActive ?? false} />
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="relative w-[48px] h-[48px] rounded-full overflow-hidden border-2 border-gray-300">
+                      {userInfo?.profile?.profile_image || userInfo?.profile?.profileImage || userInfo?.profile_image || userInfo?.profileImage ? (
+                        <Image
+                          src={userInfo?.profile?.profile_image || userInfo?.profile?.profileImage || userInfo?.profile_image || userInfo?.profileImage || ""}
+                          alt="profile"
+                          layout="fill"
+                          objectFit="cover"
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <Icon
+                          icon="gg:profile"
+                          width="48"
+                          height="48"
+                          className="text-gray-500 flex items-center justify-center"
+                        />
+                      )}
+                    </div>
+                    <Button
+                      buttonName={
+                        <>
+                          <Icon icon="mdi:pencil" className="mr-2" />
+                          Edit Profile
+                        </>
+                      }
+                      onClick={handleEditToggle}
+                      variant="primary"
+                    />
+                  </div>
+                  <Grid container spacing={4}>
+                    {/* Personal Information Section */}
+                    <Grid size={{ xs: 12 }}>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                          <Icon icon="solar:user-bold-duotone" width="20" />
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800">Personal Information</h4>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">First Name</p>
+                          <p className="text-sm font-medium text-gray-900">{userInfo?.profile?.first_name || userInfo?.profile?.firstName || userInfo?.first_name || userInfo?.firstName || "--/--"}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Name</p>
+                          <p className="text-sm font-medium text-gray-900">{userInfo?.profile?.last_name || userInfo?.profile?.lastName || userInfo?.last_name || userInfo?.lastName || "--/--"}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gender</p>
+                          <p className="text-sm font-medium text-gray-900">{userInfo?.profile?.gender || "--/--"}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Bio</p>
+                          <p className="text-sm font-medium text-gray-900 line-clamp-2">{userInfo?.profile?.bio || "--/--"}</p>
+                        </div>
+                      </div>
                     </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-                      <h4>Verified</h4>
-                      <Badge status={userInfo?.is_verified ?? userInfo?.isVerified ?? false} />
+
+                    {/* Contact & Account Section */}
+                    <Grid size={{ xs: 12 }}>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                          <Icon icon="solar:settings-bold-duotone" width="20" />
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800">Account & Contact</h4>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Email Address</p>
+                          <p className="text-sm font-medium text-gray-900">{userInfo?.email || "--/--"}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone Number</p>
+                          <p className="text-sm font-medium text-gray-900">{userInfo?.phone || "--/--"}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Account Active</p>
+                          <Badge status={userInfo?.is_active ?? userInfo?.isActive ?? false} />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Verified Identity</p>
+                          <Badge status={userInfo?.is_verified ?? userInfo?.isVerified ?? false} />
+                        </div>
+                      </div>
                     </Grid>
                   </Grid>
-                </Grid>
-              </Grid>
+                </>
+              )}
             </>
           )}
         </div>

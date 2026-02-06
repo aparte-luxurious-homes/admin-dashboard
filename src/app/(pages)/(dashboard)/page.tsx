@@ -130,19 +130,8 @@ const Home = () => {
     setLoading(true);
     try {
       const response = await axiosRequest.get(`${API_ROUTES.propertyManagement.properties.base}`);
-      let DataByRole: Property[] = [];
-      if (user?.role === "OWNER") {
-        DataByRole = response?.data?.data?.data?.filter(
-          (property: Property) => property?.owner?.id === user?.profile?.id
-        );
-      } else if (user?.role === "AGENT") {
-        DataByRole = response?.data?.data?.data?.filter(
-          (property: Property) => property?.agent?.id === user?.profile?.id
-        );
-      } else {
-        DataByRole = response?.data?.data?.data;
-      }
-
+      // The backend already filters properties based on the user's role
+      const DataByRole = response?.data?.data?.data || [];
       setProperties(DataByRole);
       setSearchResult(DataByRole);
     } catch (err) {
@@ -484,35 +473,42 @@ const Home = () => {
                 <div className={`p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md ${stats?.properties?.length === 0 && "flex items-center justify-center"}`}>
                   {isStatLoading ? (
                     <Skeleton className="h-[200px] w-full rounded-md" />
-                  ) : stats?.properties?.length > 0 ? (
-                    <div>
-                      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-1 mb-1">
-                        <div className="flex gap-4 items-center">
-                          <h4>Users</h4>
-                          <div className="flex gap-1 items-center">
-                            <div className="flex items-center gap-2">
-                              <p className="text-[12px]">This Year</p>
-                              <div className="w-3 h-1 bg-[#028090]"></div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-[12px]">Last Year</p>
-                              <div className="w-3 h-1 bg-[#D9D9D9]"></div>
+                  ) : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") ? (
+                    stats?.properties?.length > 0 ? (
+                      <div>
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-1 mb-1">
+                          <div className="flex gap-4 items-center">
+                            <h4>Users</h4>
+                            <div className="flex gap-1 items-center">
+                              <div className="flex items-center gap-2">
+                                <p className="text-[12px]">This Year</p>
+                                <div className="w-3 h-1 bg-[#028090]"></div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-[12px]">Last Year</p>
+                                <div className="w-3 h-1 bg-[#D9D9D9]"></div>
+                              </div>
                             </div>
                           </div>
+                          <select className="border border-[#D9D9D9] p-1 rounded-[6px] max-[400px]:mb-4" onChange={(e) => setRange(e.target.value)} value={range}>
+                            <option value="30days">Last 30 Days</option>
+                            <option value="90days">Last 90 Days</option>
+                            <option value="year">This Year</option>
+                          </select>
                         </div>
-                        <select className="border border-[#D9D9D9] p-1 rounded-[6px] max-[400px]:mb-4" onChange={(e) => setRange(e.target.value)} value={range}>
-                          <option value="30days">Last 30 Days</option>
-                          <option value="90days">Last 90 Days</option>
-                          <option value="year">This Year</option>
-                        </select>
-                      </div>
 
-                      <UsersChart range={range} data={dataByRange} />
-                    </div>
+                        <UsersChart range={range} data={dataByRange} />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 mt-20">
+                        <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
+                        <p className="text-gray-500 text-sm font-medium">No Data Found</p>
+                      </div>
+                    )
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-2 mt-20">
-                      <Icon icon="hugeicons:album-not-found-01" width="40" height="40" className="text-gray-400" />
-                      <p className="text-gray-500 text-sm font-medium">No Data Found</p>
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                      <Icon icon="mdi:lock" width="40" height="40" className="text-gray-300 mb-2" />
+                      <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Reserved for Administrators</p>
                     </div>
                   )}
                 </div>

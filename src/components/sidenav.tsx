@@ -29,6 +29,8 @@ export default function SideNav({ index, link, route, role, onNavigate }: {
         onNavigate?.(); // Call onNavigate callback if provided
     };
 
+    if (!link.allow.includes(role)) return null;
+
     return (
         <div className="relative w-full cursor-pointer mb-1">
             {
