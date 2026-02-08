@@ -1,0 +1,87 @@
+'use client'
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowIcon } from "../components/icons";
+import { ILink } from "../lib/routes/nav_links";
+import { UserRole } from "../lib/enums";
+
+function getPathName(route: string, targetPath: string) {
+    const path = route.split("/");
+    if (path.includes(targetPath)) return true
+
+    return false
+}
+
+export default function SideNav({ index, link, route, role, onNavigate }: {
+    index: number,
+    link: ILink,
+    route: string,
+    role: UserRole,
+    onNavigate?: () => void
+}) {
+    const [open, setOpen] = useState<boolean>(false)
+    const router = useRouter();
+
+    const handleNavigation = (path: string) => {
+        router.push(path);
+        onNavigate?.(); // Call onNavigate callback if provided
+    };
+
+    if (!link.allow.includes(role)) return null;
+
+    return (
+        <div className="relative w-full cursor-pointer mb-1">
+            {
+                <div>
+                    <div
+                        key={index}
+                        className={`relative `}
+                        onClick={() => setOpen(!open)}
+                    >
+                        <div className="w-full">
+                            <div
+                                onClick={() => !link.secondary && handleNavigation(link.link)}
+                                className={`flex items-center gap-4 pt-3 pb-2 pl-3 xl:pl-6 rounded-md transition-colors
+                                 hover:bg-white/10 focus:bg-white/10 active:bg-white/20 min-h-[48px]
+                                 ${!link.secondary && route === '/' && link.name === 'Dashboard' && 'bg-white/10'}`}>
+                                {link.icon}
+                                <p className="text-base flex items-center pr-8 text-white/95">
+                                    {link.name}
+                                </p>
+                            </div>
+                        </div>
+                        {
+                            link.secondary &&
+                            <ArrowIcon
+                                className={`absolute top-[36%] right-4 transition-all ease-in-out ${open ? 'rotate-[90deg]' : 'rotate-[270deg]'} `}
+                                color="white"
+                            />
+                        }
+                    </div>
+                    <div className={`flex flex-col w-full transition-all ease-in-out duration-150 ${open ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                        {
+                            link.secondary &&
+                            link.children?.map((child, index) =>
+                                child.allow.includes(role) ?
+                                    <Link
+                                        key={index}
+                                        href={child.link}
+                                        onClick={() => onNavigate?.()}
+                                        className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] py-2 rounded-md transition-colors
+                                     hover:bg-white/10 active:bg-white/20 min-h-[44px] ${getPathName(route, child.pathName) && 'bg-white/10'}`}>
+                                        <p className="text-[14px] text-white/90">
+                                            {child.name}
+                                        </p>
+                                    </Link>
+                                    :
+                                    null
+                            )
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    );
+};

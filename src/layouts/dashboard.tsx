@@ -1,0 +1,243 @@
+"use client";
+
+import Image from "next/image";
+import { BellIcon, SettingsIcon } from "@/components/icons";
+import { NAV_LINKS } from "../lib/routes/nav_links";
+import SideNav from "../components/sidenav";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { PAGE_ROUTES } from "../lib/routes/page_routes";
+import { useAuth } from "../hooks/useAuth";
+import { useState, useEffect } from "react";
+import { IoMenu, IoClose } from "react-icons/io5";
+import Cookies from "js-cookie";
+import { toast } from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
+import { clearUser } from "../lib/slices/authSlice";
+import { Icon } from "@iconify/react/dist/iconify.js";
+import Loader from "../components/loader";
+import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
+
+export default function Dashboard({ children }: { children: React.ReactNode }) {
+  const { user, isFetching } = useAuth();
+  const router = useRouter();
+  const currentRoute = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const dispatch = useDispatch();
+  const queryClient = useQueryClient();
+  const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "?";
+
+  // Handle click to navigate
+  const handleClick = () => {
+    router.push(`/settings`);
+  };
+
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const token = Cookies.get("token");
+
+    console.log('[Dashboard] Auth check:', {
+      hasToken: !!token,
+      hasUser: !!user,
+      userId: user?.id,
+      isFetching
+    });
+
+    // If no token and no user in Redux, redirect to login
+    if (!token && !user) {
+      console.log('[Dashboard] No token and no user - redirecting to login');
+      router.replace(PAGE_ROUTES.auth.login);
+      return;
+    }
+
+    // If we have user data (either from Redux persistence or fresh fetch), show dashboard
+    if (user && user.id) {
+      console.log('[Dashboard] User authenticated:', user.email);
+      setIsCheckingAuth(false);
+      return;
+    }
+
+    // If we have a token but no user, wait briefly for fetch to complete
+    if (token && !user) {
+      if (isFetching) {
+        console.log('[Dashboard] Token exists, fetching user...');
+        setIsCheckingAuth(true);
+      } else {
+        console.log('[Dashboard] Token exists but no user and not fetching - might be invalid token');
+        // Give it a moment for query to start
+        const timeout = setTimeout(() => {
+          // Re-check token and user after timeout
+          const currentToken = Cookies.get("token");
+          const currentUser = user;
+
+          if (currentToken && !currentUser) {
+            console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
+            Cookies.remove("token");
+            router.replace(PAGE_ROUTES.auth.login);
+          }
+        }, 2000); // Wait 2 seconds for profile fetch
+
+        return () => clearTimeout(timeout);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isFetching, router]);
+
+  // Show loader while checking authentication or fetching user
+  if (isCheckingAuth || (isFetching && !user)) {
+    return <Loader message="Loading dashboard..." />;
+  }
+
+  // Don't render dashboard if no user (safety check)
+  if (!user) {
+    return null;
+  }
+
+  const handleLogOut = () => {
+    Promise.all([
+      Promise.resolve(Cookies.remove("token")),
+      Promise.resolve(dispatch(clearUser())),
+      queryClient.removeQueries({ queryKey: ["authUser"] }),
+    ]).then(() => {
+      // Redirect to the login page after all actions complete
+      window.location.href = "/auth/login";
+      toast.success("You have been logged out", {
+        duration: 3000,
+        style: {
+          maxWidth: "500px",
+          width: "max-content",
+        },
+      })
+    });
+  };
+
+  return (
+    <div className="h-screen size-full relative">
+      {/* Mobile Menu Toggle */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-lg bg-primary text-white hover:bg-primary/90 
+                   shadow-lg active:scale-95 transition-transform min-w-[48px] min-h-[48px] flex items-center justify-center"
+        aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+      >
+        {isMobileMenuOpen ? <IoClose size={28} /> : <IoMenu size={28} />}
+      </button>
+
+      {/* Sidemenu */}
+      <div
+        className={`
+                fixed lg:absolute w-[85%] sm:w-[75%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%] 
+                bg-primary text-background h-full 
+                transition-transform duration-300 ease-in-out z-40
+                ${isMobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+          }
+            `}
+      >
+        <div className="size-full">
+          <div className="w-full flex justify-center items-center ">
+            <div className="relative mt-8 mb-14">
+              <Image
+                src="/svg/logo_text_white.svg"
+                alt="logo"
+                height={170}
+                width={170}
+              />
+              <Image
+                src="/svg/admin_text.svg"
+                alt="admin"
+                className="absolute -bottom-1 right-0.5"
+                height={30}
+                width={30}
+              />
+            </div>
+          </div>
+          <div
+            className={`
+                            w-full h-[82%] overflow-y-auto
+                            [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-teal-800
+                        `}
+          >
+            {NAV_LINKS.map((el, index) =>
+              el.allow.includes(user?.role) ? (
+                <SideNav
+                  key={index}
+                  index={index}
+                  link={el}
+                  role={user?.role}
+                  route={currentRoute}
+                  onNavigate={() => setIsMobileMenuOpen(false)}
+                />
+              ) : null
+            )}
+          </div>
+          {/* Footer: Logout only */}
+          <div className="absolute bottom-0 w-full flex items-center border-t-2 border-teal-700/70 bg-primary">
+            <button
+              onClick={handleLogOut}
+              className="text-left flex gap-4 pl-7 py-4 hover:bg-teal-600/60 w-full text-white min-h-[56px] items-center"
+            >
+              <Icon icon="ic:baseline-logout" width="20" height="20" style={{ color: "white" }} />
+              <span className="text-base">Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div
+        className={`
+                lg:ml-[26%] xl:ml-[20%] 2xl:ml-[18%] w-full lg:w-[74%] xl:w-[80%] 2xl:w-[82%] 
+                transition-all duration-300 ease-in-out flex flex-col h-screen overflow-hidden
+            `}
+      >
+        <div className="w-full h-20 flex-shrink-0 flex justify-between items-center px-4 sm:px-6 lg:px-10 bg-white border-b border-b-zinc-200/80">
+          {/* Spacer for mobile menu button */}
+          <div className="w-12 lg:hidden"></div>
+
+          <div className="w-1/2 hidden md:block">
+            <AutoBreadcrumb />
+          </div>
+          <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-2 sm:gap-3 items-center">
+            <div
+              className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
+              onClick={handleClick}
+            >
+              {user?.profile?.profileImage ? (
+                <Image
+                  src={user?.profile?.profileImage}
+                  alt="profile"
+                  width={40}
+                  height={40}
+                  className="rounded-full"
+                />
+              ) : (
+                <div className="w-10 h-10 flex items-center justify-center bg-[#124452] text-white text-lg font-bold rounded-full">
+                  {firstLetter}
+                </div>
+              )}
+
+              <div className="ml-2 text-[12px] hidden sm:block">
+                <p className="">{user?.profile?.firstName || "Welcome Back"}</p>
+                <p className="-mt-1 text-zinc-400 truncate max-w-[120px]">{user?.email}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-full flex-1 overflow-y-auto">{children}</div>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,89 @@
+@import url('https://fonts.cdnfonts.com/css/tt-firs-neue-trl');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #124452;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #124452;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'TT Firs Neue Trl', sans-serif;
+}
+
+.rewind .swiper-button-next::after,
+.rewind .swiper-button-prev::after {
+  content: '';
+}
+
+.rewind {
+  margin-left: initial !important;
+  margin-right: initial !important;
+}
+
+.rewind .swiper-button-prev::before {
+  content: '\276E';
+}
+
+.rewind .swiper-button-next::before {
+  content: '\276F';
+}
+
+.rewind .swiper-button-prev,
+.rewind .swiper-button-next {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: 48%;
+  bottom: initial;
+  /* color: white; */
+  color: #000000;
+  font-size: x-large;
+  transition: 0.3s ease;
+  z-index: 20;
+  /* background-color: rgba(4, 90, 112, 0.685); */
+  background-color: #ffffff;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+}
+
+.rewind .swiper-button-prev:hover,
+.rewind .swiper-button-next:hover {
+  /* background-color: rgb(4, 90, 112); */
+  background-color: #ebeaea;
+}
+
+
+.rewind .swiper-button-next {
+  left: initial;
+  right: 1.5rem;
+  padding-left: 2px;
+}
+
+.rewind .swiper-button-prev {
+  left: 1.5rem;
+  right: initial;
+  padding-right: 2px;
+}
+
+
+@media screen and (max-width: 767px) {
+  .rewind .swiper-button-prev,
+  .rewind .swiper-button-next {
+    width: 3rem;
+    height: 3rem;
+  }
+}

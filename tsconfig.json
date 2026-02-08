@@ -19,9 +19,14 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@/components*": ["./src/components*"],
+      "@/hooks*": ["./src/hooks*"],
+      "@/layouts*": ["./src/layouts*"],
+      "@/app*": ["./src/app*"],
+      "@/lib*": ["./src/lib*"],
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/(pages)/(dashboard)/booking-management/bookings/[bookingId]"],
   "exclude": ["node_modules"]
 }
