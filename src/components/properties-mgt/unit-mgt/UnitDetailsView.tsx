@@ -174,7 +174,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                     </div>
                                     <div className="bg-primary px-6 py-4 rounded-3xl shadow-xl shadow-primary/20 text-center min-w-[180px]">
                                         <p className="text-3xl font-bold text-white">
-                                            ₦{formatMoney(propertyUnit?.pricePerNight || propertyUnit?.price_per_night || 0)}
+                                            {formatMoney(propertyUnit?.pricePerNight || propertyUnit?.price_per_night || 0)}
                                         </p>
                                         <p className="text-[10px] font-bold text-white/70 uppercase tracking-[0.2em] mt-1">Per Night</p>
                                     </div>
@@ -290,7 +290,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                     <div className="space-y-6">
                                         {[
                                             { icon: LuUsers, label: 'Capacity', value: `${propertyUnit?.maxGuests || 0} Guests` },
-                                            { icon: 'solar:dollar-minimalistic-bold-duotone', label: 'Caution Fee', value: `₦${formatMoney(propertyUnit?.cautionFee || 0)}` },
+                                            { icon: 'solar:dollar-minimalistic-bold-duotone', label: 'Caution Fee', value: `${formatMoney(propertyUnit?.cautionFee || 0)}` },
                                             { icon: 'solar:box-bold-duotone', label: 'Available Inventory', value: `${propertyUnit?.count || 1} Units` }
                                         ].map((spec, i) => (
                                             <div key={i} className="flex justify-between items-center group/spec">

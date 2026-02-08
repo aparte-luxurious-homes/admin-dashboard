@@ -10,6 +10,26 @@ enum BookingRequestKeys {
     createBooking = "createBooking",
     deleteBooking = "deleteBooking",
     retryBookingPayment = "retryBookingPayment",
+    uploadPaymentProof = "uploadPaymentProof",
+}
+
+export function UploadPaymentProof() {
+    return useMutation({
+        mutationFn: ({ payload }: { payload: FormData }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.base}/upload-payment-proof`, payload, {
+                headers: {
+                    // This will be overridden by transformRequest
+                    "Content-Type": "multipart/form-data"
+                },
+                transformRequest: (data, headers) => {
+                    // Delete the Content-Type header so the browser can set it with the correct boundary
+                    if (headers) {
+                        delete headers['Content-Type'];
+                    }
+                    return data;
+                },
+            }),
+    });
 }
 
 export function GetAllBookings(
@@ -108,6 +128,66 @@ export function RetryBookingPayment() {
     return useMutation({
         mutationFn: ({ bookingId }: { bookingId: string | number }) =>
             axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/retry-payment`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function CheckInBooking() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/check-in`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function CheckOutBooking() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/check-out`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function RefundCautionFee() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function RequestCancellation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId, cancellationReason }: { bookingId: string | number, cancellationReason: string }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/request-cancellation`, { cancellation_reason: cancellationReason }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function ApproveCancellation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/approve-cancellation`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });

@@ -11,17 +11,17 @@ enum UsersRequestKeys {
 }
 
 export function GetAllUsers(page = 1, size = 10, searchQuery = '', role: UserRole | string = '', isVerified: string = '') {
-    const queryParams = new URLSearchParams({
-        page: String(page),
-        size: String(size),
-        search: searchQuery,
-        role: String(role ?? ''),
-        is_verified: String(isVerified ?? ''),
-    });
-
     return useQuery({
         queryKey: [UsersRequestKeys.getAllUsers, page, size, searchQuery, role, isVerified],
-        queryFn: () => axiosRequest.get(`${API_ROUTES.admin.users.base}?${queryParams.toString()}`),
+        queryFn: () => axiosRequest.get(API_ROUTES.admin.users.base, {
+            params: {
+                page,
+                size,
+                search: searchQuery,
+                role,
+                is_verified: isVerified
+            }
+        }),
         refetchOnWindowFocus: true,
     });
 }

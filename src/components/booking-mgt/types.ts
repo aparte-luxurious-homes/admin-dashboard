@@ -6,6 +6,9 @@ export enum BookingStatus {
     PENDING = 'PENDING',
     PENDING_PAYMENT = 'PENDING_PAYMENT',
     CONFIRMED = 'CONFIRMED',
+    CHECKED_IN = 'CHECKED_IN',
+    CHECKED_OUT = 'CHECKED_OUT',
+    CANCEL_REQUESTED = 'CANCEL_REQUESTED',
     CANCELLED = 'CANCELLED',
     COMPLETED = 'COMPLETED',
 }
@@ -50,6 +53,10 @@ export interface IBooking {
     unit_count?: number
     totalPrice: number
     total_price?: number
+    cautionFee?: number
+    caution_fee?: number
+    isCautionRefunded?: boolean
+    is_caution_refunded?: boolean
     status: BookingStatus
     cancellationReason: string
     cancellation_reason?: string
@@ -63,13 +70,25 @@ export interface IBooking {
     unit: IPropertyUnit
 }
 export interface ICreateBooking {
-    user_id: string | number
+    user_id?: string | number
     unit_id: string | number
     start_date: string
     end_date: string
     guests_count: number
     unit_count: number
     status?: BookingStatus
+    total_price: number
+    caution_fee?: number
+    payment_method?: string
+    payment_proof_url?: string
+    payment_notes?: string
+    mark_as_paid?: boolean
+
+    // Quick Guest Onboarding
+    guest_first_name?: string
+    guest_last_name?: string
+    guest_email?: string
+    guest_phone?: string
 }
 
 export interface IUpdateBooking {
