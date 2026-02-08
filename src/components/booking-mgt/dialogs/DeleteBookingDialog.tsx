@@ -14,7 +14,7 @@ interface DeleteBookingDialogProps {
     isOpen: boolean;
     onClose: () => void;
     onConfirm: (reason: string) => void;
-    bookingId?: string;
+    bookingId?: string | number;
     isPending?: boolean;
     title?: string;
     description?: React.ReactNode;

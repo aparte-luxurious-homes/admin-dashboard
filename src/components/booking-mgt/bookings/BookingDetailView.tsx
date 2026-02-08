@@ -26,6 +26,7 @@ import {
     DeleteBooking,
     ApproveCancellation
 } from "@/src/lib/request-handlers/bookingMgt";
+import { toast } from "react-hot-toast";
 
 export default function BookingDetailView({ bookingId }: { bookingId: string }) {
     const pathname = usePathname();

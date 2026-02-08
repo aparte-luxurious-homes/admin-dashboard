@@ -143,7 +143,7 @@ const Home = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   const fetchStatistics = useCallback(async () => {
     setIsStatLoading(true);
