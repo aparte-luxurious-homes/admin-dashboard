@@ -70,7 +70,7 @@ export interface IBooking {
     unit: IPropertyUnit
 }
 export interface ICreateBooking {
-    user_id: string | number
+    user_id?: string | number
     unit_id: string | number
     start_date: string
     end_date: string
@@ -83,6 +83,12 @@ export interface ICreateBooking {
     payment_proof_url?: string
     payment_notes?: string
     mark_as_paid?: boolean
+
+    // Quick Guest Onboarding
+    guest_first_name?: string
+    guest_last_name?: string
+    guest_email?: string
+    guest_phone?: string
 }
 
 export interface IUpdateBooking {
