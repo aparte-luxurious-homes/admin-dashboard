@@ -10,6 +10,26 @@ enum BookingRequestKeys {
     createBooking = "createBooking",
     deleteBooking = "deleteBooking",
     retryBookingPayment = "retryBookingPayment",
+    uploadPaymentProof = "uploadPaymentProof",
+}
+
+export function UploadPaymentProof() {
+    return useMutation({
+        mutationFn: ({ payload }: { payload: FormData }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.base}/upload-payment-proof`, payload, {
+                headers: {
+                    // This will be overridden by transformRequest
+                    "Content-Type": "multipart/form-data"
+                },
+                transformRequest: (data, headers) => {
+                    // Delete the Content-Type header so the browser can set it with the correct boundary
+                    if (headers) {
+                        delete headers['Content-Type'];
+                    }
+                    return data;
+                },
+            }),
+    });
 }
 
 export function GetAllBookings(

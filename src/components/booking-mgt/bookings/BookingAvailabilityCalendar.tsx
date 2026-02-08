@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isSameDay, startOfWeek, endOfWeek, isBefore, startOfToday, isWithinInterval } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isSameDay, startOfWeek, endOfWeek, isBefore, startOfToday, isWithinInterval, isAfter } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { Drawer } from "@mui/material";
@@ -12,6 +12,7 @@ interface BookingAvailabilityCalendarProps {
     onCheckInDateSelect: (date: Date | null) => void;
     onCheckOutDateSelect: (date: Date | null) => void;
     blockedDates?: { date: string }[];
+    maxDate?: Date; // Optional max date to limit selection
     isMobileView?: boolean;
     className?: string;
 }
@@ -22,6 +23,7 @@ export default function BookingAvailabilityCalendar({
     onCheckInDateSelect,
     onCheckOutDateSelect,
     blockedDates = [],
+    maxDate,
     isMobileView = false,
     className = ""
 }: BookingAvailabilityCalendarProps) {
@@ -48,6 +50,9 @@ export default function BookingAvailabilityCalendar({
         const dateStr = format(date, 'yyyy-MM-dd');
         // Disable past dates
         if (isBefore(date, today)) return true;
+
+        // Disable dates after maxDate if provided
+        if (maxDate && isAfter(date, maxDate)) return true;
 
         // Disable explicitly blocked dates
         if (blockedDateSet.has(dateStr)) return true;

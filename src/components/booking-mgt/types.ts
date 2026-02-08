@@ -77,6 +77,12 @@ export interface ICreateBooking {
     guests_count: number
     unit_count: number
     status?: BookingStatus
+    total_price: number
+    caution_fee?: number
+    payment_method?: string
+    payment_proof_url?: string
+    payment_notes?: string
+    mark_as_paid?: boolean
 }
 
 export interface IUpdateBooking {

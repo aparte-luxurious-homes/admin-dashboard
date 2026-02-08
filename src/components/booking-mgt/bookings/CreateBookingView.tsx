@@ -10,7 +10,7 @@ import { Navigation, Autoplay } from 'swiper/modules';
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import { GetAllProperties, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { IProperty, IPropertyUnit, PropertyType } from "../../properties-mgt/types";
 import { IUser } from "@/src/lib/types";
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
@@ -18,6 +18,7 @@ import { IoLocationOutline } from "react-icons/io5";
 import { IoMdReturnLeft } from "react-icons/io";
 import BookingAvailabilityCalendar from "./BookingAvailabilityCalendar";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import { addYears } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CreateBooking } from "@/src/lib/request-handlers/bookingMgt";
 import Spinner from "../../ui/Spinner";
@@ -25,6 +26,9 @@ import { useAuth } from "@/src/hooks/useAuth";
 import toast from "react-hot-toast";
 import { UserRole } from "@/src/lib/enums";
 import { useMediaQuery } from "@mui/material";
+import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
+import { HiOutlineCloudUpload } from "react-icons/hi";
+import { MdOutlinePayments } from "react-icons/md";
 
 export default function CreateBookingView() {
     const router = useRouter();
@@ -43,6 +47,7 @@ export default function CreateBookingView() {
     const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm);
     const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
     const { mutate, isPending } = CreateBooking();
+    const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
 
     // Local Data State
     const [selectionMode, setSelectionMode] = useState<boolean>(true)
@@ -67,8 +72,18 @@ export default function CreateBookingView() {
             guests_count: 1,
             unit_count: 0,
             total_price: 0,
+            payment_method: 'cash',
+            payment_proof_url: '',
+            payment_notes: '',
+            mark_as_paid: false,
         },
         onSubmit: async (values) => {
+            // Validation: proof is mandatory for bank transfer if marking as paid
+            if (values.mark_as_paid && values.payment_method === 'bank_transfer' && !values.payment_proof_url) {
+                toast.error('Proof of payment is mandatory for bank transfers');
+                return;
+            }
+
             mutate(
                 {
                     payload: {
@@ -171,6 +186,69 @@ export default function CreateBookingView() {
         selectedUnit, // simplified dependency
         setFieldValue,
     ])
+
+    // Memoize blocked dates calculation to ensure re-render when unit_count changes
+    const blockedDates = useMemo(() => {
+        if (!selectedUnit?.availability) return [];
+
+        const requestedUnits = Number(formik.values.unit_count || 1);
+
+        return selectedUnit.availability
+            .filter((el: any) => {
+                const isBlackout = el?.is_blackout ?? el?.isBlackout ?? false;
+                const count = Number(el?.count ?? 0);
+
+                // Block if:
+                // 1. Explicitly blacked out
+                // 2. Remaining count is 0 or less
+                // 3. Remaining count is less than requested units
+                return isBlackout || count <= 0 || count < requestedUnits;
+            })
+            .map((el: any) => ({ date: el?.date }));
+    }, [selectedUnit?.availability, formik.values.unit_count]);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        uploadProof(
+            { payload: formData },
+            {
+                onSuccess: (data: any) => {
+                    const url = data?.data?.data?.url;
+                    if (url) {
+                        formik.setFieldValue('payment_proof_url', url);
+                        toast.success('Payment proof uploaded successfully');
+                    }
+                },
+                onError: (error: any) => {
+                    console.error('Upload Error - Full object:', error);
+                    console.error('Upload Error - Response:', error?.response);
+                    console.error('Upload Error - Response Data:', error?.response?.data);
+
+                    let errorDetail = 'Failed to upload payment proof';
+
+                    try {
+                        if (error?.response?.data?.detail) {
+                            errorDetail = error.response.data.detail;
+                        } else if (error?.response?.data?.message) {
+                            errorDetail = error.response.data.message;
+                        } else if (error?.message) {
+                            errorDetail = error.message;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing error details:', e);
+                    }
+
+                    console.error('Upload Error Detail:', errorDetail);
+                    toast.error(errorDetail);
+                }
+            }
+        );
+    };
 
     return (
         <section className="bg-zinc-50 min-h-screen p-4 md:p-8">
@@ -304,12 +382,12 @@ export default function CreateBookingView() {
                                                     type="number"
                                                     min="1"
                                                     disabled={!selectedUnit}
-                                                    max={selectedUnit?.maxGuests || 10}
+                                                    max={selectedUnit?.maxGuests ?? selectedUnit?.max_guests ?? 10}
                                                     className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
                                                     value={formik.values.guests_count}
                                                     onChange={(e) => {
                                                         const val = Number(e.target.value);
-                                                        const max = selectedUnit?.maxGuests || 10;
+                                                        const max = selectedUnit?.maxGuests ?? selectedUnit?.max_guests ?? 10;
                                                         if (val <= max) {
                                                             formik.setFieldValue('guests_count', val);
                                                         } else {
@@ -348,15 +426,12 @@ export default function CreateBookingView() {
                                     onCheckInDateSelect={(date) => formik.setFieldValue('start_date', date)}
                                     onCheckOutDateSelect={(date) => formik.setFieldValue('end_date', date)}
                                     isMobileView={isMobile}
-                                    blockedDates={selectedUnit?.availability
-                                        ?.filter((el: any) => {
-                                            const isBlackout = el?.is_blackout ?? el?.isBlackout ?? false;
-                                            const count = Number(el?.count ?? 0);
-                                            // Block if blackout is true OR count is 0 (or less)
-                                            return isBlackout || count <= 0;
-                                        })
-                                        ?.map((el: any) => ({ date: el?.date })) ?? []}
+                                    maxDate={addYears(new Date(), 1)}
+                                    blockedDates={blockedDates}
                                 />
+                                <p className="text-xs text-gray-500 mt-2">
+                                    * Bookings are limited to 1 year in advance.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -420,10 +495,100 @@ export default function CreateBookingView() {
                                 </div>
                             </div>
 
+                            {/* Payment Handling Section */}
+                            <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <MdOutlinePayments className="text-primary text-lg" />
+                                    <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">Payment Information</h4>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200 cursor-pointer hover:bg-zinc-100 transition-colors"
+                                        onClick={() => formik.setFieldValue('mark_as_paid', !formik.values.mark_as_paid)}>
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
+                                            checked={formik.values.mark_as_paid}
+                                            onChange={() => { }} // Handled by div click
+                                        />
+                                        <span className="text-sm font-medium text-zinc-700">Mark as Paid</span>
+                                    </div>
+
+                                    {formik.values.mark_as_paid && (
+                                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-semibold text-zinc-500 uppercase">Payment Method</label>
+                                                <select
+                                                    className="w-full h-11 px-3 border border-zinc-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                                    value={formik.values.payment_method}
+                                                    onChange={(e) => formik.setFieldValue('payment_method', e.target.value)}
+                                                >
+                                                    <option value="cash">Cash</option>
+                                                    <option value="pos">POS</option>
+                                                    <option value="bank_transfer">Bank Transfer</option>
+                                                    <option value="online">Online / Other</option>
+                                                </select>
+                                            </div>
+
+                                            {(formik.values.payment_method === 'bank_transfer' || formik.values.payment_method === 'pos') && (
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-semibold text-zinc-500 uppercase">
+                                                        Proof of Payment {formik.values.payment_method === 'bank_transfer' && <span className="text-red-500">*</span>}
+                                                    </label>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="file"
+                                                            id="proof-upload"
+                                                            className="hidden"
+                                                            accept="image/*,application/pdf"
+                                                            onChange={handleFileUpload}
+                                                            disabled={isUploading}
+                                                        />
+                                                        <label
+                                                            htmlFor="proof-upload"
+                                                            className={`flex items-center justify-center gap-2 w-full h-11 border-2 border-dashed ${formik.values.payment_proof_url ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-300 text-zinc-500'} rounded-lg cursor-pointer hover:border-primary hover:text-primary transition-all text-sm font-medium`}
+                                                        >
+                                                            {isUploading ? <Spinner /> : (
+                                                                <>
+                                                                    <HiOutlineCloudUpload className="text-lg" />
+                                                                    {formik.values.payment_proof_url ? 'Receipt Uploaded' : 'Upload Receipt'}
+                                                                </>
+                                                            )}
+                                                        </label>
+                                                        {formik.values.payment_proof_url && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => formik.setFieldValue('payment_proof_url', '')}
+                                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm hover:bg-red-600 transition-colors"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-semibold text-zinc-500 uppercase">Payment Notes</label>
+                                                <textarea
+                                                    className="w-full p-3 border border-zinc-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"
+                                                    placeholder="Enter any notes about this payment..."
+                                                    rows={2}
+                                                    value={formik.values.payment_notes}
+                                                    onChange={(e) => formik.setFieldValue('payment_notes', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
                             <button
                                 onClick={() => formik.handleSubmit()}
-                                disabled={!formik.isValid || !formik.dirty || isPending || !selectedProperty || !selectedUnit || !selectedUser || !formik.values.start_date}
-                                className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                disabled={!formik.isValid || !formik.dirty || isPending || !selectedProperty || !selectedUnit || !selectedUser || !formik.values.start_date || isUploading}
+                                className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all mt-6 flex items-center justify-center gap-2"
                             >
                                 {isPending ? <Spinner /> : (
                                     <>
