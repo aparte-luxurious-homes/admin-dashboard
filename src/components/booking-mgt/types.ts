@@ -6,6 +6,9 @@ export enum BookingStatus {
     PENDING = 'PENDING',
     PENDING_PAYMENT = 'PENDING_PAYMENT',
     CONFIRMED = 'CONFIRMED',
+    CHECKED_IN = 'CHECKED_IN',
+    CHECKED_OUT = 'CHECKED_OUT',
+    CANCEL_REQUESTED = 'CANCEL_REQUESTED',
     CANCELLED = 'CANCELLED',
     COMPLETED = 'COMPLETED',
 }
@@ -50,6 +53,10 @@ export interface IBooking {
     unit_count?: number
     totalPrice: number
     total_price?: number
+    cautionFee?: number
+    caution_fee?: number
+    isCautionRefunded?: boolean
+    is_caution_refunded?: boolean
     status: BookingStatus
     cancellationReason: string
     cancellation_reason?: string

@@ -272,7 +272,7 @@ export default function BookingsTable({
                                             {booking?.user?.profile?.first_name || (booking?.user as any)?.firstName || (booking as any)?.user_id || '--/--'} {booking?.user?.profile?.last_name || (booking?.user as any)?.lastName || ''}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                                            ₦ {formatMoney(Number((booking as any)?.total_price ?? 0))}
+                                            {formatMoney(Number((booking as any)?.total_price ?? 0))}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :

@@ -32,12 +32,16 @@ export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: U
 
     return useQuery({
         queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role ?? null, id ?? null],
-        queryFn: () => axiosRequest.get(
-            `${API_ROUTES.propertyManagement.properties.base}?${params.toString()}`
-        ),
+        queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.base, {
+            params: {
+                page,
+                limit,
+                search: searchTerm,
+                role,
+                user: id
+            }
+        }),
         refetchOnWindowFocus: true,
-        staleTime: Infinity,
-        refetchInterval: 10000 * 60 * 5,
     });
 }
 

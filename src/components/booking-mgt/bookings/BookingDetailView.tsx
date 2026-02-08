@@ -15,9 +15,17 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import Image from "next/image";
-import { RetryBookingPayment } from "@/src/lib/request-handlers/bookingMgt";
-import { toast } from "react-hot-toast";
 import { MdRefresh } from "react-icons/md";
+import Modal from "../../modal/Modal";
+import DeleteBookingDialog from "../dialogs/DeleteBookingDialog";
+import {
+    RetryBookingPayment,
+    CheckInBooking,
+    CheckOutBooking,
+    RefundCautionFee,
+    DeleteBooking,
+    ApproveCancellation
+} from "@/src/lib/request-handlers/bookingMgt";
 
 export default function BookingDetailView({ bookingId }: { bookingId: string }) {
     const pathname = usePathname();
@@ -29,6 +37,14 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
     const { data: bookingData, isLoading, error } = GetBookingDetails(bookingId);
     const [bookingDetails, setBookingDetails] = useState<IBooking | null>(null);
     const { mutate: retryPayment, isPending: isRetrying } = RetryBookingPayment();
+    const { mutate: checkIn, isPending: isCheckingIn } = CheckInBooking();
+    const { mutate: checkOut, isPending: isCheckingOut } = CheckOutBooking();
+    const { mutate: refundCaution, isPending: isRefunding } = RefundCautionFee();
+    const { mutate: deleteBooking, isPending: isDeleting } = DeleteBooking();
+    const { mutate: approveCancellation, isPending: isApproving } = ApproveCancellation();
+    const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         if (bookingData?.data?.data) {
@@ -55,6 +71,10 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                 return { text: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', icon: '#FFAE00' };
             case BookingStatus.CONFIRMED:
                 return { text: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200', icon: '#028090' };
+            case BookingStatus.CHECKED_IN:
+                return { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', icon: '#2563eb' };
+            case BookingStatus.CHECKED_OUT:
+                return { text: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', icon: '#4f46e5' };
             default:
                 return { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-200', icon: '#191919' };
         }
@@ -66,8 +86,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
     const nights = (startDate && endDate) ? getDayDifference(endDate, startDate) : 0;
     const unitPrice = bookingDetails?.unit?.pricePerNight || (bookingDetails?.unit as any)?.price_per_night || 0;
     const pricePerNight = Number(unitPrice);
-    const unitCaution = bookingDetails?.unit?.cautionFee || (bookingDetails?.unit as any)?.caution_fee || 0;
-    const cautionFee = Number(unitCaution);
+    const cautionFee = Number(bookingDetails?.caution_fee || (bookingDetails as any)?.caution_fee || 0);
     const unitCount = bookingDetails?.unitCount || (bookingDetails as any)?.unit_count || 1;
     const guestsCount = bookingDetails?.guestsCount || (bookingDetails as any)?.guests_count || 0;
     const totalPrice = bookingDetails?.totalPrice || (bookingDetails as any)?.total_price || 0;
@@ -357,7 +376,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                         <div className="space-y-4">
                                                             <div className="flex justify-between items-center py-2">
                                                                 <span className="text-zinc-600">Price per night</span>
-                                                                <span className="font-medium text-zinc-800">₦{formatMoney(pricePerNight)}</span>
+                                                                <span className="font-medium text-zinc-800">{formatMoney(pricePerNight)}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2">
                                                                 <span className="text-zinc-600">Number of nights</span>
@@ -369,15 +388,15 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                             </div>
                                                             <div className="flex justify-between items-center py-2 border-t border-zinc-200">
                                                                 <span className="text-zinc-600">Subtotal</span>
-                                                                <span className="font-medium text-zinc-800">₦{formatMoney(pricePerNight * nights * unitCount)}</span>
+                                                                <span className="font-medium text-zinc-800">{formatMoney(pricePerNight * nights * unitCount)}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-2">
                                                                 <span className="text-zinc-600">Caution fee</span>
-                                                                <span className="font-medium text-zinc-800">₦{formatMoney(cautionFee)}</span>
+                                                                <span className="font-medium text-zinc-800">{formatMoney(cautionFee)}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center py-3 border-t-2 border-zinc-300 mt-2">
                                                                 <span className="text-lg font-semibold text-zinc-800">Total Amount</span>
-                                                                <span className="text-2xl font-bold text-primary">₦{formatMoney(totalPrice)}</span>
+                                                                <span className="text-2xl font-bold text-primary">{formatMoney(totalPrice)}</span>
                                                             </div>
                                                             {transactionRef && (
                                                                 <div className="mt-4 pt-4 border-t border-zinc-200">
@@ -417,7 +436,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                                         <span>{isRetrying ? 'Verifying Payment...' : 'Retry Payment Verification'}</span>
                                                                     </button>
                                                                     <p className="text-xs text-zinc-500 mt-2 text-center">
-                                                                        Click to manually verify payment status with Monnify
+                                                                        Click to manually verify payment status with the payment gateway
                                                                     </p>
                                                                 </div>
                                                             )}
@@ -511,17 +530,193 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                 >
                                                     Go Back
                                                 </button>
-                                                {status !== BookingStatus.CANCELLED && (
+                                                {status === BookingStatus.CONFIRMED && (
                                                     <button
-                                                        onClick={() => setStatus(BookingStatus.CANCELLED)}
+                                                        onClick={() => {
+                                                            checkIn(
+                                                                { bookingId: bookingDetails.id },
+                                                                {
+                                                                    onSuccess: () => toast.success('Booking marked as checked in'),
+                                                                    onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to check in')
+                                                                }
+                                                            );
+                                                        }}
+                                                        disabled={isCheckingIn}
+                                                        className="px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium disabled:opacity-50"
+                                                    >
+                                                        {isCheckingIn ? 'Processing...' : 'Mark as Checked In'}
+                                                    </button>
+                                                )}
+                                                {status === BookingStatus.CHECKED_IN && (
+                                                    <button
+                                                        onClick={() => {
+                                                            const today = new Date();
+                                                            today.setHours(0, 0, 0, 0);
+                                                            const scheduledEnd = new Date(endDate);
+                                                            scheduledEnd.setHours(0, 0, 0, 0);
+
+                                                            if (today < scheduledEnd) {
+                                                                setShowCheckoutConfirm(true);
+                                                            } else {
+                                                                checkOut(
+                                                                    { bookingId: bookingDetails.id },
+                                                                    {
+                                                                        onSuccess: () => toast.success('Booking marked as checked out'),
+                                                                        onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to check out')
+                                                                    }
+                                                                );
+                                                            }
+                                                        }}
+                                                        disabled={isCheckingOut}
+                                                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
+                                                    >
+                                                        {isCheckingOut ? 'Processing...' : 'Mark as Checked Out'}
+                                                    </button>
+                                                )}
+                                                {status === BookingStatus.CHECKED_OUT && !bookingDetails.isCautionRefunded && (
+                                                    <button
+                                                        onClick={() => {
+                                                            refundCaution(
+                                                                { bookingId: bookingDetails.id },
+                                                                {
+                                                                    onSuccess: () => toast.success('Caution fee refunded and booking completed'),
+                                                                    onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to refund caution fee')
+                                                                }
+                                                            );
+                                                        }}
+                                                        disabled={isRefunding}
+                                                        className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                                                    >
+                                                        {isRefunding ? 'Processing...' : 'Refund Caution Fee'}
+                                                    </button>
+                                                )}
+                                                {status === BookingStatus.CANCEL_REQUESTED && (
+                                                    <button
+                                                        onClick={() => {
+                                                            approveCancellation(
+                                                                { bookingId: bookingDetails.id },
+                                                                {
+                                                                    onSuccess: () => {
+                                                                        toast.success('Cancellation approved');
+                                                                        setStatus(BookingStatus.CANCELLED);
+                                                                    },
+                                                                    onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to approve cancellation')
+                                                                }
+                                                            );
+                                                        }}
+                                                        disabled={isApproving}
+                                                        className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                                                    >
+                                                        {isApproving ? 'Approving...' : 'Approve Cancellation'}
+                                                    </button>
+                                                )}
+                                                {status !== BookingStatus.CANCELLED && status !== BookingStatus.COMPLETED && status !== BookingStatus.CANCEL_REQUESTED && (
+                                                    <button
+                                                        onClick={() => setShowCancelConfirm(true)}
                                                         className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
                                                     >
                                                         Cancel Booking
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => setShowDeleteConfirm(true)}
+                                                    className="px-6 py-2.5 bg-zinc-800 text-white rounded-lg hover:bg-zinc-950 transition-colors font-medium"
+                                                >
+                                                    Delete Record
+                                                </button>
                                             </div>
                                         </div>
                                     )}
+
+                                    <Modal
+                                        isOpen={showCheckoutConfirm}
+                                        onClose={() => setShowCheckoutConfirm(false)}
+                                        title="Early Check-Out Confirmation"
+                                        content={
+                                            <div className="text-zinc-600">
+                                                <p>This booking is scheduled to end on <span className="font-semibold">{endDate ? formatDate(endDate) : 'the scheduled date'}</span>.</p>
+                                                <p className="mt-2">Are you sure you want to mark this guest as checked out early? This action will finalize the stay period.</p>
+                                            </div>
+                                        }
+                                        footer={
+                                            <div className="flex gap-3 justify-center">
+                                                <button
+                                                    onClick={() => setShowCheckoutConfirm(false)}
+                                                    className="px-6 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowCheckoutConfirm(false);
+                                                        checkOut(
+                                                            { bookingId: bookingDetails.id },
+                                                            {
+                                                                onSuccess: () => toast.success('Booking marked as checked out'),
+                                                                onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to check out')
+                                                            }
+                                                        );
+                                                    }}
+                                                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                                                >
+                                                    Confirm Check-Out
+                                                </button>
+                                            </div>
+                                        }
+                                    />
+
+                                    <DeleteBookingDialog
+                                        isOpen={showCancelConfirm}
+                                        onClose={() => setShowCancelConfirm(false)}
+                                        bookingId={bookingDetails.id}
+                                        isPending={isDeleting}
+                                        onConfirm={(reason) => {
+                                            // This is direct cancellation by admin
+                                            deleteBooking(
+                                                {
+                                                    bookingId: bookingDetails.id,
+                                                    cancellationReason: reason
+                                                },
+                                                {
+                                                    onSuccess: () => {
+                                                        toast.success('Booking cancelled successfully');
+                                                        setShowCancelConfirm(false);
+                                                        setStatus(BookingStatus.CANCELLED);
+                                                    },
+                                                    onError: (err: any) => {
+                                                        toast.error(err?.response?.data?.detail || 'Failed to cancel booking');
+                                                    }
+                                                }
+                                            );
+                                        }}
+                                    />
+
+                                    <DeleteBookingDialog
+                                        isOpen={showDeleteConfirm}
+                                        onClose={() => setShowDeleteConfirm(false)}
+                                        bookingId={bookingDetails.id}
+                                        isPending={isDeleting}
+                                        title="Delete Booking Record?"
+                                        description={`Are you sure you want to permanently delete booking ${bookingDetails.booking_id}? This will remove it from all views.`}
+                                        confirmText="Delete Permanently"
+                                        onConfirm={(reason) => {
+                                            deleteBooking(
+                                                {
+                                                    bookingId: bookingDetails.id,
+                                                    cancellationReason: reason || 'Deleted by admin'
+                                                },
+                                                {
+                                                    onSuccess: () => {
+                                                        toast.success('Booking record deleted');
+                                                        router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.base);
+                                                    },
+                                                    onError: (err: any) => {
+                                                        toast.error(err?.response?.data?.detail || 'Failed to delete booking');
+                                                    }
+                                                }
+                                            );
+                                        }}
+                                    />
                                 </>
                 }
             </div>

@@ -16,6 +16,9 @@ interface DeleteBookingDialogProps {
     onConfirm: (reason: string) => void;
     bookingId?: string;
     isPending?: boolean;
+    title?: string;
+    description?: React.ReactNode;
+    confirmText?: string;
 }
 
 export default function DeleteBookingDialog({
@@ -24,6 +27,9 @@ export default function DeleteBookingDialog({
     onConfirm,
     bookingId,
     isPending = false,
+    title = "Cancel Booking?",
+    description,
+    confirmText = "Cancel Booking"
 }: DeleteBookingDialogProps) {
     const [reason, setReason] = useState("");
 
@@ -42,11 +48,15 @@ export default function DeleteBookingDialog({
             <AlertDialogContent className="sm:max-w-[500px]">
                 <AlertDialogHeader>
                     <AlertDialogTitle className="text-xl font-semibold text-gray-900">
-                        Delete Booking?
+                        {title}
                     </AlertDialogTitle>
                     <AlertDialogDescription className="text-gray-500 mt-2">
-                        Are you sure you want to delete booking <strong>{bookingId}</strong>? This action cannot be undone.
-                        The booking will be soft-deleted, and unit availability will be restored.
+                        {description || (
+                            <>
+                                Are you sure you want to cancel booking <strong>{bookingId}</strong>? This action cannot be undone.
+                                Unit availability will be restored, and any applicable refunds will be processed.
+                            </>
+                        )}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
 
@@ -76,7 +86,7 @@ export default function DeleteBookingDialog({
                         disabled={isPending}
                         className="bg-red-600 text-white hover:bg-red-700 border-none"
                     >
-                        {isPending ? "Deleting..." : "Delete Booking"}
+                        {isPending ? "Processing..." : confirmText}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

@@ -1,4 +1,3 @@
-
 'use client'
 
 import { TbCurrencyNaira } from "react-icons/tb";
@@ -9,7 +8,7 @@ import Image from 'next/image';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
-import { GetAllProperties } from "@/src/lib/request-handlers/propertyMgt";
+import { GetAllProperties, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
 import { useEffect, useState } from "react";
 import { IProperty, IPropertyUnit, PropertyType } from "../../properties-mgt/types";
@@ -17,7 +16,7 @@ import { IUser } from "@/src/lib/types";
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
 import { IoLocationOutline } from "react-icons/io5";
 import { IoMdReturnLeft } from "react-icons/io";
-import DateInput from "../../ui/DateInput";
+import BookingAvailabilityCalendar from "./BookingAvailabilityCalendar";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CreateBooking } from "@/src/lib/request-handlers/bookingMgt";
@@ -25,27 +24,39 @@ import Spinner from "../../ui/Spinner";
 import { useAuth } from "@/src/hooks/useAuth";
 import toast from "react-hot-toast";
 import { UserRole } from "@/src/lib/enums";
+import { useMediaQuery } from "@mui/material";
 
 export default function CreateBookingView() {
     const router = useRouter();
     const { user } = useAuth();
     const searchParams = useSearchParams();
+    const isMobile = useMediaQuery("(max-width: 768px)");
+
+    // State
     const [userSearchTerm, setUserSearchTerm] = useState<string>('')
     const [propertySearchTerm, setPropertySearchTerm] = useState<string>('')
+    const [unitSearchTerm, setUnitSearchTerm] = useState<string>('')
     const [propPage, setPropPage] = useState<number>(1);
     const propSize = 12;
-    // Fetch all properties paginated; no role/user filter so dropdown always has results
+
+    // Queries
     const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm);
     const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
+    const { mutate, isPending } = CreateBooking();
+
+    // Local Data State
     const [selectionMode, setSelectionMode] = useState<boolean>(true)
     const [properties, setProperties] = useState<IProperty[]>([])
     const [users, setUsers] = useState<IUser[]>([])
+
+    // Selection State
     const [selectedProperty, setSeletedProperty] = useState<IProperty | any | null>(null)
     const [selectedUnit, setSeletedUnit] = useState<IPropertyUnit | null>(null)
     const [selectedUser, setSeletedUser] = useState<IUser | null>(null)
-    const { mutate, isPending } = CreateBooking();
 
-
+    // Fetch full property details to get units
+    const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } = GetSingleProperty(selectedProperty?.id);
+    const fullPropertyDetails = singlePropertyData?.data?.data;
 
     const formik = useFormik({
         initialValues: {
@@ -97,35 +108,41 @@ export default function CreateBookingView() {
         const filteredProperties = properties?.filter(el => {
             if (el?.name === name) return el;
         })
-        setSeletedProperty(filteredProperties[0])
-        setSeletedUnit(null)
+        const selected = filteredProperties[0];
+        setSeletedProperty(selected);
+        setPropertySearchTerm(name);
+        setSeletedUnit(null);
+        setUnitSearchTerm('');
+        formik.setFieldValue('unit_id', 0);
     }
 
-    const handleUnitSelection = (property: IProperty, name: string) => {
-        const filteredUnits = property?.units?.filter(el => {
-            if (el?.name === name) return el;
-        })
-        setSeletedUnit(filteredUnits[0])
-        formik.setFieldValue('unit_id', filteredUnits[0]?.id)
+    const handleUnitSelection = (name: string) => {
+        // Use full details to find the unit
+        const unit = fullPropertyDetails?.units?.find((u: IPropertyUnit) => u.name === name);
+        console.log('DEBUG: Selected Unit:', unit);
+        if (unit) {
+            console.log('DEBUG: Unit Availability:', unit.availability);
+            setSeletedUnit(unit);
+            formik.setFieldValue('unit_id', unit.id);
+        }
     }
 
-    const handleUserSelection = (email: string) => {
-        const filteredUsers = users?.filter(el => {
-            if (el?.email === email) return el;
-        })
-        setSeletedUser(filteredUsers[0])
-        formik.setFieldValue('user_id', filteredUsers[0]?.id)
-    }
+    // Effect to inspect full details
+    useEffect(() => {
+        if (fullPropertyDetails) {
+            console.log('DEBUG: Full Property Details:', fullPropertyDetails);
+        }
+    }, [fullPropertyDetails]);
 
-
+    // Effect to sync properties list
     useEffect(() => {
         const fromItems = (propertyList as any)?.data?.data?.items ?? (propertyList as any)?.data?.items;
-        const fromData = (propertyList as any)?.data?.data?.data ?? [];
+        const fromData = (propertyList as any)?.data?.data?.data?.data ?? [];
         const next = Array.isArray(fromItems) ? fromItems : (Array.isArray(fromData) ? fromData : []);
         setProperties(next as IProperty[])
     }, [propertyList])
 
-
+    // Effect to sync users list
     useEffect(() => {
         const fromItems = (userList as any)?.data?.data?.items ?? (userList as any)?.data?.items;
         const fromData = (userList as any)?.data?.data?.data ?? [];
@@ -134,364 +151,292 @@ export default function CreateBookingView() {
     }, [userList])
 
     const { values, setFieldValue } = formik;
+
+    // Effect to calculate price
     useEffect(() => {
         const days = getDayDifference(values.start_date as any, values.end_date as any)
-        const firstPrice = days * (values.unit_count || 0) * Number(selectedUnit?.pricePerNight)
-        const grandPrice = firstPrice + Number(selectedUnit?.cautionFee)
+
+        // Robust access to price and caution fee
+        const pricePerNight = Number(selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0);
+        const cautionFee = Number(selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0);
+
+        const firstPrice = days * (values.unit_count || 0) * pricePerNight;
+        const grandPrice = firstPrice + cautionFee;
         setFieldValue('total_price', grandPrice)
 
     }, [
         values.unit_count,
         values.start_date,
         values.end_date,
-        selectedUnit?.pricePerNight,
-        selectedUnit?.cautionFee,
+        selectedUnit, // simplified dependency
         setFieldValue,
     ])
 
-
     return (
-        <section>
-            <div className="p-10 w-full">
-                <div className="w-full border border-zinc-500/20 bg-white rounded-xl p-10 min-h-[50vh]">
+        <section className="bg-zinc-50 min-h-screen p-4 md:p-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="text-3xl font-semibold text-zinc-900">Create New Booking</h1>
+                    {(selectedProperty || selectedUnit || selectedUser || formik.dirty) && (
+                        <div onClick={() => {
+                            setSeletedProperty(null);
+                            setSeletedUnit(null);
+                            setSeletedUser(null);
+                            formik.resetForm();
+                            setSelectionMode(true);
+                        }} className="flex gap-2 items-center cursor-pointer text-zinc-500 hover:text-zinc-800 transition-colors">
+                            <IoMdReturnLeft />
+                            <span className="text-sm font-medium">Reset Form</span>
+                        </div>
+                    )}
+                </div>
 
-                    <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-3xl text-zinc-800 font-medium">
-                            Create Booking
-                        </h3>
-                        {
-                            !selectionMode &&
-                            <div onClick={() => setSelectionMode(true)} className="flex gap-3 items-center">
-                                <IoMdReturnLeft className="text-primary" />
-                                <p className="text-xl text-primary cursor-pointer hover:underline">
-                                    Change selection
-                                </p>
-                            </div>
-                        }
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    {/* LEFT COLUMN: FORM INPUTS */}
+                    <div className="lg:col-span-2 space-y-8">
 
+                        {/* 1. Property Details Section */}
+                        <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
+                            <h2 className="text-xl font-medium text-zinc-800 mb-6 flex items-center gap-2">
+                                <span className="bg-primary/10 text-primary p-1.5 rounded-lg"><UnitIcon className="w-5 h-5" color="currentColor" /></span>
+                                Property & Unit
+                            </h2>
 
-                    {
-                        selectionMode ?
-                            <div>
-                                <div className="grid grid-cols-3 grid-flow-row gap-x-4">
-                                    <div className="col-span-1 relative">
-                                        <label htmlFor="state" className="text-lg zinc-900 font-medium">Property</label>
-                                        <AdjustableFilterDropdown
-                                            placeholder={`E.g. The Saphire hotel`}
-                                            options={properties?.map(el => el?.name)}
-                                            handleSelection={
-                                                // (val) => formik.setFieldValue("state", val)
-                                                (val) => handlePropertySelection(val)
-                                            }
-                                            searchTerm={propertySearchTerm}
-                                            setSearchTerm={setPropertySearchTerm}
-                                            isLoading={propertiesLoading}
-                                        />
-                                        <div className="flex justify-end items-center gap-2 mt-2">
-                                            <button type="button" className="px-2 py-1 text-sm border rounded disabled:opacity-50" disabled={propPage === 1} onClick={() => setPropPage(p => Math.max(1, p - 1))}>Prev</button>
-                                            <span className="text-sm text-zinc-600">
-                                                Page {(propertyList as any)?.data?.data?.meta?.currentPage ?? propPage}
-                                                {(propertyList as any)?.data?.data?.meta?.lastPage ? ` of ${(propertyList as any)?.data?.data?.meta?.lastPage}` : ''}
-                                            </span>
-                                            <button type="button" className="px-2 py-1 text-sm border rounded disabled:opacity-50"
-                                                disabled={Boolean((propertyList as any)?.data?.data?.meta?.lastPage) && propPage >= Number((propertyList as any)?.data?.data?.meta?.lastPage)}
-                                                onClick={() => setPropPage(p => p + 1)}
-                                            >
-                                                Next
-                                            </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-zinc-700">Select Property</label>
+                                    <AdjustableFilterDropdown
+                                        placeholder="Search for a property..."
+                                        options={properties?.map((prop: any) => prop.name).filter(Boolean) ?? []}
+                                        handleSelection={(val) => handlePropertySelection(val)}
+                                        searchTerm={propertySearchTerm}
+                                        setSearchTerm={setPropertySearchTerm}
+                                        isLoading={propertiesLoading}
+                                    />
+                                    {selectedProperty && (
+                                        <div className="mt-4 p-4 bg-zinc-50 rounded-lg border border-zinc-100 flex gap-4 items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                                            {selectedProperty.images?.[0] ? (
+                                                <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
+                                                    <Image src={selectedProperty.images[0]} alt={selectedProperty.name} fill className="object-cover" />
+                                                </div>
+                                            ) : (<div className="w-16 h-16 bg-zinc-200 rounded-md flex items-center justify-center text-zinc-400"><UnitIcon /></div>)}
+                                            <div>
+                                                <p className="font-medium text-zinc-900 line-clamp-1">{selectedProperty.name}</p>
+                                                <p className="text-xs text-zinc-500 flex items-center gap-1 mt-1"><IoLocationOutline /> {selectedProperty.address ?? 'No address'}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="col-span-1 relative">
-                                        <label htmlFor="city" className="text-lg zinc-900 font-medium">Unit</label>
-                                        <CustomFilterDropdown
-                                            placeholder={`E.g. Standard`}
-                                            options={selectedProperty?.units?.map((el: IPropertyUnit) => el?.name)}
-                                            handleSelection={
-                                                // (val) => formik.setFieldValue("city", val)
-                                                (val) => handleUnitSelection(selectedProperty, val)
-                                            }
-                                            selected={selectedUnit?.name!}
-                                            disabled={!selectedProperty}
-                                        />
-                                    </div>
-                                    <div className="col-span-1 relative">
-                                        <label htmlFor="city" className="text-lg zinc-900 font-medium">Guest</label>
-                                        <AdjustableFilterDropdown
-                                            placeholder={`E.g. Abiola Graham`}
-                                            options={users?.map(el => el?.email)}
-                                            handleSelection={
-                                                // (val) => formik.setFieldValue("city", val)
-                                                (val) => handleUserSelection(val)
-                                            }
-                                            searchTerm={userSearchTerm}
-                                            setSearchTerm={setUserSearchTerm}
-                                            isLoading={usersLoading}
-                                            disabled={users.length === 0}
-                                        />
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-zinc-700">Select Unit</label>
+                                    <AdjustableFilterDropdown
+                                        placeholder="Search for a unit..."
+                                        // Use fullPropertyDetails here
+                                        options={fullPropertyDetails?.units?.map((el: IPropertyUnit) => el?.name).filter(Boolean) ?? []}
+                                        searchTerm={unitSearchTerm}
+                                        setSearchTerm={setUnitSearchTerm}
+                                        handleSelection={(val) => handleUnitSelection(val)}
+                                        isLoading={isLoadingPropertyDetails}
+                                        disabled={!selectedProperty}
+                                    />
+                                    {selectedUnit && (
+                                        <div className="mt-4 p-4 bg-zinc-50 rounded-lg border border-zinc-100 flex gap-4 items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center flex-shrink-0 border border-teal-100">
+                                                <UnitIcon className="w-5 h-5" color="currentColor" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-zinc-900">{selectedUnit.name}</p>
+                                                <p className="text-xs text-zinc-500 mt-0.5">
+                                                    Max Guests: <span className="font-medium text-zinc-700">{selectedUnit.maxGuests ?? selectedUnit.max_guests ?? '-'}</span> •
+                                                    Price: <span className="font-medium text-primary">{formatMoney(selectedUnit.pricePerNight ?? selectedUnit.price_per_night ?? 0)}/night</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Guest Details Section */}
+                        <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
+                            <h2 className="text-xl font-medium text-zinc-800 mb-6 flex items-center gap-2">
+                                <span className="bg-blue-50 text-blue-600 p-1.5 rounded-lg"><UsersIcon className="w-5 h-5" color="currentColor" /></span>
+                                Guest & Stay
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-zinc-700">Select Guest</label>
+                                    <AdjustableFilterDropdown
+                                        placeholder="Search by name or email..."
+                                        options={userList?.data?.data?.data?.map((user: any) => user.email).filter(Boolean) ?? []}
+                                        handleSelection={(val) => {
+                                            const selected = userList?.data?.data?.data?.find((user: any) => user.email === val);
+                                            setUserSearchTerm(val);
+                                            setSeletedUser(selected);
+                                            formik.setFieldValue('user_id', selected?.id);
+                                        }}
+                                        searchTerm={userSearchTerm}
+                                        setSearchTerm={setUserSearchTerm}
+                                        isLoading={usersLoading}
+                                    />
+                                    {selectedUser && (
+                                        <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-medium border border-zinc-200">
+                                                {selectedUser.profile?.firstName?.[0] ?? 'G'}{selectedUser.profile?.lastName?.[0] ?? ''}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-zinc-900">{selectedUser.profile?.firstName ?? 'Guest'} {selectedUser.profile?.lastName ?? ''}</p>
+                                                <p className="text-xs text-zinc-500">{selectedUser.email}</p>
+                                            </div>
+                                            <button type="button" onClick={() => router.push(PAGE_ROUTES.dashboard.userManagement.guests.details(selectedUser.id))} className="ml-auto text-xs font-medium text-primary underline hover:text-primary/80">View Profile</button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-zinc-700">Guests</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    disabled={!selectedUnit}
+                                                    max={selectedUnit?.maxGuests || 10}
+                                                    className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
+                                                    value={formik.values.guests_count}
+                                                    onChange={(e) => {
+                                                        const val = Number(e.target.value);
+                                                        const max = selectedUnit?.maxGuests || 10;
+                                                        if (val <= max) {
+                                                            formik.setFieldValue('guests_count', val);
+                                                        } else {
+                                                            toast.error(`Max guests for this unit is ${max}`);
+                                                            formik.setFieldValue('guests_count', max);
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">People</span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-zinc-700">Units</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    disabled={!selectedUnit}
+                                                    max={selectedUnit?.count ?? 1}
+                                                    className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
+                                                    value={formik.values.unit_count}
+                                                    onChange={(e) => formik.setFieldValue('unit_count', Number(e.target.value))}
+                                                />
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">Qty</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <button onClick={() => setSelectionMode(false)} type="button" disabled={!selectedProperty || !selectedUser || !selectedUnit} className="mt-3 border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:text-primary disabled:hover:bg-transparent disabled:opacity-25 disabled:cursor-not-allowed " >
-                                    Book
-                                </button>
                             </div>
-                            :
-                            <>
-                                <section className="flex justify-between gap-8 w-full">
-                                    <div className="w-full max-w-[67%] relative">
-                                        <Swiper
-                                            loop={true}
-                                            modules={[Navigation, Autoplay]}
-                                            spaceBetween={5}
-                                            slidesPerView={1}
-                                            navigation
-                                            autoplay
-                                            className="rewind"
-                                        >
-                                            {
-                                                selectedUnit?.media?.map((el: any, index: any) => (
-                                                    <SwiperSlide key={index}>
-                                                        <Image
-                                                            alt={`${el?.name}_img_${index}`}
-                                                            src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                                            className="w-full max-h-[30rem] rounded-xl"
-                                                            width={900}
-                                                            height={900}
-                                                        />
-                                                    </SwiperSlide>
-                                                ))
-                                            }
-                                        </Swiper>
-                                    </div>
-                                    <div className='w-full flex flex-col gap-y-3'>
-                                        <div className='size-full flex flex-col justify-center items-center bg-background rounded-xl'>
-                                            <p className='text-base text-zinc-800 font-medium text-center mb-1'>
-                                                Guest
-                                            </p>
-                                            <Image
-                                                alt={`owner_img`}
-                                                src={(selectedUser?.profile?.profileImage || selectedUser?.profile?.profile_image) ?? '/png/sample_owner.png'}
-                                                className="w-full max-w-[14rem] rounded-xl my-3"
-                                                width={400}
-                                                height={400}
-                                            />
-                                            <p className='text-base text-zinc-800 font-medium text-center mb-1'>
-                                                {`${selectedUser?.profile?.firstName ?? 'Roofus'} ${selectedUnit?.property?.owner?.profile?.lastName ?? 'James'}`}
-                                            </p>
-                                            <p className='text-sm text-zinc-800 font-medium text-center'>
-                                                {`${selectedUser?.email ?? 'rjames@hotmail.com'}`}
-                                            </p>
-                                        </div>
-                                        <div className='flex justify-between items-center gap-5 w-full'>
-                                            <button onClick={() => router.push(PAGE_ROUTES.dashboard.userManagement.guests.details(selectedUser?.id!))} className="text-center w-full cursor-pointer border border-primary rounded-lg px-5 py-2.5 text-lg font-medium text-primary hover:bg-primary/90 hover:text-white disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed">
-                                                View Guest
-                                            </button>
-                                        </div>
-                                    </div>
-                                </section>
 
-                                <section className='my-6 w-full'>
-                                    <div className='w-full flex justify-between'>
-                                        <div className='w-full flex flex-col'>
-                                            <h3 className="text-3xl font-normal text-zinc-800">
-                                                {selectedUnit?.name}
-                                            </h3>
-                                            <div className="flex gap-2 items-center mt-2 text-xl text-zinc-600">
-                                                <IoLocationOutline />
-                                                <p className="text-base">
-                                                    {selectedUnit?.property?.address ?? '17a Abdulrahmon Sanni St, Alagbado, Lagos 102213, Lagos'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-center items-center gap-0 pr-3 leading-3 ">
-                                            <div className="flex flex-col justify-center items-center gap-0 pr-3 leading-3 ">
-                                                <p className="text-xl text-primary font-medium mt-5 mb-0 w-full">
-                                                    ₦{formatMoney(selectedUnit?.pricePerNight ?? 0)}
-                                                </p>
-                                                <p className="text-sm font-medium text-zinc-600">
-                                                    Per night
-                                                </p>
-                                            </div>+
-                                            <div className="flex flex-col justify-center items-center gap-0 px-3 leading-3">
-                                                <p className="text-xl text-primary font-medium mt-5 mb-0 w-full">
-                                                    ₦{formatMoney(selectedUnit?.cautionFee ?? 0)}
-                                                </p>
-                                                <p className="text-sm font-medium text-zinc-600 text-center">
-                                                    Caution fee
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </section>
-
-                                <section className=''>
-                                    <div className="w-full flex items-center gap-10 mx-0">
-                                        <div className="flex items-center">
-                                            <p className="text-zinc-500 text-base">PropertyID:</p>
-                                            <p className="text-zinc-900 text-base ml-3">
-                                                APRT-{selectedUnit?.propertyId}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <CalendarIcon color="#a6a4a4" />
-                                            <p className="text-zinc-900 text-sm ml-2">{formatDate("11-24-2024")}</p>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <p className="text-zinc-500 text-base">Property type:</p>
-                                            <p className="text-zinc-900 text-base ml-3">
-                                                {selectedUnit?.property?.propertyType ?? PropertyType.BUNGALOW}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <p className="text-zinc-500 text-base">Owner:</p>
-                                            <p className="text-teal-800 text-base ml-3 cursor-pointer hover:underline">
-                                                {`${selectedUnit?.property?.owner?.profile?.firstName ?? 'Adekunle'} ${selectedUnit?.property?.owner?.profile?.lastName ?? 'Raji'}`}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <p className="text-zinc-500 text-base">Agent:</p>
-                                            <p className="text-teal-800 text-base ml-3 cursor-pointer hover:underline">
-                                                {`${selectedUnit?.property?.agent?.profile?.firstName ?? 'Kate'} ${selectedUnit?.property?.agent?.profile?.lastName ?? 'Osamudiamen'}`}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="my-5">
-                                        <div className="w-full flex gap-3">
-                                            {
-                                                selectedUnit?.amenities &&
-                                                selectedUnit?.amenities.map((el, index) =>
-                                                    <div key={index} className="w-fit flex items-center justify-center px-5 py-2  bg-zinc-200 rounded-lg text-[14px]">
-                                                        {el.name}
-                                                    </div>
-                                                )
-                                            }
-                                        </div>
-                                    </div>
-                                </section>
-                            </>
-
-                    }
-
-
-
-                    {
-                        !selectionMode &&
-                        <form className={`my-6`}>
-                            <div className="my-14">
-                                <DateInput
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-zinc-700">Stay Duration</label>
+                                <BookingAvailabilityCalendar
                                     checkInDate={formik.values.start_date}
                                     checkOutDate={formik.values.end_date}
-                                    onCheckInDateSelect={(val) => formik.setFieldValue('start_date', (val))}
-                                    onCheckOutDateSelect={(val) => formik.setFieldValue('end_date', (val))}
-                                    availableDates={selectedUnit?.availability?.filter(el => {
-                                        return {
-                                            date: el?.date
-                                        }
-                                    })}
-                                    showTwoMonths={true}
-                                    width="100%"
+                                    onCheckInDateSelect={(date) => formik.setFieldValue('start_date', date)}
+                                    onCheckOutDateSelect={(date) => formik.setFieldValue('end_date', date)}
+                                    isMobileView={isMobile}
+                                    blockedDates={selectedUnit?.availability
+                                        ?.filter((el: any) => {
+                                            const isBlackout = el?.is_blackout ?? el?.isBlackout ?? false;
+                                            const count = Number(el?.count ?? 0);
+                                            // Block if blackout is true OR count is 0 (or less)
+                                            return isBlackout || count <= 0;
+                                        })
+                                        ?.map((el: any) => ({ date: el?.date })) ?? []}
                                 />
-                                {!formik.values.start_date && (
-                                    <p className="text-xs text-red-500 mt-1">Select a check-in date</p>
-                                )}
-                                {!formik.values.end_date && (
-                                    <p className="text-xs text-red-500 mt-1">Select a check-out date</p>
-                                )}
                             </div>
-                            <div className="mt-10">
-                                <div className="grid grid-cols-3 grid-flow-row gap-y-5 gap-x-10 size-full">
-                                    <div className="relative">
-                                        <div className="text-zinc-500 text-sm flex gap-3 items-center">
-                                            <UsersIcon color="#191919" className="size-5" />
-                                            <label htmlFor="end-date" className="text-lg zinc-900 font-medium mt-1">Guests</label>
-                                        </div>
-                                        <div className="reative mt-2">
-                                            <input
-                                                id="guests"
-                                                type="number"
-                                                placeholder="0"
-                                                value={formik.values.guests_count}
-                                                onChange={(e) => formik.setFieldValue('guests_count', (e.target.value))}
-                                                className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
-                                                min={1}
-                                                max={10}
-                                            />
-                                            <p className="text-xs text-zinc-500 mt-1">Min 1, Max 10 guests per booking</p>
-                                        </div>
-                                    </div>
+                        </div>
+                    </div>
 
+                    {/* RIGHT COLUMN: BOOKING SUMMARY (STICKY) */}
+                    <div className="lg:col-span-1">
+                        <div className="bg-white rounded-xl border border-zinc-200 shadow-lg p-6 sticky top-8">
+                            <h3 className="text-lg font-semibold text-zinc-900 mb-6 border-b border-zinc-100 pb-4">Booking Summary</h3>
 
-                                    <div className="relative">
-                                        <div className="text-zinc-500 text-sm flex gap-3 items-center">
-                                            <UnitIcon color="#191919" className="size-5" />
-                                            <label htmlFor="end-date" className="text-lg zinc-900 font-medium mt-1">Units</label>
-                                        </div>
-                                        <div className="reative mt-2">
-                                            <input
-                                                id="units"
-                                                type="number"
-                                                placeholder="0"
-                                                value={formik.values.unit_count}
-                                                onChange={(e) => formik.setFieldValue('unit_count', (e.target.value))}
-                                                className="w-full border border-zinc-400 rounded-lg px-3 py-5 h-14 text-lg"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* {
-                                        user && user.role === UserRole.ADMIN &&
-                                        <div className=" relative">
-                                            <div className="text-zinc-500 text-sm flex gap-3 items-center">
-                                                <HiOutlineTicket  color="#191919" className="size-5"/>
-                                                <label htmlFor="end-date" className="text-lg zinc-900 font-medium mt-1">Status</label>
-                                            </div>
-                                            <CustomDropdown
-                                                selected={status}
-                                                handleSelection={(val) => formik.setFieldValue('status', (val))}
-                                                options={Object.values(BookingStatus)}
-                                            />
-                                        </div>
-                                    } */}
+                            <div className="space-y-4 mb-8">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-500">Property</span>
+                                    <span className="text-zinc-900 font-medium text-right w-1/2 truncate">{selectedProperty?.name || '-'}</span>
                                 </div>
-
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-500">Unit Type</span>
+                                    <span className="text-zinc-900 font-medium">{selectedUnit?.name || '-'}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-500">Dates</span>
+                                    <div className="text-right">
+                                        {formik.values.start_date && formik.values.end_date ? (
+                                            <>
+                                                <span className="block text-zinc-900 font-medium">{formatDate(formik.values.start_date as any)}</span>
+                                                <span className="block text-zinc-400 text-xs">to {formatDate(formik.values.end_date as any)}</span>
+                                            </>
+                                        ) : <span className="text-zinc-400">-</span>}
+                                    </div>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-500">Duration</span>
+                                    <span className="text-zinc-900 font-medium">
+                                        {formik.values.start_date && formik.values.end_date
+                                            ? `${getDayDifference(formik.values.start_date as any, formik.values.end_date as any)} Nights`
+                                            : '-'}
+                                    </span>
+                                </div>
                             </div>
 
-                            <section className="flex justify-between items-center mt-24">
-                                <div>
-                                    <p className="mb-3 text-base text-zinc-500 font-medium border border-zinc-500 px-3 py-auto rounded-full w-fit">Total price</p>
-                                    <div className="relative flex justify-between ">
-                                        <TbCurrencyNaira className="size-10" />
-                                        <p className="text-[2.5rem] text-zinc-700">{formatMoney(Number(formik.values.total_price))}</p>
-                                        <PriceTagIcon color="#191919" className="size-6 ml-1" />
-                                    </div>
+                            {/* Pricing Breakdown */}
+                            <div className="bg-zinc-50 rounded-lg p-4 mb-6 space-y-3">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-600">Rate (x{formik.values.unit_count || 1} units)</span>
+                                    <span className="font-medium text-zinc-900">
+                                        {selectedUnit
+                                            ? formatMoney(Number(selectedUnit.pricePerNight ?? selectedUnit.price_per_night ?? 0) * (formik.values.unit_count || 1))
+                                            : '-'}
+                                    </span>
                                 </div>
-                                <div className="w-3/6 flex justify-end items-center gap-6">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if (!(selectedProperty && selectedUnit && selectedUser)) {
-                                                toast.error('Select a property, unit and guest to continue', { duration: 4000, style: { maxWidth: '500px', width: 'max-content' } });
-                                                return;
-                                            }
-                                            if (!(formik.values.start_date && formik.values.end_date)) {
-                                                toast.error('Select check-in and check-out dates', { duration: 4000, style: { maxWidth: '500px', width: 'max-content' } });
-                                                return;
-                                            }
-                                            if ((formik.values.guests_count || 0) < 1 || (formik.values.unit_count || 0) < 1) {
-                                                toast.error('Guests and units must be at least 1', { duration: 4000, style: { maxWidth: '500px', width: 'max-content' } });
-                                                return;
-                                            }
-                                            formik.handleSubmit();
-                                        }}
-                                        disabled={isPending}
-                                        className="border border-teal-700 bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-5 py-2.5  text-lg font-medium disabled:hover:bg-white disabled:opacity-75 disabled:cursor-not-allowed"
-                                    >
-                                        {isPending ? <Spinner /> : 'Proceed'}
-                                    </button>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-600">Caution Fee</span>
+                                    <span className="font-medium text-zinc-900">
+                                        {selectedUnit
+                                            ? formatMoney(Number(selectedUnit.cautionFee ?? selectedUnit.caution_fee ?? 0))
+                                            : '-'}
+                                    </span>
                                 </div>
-                            </section>
-                        </form>
-                    }
+                                <div className="border-t border-zinc-200 mt-2 pt-3 flex justify-between items-center">
+                                    <span className="font-semibold text-zinc-900">Total</span>
+                                    <span className="text-xl font-bold text-primary">{formatMoney(formik.values.total_price)}</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => formik.handleSubmit()}
+                                disabled={!formik.isValid || !formik.dirty || isPending || !selectedProperty || !selectedUnit || !selectedUser || !formik.values.start_date}
+                                className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                            >
+                                {isPending ? <Spinner /> : (
+                                    <>
+                                        <span>Confirm Booking</span>
+                                        <PriceTagIcon color="white" />
+                                    </>
+                                )}
+                            </button>
+                            {(!selectedProperty || !selectedUnit || !selectedUser || !formik.values.start_date) && (
+                                <p className="text-xs text-center text-zinc-400 mt-2">Complete all fields to proceed</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

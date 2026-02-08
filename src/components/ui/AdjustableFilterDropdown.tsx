@@ -27,7 +27,7 @@ export default function CustomDropdown({
     // Filter options when typing
     useEffect(() => {
         setFilteredOptions(
-            options?.filter(option => option?.toLowerCase().includes(searchTerm.toLowerCase()))
+            options?.filter(option => option && option.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [searchTerm, options]);
 
@@ -44,17 +44,17 @@ export default function CustomDropdown({
 
     return (
         <div className="relative w-full" ref={dropdownRef}>
-            <input 
-                type="text" 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
+            <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 onFocus={() => !disabled && setIsOpen(true)}
-                placeholder={placeholder} 
+                placeholder={placeholder}
                 disabled={disabled}
                 className={`w-full border border-zinc-400 rounded-lg p-4 h-14 text-lg ${disabled ? 'bg-zinc-100 cursor-not-allowed' : ''}`}
             />
             {isOpen && !disabled && (
-                <div 
+                <div
                     className="absolute w-full bg-white border border-zinc-400 rounded-lg mt-1 z-50 shadow-md 
                     max-h-40 overflow-auto transition-all ease-in-out duration-200"
                 >
@@ -65,13 +65,13 @@ export default function CustomDropdown({
                     ) : (
                         filteredOptions?.length > 0 ? (
                             filteredOptions?.map((option, index) => (
-                                <p 
-                                    key={index} 
+                                <p
+                                    key={index}
                                     onClick={() => {
                                         handleSelection(option);
                                         setIsOpen(false);
                                         setSearchTerm(option);
-                                    }} 
+                                    }}
                                     className="p-3 text-left text-lg hover:bg-zinc-300 cursor-pointer"
                                 >
                                     {option}
