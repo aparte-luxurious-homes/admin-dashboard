@@ -15,7 +15,9 @@ import { useFormik } from 'formik';
 import { CreateAmenity, CreateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import Spinner from "../../ui/Spinner";
-import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
+import { GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
+import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
 import { fixedAmenities } from "@/src/data/amenities";
 import CustomModal from "../../ui/CustomModal";
 import { UserRole } from "@/src/lib/enums";
@@ -98,10 +100,14 @@ export default function CreatePropertyView({ }) {
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate: uploadMedia } = UploadPropertyMedia();
 
+    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 100, '');
     const [availableAmenities, setAvailableAmenities] = useState<IAmenity[]>(fixedAmenities);
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([]);
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
+    const [isNewOwner, setIsNewOwner] = useState<boolean>(true);
+    const [selectedOwner, setSelectedOwner] = useState<any | null>(null);
+    const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
 
     const sortAmenities = (amenities: IAmenity[] = [], newAmeities: string[] = []): number[] => {
         const sortedAmenities: number[] = []
@@ -310,37 +316,100 @@ export default function CreatePropertyView({ }) {
                                     options={Object.values(PropertyType)}
                                 />
                             </div>
-                            <div className="md:col-span-1 space-y-2">
-                                <label htmlFor="owner_name" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Full Name</label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                        <Icon icon="mdi:account-box-outline" />
+                            <div className="md:col-span-2 space-y-4 pt-4 border-t border-zinc-100 mt-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Owner Assignment</h4>
+                                    <div className="flex items-center gap-2 p-1 bg-zinc-100 rounded-xl w-fit">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsNewOwner(false);
+                                                formik.setFieldValue('owner_email', '');
+                                                formik.setFieldValue('owner_name', '');
+                                            }}
+                                            className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${!isNewOwner ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                        >
+                                            EXISTING OWNER
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsNewOwner(true);
+                                                setSelectedOwner(null);
+                                                formik.setFieldValue('ownerId', 0);
+                                            }}
+                                            className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${isNewOwner ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                        >
+                                            ONBOARD NEW
+                                        </button>
                                     </div>
-                                    <input
-                                        id="owner_name"
-                                        type="text"
-                                        placeholder="e.g. Jane Doe"
-                                        value={formik.values.owner_name}
-                                        onChange={formik.handleChange}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-                                    />
                                 </div>
-                            </div>
-                            <div className="md:col-span-1 space-y-2">
-                                <label htmlFor="owner_email" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Email Address</label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                        <Icon icon="mdi:email-outline" />
+
+                                {!isNewOwner ? (
+                                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Search Existing Owner</label>
+                                        <AdjustableFilterDropdown
+                                            placeholder="Search by name or email..."
+                                            options={(userList?.data?.data?.data ?? userList?.data?.data?.items ?? [])?.filter((u: any) => u.role === UserRole.OWNER)?.map((u: any) => u.email).filter(Boolean) ?? []}
+                                            handleSelection={(val) => {
+                                                const users = (userList?.data?.data?.data ?? userList?.data?.data?.items ?? []);
+                                                const selected = users.find((u: any) => u.email === val);
+                                                setOwnerSearchTerm(val);
+                                                setSelectedOwner(selected);
+                                                formik.setFieldValue('ownerId', selected?.id);
+                                            }}
+                                            searchTerm={ownerSearchTerm}
+                                            setSearchTerm={setOwnerSearchTerm}
+                                            isLoading={usersLoading}
+                                        />
+                                        {selectedOwner && (
+                                            <div className="mt-3 p-3 bg-primary/5 rounded-2xl border border-primary/10 flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                                                    <Icon icon="mdi:account-check" className="text-xl" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-zinc-900">{selectedOwner.profile?.firstName ?? 'Owner'} {selectedOwner.profile?.lastName ?? ''}</p>
+                                                    <p className="text-[10px] font-medium text-zinc-500">{selectedOwner.email}</p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <input
-                                        id="owner_email"
-                                        type="email"
-                                        placeholder="e.g. jane@example.com"
-                                        value={formik.values.owner_email}
-                                        onChange={formik.handleChange}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-                                    />
-                                </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="space-y-2">
+                                            <label htmlFor="owner_name" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Full Name</label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                                    <Icon icon="mdi:account-box-outline" />
+                                                </div>
+                                                <input
+                                                    id="owner_name"
+                                                    type="text"
+                                                    placeholder="e.g. Jane Doe"
+                                                    value={formik.values.owner_name}
+                                                    onChange={formik.handleChange}
+                                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label htmlFor="owner_email" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Email Address</label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                                    <Icon icon="mdi:email-outline" />
+                                                </div>
+                                                <input
+                                                    id="owner_email"
+                                                    type="email"
+                                                    placeholder="e.g. jane@example.com"
+                                                    value={formik.values.owner_email}
+                                                    onChange={formik.handleChange}
+                                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="md:col-span-2 space-y-2">
                                 <label htmlFor="description" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Description</label>
@@ -434,18 +503,18 @@ export default function CreatePropertyView({ }) {
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">State</label>
                                 <CustomFilterDropdown
                                     placeholder={`E.g. Lagos`}
-                                    options={Object.keys(ALL_COUNTRIES[formik.values.country])}
+                                    options={ALL_COUNTRIES[formik.values.country] ? Object.keys(ALL_COUNTRIES[formik.values.country]) : []}
                                     handleSelection={(val) => formik.setFieldValue("state", val)}
-                                    selected={Object.keys(ALL_COUNTRIES[formik.values.country])?.includes(formik.values.state) ? formik.values.state : ''}
+                                    selected={ALL_COUNTRIES[formik.values.country] && Object.keys(ALL_COUNTRIES[formik.values.country])?.includes(formik.values.state) ? formik.values.state : ''}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">City</label>
                                 <CustomFilterDropdown
                                     placeholder={`E.g. Ikeja`}
-                                    options={ALL_COUNTRIES[formik.values.country][formik.values.state]}
+                                    options={(ALL_COUNTRIES[formik.values.country] && ALL_COUNTRIES[formik.values.country][formik.values.state]) ? ALL_COUNTRIES[formik.values.country][formik.values.state] : []}
                                     handleSelection={(val) => formik.setFieldValue("city", val)}
-                                    selected={ALL_COUNTRIES[formik.values.country][formik.values.state]?.includes(formik.values.city) ? formik.values.city : ''}
+                                    selected={(ALL_COUNTRIES[formik.values.country] && ALL_COUNTRIES[formik.values.country][formik.values.state])?.includes(formik.values.city) ? formik.values.city : ''}
                                 />
                             </div>
                         </div>
