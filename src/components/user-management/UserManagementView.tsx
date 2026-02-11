@@ -8,7 +8,7 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
-import { CreateUser, DeleteUser, UpdateUser } from "@/src/lib/request-handlers/userMgt";
+import { CreateUser, OnboardUser, DeleteUser, UpdateUser } from "@/src/lib/request-handlers/userMgt";
 import { toast } from "react-hot-toast";
 import { DotsIcon, FilterIcon, SearchIcon, TrashIcon } from "@/src/components/icons";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
@@ -100,6 +100,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
+    const [isQuickOnboard, setIsQuickOnboard] = useState(false);
 
     // Create form state
     const [createForm, setCreateForm] = useState({
@@ -130,6 +131,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
 
     const dispatch = useDispatch();
     const { mutate: createUser, isPending: creating } = CreateUser();
+    const { mutate: onboardUser, isPending: onboarding } = OnboardUser();
     const { mutate: updateUser, isPending: updating } = UpdateUser();
     const { mutate: deleteUser, isPending: deleting } = DeleteUser();
 
@@ -502,9 +504,20 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                         <p className="text-sm text-gray-500 font-medium">Add a new member to the platform</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setIsCreateOpen(false)} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all duration-200 group">
-                                    <Icon icon="mdi:close" width="22" height="22" className="text-gray-400 group-hover:text-gray-600" />
-                                </button>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 rounded-xl border border-zinc-200">
+                                        <span className="text-[11px] font-bold text-zinc-500 uppercase">Quick Onboard</span>
+                                        <button
+                                            onClick={() => setIsQuickOnboard(!isQuickOnboard)}
+                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${isQuickOnboard ? 'bg-primary' : 'bg-gray-300'}`}
+                                        >
+                                            <span className={`${isQuickOnboard ? 'translate-x-5' : 'translate-x-1'} inline-block h-3 w-3 transform rounded-full bg-white transition-transform`} />
+                                        </button>
+                                    </div>
+                                    <button onClick={() => setIsCreateOpen(false)} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all duration-200 group">
+                                        <Icon icon="mdi:close" width="22" height="22" className="text-gray-400 group-hover:text-gray-600" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -618,42 +631,44 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     <p className="text-[10px] text-gray-400 ml-1 italic">Format: +234XXXXXXXXXX or 080XXXXXXXX</p>
                                 </div>
 
-                                <div className="md:col-span-2 space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700 ml-1">Password</label>
-                                    <div className="relative group">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
-                                            <Icon icon="mdi:lock-outline" width="18" />
+                                {!isQuickOnboard && (
+                                    <div className="md:col-span-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <label className="text-sm font-semibold text-gray-700 ml-1">Password</label>
+                                        <div className="relative group">
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                                <Icon icon="mdi:lock-outline" width="18" />
+                                            </div>
+                                            <input
+                                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
+                                                placeholder="••••••••"
+                                                type="password"
+                                                value={createForm.password}
+                                                onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                                            />
                                         </div>
-                                        <input
-                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200"
-                                            placeholder="••••••••"
-                                            type="password"
-                                            value={createForm.password}
-                                            onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
-                                        />
-                                    </div>
 
-                                    <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 mt-2">
-                                        <p className="text-[11px] font-bold text-gray-500 mb-2 uppercase tracking-tight">Security Strength:</p>
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
-                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${createForm.password.length >= 8 ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={createForm.password.length >= 8 ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> 8+ Characters
-                                            </p>
-                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[A-Z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={/[A-Z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Uppercase
-                                            </p>
-                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[a-z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={/[a-z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Lowercase
-                                            </p>
-                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/\d/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={/\d/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Digit
-                                            </p>
-                                            <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                                                <Icon icon={/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> Special Char
-                                            </p>
+                                        <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 mt-2">
+                                            <p className="text-[11px] font-bold text-gray-500 mb-2 uppercase tracking-tight">Security Strength:</p>
+                                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
+                                                <p className={`text-[10px] flex items-center gap-1.5 font-medium ${createForm.password.length >= 8 ? 'text-green-600' : 'text-gray-400'}`}>
+                                                    <Icon icon={createForm.password.length >= 8 ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> 8+ Characters
+                                                </p>
+                                                <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[A-Z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                    <Icon icon={/[A-Z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Uppercase
+                                                </p>
+                                                <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[a-z]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                    <Icon icon={/[a-z]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Lowercase
+                                                </p>
+                                                <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/\d/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                    <Icon icon={/\d/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> One Digit
+                                                </p>
+                                                <p className={`text-[10px] flex items-center gap-1.5 font-medium ${/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                                                    <Icon icon={/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(createForm.password) ? "mdi:check-circle" : "mdi:circle-outline"} width="14" /> Special Char
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Section: Account Settings */}
                                 <div className="md:col-span-2 mt-4">
@@ -713,13 +728,19 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                             </button>
                             <button
                                 onClick={() => {
-                                    createUser({
+                                    const action = isQuickOnboard ? onboardUser : createUser;
+                                    action({
                                         payload: {
                                             ...createForm,
-                                            gender: createForm.gender ? createForm.gender.toUpperCase() : undefined
+                                            gender: createForm.gender ? createForm.gender.toUpperCase() : undefined,
+                                            password: isQuickOnboard ? undefined : createForm.password
                                         }
                                     }, {
-                                        onSuccess: () => { toast.success('User created successfully'); setIsCreateOpen(false); fetchUsers(); },
+                                        onSuccess: () => {
+                                            toast.success(isQuickOnboard ? 'User onboarded successfully' : 'User created successfully');
+                                            setIsCreateOpen(false);
+                                            fetchUsers();
+                                        },
                                         onError: (err: any) => {
                                             const detail = err?.response?.data?.detail;
                                             if (Array.isArray(detail)) {
@@ -733,18 +754,18 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                         }
                                     });
                                 }}
-                                disabled={creating}
+                                disabled={creating || onboarding}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
-                                {creating ? (
+                                {creating || onboarding ? (
                                     <>
                                         <Icon icon="mdi:loading" className="animate-spin" />
-                                        Creating...
+                                        {isQuickOnboard ? 'Onboarding...' : 'Creating...'}
                                     </>
                                 ) : (
                                     <>
-                                        <Icon icon="mdi:account-plus" />
-                                        Create Account
+                                        <Icon icon={isQuickOnboard ? "mdi:email-fast-outline" : "mdi:account-plus"} />
+                                        {isQuickOnboard ? 'Quick Onboard' : 'Create Account'}
                                     </>
                                 )}
                             </button>

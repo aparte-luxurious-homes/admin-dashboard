@@ -188,6 +188,8 @@ export interface ICreateProperty {
     amenities: number[]
     // kyc_id: number
     is_pet_allowed: boolean
+    owner_email?: string
+    owner_name?: string
 }
 
 export interface IAssignProperty {
@@ -208,7 +210,9 @@ export interface IUpdateProperty {
     ownerId: number,
     amenities?: number[],
     // assignedAgent?: IUser,
-    is_pet_allowed: boolean
+    is_pet_allowed: boolean,
+    owner_email?: string,
+    owner_name?: string
 }
 
 export interface IUpdatePropertyUnit {

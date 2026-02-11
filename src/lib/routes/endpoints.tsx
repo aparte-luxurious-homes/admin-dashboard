@@ -27,6 +27,7 @@ export const API_ROUTES = {
         },
         users: {
             base: '/admin/users',
+            onboard: '/admin/users/onboard',
             userById: (id: string | number) => `/admin/users/${id}`,
             userByUuid: (id: string | number) => `/admin/users/${id}`
         }
