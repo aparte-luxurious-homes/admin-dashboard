@@ -136,6 +136,8 @@ export default function CreatePropertyView({ }) {
                 longitude: 0,
                 // kyc_id: 0,
                 ownerId: 0,
+                owner_name: "",
+                owner_email: "",
                 is_pet_allowed: false,
                 amenities: [],
                 amenityIds: [],
@@ -307,6 +309,38 @@ export default function CreatePropertyView({ }) {
                                     handleSelection={(val) => formik.setFieldValue("property_type", val)}
                                     options={Object.values(PropertyType)}
                                 />
+                            </div>
+                            <div className="md:col-span-1 space-y-2">
+                                <label htmlFor="owner_name" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Full Name</label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                        <Icon icon="mdi:account-box-outline" />
+                                    </div>
+                                    <input
+                                        id="owner_name"
+                                        type="text"
+                                        placeholder="e.g. Jane Doe"
+                                        value={formik.values.owner_name}
+                                        onChange={formik.handleChange}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                                    />
+                                </div>
+                            </div>
+                            <div className="md:col-span-1 space-y-2">
+                                <label htmlFor="owner_email" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Email Address</label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                        <Icon icon="mdi:email-outline" />
+                                    </div>
+                                    <input
+                                        id="owner_email"
+                                        type="email"
+                                        placeholder="e.g. jane@example.com"
+                                        value={formik.values.owner_email}
+                                        onChange={formik.handleChange}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                                    />
+                                </div>
                             </div>
                             <div className="md:col-span-2 space-y-2">
                                 <label htmlFor="description" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Description</label>
@@ -514,7 +548,7 @@ export default function CreatePropertyView({ }) {
                         </Link>
                     </div>
                 </div>
-            </form>
-        </div>
+            </form >
+        </div >
     );
 }

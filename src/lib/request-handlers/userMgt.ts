@@ -26,6 +26,17 @@ export function GetAllUsers(page = 1, size = 10, searchQuery = '', role: UserRol
     });
 }
 
+export function OnboardUser() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ payload }: { payload: any }) =>
+            axiosRequest.post(API_ROUTES.admin.users.onboard, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.getAllUsers] });
+        },
+    });
+}
+
 export function CreateUser() {
     const queryClient = useQueryClient();
     return useMutation({
