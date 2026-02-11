@@ -141,6 +141,19 @@ export function UploadPropertyUnitMedia() {
     });
 }
 
+export function DeleteUnitMedia() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId, mediaId }: { propertyId: string | number, unitId: string | number, mediaId: string | number }) =>
+            axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.deleteMedia(propertyId, unitId, mediaId)),
+
+        onSuccess: (_, { propertyId, unitId }) => {
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
+        },
+    });
+}
+
 
 export function GetUnitAvailability(propertyId: string | number, unitId: string | number, startDate?: string, endDate?: string) {
     return useQuery({

@@ -55,7 +55,9 @@ export const API_ROUTES = {
                 amenities: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/amenities`,
                 media: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/media`,
                 availability: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/availability`,
+                deleteMedia: (propertyId: string | number, unitId: string | number, mediaId: string | number) => `/properties/${propertyId}/units/${unitId}/media/${mediaId}`,
             },
+            deleteMedia: (propertyId: string | number, mediaId: string | number) => `/properties/${propertyId}/media/${mediaId}`,
             // verifications: {
             //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
             //     details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`

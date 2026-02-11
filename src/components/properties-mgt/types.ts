@@ -83,7 +83,7 @@ export interface IPropertyReview {
 }
 
 export interface IPropertyMedia {
-    id: number
+    id: string
     mediaUrl?: string
     media_url?: string
     mediaType: MediaType
