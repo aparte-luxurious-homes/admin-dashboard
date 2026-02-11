@@ -2,7 +2,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
-import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia, DeleteUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -43,6 +43,7 @@ export default function EditUnitView({
     const { mutate, isPending } = UpdatePropertyUnit();
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const { mutate: uploadMedia, data: uploadData, isPending: uploadedMediaPending } = UploadPropertyUnitMedia();
+    const { mutate: deleteMedia } = DeleteUnitMedia();
     const { user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -149,15 +150,26 @@ export default function EditUnitView({
         },
     });
 
-    const handleDeleteImage = (e: number) => {
+    const handleDeleteImage = (id: string) => {
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: `This action cannot be undone. This will permanently delete the image ${e}.`,
+                description: `This action cannot be undone. This will permanently delete the image.`,
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log(e);
+                    deleteMedia({
+                        propertyId,
+                        unitId,
+                        mediaId: id
+                    }, {
+                        onSuccess: () => {
+                            toast.success("Image deleted successfully");
+                        },
+                        onError: (error: any) => {
+                            toast.error(error?.response?.data?.detail || "Failed to delete image");
+                        }
+                    });
                 },
             })
         );

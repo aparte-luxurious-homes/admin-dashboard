@@ -17,7 +17,7 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { DeleteProperty, FeatureProperty, UpdateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { DeleteProperty, FeatureProperty, UpdateProperty, UploadPropertyMedia, DeletePropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../../ui/Spinner";
@@ -83,6 +83,7 @@ export default function EditPropertyView({
         isPending: uploadedMediaPending
     } = UploadPropertyMedia();
     const { mutate: featureProperty } = FeatureProperty();
+    const { mutate: deleteMedia, isPending: deleteMediaPending } = DeletePropertyMedia();
 
     const { user } = useAuth();
     const router = useRouter();
@@ -193,15 +194,25 @@ export default function EditPropertyView({
         router.push(newQueryString ? `?${newQueryString}` : pathname, { scroll: false });
     };
 
-    const handleDeleteImage = (e: number) => {
+    const handleDeleteImage = (id: string) => {
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: `This action cannot be undone. This will permanently delete the image ${e}.`,
+                description: `This action cannot be undone. This will permanently delete the image.`,
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log(e);
+                    deleteMedia({
+                        propertyId: propertyData.id,
+                        mediaId: id
+                    }, {
+                        onSuccess: () => {
+                            toast.success("Image deleted successfully");
+                        },
+                        onError: (error: any) => {
+                            toast.error(error?.response?.data?.detail || "Failed to delete image");
+                        }
+                    });
                 },
             })
         );

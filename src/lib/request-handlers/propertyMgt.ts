@@ -264,3 +264,16 @@ export function UploadPropertyMedia() {
         },
     });
 }
+
+export function DeletePropertyMedia() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, mediaId }: { propertyId: string | number, mediaId: string | number }) =>
+            axiosRequest.delete(API_ROUTES.propertyManagement.properties.deleteMedia(propertyId, mediaId)),
+
+        onSuccess: (_, { propertyId }) => {
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
+        },
+    });
+}

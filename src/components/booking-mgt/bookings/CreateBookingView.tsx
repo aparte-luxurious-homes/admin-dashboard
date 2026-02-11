@@ -71,7 +71,7 @@ export default function CreateBookingView() {
             start_date: null,
             end_date: null,
             guests_count: 1,
-            unit_count: 0,
+            unit_count: 1,
             total_price: 0,
             payment_method: 'cash',
             payment_proof_url: '',
@@ -149,6 +149,7 @@ export default function CreateBookingView() {
             console.log('DEBUG: Unit Availability:', unit.availability);
             setSeletedUnit(unit);
             formik.setFieldValue('unit_id', unit.id);
+            formik.setFieldValue('unit_count', 1);
         }
     }
 
@@ -482,7 +483,18 @@ export default function CreateBookingView() {
                                                         max={selectedUnit?.count ?? 1}
                                                         className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
                                                         value={formik.values.unit_count}
-                                                        onChange={(e) => formik.setFieldValue('unit_count', Number(e.target.value))}
+                                                        onChange={(e) => {
+                                                            const val = Number(e.target.value);
+                                                            const max = selectedUnit?.count ?? 1;
+                                                            if (val < 1) {
+                                                                formik.setFieldValue('unit_count', 1);
+                                                            } else if (val > max) {
+                                                                toast.error(`Only ${max} units available`);
+                                                                formik.setFieldValue('unit_count', max);
+                                                            } else {
+                                                                formik.setFieldValue('unit_count', val);
+                                                            }
+                                                        }}
                                                     />
                                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">Qty</span>
                                                 </div>
