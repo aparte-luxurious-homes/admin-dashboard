@@ -98,5 +98,10 @@ export interface IUpdateBooking {
     guests_count: number
     unit_count: number
     status?: BookingStatus
+    total_price?: number
+    payment_method?: string
+    payment_proof_url?: string
+    payment_notes?: string
+    mark_as_paid?: boolean
 }
 
