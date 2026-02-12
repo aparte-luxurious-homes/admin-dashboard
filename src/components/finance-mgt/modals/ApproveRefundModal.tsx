@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Modal from "../../modal/Modal";
-import { ApproveRefund } from "@/src/lib/request-handlers/financeMgt";
+import { ApproveRefund, ApproveRefundPayload } from "@/src/lib/request-handlers/financeMgt";
 import { toast } from "react-hot-toast";
+import axiosRequest from "@/src/lib/api";
 
 interface ApproveRefundModalProps {
     isOpen: boolean;
@@ -16,17 +17,45 @@ interface ApproveRefundModalProps {
 export function ApproveRefundModal({ isOpen, onClose, transactionId, amount, currency }: ApproveRefundModalProps) {
     const [refundMethod, setRefundMethod] = useState<"WALLET" | "OFFLINE">("WALLET");
     const [notes, setNotes] = useState("");
+    const [uploading, setUploading] = useState(false);
+    const [refundProof, setRefundProof] = useState<string | null>(null);
 
     const approveRefund = ApproveRefund();
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const response = await axiosRequest.post("/bookings/upload-payment-proof", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+            setRefundProof(response.data.data.url);
+            toast.success("Proof uploaded successfully");
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to upload proof");
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const handleApprove = () => {
+        const payload: ApproveRefundPayload = {
+            refund_method: refundMethod,
+            notes,
+            // @ts-ignore
+            refund_proof: refundProof || undefined
+        };
         approveRefund.mutate(
             {
                 transactionId,
-                payload: {
-                    refund_method: refundMethod,
-                    notes
-                }
+                payload
             },
             {
                 onSuccess: () => {
@@ -88,17 +117,38 @@ export function ApproveRefundModal({ isOpen, onClose, transactionId, amount, cur
                 />
             </div>
 
+            {refundMethod === "OFFLINE" && (
+                <div className="space-y-1.5 border-t border-gray-100 pt-4">
+                    <label htmlFor="proof" className="text-sm font-medium text-gray-700 block">
+                        Upload Refund Proof (Image or PDF)
+                    </label>
+                    <input
+                        type="file"
+                        id="proof"
+                        accept="image/*,application/pdf"
+                        onChange={handleFileUpload}
+                        className="flex w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                    />
+                    {uploading && <p className="text-xs text-primary animate-pulse">Uploading proof...</p>}
+                    {refundProof && (
+                        <p className="text-xs text-green-600">
+                            ✓ Proof uploaded: <a href={refundProof} target="_blank" rel="noopener noreferrer" className="underline font-medium">View File</a>
+                        </p>
+                    )}
+                </div>
+            )}
+
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                     onClick={onClose}
-                    disabled={approveRefund.isPending}
+                    disabled={approveRefund.isPending || uploading}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                     Cancel
                 </button>
                 <button
                     onClick={handleApprove}
-                    disabled={approveRefund.isPending}
+                    disabled={approveRefund.isPending || uploading || (refundMethod === "OFFLINE" && !refundProof)}
                     className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                     {approveRefund.isPending ? "Approving..." : "Approve Refund"}

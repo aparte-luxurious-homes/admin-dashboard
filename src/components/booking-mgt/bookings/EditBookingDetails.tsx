@@ -100,19 +100,23 @@ export default function EditBookingDetails({
         }
     });
 
+    const { values, setFieldValue, handleSubmit, isValid } = formik;
+    const { start_date, end_date, unit_count } = values;
+
     const [calculatedTotal, setCalculatedTotal] = useState<number>(Number(bookingData?.totalPrice || 0));
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
-        if (formik.values.start_date && formik.values.end_date) {
-            const days = getDayDifference(formik.values.start_date, formik.values.end_date);
+        if (start_date && end_date) {
+            const days = getDayDifference(start_date, end_date);
             const pricePerNight = Number(details?.unit?.pricePerNight ?? details?.unit?.price_per_night ?? bookingData?.unit?.pricePerNight ?? bookingData?.unit?.price_per_night ?? 0);
             const cautionFee = Number(details?.unit?.cautionFee ?? details?.unit?.caution_fee ?? bookingData?.unit?.cautionFee ?? bookingData?.unit?.caution_fee ?? 0);
 
-            const newTotal = (days * formik.values.unit_count * pricePerNight) + cautionFee;
+            const newTotal = (days * unit_count * pricePerNight) + cautionFee;
             setCalculatedTotal(newTotal);
-            formik.setFieldValue('total_price', newTotal);
+            setFieldValue('total_price', newTotal);
         }
-    }, [formik.values.start_date, formik.values.end_date, formik.values.unit_count, details, bookingData, formik.setFieldValue]);
+    }, [start_date, end_date, unit_count, details, bookingData, setFieldValue]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -142,7 +146,7 @@ export default function EditBookingDetails({
                 onSuccess: (data: any) => {
                     const url = data?.data?.data?.url;
                     if (url) {
-                        formik.setFieldValue('payment_proof_url', url);
+                        setFieldValue('payment_proof_url', url);
                         toast.success('Payment proof uploaded successfully');
                     }
                 },
@@ -188,8 +192,8 @@ export default function EditBookingDetails({
                                         <input
                                             type="date"
                                             className="w-full h-12 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                            value={formik.values.start_date}
-                                            onChange={(e) => formik.setFieldValue('start_date', e.target.value)}
+                                            value={values.start_date}
+                                            onChange={(e) => setFieldValue('start_date', e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -197,8 +201,8 @@ export default function EditBookingDetails({
                                         <input
                                             type="date"
                                             className="w-full h-12 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                            value={formik.values.end_date}
-                                            onChange={(e) => formik.setFieldValue('end_date', e.target.value)}
+                                            value={values.end_date}
+                                            onChange={(e) => setFieldValue('end_date', e.target.value)}
                                         />
                                     </div>
 
@@ -208,8 +212,8 @@ export default function EditBookingDetails({
                                             type="number"
                                             min="1"
                                             className="w-full h-12 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                            value={formik.values.guests_count}
-                                            onChange={(e) => formik.setFieldValue('guests_count', Number(e.target.value))}
+                                            value={values.guests_count}
+                                            onChange={(e) => setFieldValue('guests_count', Number(e.target.value))}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -218,16 +222,16 @@ export default function EditBookingDetails({
                                             type="number"
                                             min="1"
                                             className="w-full h-12 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                            value={formik.values.unit_count}
+                                            value={values.unit_count}
                                             onChange={(e) => {
                                                 const val = Number(e.target.value);
                                                 const max = details?.unit?.count ?? bookingData?.unit?.count ?? 1;
-                                                if (val < 1) formik.setFieldValue('unit_count', 1);
+                                                if (val < 1) setFieldValue('unit_count', 1);
                                                 else if (val > max) {
                                                     toast.error(`Only ${max} units available`);
-                                                    formik.setFieldValue('unit_count', max);
+                                                    setFieldValue('unit_count', max);
                                                 } else {
-                                                    formik.setFieldValue('unit_count', val);
+                                                    setFieldValue('unit_count', val);
                                                 }
                                             }}
                                         />
@@ -250,21 +254,21 @@ export default function EditBookingDetails({
                                                 <label className="text-sm font-medium text-zinc-700">Booking Status</label>
                                                 <div className="relative">
                                                     <CustomDropdown
-                                                        selected={formik.values.status}
-                                                        handleSelection={(val) => formik.setFieldValue('status', (val))}
+                                                        selected={values.status}
+                                                        handleSelection={(val) => setFieldValue('status', (val))}
                                                         options={Object.values(BookingStatus)}
                                                     />
                                                 </div>
                                             </div>
 
-                                            {formik.values.status !== BookingStatus.CONFIRMED && (
+                                            {values.status !== BookingStatus.CONFIRMED && (
                                                 <div className="flex items-center h-full pt-6">
                                                     <div className="flex items-center gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200 cursor-pointer hover:bg-zinc-100 transition-colors w-full"
-                                                        onClick={() => formik.setFieldValue('mark_as_paid', !formik.values.mark_as_paid)}>
+                                                        onClick={() => setFieldValue('mark_as_paid', !values.mark_as_paid)}>
                                                         <input
                                                             type="checkbox"
                                                             className="w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
-                                                            checked={formik.values.mark_as_paid}
+                                                            checked={values.mark_as_paid}
                                                             onChange={() => { }}
                                                         />
                                                         <span className="text-sm font-medium text-zinc-700">Mark as Paid & Confirm</span>
@@ -279,8 +283,8 @@ export default function EditBookingDetails({
                                                 <label className="text-sm font-medium text-zinc-700">Payment Method</label>
                                                 <select
                                                     className="w-full h-12 px-3 border border-zinc-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                                    value={formik.values.payment_method}
-                                                    onChange={(e) => formik.setFieldValue('payment_method', e.target.value)}
+                                                    value={values.payment_method}
+                                                    onChange={(e) => setFieldValue('payment_method', e.target.value)}
                                                 >
                                                     <option value="cash">Cash</option>
                                                     <option value="pos">POS</option>
@@ -302,18 +306,18 @@ export default function EditBookingDetails({
                                                     />
                                                     <label
                                                         htmlFor="proof-upload-edit"
-                                                        className={`flex items-center justify-center gap-2 w-full h-12 border-2 border-dashed ${formik.values.payment_proof_url ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-300 text-zinc-500'} rounded-lg cursor-pointer hover:border-primary hover:text-primary transition-all text-sm font-medium`}
+                                                        className={`flex items-center justify-center gap-2 w-full h-12 border-2 border-dashed ${values.payment_proof_url ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-300 text-zinc-500'} rounded-lg cursor-pointer hover:border-primary hover:text-primary transition-all text-sm font-medium`}
                                                     >
                                                         {isUploading ? <Spinner /> : (
                                                             <>
                                                                 <HiOutlineCloudUpload className="text-lg" />
-                                                                {formik.values.payment_proof_url ? 'Change Receipt' : 'Upload Receipt'}
+                                                                {values.payment_proof_url ? 'Change Receipt' : 'Upload Receipt'}
                                                             </>
                                                         )}
                                                     </label>
-                                                    {formik.values.payment_proof_url && (
+                                                    {values.payment_proof_url && (
                                                         <a
-                                                            href={formik.values.payment_proof_url}
+                                                            href={values.payment_proof_url}
                                                             target="_blank"
                                                             rel="noreferrer"
                                                             className="absolute -bottom-6 right-0 text-xs text-primary underline"
@@ -331,8 +335,8 @@ export default function EditBookingDetails({
                                                 className="w-full p-3 border border-zinc-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"
                                                 placeholder="Enter any notes about this payment..."
                                                 rows={3}
-                                                value={formik.values.payment_notes}
-                                                onChange={(e) => formik.setFieldValue('payment_notes', e.target.value)}
+                                                value={values.payment_notes}
+                                                onChange={(e) => setFieldValue('payment_notes', e.target.value)}
                                             />
                                         </div>
                                     </div>
@@ -350,10 +354,10 @@ export default function EditBookingDetails({
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Dates</span>
                                         <div className="text-right">
-                                            {formik.values.start_date && formik.values.end_date ? (
+                                            {values.start_date && values.end_date ? (
                                                 <>
-                                                    <span className="block text-zinc-900 font-medium">{formik.values.start_date}</span>
-                                                    <span className="block text-zinc-400 text-xs">to {formik.values.end_date}</span>
+                                                    <span className="block text-zinc-900 font-medium">{values.start_date}</span>
+                                                    <span className="block text-zinc-400 text-xs">to {values.end_date}</span>
                                                 </>
                                             ) : <span className="text-zinc-400">-</span>}
                                         </div>
@@ -361,8 +365,8 @@ export default function EditBookingDetails({
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Duration</span>
                                         <span className="text-zinc-900 font-medium">
-                                            {formik.values.start_date && formik.values.end_date
-                                                ? `${getDayDifference(formik.values.start_date, formik.values.end_date)} Nights`
+                                            {values.start_date && values.end_date
+                                                ? `${getDayDifference(values.start_date, values.end_date)} Nights`
                                                 : '-'}
                                         </span>
                                     </div>
@@ -375,9 +379,9 @@ export default function EditBookingDetails({
                                 {/* Pricing Breakdown */}
                                 <div className="bg-zinc-50 rounded-lg p-4 mb-6 space-y-3">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-600">Rate (x{formik.values.unit_count})</span>
+                                        <span className="text-zinc-600">Rate (x{values.unit_count})</span>
                                         <span className="font-medium text-zinc-900">
-                                            {formatMoney(Number(details?.unit?.pricePerNight ?? details?.unit?.price_per_night ?? 0) * formik.values.unit_count)}
+                                            {formatMoney(Number(details?.unit?.pricePerNight ?? details?.unit?.price_per_night ?? 0) * values.unit_count)}
                                         </span>
                                     </div>
                                     <div className="border-t border-zinc-200 mt-2 pt-3 flex justify-between items-center">
@@ -387,8 +391,8 @@ export default function EditBookingDetails({
                                 </div>
 
                                 <button
-                                    onClick={() => formik.handleSubmit()}
-                                    disabled={!formik.isValid || isPending || isUploading}
+                                    onClick={() => handleSubmit()}
+                                    disabled={!isValid || isPending || isUploading}
                                     className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                                 >
                                     {isPending ? <Spinner /> : (

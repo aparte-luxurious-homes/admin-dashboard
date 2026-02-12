@@ -27,6 +27,7 @@ interface Transaction {
     amount: string;
     description: string;
     status: string;
+    refund_proof: string;
     created_at: string;
     updated_at: string;
     user?: {
@@ -263,7 +264,7 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                                     />
                                 </Grid>
                             )}
-                            {data?.payment_reference && (
+                            {data.payment_reference && (
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <InputGroup
                                         label="Payment Reference"
@@ -271,6 +272,26 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                                         defaultValue={data.payment_reference}
                                         onClick={(e) => handleCopyToClipboard(e.currentTarget.defaultValue, "Payment Reference")}
                                     />
+                                </Grid>
+                            )}
+                            {data.refund_proof && (
+                                <Grid size={{ xs: 12 }}>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-medium text-gray-700">Refund Proof</label>
+                                        <div className="p-4 border rounded-lg bg-gray-50 flex items-center justify-between">
+                                            <span className="text-sm text-gray-600 truncate mr-4">
+                                                {data.refund_proof.split('/').pop()}
+                                            </span>
+                                            <a
+                                                href={data.refund_proof}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-4 py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 transition-colors shrink-0"
+                                            >
+                                                View Proof
+                                            </a>
+                                        </div>
+                                    </div>
                                 </Grid>
                             )}
                         </>

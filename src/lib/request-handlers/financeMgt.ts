@@ -9,10 +9,16 @@ export enum FinanceRequestKeys {
     approveRefund = "approveRefund",
 }
 
+export interface ApproveRefundPayload {
+    refund_method: string;
+    notes?: string;
+    refund_proof?: string;
+}
+
 export function ApproveRefund() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ transactionId, payload }: { transactionId: string, payload: { refund_method: string, notes?: string } }) =>
+        mutationFn: ({ transactionId, payload }: { transactionId: string, payload: ApproveRefundPayload }) =>
             axiosRequest.post(API_ROUTES.transactions.approveRefund(transactionId), payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
