@@ -162,8 +162,8 @@ export function CheckOutBooking() {
 export function RefundCautionFee() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`),
+        mutationFn: ({ bookingId, payload }: { bookingId: string | number, payload: { should_refund: boolean, notes?: string } }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`, payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });

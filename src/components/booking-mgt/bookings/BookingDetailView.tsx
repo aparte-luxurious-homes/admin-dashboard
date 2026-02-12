@@ -27,6 +27,7 @@ import {
     ApproveCancellation
 } from "@/src/lib/request-handlers/bookingMgt";
 import { toast } from "react-hot-toast";
+import { CautionRefundModal } from "../modals/CautionRefundModal";
 
 export default function BookingDetailView({ bookingId }: { bookingId: string }) {
     const pathname = usePathname();
@@ -46,6 +47,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
     const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showRefundModal, setShowRefundModal] = useState(false);
 
     useEffect(() => {
         if (bookingData?.data?.data) {
@@ -578,19 +580,11 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                 )}
                                                 {status === BookingStatus.CHECKED_OUT && !bookingDetails.isCautionRefunded && (
                                                     <button
-                                                        onClick={() => {
-                                                            refundCaution(
-                                                                { bookingId: bookingDetails.id },
-                                                                {
-                                                                    onSuccess: () => toast.success('Caution fee refunded and booking completed'),
-                                                                    onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to refund caution fee')
-                                                                }
-                                                            );
-                                                        }}
+                                                        onClick={() => setShowRefundModal(true)}
                                                         disabled={isRefunding}
                                                         className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
                                                     >
-                                                        {isRefunding ? 'Processing...' : 'Refund Caution Fee'}
+                                                        {isRefunding ? 'Processing...' : 'Verify & Refund Caution'}
                                                     </button>
                                                 )}
                                                 {status === BookingStatus.CANCEL_REQUESTED && (
@@ -715,6 +709,29 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                     },
                                                     onError: (err: any) => {
                                                         toast.error(err?.response?.data?.detail || 'Failed to delete booking');
+                                                    }
+                                                }
+                                            );
+                                        }}
+                                    />
+
+                                    <CautionRefundModal
+                                        isOpen={showRefundModal}
+                                        onClose={() => setShowRefundModal(false)}
+                                        isPending={isRefunding}
+                                        onConfirm={(shouldRefund, notes) => {
+                                            refundCaution(
+                                                {
+                                                    bookingId: bookingDetails.id,
+                                                    payload: { should_refund: shouldRefund, notes }
+                                                },
+                                                {
+                                                    onSuccess: () => {
+                                                        toast.success(shouldRefund ? 'Refund approved and sent for processing' : 'Caution fee withheld successfully');
+                                                        setShowRefundModal(false);
+                                                    },
+                                                    onError: (err: any) => {
+                                                        toast.error(err?.response?.data?.detail || 'Failed to process caution fee');
                                                     }
                                                 }
                                             );
