@@ -68,6 +68,12 @@ export interface IBooking {
     updated_at?: string
     user: IUser
     unit: IPropertyUnit
+    paymentMethod?: string
+    payment_method?: string
+    paymentProofUrl?: string
+    payment_proof_url?: string
+    paymentNotes?: string
+    payment_notes?: string
 }
 export interface ICreateBooking {
     user_id?: string | number
@@ -98,5 +104,10 @@ export interface IUpdateBooking {
     guests_count: number
     unit_count: number
     status?: BookingStatus
+    total_price?: number
+    payment_method?: string
+    payment_proof_url?: string
+    payment_notes?: string
+    mark_as_paid?: boolean
 }
 

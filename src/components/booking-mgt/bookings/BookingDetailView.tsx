@@ -126,13 +126,15 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-3 mb-2">
-                                                    <h1 className="text-2xl md:text-3xl font-semibold text-zinc-800">
-                                                        {bookingDetails.bookingId || `Booking #${bookingDetails.id}`}
+                                                    <h1 className="text-2xl md:text-3xl font-semibold text-zinc-800 flex flex-col md:flex-row md:items-center gap-2">
+                                                        <span>Booking for {bookingDetails.user?.profile?.firstName || bookingDetails.user?.email || 'Guest'}</span>
+                                                        <span className="text-zinc-400 font-normal text-lg hidden md:inline">•</span>
+                                                        <span className="text-zinc-500 font-normal text-lg">{bookingDetails.bookingId || `#${bookingDetails.id}`}</span>
                                                     </h1>
                                                     <BookingBadge status={status} />
                                                 </div>
                                                 <p className="text-zinc-500 text-sm">
-                                                    Created on {formatDate(bookingDetails.createdAt || (bookingDetails as any).created_at)}
+                                                    {startDate && endDate ? `${formatDate(startDate)} - ${formatDate(endDate)}` : ''} • {guestsCount} Guests
                                                 </p>
                                             </div>
 
@@ -158,7 +160,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
 
                                         {editMode ? (
                                             <EditBookingDetails
-                                                bookingId={Number(bookingId)}
+                                                bookingId={bookingId}
                                                 bookingData={bookingDetails}
                                                 handleEditMode={setEditMode}
                                             />
