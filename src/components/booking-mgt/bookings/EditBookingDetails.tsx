@@ -112,7 +112,7 @@ export default function EditBookingDetails({
             setCalculatedTotal(newTotal);
             formik.setFieldValue('total_price', newTotal);
         }
-    }, [formik.values.start_date, formik.values.end_date, formik.values.unit_count, details, bookingData]);
+    }, [formik.values.start_date, formik.values.end_date, formik.values.unit_count, details, bookingData, formik.setFieldValue]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
