@@ -104,7 +104,8 @@ export const API_ROUTES = {
     },
     transactions: {
         base: '/wallets/transactions',
-        details: (transactionId: string) => `/wallets/transactions/${transactionId}`
+        details: (transactionId: string) => `/wallets/transactions/${transactionId}`,
+        approveRefund: (transactionId: string) => `/wallets/transactions/${transactionId}/approve-refund`
     },
     permissions: {
         base: '/permissions',

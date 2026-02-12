@@ -57,6 +57,12 @@ export interface IBooking {
     caution_fee?: number
     isCautionRefunded?: boolean
     is_caution_refunded?: boolean
+    cautionRefundNotes?: string
+    caution_refund_notes?: string
+    cautionRefundActionBy?: string
+    caution_refund_action_by?: string
+    checkoutVerifiedAt?: string
+    checkout_verified_at?: string
     status: BookingStatus
     cancellationReason: string
     cancellation_reason?: string

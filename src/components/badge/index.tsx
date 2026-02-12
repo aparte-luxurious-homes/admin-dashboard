@@ -16,8 +16,9 @@ const Badge: React.FC<BadgeProps> = ({ status }) => {
         status === "verified" ? "Verified" :
           status === "successful" ? "Successful" :
             status === "pending" ? "Pending" :
-              status === "rejected" ? "Rejected" :
-                "";
+              status === "pending_approval" ? "Pending Approval" :
+                status === "rejected" ? "Rejected" :
+                  "";
 
   return (
     <div className={classNames(classes.badgewrapper, classes.bg)}>

@@ -11,6 +11,8 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import Badge from "@/src/components/badge";
 import { useParams, useRouter } from "next/navigation";
 import { formatDate, formatMoney } from "@/src/lib/utils";
+import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
+import { Button } from "@/src/components/ui/button";
 
 interface Transaction {
     id: string;
@@ -54,6 +56,7 @@ interface TransactionDetailViewProps {
 const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDetailViewProps) => {
     const [data, setData] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const params = useParams();
     const id = params?.id;
 
@@ -113,7 +116,17 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                 link_one_name={backLinkName}
             />
             <div className="mt-6">
-                <h3 className="mb-[40px] text-xl font-semibold border-b pb-4">{title}</h3>
+                <div className="flex justify-between items-center mb-[40px] border-b pb-4">
+                    <h3 className="text-xl font-semibold">{title}</h3>
+                    {data?.status === "PENDING_APPROVAL" && (
+                        <Button
+                            onClick={() => setIsApproveModalOpen(true)}
+                            className="bg-primary text-white hover:bg-primary/90"
+                        >
+                            Approve Refund
+                        </Button>
+                    )}
+                </div>
 
                 <Grid container spacing={4}>
                     {/* Main Info Section */}
@@ -295,6 +308,19 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                     )}
                 </Grid>
             </div>
+
+            {data && (
+                <ApproveRefundModal
+                    isOpen={isApproveModalOpen}
+                    onClose={() => {
+                        setIsApproveModalOpen(false);
+                        fetchData();
+                    }}
+                    transactionId={data.id}
+                    amount={data.amount}
+                    currency={data.currency}
+                />
+            )}
         </div>
     );
 };
