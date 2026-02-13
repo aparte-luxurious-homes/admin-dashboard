@@ -21,7 +21,9 @@ For detailed developer onboarding, see the [Developer Guide](DEVELOPER_GUIDE.md)
 We follow high standards for our internal tools. Please adhere to these guidelines:
 
 ### 1. Git Workflow
-- Branch from `main`: `git checkout -b feature/your-feature-name`.
+- Branch from `main` or `dev`: `git checkout -b feature/your-feature-name`.
+- **Pull Requests**: Create PRs from your feature branch to the `staging` or `dev` branch for review and testing.
+- **Production**: Only the **Senior Engineer** is authorized to create PRs to the `prod` branch.
 - Use **Conventional Commits**: `feat: ...`, `fix: ...`, `docs: ...`.
 - PRs require at least one approval and must pass all CI/CD checks.
 
