@@ -208,7 +208,7 @@ export interface IUpdateProperty {
     longitude: number,
     // kyc_id?: number,
     ownerId: number,
-    amenities?: string[],
+    amenities?: number[],
     // assignedAgent?: IUser,
     is_pet_allowed: boolean,
     owner_email?: string,
@@ -227,7 +227,7 @@ export interface IUpdatePropertyUnit {
     living_room_count?: number,
     kitchen_count?: number,
     bathroom_count?: number,
-    amenities?: string[],
+    amenities?: number[],
 }
 
 export interface ICreatePropertyUnit {
