@@ -19,6 +19,8 @@ enum PropertyRequestKeys {
     getPropertyVerification = "getPropertyVerification",
     getAllVerifications = "getAllVerifications",
     getPropertiesVerifications = "getPropertiesVerifications",
+    propertyDocuments = "propertyDocuments",
+    verifyPropertyDocument = "verifyPropertyDocument",
 }
 
 export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: UserRole, id?: string | number) {
@@ -274,6 +276,40 @@ export function DeletePropertyMedia() {
         onSuccess: (_, { propertyId }) => {
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
+        },
+    });
+}
+
+export function GetPropertyDocuments(propertyId: string | number) {
+    return useQuery({
+        queryKey: [PropertyRequestKeys.propertyDocuments, propertyId],
+        queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.documents(propertyId)),
+        refetchOnWindowFocus: true,
+    });
+}
+
+export function UploadPropertyDocument() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, payload }: { propertyId: string | number, payload: any }) =>
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.documents(propertyId), payload),
+
+        onSuccess: (_, { propertyId }) => {
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyDocuments, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+        },
+    });
+}
+
+export function UpdatePropertyDocumentStatus() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, documentId, payload }: { propertyId: string | number, documentId: string | number, payload: IUpdatePropertyVerification }) =>
+            axiosRequest.patch(API_ROUTES.propertyManagement.properties.verifyDocument(propertyId, documentId), payload),
+
+        onSuccess: (_, { propertyId }) => {
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyDocuments, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
         },
     });
 }

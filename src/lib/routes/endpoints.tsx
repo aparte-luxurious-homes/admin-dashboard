@@ -59,6 +59,8 @@ export const API_ROUTES = {
                 deleteMedia: (propertyId: string | number, unitId: string | number, mediaId: string | number) => `/properties/${propertyId}/units/${unitId}/media/${mediaId}`,
             },
             deleteMedia: (propertyId: string | number, mediaId: string | number) => `/properties/${propertyId}/media/${mediaId}`,
+            documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
+            verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
             // verifications: {
             //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
             //     details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`

@@ -19,17 +19,20 @@ import { HiOutlinePencilAlt } from "react-icons/hi";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import EditProperty from "./EditPropertyView";
-import { IProperty, IPropertyUnit, PropertyVerificationStatus } from "../types";
-import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { IProperty, IPropertyUnit } from "../types";
+import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty, UpdatePropertyDocumentStatus, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { IoIosStarOutline } from "react-icons/io";
 import CustomModal from "../../ui/CustomModal";
+import CustomDropdown from "../../ui/customDropdown";
+import CustomDropzone from "../../ui/CustomDropzone";
 import { IoGameControllerOutline } from "react-icons/io5";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import { DocumentType, IPropertyDocument, PropertyVerificationStatus } from "../types";
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
@@ -73,6 +76,13 @@ export default function PropertyDetailsView({
     const [averageRating, setAverageRating] = useState<number>(property?.meta?.total_reviews ? (property?.meta?.total_rating / property?.meta?.total_reviews) : 0);
     const [agents, setAgents] = useState<IUser[]>(agentsList?.data?.data?.data)
     const [selectedAgent, setSelectedAgent] = useState<IUser | null>(null)
+
+    const [showDocUpload, setShowDocUpload] = useState(false);
+    const [showDocVerify, setShowDocVerify] = useState(false);
+    const [selectedDoc, setSelectedDoc] = useState<IPropertyDocument | null>(null);
+    const [docUploadPending, setDocUploadPending] = useState(false);
+    const { mutate: uploadDoc } = UploadPropertyDocument();
+    const { mutate: verifyDoc, isPending: docVerifyPending } = UpdatePropertyDocumentStatus();
 
 
     const setQueryParam = (key: string, value: string) => {
@@ -304,6 +314,65 @@ export default function PropertyDetailsView({
                                                         ))}
                                                     </div>
                                                 </section>
+
+                                                {/* Documents Section */}
+                                                <section className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <h3 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
+                                                            <Icon icon="solar:folder-with-files-bold-duotone" className="text-2xl text-primary" />
+                                                            Verification Documents
+                                                        </h3>
+                                                        {(user?.role === UserRole.OWNER) && (
+                                                            <button
+                                                                onClick={() => setShowDocUpload(true)}
+                                                                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                                                            >
+                                                                <FaPlus className="text-xs" />
+                                                                Upload Document
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        {property?.documents?.length > 0 ? (
+                                                            property?.documents.map((doc: IPropertyDocument, index: number) => (
+                                                                <div key={index} className="bg-white border border-zinc-200 rounded-2xl p-4 flex flex-col gap-3 group hover:border-primary/50 transition-all">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="p-2 bg-zinc-50 rounded-lg group-hover:bg-primary/10 transition-colors">
+                                                                                <Icon icon="solar:file-text-bold-duotone" className="text-zinc-500 group-hover:text-primary text-xl" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="font-bold text-zinc-800 text-sm">{(doc?.document_type as string)?.replace(/_/g, ' ')}</p>
+                                                                                <p className="text-[10px] text-zinc-400 capitalize">{doc?.status?.toLowerCase()}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <a href={doc?.document_url} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-zinc-100 rounded-lg transition-colors text-zinc-500">
+                                                                                <Icon icon="solar:eye-bold-duotone" className="text-lg" />
+                                                                            </a>
+                                                                            {user?.role === UserRole.ADMIN && doc?.status === PropertyVerificationStatus.PENDING && (
+                                                                                <button onClick={() => { setSelectedDoc(doc); setShowDocVerify(true); }} className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors text-primary">
+                                                                                    <Icon icon="solar:checklist-bold-duotone" className="text-lg" />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    {doc?.status === PropertyVerificationStatus.REJECTED && doc?.rejection_reason && (
+                                                                        <p className="text-[10px] text-red-500 bg-red-50 p-2 rounded-lg italic">Reason: {doc.rejection_reason}</p>
+                                                                    )}
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className="col-span-2 p-12 bg-zinc-50 border border-dashed border-zinc-200 rounded-3xl flex flex-col items-center justify-center text-zinc-400">
+                                                                <Icon icon="solar:folder-favorite-bold-duotone" className="text-6xl mb-4" />
+                                                                <p className="font-semibold italic">No documents uploaded yet.</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </section>
+
+                                                <div className="h-px bg-zinc-100 w-full" />
 
                                                 {/* Units Section */}
                                                 <section className="space-y-4">
@@ -691,6 +760,111 @@ export default function PropertyDetailsView({
 
                                                 </div>
                                         }
+                                    </div>
+                                </CustomModal>
+
+                                <CustomModal
+                                    isOpen={showDocUpload}
+                                    onClose={() => setShowDocUpload(false)}
+                                    title="Upload Property Document"
+                                >
+                                    <div className="w-full space-y-6 pt-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-zinc-700">Document Type</label>
+                                            <CustomDropdown
+                                                selected={DocumentType.PROOF_OF_OWNERSHIP}
+                                                options={Object.values(DocumentType)}
+                                                handleSelection={(val) => { }} // Simple for now, can add state if needed
+                                            />
+                                        </div>
+                                        <div className="w-full">
+                                            <CustomDropzone
+                                                onDrop={async (files) => {
+                                                    if (files.length > 0) {
+                                                        const formData = new FormData();
+                                                        formData.append('document_file', files[0]);
+                                                        formData.append('document_type', DocumentType.PROOF_OF_OWNERSHIP);
+
+                                                        setDocUploadPending(true);
+                                                        uploadDoc({
+                                                            propertyId,
+                                                            payload: formData
+                                                        }, {
+                                                            onSuccess: () => {
+                                                                toast.success("Document uploaded successfully");
+                                                                setShowDocUpload(false);
+                                                                setDocUploadPending(false);
+                                                            },
+                                                            onError: (err: any) => {
+                                                                toast.error(err?.response?.data?.detail || "Upload failed");
+                                                                setDocUploadPending(false);
+                                                            }
+                                                        });
+                                                    }
+                                                }}
+                                                multiple={false}
+                                            />
+                                        </div>
+                                        {docUploadPending && (
+                                            <div className="flex justify-center p-4">
+                                                <Spinner />
+                                            </div>
+                                        )}
+                                    </div>
+                                </CustomModal>
+
+                                <CustomModal
+                                    isOpen={showDocVerify}
+                                    onClose={() => setShowDocVerify(false)}
+                                    title="Verify Property Document"
+                                >
+                                    <div className="w-full space-y-6 pt-4">
+                                        <div className="bg-zinc-50 p-4 rounded-xl">
+                                            <p className="text-xs font-bold text-zinc-400 uppercase mb-1">Document Type</p>
+                                            <p className="text-sm font-bold text-zinc-800">{(selectedDoc?.document_type as string)?.replace(/_/g, ' ')}</p>
+                                        </div>
+
+                                        <div className="flex gap-4">
+                                            <button
+                                                onClick={() => {
+                                                    verifyDoc({
+                                                        propertyId,
+                                                        documentId: selectedDoc?.id || "",
+                                                        payload: { status: PropertyVerificationStatus.VERIFIED, feedback: "Approved" }
+                                                    }, {
+                                                        onSuccess: () => {
+                                                            toast.success("Document verified");
+                                                            setShowDocVerify(false);
+                                                        }
+                                                    });
+                                                }}
+                                                disabled={docVerifyPending}
+                                                className="flex-1 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {docVerifyPending ? <Spinner color="white" /> : "Approve"}
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const reason = prompt("Enter rejection reason:");
+                                                    if (reason) {
+                                                        verifyDoc({
+                                                            propertyId,
+                                                            documentId: selectedDoc?.id || "",
+                                                            payload: { status: PropertyVerificationStatus.REJECTED, feedback: reason }
+                                                        }, {
+                                                            onSuccess: () => {
+                                                                toast.success("Document rejected");
+                                                                setShowDocVerify(false);
+                                                            }
+                                                        });
+                                                    }
+                                                }}
+                                                disabled={docVerifyPending}
+                                                className="flex-1 py-3 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-all"
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
                                     </div>
                                 </CustomModal>
                             </>

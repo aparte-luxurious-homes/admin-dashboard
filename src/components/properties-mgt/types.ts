@@ -168,6 +168,30 @@ export interface IProperty {
     verifications: IPropertyVerification[]
     media: IPropertyMedia[]
     amenities: IAmenity[]
+    documents: IPropertyDocument[]
+}
+
+export enum DocumentType {
+    PROOF_OF_OWNERSHIP = 'PROOF_OF_OWNERSHIP',
+    GOVERNMENT_ID = 'GOVERNMENT_ID',
+    UTILITY_BILL = 'UTILITY_BILL',
+    OTHERS = 'OTHERS'
+}
+
+export interface IPropertyDocument {
+    id: string
+    property_id: string
+    document_type: DocumentType
+    document_url: string
+    status: PropertyVerificationStatus
+    rejection_reason?: string
+    created_at: string
+    updated_at: string
+}
+
+export interface IPropertyDocumentCreate {
+    document_type: DocumentType
+    document_url: string
 }
 
 export interface IUpdatePropertyVerification {
