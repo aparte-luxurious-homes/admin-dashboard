@@ -504,6 +504,8 @@ export default function EditUnitView({
                                         <input
                                             id="price-per-night"
                                             type="number"
+                                            min="0.01"
+                                            step="0.01"
                                             value={formik.values.pricePerNight}
                                             onChange={(e) => formik.setFieldValue('pricePerNight', e.target.value)}
                                             className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
@@ -521,6 +523,8 @@ export default function EditUnitView({
                                         <input
                                             id="caution-fee"
                                             type="number"
+                                            min="0"
+                                            step="0.01"
                                             value={formik.values.cautionFee}
                                             onChange={(e) => formik.setFieldValue('cautionFee', e.target.value)}
                                             className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"

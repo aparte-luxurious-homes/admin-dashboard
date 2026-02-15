@@ -30,6 +30,9 @@ import { usePathname } from 'next/navigation';
 import { Icon } from "@iconify/react";
 
 import axios from "axios";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import usePlacesAutocomplete, { getGeocode, getLatLng } from "use-places-autocomplete";
+const libraries: any = ["places"];
 
 
 export default function EditPropertyView({
@@ -43,6 +46,7 @@ export default function EditPropertyView({
 }) {
     // ... logic ...
     const handleGeocode = async () => {
+        // This is kept for backward compatibility if needed, but the map/autocomplete should handle this now
         const { address, city, state, country } = formik.values;
         if (!address) {
             toast.error("Please enter a physical address first");
@@ -93,6 +97,12 @@ export default function EditPropertyView({
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
+
+    const { isLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+        libraries
+    });
 
 
     const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
@@ -371,28 +381,40 @@ export default function EditPropertyView({
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-3 space-y-2">
                                 <label htmlFor="address" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Physical Address</label>
-                                <div className="flex gap-3">
-                                    <div className="relative group flex-1">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                            <SlLocationPin className="text-lg" />
+                                <div className="space-y-4">
+                                    <AddressAutocomplete
+                                        formik={formik}
+                                        isLoaded={isLoaded}
+                                    />
+
+                                    {isLoaded && (
+                                        <div className="w-full h-[300px] rounded-2xl overflow-hidden border border-zinc-200">
+                                            <GoogleMap
+                                                mapContainerStyle={{ height: '100%', width: '100%' }}
+                                                center={{ lat: formik.values.latitude || 6.5244, lng: formik.values.longitude || 3.3792 }}
+                                                zoom={formik.values.latitude ? 15 : 12}
+                                                onClick={(e) => {
+                                                    if (e.latLng) {
+                                                        formik.setFieldValue('latitude', e.latLng.lat());
+                                                        formik.setFieldValue('longitude', e.latLng.lng());
+                                                    }
+                                                }}
+                                            >
+                                                {formik.values.latitude && formik.values.longitude && (
+                                                    <Marker
+                                                        position={{ lat: formik.values.latitude, lng: formik.values.longitude }}
+                                                        draggable={true}
+                                                        onDragEnd={(e) => {
+                                                            if (e.latLng) {
+                                                                formik.setFieldValue('latitude', e.latLng.lat());
+                                                                formik.setFieldValue('longitude', e.latLng.lng());
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            </GoogleMap>
                                         </div>
-                                        <input
-                                            id="address"
-                                            type="text"
-                                            placeholder="Street Number, Building Name, Area"
-                                            value={formik.values.address}
-                                            onChange={formik.handleChange}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-                                        />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleGeocode}
-                                        className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                        title="Auto-detect coordinates from address"
-                                    >
-                                        <FaMapLocationDot className="text-xl" />
-                                    </button>
+                                    )}
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 md:col-span-3 gap-6">
@@ -648,6 +670,81 @@ export default function EditPropertyView({
                     </div>
                 </div>
             </form>
+        </div>
+    );
+}
+
+function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: boolean }) {
+    const {
+        ready,
+        value,
+        suggestions: { status, data },
+        setValue,
+        clearSuggestions,
+    } = usePlacesAutocomplete({
+        requestOptions: {
+            componentRestrictions: { country: "ng" }
+        },
+        debounce: 300,
+        defaultValue: formik.values.address
+    });
+
+    const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setValue(e.target.value);
+        formik.setFieldValue('address', e.target.value);
+    };
+
+    const handleSelect = async (description: string) => {
+        setValue(description, false);
+        formik.setFieldValue('address', description);
+        clearSuggestions();
+
+        try {
+            const results = await getGeocode({ address: description });
+            const { lat, lng } = await getLatLng(results[0]);
+            formik.setFieldValue('latitude', lat);
+            formik.setFieldValue('longitude', lng);
+
+            results[0].address_components.forEach(component => {
+                const types = component.types;
+                if (types.includes('locality')) {
+                    formik.setFieldValue('city', component.long_name);
+                } else if (types.includes('administrative_area_level_1')) {
+                    formik.setFieldValue('state', component.long_name);
+                } else if (types.includes('country')) {
+                    formik.setFieldValue('country', component.long_name);
+                }
+            });
+        } catch (error) {
+            console.error("Error geocoding selection:", error);
+        }
+    };
+
+    return (
+        <div className="relative group w-full">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400 z-10">
+                <SlLocationPin className="text-lg" />
+            </div>
+            <input
+                value={value}
+                onChange={handleInput}
+                disabled={!ready || !isLoaded}
+                placeholder="Search for an address..."
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+            />
+            {status === "OK" && (
+                <ul className="absolute z-50 w-full bg-white border border-zinc-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-auto">
+                    {data.map(({ place_id, description }) => (
+                        <li
+                            key={place_id}
+                            onClick={() => handleSelect(description)}
+                            className="px-4 py-3 hover:bg-zinc-50 cursor-pointer text-sm font-medium border-b border-zinc-100 last:border-0"
+                        >
+                            {description}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 }
