@@ -105,7 +105,6 @@ export default function EditBookingDetails({
 
     const [calculatedTotal, setCalculatedTotal] = useState<number>(Number(bookingData?.totalPrice || 0));
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (start_date && end_date) {
             const days = getDayDifference(start_date, end_date);

@@ -344,6 +344,8 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                                     <input
                                         id="price_per_night"
                                         type="number"
+                                        min="0.01"
+                                        step="0.01"
                                         value={formik.values.price_per_night}
                                         onChange={(e) => formik.setFieldValue('price_per_night', e.target.value)}
                                         className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
@@ -353,14 +355,16 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="caution-fee" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Caution Fee (Refundable)</label>
+                                <label htmlFor="caution_fee" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Caution Fee (Refundable)</label>
                                 <div className="relative group/input">
                                     <div className="absolute inset-y-0 left-3 flex items-center h-full pointer-events-none">
                                         <TbCurrencyNaira className="text-2xl text-zinc-600 group-focus-within/input:text-primary transition-colors" />
                                     </div>
                                     <input
-                                        id="caution-fee"
+                                        id="caution_fee"
                                         type="number"
+                                        min="0"
+                                        step="0.01"
                                         value={formik.values.caution_fee}
                                         onChange={(e) => formik.setFieldValue('caution_fee', (String(e.target.value)))}
                                         className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"

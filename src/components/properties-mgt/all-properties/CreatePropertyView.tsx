@@ -27,6 +27,9 @@ import toast from "react-hot-toast";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import axios from "axios";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import usePlacesAutocomplete, { getGeocode, getLatLng } from "use-places-autocomplete";
+const libraries: any = ["places"];
 
 
 export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<boolean>> }) {
@@ -92,6 +95,81 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
     );
 }
 
+function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: boolean }) {
+    const {
+        ready,
+        value,
+        suggestions: { status, data },
+        setValue,
+        clearSuggestions,
+    } = usePlacesAutocomplete({
+        requestOptions: {
+            componentRestrictions: { country: "ng" }
+        },
+        debounce: 300,
+        defaultValue: formik.values.address
+    });
+
+    const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setValue(e.target.value);
+        formik.setFieldValue('address', e.target.value);
+    };
+
+    const handleSelect = async (description: string) => {
+        setValue(description, false);
+        formik.setFieldValue('address', description);
+        clearSuggestions();
+
+        try {
+            const results = await getGeocode({ address: description });
+            const { lat, lng } = await getLatLng(results[0]);
+            formik.setFieldValue('latitude', lat);
+            formik.setFieldValue('longitude', lng);
+
+            results[0].address_components.forEach(component => {
+                const types = component.types;
+                if (types.includes('locality')) {
+                    formik.setFieldValue('city', component.long_name);
+                } else if (types.includes('administrative_area_level_1')) {
+                    formik.setFieldValue('state', component.long_name);
+                } else if (types.includes('country')) {
+                    formik.setFieldValue('country', component.long_name);
+                }
+            });
+        } catch (error) {
+            console.error("Error geocoding selection:", error);
+        }
+    };
+
+    return (
+        <div className="relative group w-full">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400 z-10">
+                <SlLocationPin className="text-lg" />
+            </div>
+            <input
+                value={value}
+                onChange={handleInput}
+                disabled={!isLoaded}
+                placeholder={isLoaded ? "Search for an address..." : "Loading Map API..."}
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+            />
+            {status === "OK" && (
+                <ul className="absolute z-50 w-full bg-white border border-zinc-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-auto">
+                    {data.map(({ place_id, description }) => (
+                        <li
+                            key={place_id}
+                            onClick={() => handleSelect(description)}
+                            className="px-4 py-3 hover:bg-zinc-50 cursor-pointer text-sm font-medium border-b border-zinc-100 last:border-0"
+                        >
+                            {description}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 
 export default function CreatePropertyView({ }) {
     const { user } = useAuth();
@@ -100,14 +178,29 @@ export default function CreatePropertyView({ }) {
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate: uploadMedia } = UploadPropertyMedia();
 
-    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 100, '');
+    const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
+    const [isNewOwner, setIsNewOwner] = useState<boolean>(true);
+    const [selectedOwner, setSelectedOwner] = useState<any | null>(null);
+
+    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 100, ownerSearchTerm, UserRole.OWNER);
     const [availableAmenities, setAvailableAmenities] = useState<IAmenity[]>(fixedAmenities);
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([]);
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
-    const [isNewOwner, setIsNewOwner] = useState<boolean>(true);
-    const [selectedOwner, setSelectedOwner] = useState<any | null>(null);
-    const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
+
+    const { isLoaded, loadError } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+        libraries
+    });
+
+    if (loadError) {
+        console.error("Google Maps load error:", loadError);
+    }
+
+    if (typeof window !== 'undefined') {
+        console.log('[CreateProperty] Map loaded:', isLoaded, 'API Key exists:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+    }
 
     const sortAmenities = (amenities: IAmenity[] = [], newAmeities: string[] = []): number[] => {
         const sortedAmenities: number[] = []
@@ -217,6 +310,7 @@ export default function CreatePropertyView({ }) {
         });
 
     const handleGeocode = async () => {
+        // This is kept for backward compatibility if needed, but the map/autocomplete should handle this now
         const { address, city, state, country } = formik.values;
         if (!address) {
             toast.error("Please enter a physical address first");
@@ -316,101 +410,103 @@ export default function CreatePropertyView({ }) {
                                     options={Object.values(PropertyType)}
                                 />
                             </div>
-                            <div className="md:col-span-2 space-y-4 pt-4 border-t border-zinc-100 mt-4">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Owner Assignment</h4>
-                                    <div className="flex items-center gap-2 p-1 bg-zinc-100 rounded-xl w-fit">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsNewOwner(false);
-                                                formik.setFieldValue('owner_email', '');
-                                                formik.setFieldValue('owner_name', '');
-                                            }}
-                                            className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${!isNewOwner ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
-                                        >
-                                            EXISTING OWNER
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsNewOwner(true);
-                                                setSelectedOwner(null);
-                                                formik.setFieldValue('ownerId', 0);
-                                            }}
-                                            className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${isNewOwner ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
-                                        >
-                                            ONBOARD NEW
-                                        </button>
+                            {(user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT) && (
+                                <div className="md:col-span-2 space-y-4 pt-4 border-t border-zinc-100 mt-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Owner Assignment</h4>
+                                        <div className="flex items-center gap-2 p-1 bg-zinc-100 rounded-xl w-fit">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsNewOwner(false);
+                                                    formik.setFieldValue('owner_email', '');
+                                                    formik.setFieldValue('owner_name', '');
+                                                }}
+                                                className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${!isNewOwner ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                            >
+                                                EXISTING OWNER
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsNewOwner(true);
+                                                    setSelectedOwner(null);
+                                                    formik.setFieldValue('ownerId', 0);
+                                                }}
+                                                className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${isNewOwner ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                            >
+                                                ONBOARD NEW
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {!isNewOwner ? (
-                                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Search Existing Owner</label>
-                                        <AdjustableFilterDropdown
-                                            placeholder="Search by name or email..."
-                                            options={(userList?.data?.data?.data ?? userList?.data?.data?.items ?? [])?.filter((u: any) => u.role === UserRole.OWNER)?.map((u: any) => u.email).filter(Boolean) ?? []}
-                                            handleSelection={(val) => {
-                                                const users = (userList?.data?.data?.data ?? userList?.data?.data?.items ?? []);
-                                                const selected = users.find((u: any) => u.email === val);
-                                                setOwnerSearchTerm(val);
-                                                setSelectedOwner(selected);
-                                                formik.setFieldValue('ownerId', selected?.id);
-                                            }}
-                                            searchTerm={ownerSearchTerm}
-                                            setSearchTerm={setOwnerSearchTerm}
-                                            isLoading={usersLoading}
-                                        />
-                                        {selectedOwner && (
-                                            <div className="mt-3 p-3 bg-primary/5 rounded-2xl border border-primary/10 flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
-                                                    <Icon icon="mdi:account-check" className="text-xl" />
+                                    {!isNewOwner ? (
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Search Existing Owner</label>
+                                            <AdjustableFilterDropdown
+                                                placeholder="Search by name or email..."
+                                                options={(userList?.data?.data?.data ?? userList?.data?.data?.items ?? [])?.map((u: any) => u.email).filter(Boolean) ?? []}
+                                                handleSelection={(val) => {
+                                                    const users = (userList?.data?.data?.data ?? userList?.data?.data?.items ?? []);
+                                                    const selected = users.find((u: any) => u.email === val);
+                                                    setOwnerSearchTerm(selected?.email || val);
+                                                    setSelectedOwner(selected);
+                                                    formik.setFieldValue('ownerId', selected?.id);
+                                                }}
+                                                searchTerm={ownerSearchTerm}
+                                                setSearchTerm={setOwnerSearchTerm}
+                                                isLoading={usersLoading}
+                                            />
+                                            {selectedOwner && (
+                                                <div className="mt-3 p-3 bg-primary/5 rounded-2xl border border-primary/10 flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                                                        <Icon icon="mdi:account-check" className="text-xl" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-zinc-900">{selectedOwner.profile?.firstName ?? 'Owner'} {selectedOwner.profile?.lastName ?? ''}</p>
+                                                        <p className="text-[10px] font-medium text-zinc-500">{selectedOwner.email}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-zinc-900">{selectedOwner.profile?.firstName ?? 'Owner'} {selectedOwner.profile?.lastName ?? ''}</p>
-                                                    <p className="text-[10px] font-medium text-zinc-500">{selectedOwner.email}</p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-2">
+                                                <label htmlFor="owner_name" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Full Name</label>
+                                                <div className="relative group">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                                        <Icon icon="mdi:account-box-outline" />
+                                                    </div>
+                                                    <input
+                                                        id="owner_name"
+                                                        type="text"
+                                                        placeholder="e.g. Jane Doe"
+                                                        value={formik.values.owner_name}
+                                                        onChange={formik.handleChange}
+                                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
+                                                    />
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <div className="space-y-2">
-                                            <label htmlFor="owner_name" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Full Name</label>
-                                            <div className="relative group">
-                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                                    <Icon icon="mdi:account-box-outline" />
+                                            <div className="space-y-2">
+                                                <label htmlFor="owner_email" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Email Address</label>
+                                                <div className="relative group">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                                        <Icon icon="mdi:email-outline" />
+                                                    </div>
+                                                    <input
+                                                        id="owner_email"
+                                                        type="email"
+                                                        placeholder="e.g. jane@example.com"
+                                                        value={formik.values.owner_email}
+                                                        onChange={formik.handleChange}
+                                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
+                                                    />
                                                 </div>
-                                                <input
-                                                    id="owner_name"
-                                                    type="text"
-                                                    placeholder="e.g. Jane Doe"
-                                                    value={formik.values.owner_name}
-                                                    onChange={formik.handleChange}
-                                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
-                                                />
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label htmlFor="owner_email" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Email Address</label>
-                                            <div className="relative group">
-                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                                    <Icon icon="mdi:email-outline" />
-                                                </div>
-                                                <input
-                                                    id="owner_email"
-                                                    type="email"
-                                                    placeholder="e.g. jane@example.com"
-                                                    value={formik.values.owner_email}
-                                                    onChange={formik.handleChange}
-                                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="md:col-span-2 space-y-2">
                                 <label htmlFor="description" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Description</label>
                                 <div className="relative">
@@ -440,28 +536,40 @@ export default function CreatePropertyView({ }) {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-3 space-y-2">
                                 <label htmlFor="address" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Physical Address</label>
-                                <div className="flex gap-3">
-                                    <div className="relative group flex-1">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                            <SlLocationPin className="text-lg" />
+                                <div className="space-y-4">
+                                    <AddressAutocomplete
+                                        formik={formik}
+                                        isLoaded={isLoaded}
+                                    />
+
+                                    {isLoaded && (
+                                        <div className="w-full h-[300px] rounded-2xl overflow-hidden border border-zinc-200">
+                                            <GoogleMap
+                                                mapContainerStyle={{ height: '100%', width: '100%' }}
+                                                center={{ lat: formik.values.latitude || 6.5244, lng: formik.values.longitude || 3.3792 }}
+                                                zoom={formik.values.latitude ? 15 : 12}
+                                                onClick={(e) => {
+                                                    if (e.latLng) {
+                                                        formik.setFieldValue('latitude', e.latLng.lat());
+                                                        formik.setFieldValue('longitude', e.latLng.lng());
+                                                    }
+                                                }}
+                                            >
+                                                {formik.values.latitude && formik.values.longitude && (
+                                                    <Marker
+                                                        position={{ lat: formik.values.latitude, lng: formik.values.longitude }}
+                                                        draggable={true}
+                                                        onDragEnd={(e) => {
+                                                            if (e.latLng) {
+                                                                formik.setFieldValue('latitude', e.latLng.lat());
+                                                                formik.setFieldValue('longitude', e.latLng.lng());
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            </GoogleMap>
                                         </div>
-                                        <input
-                                            id="address"
-                                            type="text"
-                                            placeholder="Street Number, Building Name, Area"
-                                            value={formik.values.address}
-                                            onChange={formik.handleChange}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-                                        />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleGeocode}
-                                        className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                        title="Auto-detect coordinates from address"
-                                    >
-                                        <FaMapLocationDot className="text-xl" />
-                                    </button>
+                                    )}
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 md:col-span-3 gap-6">
