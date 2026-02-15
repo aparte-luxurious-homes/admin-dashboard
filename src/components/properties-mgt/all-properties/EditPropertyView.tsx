@@ -98,11 +98,19 @@ export default function EditPropertyView({
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
 
-    const { isLoaded } = useJsApiLoader({
+    const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
         libraries
     });
+
+    if (loadError) {
+        console.error("Google Maps load error:", loadError);
+    }
+
+    if (typeof window !== 'undefined') {
+        console.log('[EditProperty] Map loaded:', isLoaded, 'API Key exists:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+    }
 
 
     const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
@@ -728,8 +736,8 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
             <input
                 value={value}
                 onChange={handleInput}
-                disabled={!ready || !isLoaded}
-                placeholder="Search for an address..."
+                disabled={!isLoaded}
+                placeholder={isLoaded ? "Search for an address..." : "Loading Map API..."}
                 className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
             />
             {status === "OK" && (

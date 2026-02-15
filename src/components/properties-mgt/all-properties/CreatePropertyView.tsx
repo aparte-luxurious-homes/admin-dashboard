@@ -149,8 +149,8 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
             <input
                 value={value}
                 onChange={handleInput}
-                disabled={!ready || !isLoaded}
-                placeholder="Search for an address..."
+                disabled={!isLoaded}
+                placeholder={isLoaded ? "Search for an address..." : "Loading Map API..."}
                 className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
             />
             {status === "OK" && (
@@ -178,20 +178,29 @@ export default function CreatePropertyView({ }) {
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate: uploadMedia } = UploadPropertyMedia();
 
-    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 100, '');
+    const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
+    const [isNewOwner, setIsNewOwner] = useState<boolean>(true);
+    const [selectedOwner, setSelectedOwner] = useState<any | null>(null);
+
+    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 100, ownerSearchTerm, UserRole.OWNER);
     const [availableAmenities, setAvailableAmenities] = useState<IAmenity[]>(fixedAmenities);
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([]);
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
-    const [isNewOwner, setIsNewOwner] = useState<boolean>(true);
-    const [selectedOwner, setSelectedOwner] = useState<any | null>(null);
-    const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
 
-    const { isLoaded } = useJsApiLoader({
+    const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
         libraries
     });
+
+    if (loadError) {
+        console.error("Google Maps load error:", loadError);
+    }
+
+    if (typeof window !== 'undefined') {
+        console.log('[CreateProperty] Map loaded:', isLoaded, 'API Key exists:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+    }
 
     const sortAmenities = (amenities: IAmenity[] = [], newAmeities: string[] = []): number[] => {
         const sortedAmenities: number[] = []
@@ -436,11 +445,11 @@ export default function CreatePropertyView({ }) {
                                             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Search Existing Owner</label>
                                             <AdjustableFilterDropdown
                                                 placeholder="Search by name or email..."
-                                                options={(userList?.data?.data?.data ?? userList?.data?.data?.items ?? [])?.filter((u: any) => u.role === UserRole.OWNER)?.map((u: any) => u.email).filter(Boolean) ?? []}
+                                                options={(userList?.data?.data?.data ?? userList?.data?.data?.items ?? [])?.map((u: any) => u.email).filter(Boolean) ?? []}
                                                 handleSelection={(val) => {
                                                     const users = (userList?.data?.data?.data ?? userList?.data?.data?.items ?? []);
                                                     const selected = users.find((u: any) => u.email === val);
-                                                    setOwnerSearchTerm(val);
+                                                    setOwnerSearchTerm(selected?.email || val);
                                                     setSelectedOwner(selected);
                                                     formik.setFieldValue('ownerId', selected?.id);
                                                 }}

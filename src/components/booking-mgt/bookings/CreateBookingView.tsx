@@ -45,7 +45,7 @@ export default function CreateBookingView() {
 
     // Queries
     const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm);
-    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
+    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm, UserRole.GUEST)
     const { mutate, isPending } = CreateBooking();
     const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
 
