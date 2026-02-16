@@ -80,6 +80,26 @@ export interface IBooking {
     payment_proof_url?: string
     paymentNotes?: string
     payment_notes?: string
+    revenueSplit?: {
+        owner_amount: number;
+        agent_amount: number;
+        platform_amount: number;
+        percentages: {
+            owner: number;
+            agent: number;
+            platform: number;
+        };
+    };
+    revenue_split?: {
+        owner_amount: number;
+        agent_amount: number;
+        platform_amount: number;
+        percentages: {
+            owner: number;
+            agent: number;
+            platform: number;
+        };
+    };
 }
 export interface ICreateBooking {
     user_id?: string | number
