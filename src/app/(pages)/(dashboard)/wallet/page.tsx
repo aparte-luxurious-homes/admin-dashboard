@@ -326,7 +326,7 @@ const WalletPage = () => {
                                             <ListItemText
                                                 primary={
                                                     <Box display="flex" alignItems="center" gap={1}>
-                                                        <BankIcon size="small" sx={{ color: "action.active" }} />
+                                                        <BankIcon fontSize="small" sx={{ color: "action.active" }} />
                                                         <Typography variant="body1" sx={{ fontWeight: 500 }}>
                                                             {acc.bank_name}
                                                         </Typography>
