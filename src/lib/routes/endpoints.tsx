@@ -84,7 +84,7 @@ export const API_ROUTES = {
         base: '/wallets',
         details: (id: string) => `/wallets/${id}`,
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
-        validateWithdrawal: (id: string | number) => `/wallets/${id}/validate-withdrawal`,
+        approveWithdrawal: (id: string | number) => `/wallets/${id}/approve-withdrawal`,
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,
             details: (walletId: string, transactionId: string) => `/wallets/${walletId}/transactions/${transactionId}`,

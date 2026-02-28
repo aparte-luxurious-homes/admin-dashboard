@@ -12,6 +12,7 @@ import Badge from "@/src/components/badge";
 import { useParams, useRouter } from "next/navigation";
 import { formatDate, formatMoney } from "@/src/lib/utils";
 import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
+import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { Button } from "@/src/components/ui/button";
 
 interface Transaction {
@@ -58,6 +59,7 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const [data, setData] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(false);
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+    const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
     const params = useParams();
     const id = params?.id;
 
@@ -121,10 +123,16 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                     <h3 className="text-xl font-semibold">{title}</h3>
                     {data?.status === "PENDING_APPROVAL" && (
                         <Button
-                            onClick={() => setIsApproveModalOpen(true)}
+                            onClick={() => {
+                                if (data.transaction_type === "WITHDRAWAL") {
+                                    setIsWithdrawalApprovalOpen(true);
+                                } else {
+                                    setIsApproveModalOpen(true);
+                                }
+                            }}
                             className="bg-primary text-white hover:bg-primary/90"
                         >
-                            Approve Refund
+                            {data.transaction_type === "WITHDRAWAL" ? "Approve Withdrawal" : "Approve Refund"}
                         </Button>
                     )}
                 </div>
@@ -340,6 +348,22 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                     transactionId={data.id}
                     amount={data.amount}
                     currency={data.currency}
+                />
+            )}
+
+            {data && data.transaction_type === "WITHDRAWAL" && (
+                <ApproveWithdrawalModal
+                    isOpen={isWithdrawalApprovalOpen}
+                    onClose={() => {
+                        setIsWithdrawalApprovalOpen(false);
+                        fetchData();
+                    }}
+                    transactionId={data.id}
+                    userId={data.user_id}
+                    email={data.user?.email || ""}
+                    amount={data.amount}
+                    currency={data.currency}
+                    walletId={data.wallet_id}
                 />
             )}
         </div>

@@ -7,6 +7,7 @@ export enum FinanceRequestKeys {
     getAllTransactions = "getAllTransactions",
     getTransactionDetails = "getTransactionDetails",
     approveRefund = "approveRefund",
+    approveWithdrawal = "approveWithdrawal",
 }
 
 export interface ApproveRefundPayload {
@@ -20,6 +21,17 @@ export function ApproveRefund() {
     return useMutation({
         mutationFn: ({ transactionId, payload }: { transactionId: string, payload: ApproveRefundPayload }) =>
             axiosRequest.post(API_ROUTES.transactions.approveRefund(transactionId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+export function ApproveWithdrawal() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: any }) =>
+            axiosRequest.post(API_ROUTES.wallet.approveWithdrawal(walletId), payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
             queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });

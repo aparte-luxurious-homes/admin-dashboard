@@ -17,7 +17,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { IProperty, IPropertyUnit } from "../types";
 import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty, UpdatePropertyDocumentStatus, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
@@ -79,6 +79,7 @@ export default function PropertyDetailsView({
 
     const [showDocUpload, setShowDocUpload] = useState(false);
     const [showDocVerify, setShowDocVerify] = useState(false);
+    const docPreviewsRef = useRef<{ url: string; file: File }[]>([]);
     const [selectedDoc, setSelectedDoc] = useState<IPropertyDocument | null>(null);
     const [docUploadPending, setDocUploadPending] = useState(false);
     const { mutate: uploadDoc } = UploadPropertyDocument();
@@ -794,6 +795,7 @@ export default function PropertyDetailsView({
                                                                 toast.success("Document uploaded successfully");
                                                                 setShowDocUpload(false);
                                                                 setDocUploadPending(false);
+                                                                docPreviewsRef.current = []; // Clear previews on success
                                                             },
                                                             onError: (err: any) => {
                                                                 toast.error(err?.response?.data?.detail || "Upload failed");
@@ -803,6 +805,7 @@ export default function PropertyDetailsView({
                                                     }
                                                 }}
                                                 multiple={false}
+                                                previewsRef={docPreviewsRef}
                                             />
                                         </div>
                                         {docUploadPending && (
