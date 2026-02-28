@@ -79,6 +79,18 @@ const WalletPage = () => {
     const [withdrawSuccess, setWithdrawSuccess] = useState("");
     const [isWithdrawing, setIsWithdrawing] = useState(false);
 
+    const formatError = (err: any): string => {
+        const detail = err?.response?.data?.detail || err?.message || err;
+        if (typeof detail === "string") return detail;
+        if (Array.isArray(detail)) {
+            return detail.map((e: any) => e.msg || JSON.stringify(e)).join(", ");
+        }
+        if (typeof detail === "object") {
+            return detail.message || detail.msg || JSON.stringify(detail);
+        }
+        return "An unexpected error occurred";
+    };
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -99,7 +111,7 @@ const WalletPage = () => {
             setBanks(banksRes?.data?.data || []);
 
         } catch (err: any) {
-            setError(err?.response?.data?.detail || "Failed to load wallet data");
+            setError(formatError(err));
         } finally {
             setLoading(false);
         }
@@ -123,8 +135,7 @@ const WalletPage = () => {
                         setAccountName(res.data.data.account_name);
                     }
                 } catch (err: any) {
-                    const msg = err?.response?.data?.detail || "Could not resolve account name";
-                    setAddBankError(msg);
+                    setAddBankError(formatError(err));
                 } finally {
                     setIsResolving(false);
                 }
@@ -170,7 +181,7 @@ const WalletPage = () => {
                 fetchData(); // Refresh list
             }, 1500);
         } catch (err: any) {
-            setAddBankError(err?.response?.data?.detail || "Failed to add bank account");
+            setAddBankError(formatError(err));
         }
     };
 
@@ -180,7 +191,7 @@ const WalletPage = () => {
             await axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(wallet.id, accountId));
             fetchData();
         } catch (err: any) {
-            alert(err?.response?.data?.detail || "Verification failed");
+            alert(formatError(err));
         }
     };
 
@@ -209,9 +220,7 @@ const WalletPage = () => {
                 fetchData(); // Refresh balance
             }, 2000);
         } catch (err: any) {
-            const detail = err?.response?.data?.detail;
-            const msg = typeof detail === 'object' ? (detail?.message || JSON.stringify(detail)) : detail;
-            setWithdrawError(msg || "Failed to process withdrawal");
+            setWithdrawError(formatError(err));
         } finally {
             setIsWithdrawing(false);
         }
