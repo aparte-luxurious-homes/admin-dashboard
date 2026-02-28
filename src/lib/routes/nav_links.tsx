@@ -148,7 +148,7 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Withdrawals',
                 pathName: 'withdrawals',
                 link: PAGE_ROUTES.dashboard.transactions.withdrawals.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
             },
             {
                 name: 'Booking withdrawals',
@@ -192,6 +192,15 @@ export const NAV_LINKS: ILink[] = [
         children: undefined,
     },
     {
+        name: 'My Wallet',
+        pathName: 'wallet',
+        link: PAGE_ROUTES.dashboard.wallet.base,
+        icon: <FinancialsIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.OWNER, UserRole.AGENT],
+        secondary: false,
+        children: undefined,
+    },
+    {
         name: 'Settings',
         pathName: 'settings',
         link: PAGE_ROUTES.dashboard.settings.base,
@@ -201,4 +210,3 @@ export const NAV_LINKS: ILink[] = [
         children: undefined,
     },
 ]
-
