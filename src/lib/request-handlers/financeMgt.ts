@@ -38,3 +38,20 @@ export function ApproveWithdrawal() {
         },
     });
 }
+
+export interface RejectWithdrawalPayload {
+    transaction_id: string;
+    reason?: string;
+}
+
+export function RejectWithdrawal() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: RejectWithdrawalPayload }) =>
+            axiosRequest.post(API_ROUTES.wallet.rejectWithdrawal(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
