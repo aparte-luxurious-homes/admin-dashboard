@@ -20,6 +20,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link";
 import ItemCount from "@/src/components/item-count/itemcount";
 
+interface Wallet {
+  id: string;
+  balance: string | number;
+  currency: string;
+}
+
 interface Agent {
   id: number;
   email: string;
@@ -122,6 +128,7 @@ const Home = () => {
   const [statError, setStatError] = useState<string>("");
   const [searchValue, setSearchValue] = useState<string>("");
   const [range, setRange] = useState<string>("year");
+  const [wallet, setWallet] = useState<Wallet | null>(null);
   const { user, isFetching } = useAuth();
 
   console.log(isFetching ? "Fetching User" : user);
@@ -161,10 +168,24 @@ const Home = () => {
     }
   }, []);
 
+  const fetchWallet = useCallback(async () => {
+    if (user?.role === "OWNER" || user?.role === "AGENT") {
+      try {
+        const response = await axiosRequest.get(API_ROUTES.wallet.base);
+        const wallets = response?.data?.data?.items || [];
+        const ngnWallet = wallets.find((w: any) => w.currency === "NGN") || wallets[0];
+        setWallet(ngnWallet);
+      } catch (err) {
+        console.error("Failed to fetch wallet:", err);
+      }
+    }
+  }, [user?.role]);
+
   useEffect(() => {
     fetchProperties();
     fetchStatistics();
-  }, [fetchProperties, fetchStatistics]);
+    fetchWallet();
+  }, [fetchProperties, fetchStatistics, fetchWallet]);
 
   console.log("stats", stats);
   console.log(error)
@@ -445,7 +466,17 @@ const Home = () => {
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              {(user?.role === "OWNER" || user?.role === "AGENT") && (
+                <Grid size={{ xs: 12, sm: 6, md: 3, lg: 3 }}>
+                  <StatsCard
+                    title="Wallet Balance"
+                    amount={`₦${wallet ? (parseFloat(wallet.balance as string) || 0).toLocaleString() : "0.00"}`}
+                    percentage={0}
+                    isIncrease={true}
+                  />
+                </Grid>
+              )}
+              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
                 <StatsCard
                   title="Total Revenue"
                   amount={`₦${(stats?.totalRevenue?.lastMonthAmount || 0).toLocaleString()}`}
@@ -453,7 +484,7 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalRevenue?.percentageChange) > 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
                 <StatsCard
                   title="Total Payments Processed"
                   amount={`₦${stats?.totalPayments?.lastMonthAmount?.toLocaleString() || "0"}`}
@@ -461,7 +492,7 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalPayments?.percentageChange) > 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
                 <StatsCard
                   title="Total Property Listed"
                   amount={`${stats?.totalProperties?.lastMonthTotal?.toLocaleString() || "0"}`}

@@ -92,6 +92,9 @@ export const PAGE_ROUTES = {
         },
         rolesPermissions: {
             base: '/roles-permissions',
+        },
+        wallet: {
+            base: '/wallet',
         }
     }
 }

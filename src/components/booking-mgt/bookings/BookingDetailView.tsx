@@ -3,7 +3,7 @@
 import { IoLocationOutline } from "react-icons/io5";
 import { LiaPrintSolid } from "react-icons/lia";
 import { MdEdit } from "react-icons/md";
-import { FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaClock, FaUsers, FaHome, FaBed, FaMoneyBillWave } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaClock, FaUsers, FaHome, FaBed, FaMoneyBillWave, FaChartPie } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import { downloadScreenAsPDF, formatDate, formatMoney, getDayDifference } from "@/src/lib/utils";
 import EditBookingDetails from "./EditBookingDetails";
@@ -448,6 +448,56 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Revenue Distribution Card (Staff Only) */}
+                                                {bookingDetails.revenue_split && (
+                                                    <div className="border border-zinc-200 rounded-xl overflow-hidden mt-6">
+                                                        <div className="px-6 py-4 bg-emerald-50 border-b border-emerald-100">
+                                                            <h2 className="text-lg font-semibold text-emerald-800 flex items-center gap-2">
+                                                                <FaChartPie />
+                                                                Revenue Distribution Breakdowns
+                                                            </h2>
+                                                        </div>
+                                                        <div className="p-6">
+                                                            <div className="space-y-4">
+                                                                <div className="flex justify-between items-center py-2">
+                                                                    <div>
+                                                                        <span className="text-zinc-600 block">Owner Share</span>
+                                                                        <span className="text-xs text-zinc-400">({bookingDetails.revenue_split.percentages.owner}%)</span>
+                                                                    </div>
+                                                                    <span className="font-medium text-zinc-800">{formatMoney(bookingDetails.revenue_split.owner_amount)}</span>
+                                                                </div>
+                                                                {bookingDetails.revenue_split.agent_amount > 0 && (
+                                                                    <div className="flex justify-between items-center py-2">
+                                                                        <div>
+                                                                            <span className="text-zinc-600 block">Agent Commission</span>
+                                                                            <span className="text-xs text-zinc-400">({bookingDetails.revenue_split.percentages.agent}%)</span>
+                                                                        </div>
+                                                                        <span className="font-medium text-zinc-800">{formatMoney(bookingDetails.revenue_split.agent_amount)}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between items-center py-2">
+                                                                    <div>
+                                                                        <span className="text-zinc-600 block">Platform Fee</span>
+                                                                        <span className="text-xs text-zinc-400">
+                                                                            ({bookingDetails.revenue_split.agent_amount > 0
+                                                                                ? bookingDetails.revenue_split.percentages.platform
+                                                                                : bookingDetails.revenue_split.percentages.platform + bookingDetails.revenue_split.percentages.agent}%)
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="font-medium text-zinc-800">{formatMoney(bookingDetails.revenue_split.platform_amount)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center py-3 border-t border-zinc-200 mt-2">
+                                                                    <span className="font-semibold text-zinc-800">Total Distributed</span>
+                                                                    <span className="font-bold text-emerald-600">{formatMoney(totalPrice)}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="mt-4 p-3 bg-zinc-50 rounded-lg border border-zinc-100 italic text-xs text-zinc-500">
+                                                                This distribution is automatically calculated and credited to respective wallets upon booking confirmation.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 {/* Owner & Agent Info Card */}
                                                 {(bookingDetails.unit?.property?.owner || bookingDetails.unit?.property?.agent) && (
