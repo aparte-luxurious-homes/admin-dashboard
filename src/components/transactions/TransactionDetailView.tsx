@@ -12,6 +12,8 @@ import Badge from "@/src/components/badge";
 import { useParams, useRouter } from "next/navigation";
 import { formatDate, formatMoney } from "@/src/lib/utils";
 import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
+import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
+import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
 import { Button } from "@/src/components/ui/button";
 
 interface Transaction {
@@ -58,6 +60,8 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const [data, setData] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(false);
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+    const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
+    const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
     const params = useParams();
     const id = params?.id;
 
@@ -120,12 +124,28 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                 <div className="flex justify-between items-center mb-[40px] border-b pb-4">
                     <h3 className="text-xl font-semibold">{title}</h3>
                     {data?.status === "PENDING_APPROVAL" && (
-                        <Button
-                            onClick={() => setIsApproveModalOpen(true)}
-                            className="bg-primary text-white hover:bg-primary/90"
-                        >
-                            Approve Refund
-                        </Button>
+                        <div className="flex items-center gap-3">
+                            {data.transaction_type === "WITHDRAWAL" && (
+                                <Button
+                                    onClick={() => setIsWithdrawalRejectionOpen(true)}
+                                    className="bg-red-600 text-white hover:bg-red-700"
+                                >
+                                    Reject Withdrawal
+                                </Button>
+                            )}
+                            <Button
+                                onClick={() => {
+                                    if (data.transaction_type === "WITHDRAWAL") {
+                                        setIsWithdrawalApprovalOpen(true);
+                                    } else {
+                                        setIsApproveModalOpen(true);
+                                    }
+                                }}
+                                className="bg-primary text-white hover:bg-primary/90"
+                            >
+                                {data.transaction_type === "WITHDRAWAL" ? "Approve Withdrawal" : "Approve Refund"}
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -340,6 +360,37 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                     transactionId={data.id}
                     amount={data.amount}
                     currency={data.currency}
+                />
+            )}
+
+            {data && data.transaction_type === "WITHDRAWAL" && (
+                <ApproveWithdrawalModal
+                    isOpen={isWithdrawalApprovalOpen}
+                    onClose={() => {
+                        setIsWithdrawalApprovalOpen(false);
+                        fetchData();
+                    }}
+                    transactionId={data.id}
+                    userId={data.user_id}
+                    email={data.user?.email || ""}
+                    amount={data.amount}
+                    currency={data.currency}
+                    walletId={data.wallet_id}
+                />
+            )}
+
+            {data && data.transaction_type === "WITHDRAWAL" && (
+                <RejectWithdrawalModal
+                    isOpen={isWithdrawalRejectionOpen}
+                    onClose={() => {
+                        setIsWithdrawalRejectionOpen(false);
+                        fetchData();
+                    }}
+                    transactionId={data.id}
+                    email={data.user?.email || ""}
+                    amount={data.amount}
+                    currency={data.currency}
+                    walletId={data.wallet_id}
                 />
             )}
         </div>

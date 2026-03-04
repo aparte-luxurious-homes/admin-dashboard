@@ -1,6 +1,7 @@
 "use client";
 
 import UserEditForm from "@/src/components/user-management/UserEditForm";
+import { EditWalletModal } from "@/src/components/finance-mgt/modals/EditWalletModal";
 
 import BreadCrumb from "@/src/components/breadcrumb";
 import Grid from "@mui/material/Grid2";
@@ -123,6 +124,13 @@ interface UserProfile {
   updated_at?: string;
 }
 
+interface Wallet {
+  id: string;
+  balance: string | number;
+  pending_cash?: string | number;
+  currency: string;
+}
+
 const OwnerInfo = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [searchResult, setSearchResult] = useState<Property[]>([]);
@@ -134,9 +142,22 @@ const OwnerInfo = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<any>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [showEditWallet, setShowEditWallet] = useState(false);
   const params = useParams();
   const id = params?.id;
   console.log("params", params?.id);
+
+  const fetchWallet = useCallback(async (userId: string | number) => {
+    try {
+      const res = await axiosRequest.get(`${API_ROUTES.wallet.base}?user_id=${userId}`);
+      const items: Wallet[] = res?.data?.data?.items || [];
+      const ngnWallet = items.find((w) => w.currency === "NGN") || items[0] || null;
+      setWallet(ngnWallet);
+    } catch {
+      // Non-critical — wallet section just won't show
+    }
+  }, []);
 
   const fetchAUserInfo = useCallback(async () => {
     if (!id) return; // Ensure id exists before making the request
@@ -147,8 +168,10 @@ const OwnerInfo = () => {
         `${API_ROUTES.admin.users.userByUuid(String(id))}`
       );
       console.log("response", response);
-      setUserInfo(response?.data?.data);
+      const userData = response?.data?.data;
+      setUserInfo(userData);
       setUserLoading(false);
+      if (userData?.id) fetchWallet(userData.id);
     } catch (error: any) {
       console.error("Error fetching user info:", error);
       toast.error(error.response?.data?.message, {
@@ -486,12 +509,69 @@ const OwnerInfo = () => {
                       </div>
                     </Grid>
                   </Grid>
+
+                  {/* Wallet Section */}
+                  {wallet && (
+                    <div className="mt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                          <Icon icon="solar:wallet-bold-duotone" width="20" />
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800">Wallet</h4>
+                      </div>
+                      <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance</p>
+                            <p className="text-lg font-bold text-primary">
+                              {wallet.currency} {Number(wallet.balance).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pending Cash</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {wallet.currency} {Number(wallet.pending_cash ?? 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="flex justify-end">
+                            <Button
+                              buttonName={
+                                <>
+                                  <Icon icon="mdi:pencil" className="mr-2" />
+                                  Edit Wallet
+                                </>
+                              }
+                              onClick={() => setShowEditWallet(true)}
+                              variant="primary"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </>
           )}
         </div>
       </div>
+
+      {wallet && (
+        <EditWalletModal
+          isOpen={showEditWallet}
+          onClose={() => setShowEditWallet(false)}
+          walletId={wallet.id}
+          currentBalance={wallet.balance}
+          currentPendingCash={wallet.pending_cash}
+          currency={wallet.currency}
+          userName={
+            userInfo?.profile?.first_name || userInfo?.profile?.firstName
+              ? `${userInfo?.profile?.first_name || userInfo?.profile?.firstName} ${userInfo?.profile?.last_name || userInfo?.profile?.lastName || ""}`.trim()
+              : userInfo?.email
+          }
+          onSuccess={() => fetchWallet(userInfo.id)}
+        />
+      )}
     </>
   );
 };

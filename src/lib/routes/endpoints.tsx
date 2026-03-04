@@ -59,6 +59,8 @@ export const API_ROUTES = {
                 deleteMedia: (propertyId: string | number, unitId: string | number, mediaId: string | number) => `/properties/${propertyId}/units/${unitId}/media/${mediaId}`,
             },
             deleteMedia: (propertyId: string | number, mediaId: string | number) => `/properties/${propertyId}/media/${mediaId}`,
+            documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
+            verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
             // verifications: {
             //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
             //     details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
@@ -81,8 +83,11 @@ export const API_ROUTES = {
     wallet: {
         base: '/wallets',
         details: (id: string) => `/wallets/${id}`,
+        update: (id: string) => `/wallets/${id}`,
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
-        validateWithdrawal: (id: string | number) => `/wallets/${id}/validate-withdrawal`,
+        approveWithdrawal: (id: string | number) => `/wallets/${id}/approve-withdrawal`,
+        rejectWithdrawal: (id: string | number) => `/wallets/${id}/reject-withdrawal`,
+        pendingWithdrawals: '/wallets/pending-withdrawals',
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,
             details: (walletId: string, transactionId: string) => `/wallets/${walletId}/transactions/${transactionId}`,
