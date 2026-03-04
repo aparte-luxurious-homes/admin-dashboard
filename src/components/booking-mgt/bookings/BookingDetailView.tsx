@@ -637,26 +637,37 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                         {isRefunding ? 'Processing...' : 'Verify & Refund Caution'}
                                                     </button>
                                                 )}
-                                                {status === BookingStatus.CANCEL_REQUESTED && (
-                                                    <button
-                                                        onClick={() => {
-                                                            approveCancellation(
-                                                                { bookingId: bookingDetails.id },
-                                                                {
-                                                                    onSuccess: () => {
-                                                                        toast.success('Cancellation approved');
-                                                                        setStatus(BookingStatus.CANCELLED);
-                                                                    },
-                                                                    onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to approve cancellation')
-                                                                }
-                                                            );
-                                                        }}
-                                                        disabled={isApproving}
-                                                        className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
-                                                    >
-                                                        {isApproving ? 'Approving...' : 'Approve Cancellation'}
-                                                    </button>
-                                                )}
+                                                {status === BookingStatus.CANCEL_REQUESTED && (() => {
+                                                    const basePrice = Number(totalPrice) - cautionFee;
+                                                    const refundAmount = basePrice * 0.80;
+                                                    return (
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <p className="text-xs text-amber-700 text-right max-w-xs">
+                                                                20% booking fee is non-refundable. Guest will receive{' '}
+                                                                <strong>80% of base price = ₦{refundAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>{' '}
+                                                                (only if booking was confirmed and paid).
+                                                            </p>
+                                                            <button
+                                                                onClick={() => {
+                                                                    approveCancellation(
+                                                                        { bookingId: bookingDetails.id },
+                                                                        {
+                                                                            onSuccess: () => {
+                                                                                toast.success('Cancellation approved');
+                                                                                setStatus(BookingStatus.CANCELLED);
+                                                                            },
+                                                                            onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to approve cancellation')
+                                                                        }
+                                                                    );
+                                                                }}
+                                                                disabled={isApproving}
+                                                                className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                                                            >
+                                                                {isApproving ? 'Approving...' : 'Approve Cancellation'}
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })()}
                                                 {status !== BookingStatus.CANCELLED && status !== BookingStatus.COMPLETED && status !== BookingStatus.CANCEL_REQUESTED && (
                                                     <button
                                                         onClick={() => setShowCancelConfirm(true)}

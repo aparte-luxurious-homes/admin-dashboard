@@ -8,6 +8,23 @@ export enum FinanceRequestKeys {
     getTransactionDetails = "getTransactionDetails",
     approveRefund = "approveRefund",
     approveWithdrawal = "approveWithdrawal",
+    updateWallet = "updateWallet",
+}
+
+export interface UpdateWalletPayload {
+    balance?: string;
+    pending_cash?: string;
+}
+
+export function UpdateWallet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string; payload: UpdateWalletPayload }) =>
+            axiosRequest.patch(API_ROUTES.wallet.update(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+        },
+    });
 }
 
 export interface ApproveRefundPayload {
