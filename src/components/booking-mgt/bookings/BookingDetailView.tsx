@@ -449,6 +449,32 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                     </div>
                                                 </div>
 
+                                                {/* Referral Information Card */}
+                                                {(bookingDetails as any).referral_code_used && (
+                                                    <div className="border border-violet-200 rounded-xl overflow-hidden mt-6">
+                                                        <div className="px-6 py-4 bg-violet-50 border-b border-violet-100">
+                                                            <h2 className="text-lg font-semibold text-violet-800 flex items-center gap-2">
+                                                                Referral Applied
+                                                            </h2>
+                                                        </div>
+                                                        <div className="p-6">
+                                                            <div className="flex justify-between items-center py-2">
+                                                                <span className="text-zinc-600">Referral Code Used</span>
+                                                                <span className="font-mono font-semibold text-zinc-800 tracking-widest">{(bookingDetails as any).referral_code_used}</span>
+                                                            </div>
+                                                            {(bookingDetails as any).referrer_id && (
+                                                                <div className="flex justify-between items-center py-2 border-t border-zinc-100">
+                                                                    <span className="text-zinc-600">Referrer ID</span>
+                                                                    <span className="font-mono text-sm text-zinc-500">{(bookingDetails as any).referrer_id}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-100 text-xs text-violet-700 italic">
+                                                                Agent commission reduced to 3%; referrer credited 2% of the booking value.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {/* Revenue Distribution Card (Staff Only) */}
                                                 {bookingDetails.revenue_split && (
                                                     <div className="border border-zinc-200 rounded-xl overflow-hidden mt-6">
