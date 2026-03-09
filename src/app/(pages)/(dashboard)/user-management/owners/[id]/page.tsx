@@ -184,7 +184,7 @@ const OwnerInfo = () => {
     } finally {
       setUserLoading(false);
     }
-  }, [id]);
+  }, [id, fetchWallet]);
 
   useEffect(() => {
     fetchAUserInfo();

@@ -9,6 +9,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import { GetAllProperties, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { GetUnitAvailability } from "@/src/lib/request-handlers/unitMgt";
 import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
 import { useEffect, useState, useMemo } from "react";
 import { IProperty, IPropertyUnit, PropertyType } from "../../properties-mgt/types";
@@ -64,6 +65,15 @@ export default function CreateBookingView() {
     const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } = GetSingleProperty(selectedProperty?.id);
     const fullPropertyDetails = singlePropertyData?.data?.data;
 
+    // Fetch live availability for selected unit (accounts for active bookings occupancy)
+    const { data: liveAvailabilityData, isLoading: isLoadingAvailability } = GetUnitAvailability(
+        selectedProperty?.id || '',
+        selectedUnit?.id || '',
+        undefined,
+        undefined,
+        !!selectedProperty?.id && !!selectedUnit?.id
+    );
+
     const formik = useFormik({
         initialValues: {
             user_id: 0,
@@ -84,6 +94,46 @@ export default function CreateBookingView() {
             guest_phone: '',
         },
         onSubmit: async (values) => {
+                if (!selectedProperty) {
+        toast.error('Please select a property');
+        return;
+        }
+    
+        if (!selectedUnit) {
+            toast.error('Please select a unit');
+            return;
+        }
+        
+        if (!values.start_date) {
+            toast.error('Please select a check-in date');
+            return;
+        }
+        
+        if (!values.end_date) {
+            toast.error('Please select a check-out date');
+            return;
+        }
+        
+        if (!isNewGuest && !selectedUser) {
+            toast.error('Please select a guest');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_email) {
+            toast.error('Guest email is required for new guests');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_first_name) {
+            toast.error('Guest first name is required for new guests');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_last_name) {
+            toast.error('Guest last name is required for new guests');
+            return;
+        }
+        
             // Validation: proof is mandatory for bank transfer if marking as paid
             if (values.mark_as_paid && values.payment_method === 'bank_transfer' && !values.payment_proof_url) {
                 toast.error('Proof of payment is mandatory for bank transfers');
@@ -116,18 +166,20 @@ export default function CreateBookingView() {
                             router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(values?.data?.data?.id))
                         }
                     },
-                    onError: () =>
-                        toast.error('Something went wrong', {
+                    onError: (error: any) => {
+                        toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Something went wrong', {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
                                 width: 'max-content'
                             }
-                        }),
+                        });
+                    }
                 }
             )
         }
     })
+    console.log('DEBUG: Formik Values:', formik.values);
 
     const handlePropertySelection = (name: string) => {
         const filteredProperties = properties?.filter(el => {
@@ -180,43 +232,54 @@ export default function CreateBookingView() {
 
     // Effect to calculate price
     useEffect(() => {
-        const days = getDayDifference(values.start_date as any, values.end_date as any)
+        // Only calculate if we have both dates and a selected unit
+        if (values.start_date && values.end_date && selectedUnit) {
+            const days = getDayDifference(values.start_date as any, values.end_date as any)
+            
+            // Ensure days is a positive number
+            if (days > 0) {
+                // Robust access to price and caution fee
+                const pricePerNight = Number(selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0);
+                const cautionFee = Number(selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0);
 
-        // Robust access to price and caution fee
-        const pricePerNight = Number(selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0);
-        const cautionFee = Number(selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0);
-
-        const firstPrice = days * (values.unit_count || 0) * pricePerNight;
-        const grandPrice = firstPrice + cautionFee;
-        setFieldValue('total_price', grandPrice)
+                const firstPrice = days * (values.unit_count || 1) * pricePerNight;
+                const grandPrice = firstPrice + cautionFee;
+                
+                // Only update if the price has changed to avoid unnecessary re-renders
+                if (grandPrice !== values.total_price) {
+                    setFieldValue('total_price', grandPrice);
+                }
+            }
+        } else {
+            // Reset total price if dates are missing
+            setFieldValue('total_price', 0);
+        }
 
     }, [
-        values.unit_count,
         values.start_date,
         values.end_date,
-        selectedUnit, // simplified dependency
+        values.unit_count,
+        selectedUnit,
         setFieldValue,
+        values.total_price // Add this to compare
     ])
 
-    // Memoize blocked dates calculation to ensure re-render when unit_count changes
+    // Memoize blocked dates from live availability (accounts for active bookings occupancy)
     const blockedDates = useMemo(() => {
-        if (!selectedUnit?.availability) return [];
+        const availability = liveAvailabilityData?.data?.data;
+        if (!availability) return [];
 
         const requestedUnits = Number(formik.values.unit_count || 1);
 
-        return selectedUnit.availability
+        return availability
             .filter((el: any) => {
-                const isBlackout = el?.is_blackout ?? el?.isBlackout ?? false;
-                const count = Number(el?.count ?? 0);
-
-                // Block if:
-                // 1. Explicitly blacked out
-                // 2. Remaining count is 0 or less
-                // 3. Remaining count is less than requested units
-                return isBlackout || count <= 0 || count < requestedUnits;
+                const isBlackout = el?.is_blackout ?? false;
+                // count is remaining capacity after active bookings
+                const remaining = Number(el?.count ?? 0);
+                return isBlackout || remaining < requestedUnits;
             })
             .map((el: any) => ({ date: el?.date }));
-    }, [selectedUnit?.availability, formik.values.unit_count]);
+    }, [liveAvailabilityData, formik.values.unit_count]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -505,7 +568,12 @@ export default function CreateBookingView() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-zinc-700">Stay Duration</label>
+                                <label className="text-sm font-medium text-zinc-700">
+                                    Stay Duration
+                                    {isLoadingAvailability && selectedUnit && (
+                                        <span className="ml-2 text-xs text-zinc-400 font-normal">Loading availability...</span>
+                                    )}
+                                </label>
                                 <BookingAvailabilityCalendar
                                     checkInDate={formik.values.start_date}
                                     checkOutDate={formik.values.end_date}
