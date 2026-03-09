@@ -176,6 +176,8 @@ export default function BookingAvailabilityCalendar({
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const isCurrentMonth = isSameMonth(day, currentMonth);
                     const isDisabled = isDateDisabled(day);
+                    const isPast = isBefore(day, today);
+                    const isBlocked = isCurrentMonth && !isPast && blockedDateSet.has(dateStr);
                     const isToday = isSameDay(day, today);
 
                     const isCheckIn = checkInDate && isSameDay(day, checkInDate);
@@ -183,6 +185,8 @@ export default function BookingAvailabilityCalendar({
                     const isInRange = checkInDate && checkOutDate && isWithinInterval(day, { start: checkInDate, end: checkOutDate });
                     const isSelectionStart = isCheckIn;
                     const isSelectionEnd = isCheckOut;
+                    // Don't apply range highlight to blocked/disabled dates
+                    const showRangeHighlight = isInRange && !isSelectionStart && !isSelectionEnd && !isDisabled;
 
                     return (
                         <button
@@ -190,18 +194,24 @@ export default function BookingAvailabilityCalendar({
                             onClick={() => isCurrentMonth && handleDateClick(day)}
                             disabled={!isCurrentMonth || isDisabled}
                             type="button"
+                            title={isBlocked ? 'Unavailable' : undefined}
                             className={`
                                 relative aspect-square p-1 rounded-lg transition-all flex items-center justify-center text-sm font-medium
                                 ${!isCurrentMonth ? 'invisible' : ''}
-                                ${isDisabled && isCurrentMonth ? 'text-zinc-300 cursor-not-allowed bg-zinc-50' : ''}
+                                ${isPast && isCurrentMonth ? 'text-zinc-300 cursor-not-allowed' : ''}
+                                ${isBlocked ? 'cursor-not-allowed bg-red-50' : ''}
                                 ${!isDisabled && isCurrentMonth ? 'hover:bg-primary/10 hover:text-primary cursor-pointer text-zinc-700' : ''}
-                                ${isInRange && !isSelectionStart && !isSelectionEnd ? 'bg-primary/10 text-primary rounded-none' : ''}
+                                ${showRangeHighlight ? 'bg-primary/10 text-primary rounded-none' : ''}
                                 ${isSelectionStart ? 'bg-primary text-white hover:bg-primary hover:text-white rounded-r-none' : ''}
                                 ${isSelectionEnd ? 'bg-primary text-white hover:bg-primary hover:text-white rounded-l-none' : ''}
-                                ${isSelectionStart && isSelectionEnd ? 'rounded-lg' : ''} 
+                                ${isSelectionStart && isSelectionEnd ? 'rounded-lg' : ''}
                             `}
                         >
-                            <span className={`relative z-10 ${isToday && !isInRange && !isCheckIn ? 'text-primary font-bold' : ''}`}>
+                            <span className={`
+                                relative z-10
+                                ${isBlocked ? 'text-red-300 line-through decoration-red-300' : ''}
+                                ${isToday && !isInRange && !isCheckIn ? 'text-primary font-bold' : ''}
+                            `}>
                                 {format(day, 'd')}
                             </span>
                             {isToday && !isInRange && !isCheckIn && (
@@ -213,13 +223,15 @@ export default function BookingAvailabilityCalendar({
             </div>
 
             {/* Legend/Info */}
-            <div className="mt-4 pt-4 border-t border-zinc-100 flex gap-4 text-xs text-zinc-500">
+            <div className="mt-4 pt-4 border-t border-zinc-100 flex flex-wrap gap-4 text-xs text-zinc-500">
                 <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 bg-white border border-zinc-300 rounded"></div>
                     <span>Available</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 bg-zinc-100 text-zinc-300 rounded flex items-center justify-center text-[8px]">×</div>
+                    <div className="w-3 h-3 bg-red-50 rounded flex items-center justify-center">
+                        <span className="text-red-300 line-through text-[8px] leading-none">8</span>
+                    </div>
                     <span>Unavailable</span>
                 </div>
                 <div className="flex items-center gap-1.5">
