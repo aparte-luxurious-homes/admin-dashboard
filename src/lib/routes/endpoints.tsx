@@ -61,6 +61,7 @@ export const API_ROUTES = {
             deleteMedia: (propertyId: string | number, mediaId: string | number) => `/properties/${propertyId}/media/${mediaId}`,
             documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
             verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
+            bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
             // verifications: {
             //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
             //     details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
@@ -79,6 +80,8 @@ export const API_ROUTES = {
         details: (id: string) => `/bookings/${id}`,
         status: (id: string | number) => `/bookings/${id}/status`,
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
+        approveRequest: (id: string | number) => `/bookings/${id}/approve-request`,
+        rejectRequest: (id: string | number) => `/bookings/${id}/reject-request`,
     },
     wallet: {
         base: '/wallets',

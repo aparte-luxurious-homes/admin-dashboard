@@ -19,8 +19,8 @@ import { HiOutlinePencilAlt } from "react-icons/hi";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import EditProperty from "./EditPropertyView";
-import { IProperty, IPropertyUnit } from "../types";
-import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty, UpdatePropertyDocumentStatus, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
+import { BookingMode, IProperty, IPropertyUnit } from "../types";
+import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty, UpdateBookingMode, UpdatePropertyDocumentStatus, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
@@ -57,6 +57,7 @@ export default function PropertyDetailsView({
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const { mutate: assignAgent, isPending: assignmentLoading } = AssignToProperty(propertyId)
+    const { mutate: updateBookingMode, isPending: bookingModeUpdating } = UpdateBookingMode();
     // const { mutate, isPending } = FeatureProperty();
 
 
@@ -647,6 +648,82 @@ export default function PropertyDetailsView({
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* Booking Mode Card — visible to owner and admin */}
+                                        {(user?.role === UserRole.OWNER || user?.role === UserRole.ADMIN) && !editMode && (
+                                            <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm">
+                                                <h3 className="text-xl font-bold text-zinc-900 mb-2 flex items-center gap-2 border-b border-zinc-100 pb-4">
+                                                    <Icon icon="solar:hand-shake-bold-duotone" className="text-primary text-2xl" />
+                                                    Booking Mode
+                                                </h3>
+                                                <p className="text-sm text-zinc-500 mb-5 mt-3">Choose how guests can book this property.</p>
+                                                <div className="flex flex-col gap-3">
+                                                    <button
+                                                        type="button"
+                                                        disabled={bookingModeUpdating}
+                                                        onClick={() => {
+                                                            const current = property?.bookingMode ?? property?.booking_mode;
+                                                            if (current !== BookingMode.INSTANT) {
+                                                                updateBookingMode(
+                                                                    { propertyId, booking_mode: BookingMode.INSTANT },
+                                                                    {
+                                                                        onSuccess: () => {
+                                                                            setProperty(prev => ({ ...prev, booking_mode: BookingMode.INSTANT, bookingMode: BookingMode.INSTANT }));
+                                                                            toast.success('Switched to Instant Book');
+                                                                        },
+                                                                        onError: (err: any) => toast.error(err?.response?.data?.detail || 'Update failed'),
+                                                                    }
+                                                                );
+                                                            }
+                                                        }}
+                                                        className={`flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all ${(property?.bookingMode ?? property?.booking_mode) === BookingMode.INSTANT || !(property?.bookingMode ?? property?.booking_mode) ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-white hover:border-zinc-300'} disabled:opacity-60 disabled:cursor-not-allowed`}
+                                                    >
+                                                        <div className={`mt-0.5 p-2 rounded-xl ${(property?.bookingMode ?? property?.booking_mode) === BookingMode.INSTANT || !(property?.bookingMode ?? property?.booking_mode) ? 'bg-primary/10' : 'bg-zinc-100'}`}>
+                                                            <Icon icon="solar:bolt-bold-duotone" className={`text-xl ${(property?.bookingMode ?? property?.booking_mode) === BookingMode.INSTANT || !(property?.bookingMode ?? property?.booking_mode) ? 'text-primary' : 'text-zinc-400'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <p className={`font-bold text-sm ${(property?.bookingMode ?? property?.booking_mode) === BookingMode.INSTANT || !(property?.bookingMode ?? property?.booking_mode) ? 'text-primary' : 'text-zinc-700'}`}>Instant Book</p>
+                                                            <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">Guests can pay and book immediately.</p>
+                                                        </div>
+                                                        {((property?.bookingMode ?? property?.booking_mode) === BookingMode.INSTANT || !(property?.bookingMode ?? property?.booking_mode)) && (
+                                                            <Icon icon="solar:check-circle-bold-duotone" className="ml-auto text-primary text-xl shrink-0" />
+                                                        )}
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={bookingModeUpdating}
+                                                        onClick={() => {
+                                                            const current = property?.bookingMode ?? property?.booking_mode;
+                                                            if (current !== BookingMode.REQUEST_TO_BOOK) {
+                                                                updateBookingMode(
+                                                                    { propertyId, booking_mode: BookingMode.REQUEST_TO_BOOK },
+                                                                    {
+                                                                        onSuccess: () => {
+                                                                            setProperty(prev => ({ ...prev, booking_mode: BookingMode.REQUEST_TO_BOOK, bookingMode: BookingMode.REQUEST_TO_BOOK }));
+                                                                            toast.success('Switched to Request to Book');
+                                                                        },
+                                                                        onError: (err: any) => toast.error(err?.response?.data?.detail || 'Update failed'),
+                                                                    }
+                                                                );
+                                                            }
+                                                        }}
+                                                        className={`flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all ${(property?.bookingMode ?? property?.booking_mode) === BookingMode.REQUEST_TO_BOOK ? 'border-violet-500 bg-violet-50' : 'border-zinc-200 bg-white hover:border-zinc-300'} disabled:opacity-60 disabled:cursor-not-allowed`}
+                                                    >
+                                                        <div className={`mt-0.5 p-2 rounded-xl ${(property?.bookingMode ?? property?.booking_mode) === BookingMode.REQUEST_TO_BOOK ? 'bg-violet-100' : 'bg-zinc-100'}`}>
+                                                            <Icon icon="solar:hand-shake-bold-duotone" className={`text-xl ${(property?.bookingMode ?? property?.booking_mode) === BookingMode.REQUEST_TO_BOOK ? 'text-violet-600' : 'text-zinc-400'}`} />
+                                                        </div>
+                                                        <div>
+                                                            <p className={`font-bold text-sm ${(property?.bookingMode ?? property?.booking_mode) === BookingMode.REQUEST_TO_BOOK ? 'text-violet-700' : 'text-zinc-700'}`}>Request to Book</p>
+                                                            <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">Guests submit a request; you approve before they pay.</p>
+                                                        </div>
+                                                        {(property?.bookingMode ?? property?.booking_mode) === BookingMode.REQUEST_TO_BOOK && (
+                                                            <Icon icon="solar:check-circle-bold-duotone" className="ml-auto text-violet-600 text-xl shrink-0" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

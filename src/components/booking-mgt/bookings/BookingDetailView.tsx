@@ -24,7 +24,9 @@ import {
     CheckOutBooking,
     RefundCautionFee,
     DeleteBooking,
-    ApproveCancellation
+    ApproveCancellation,
+    ApproveBookingRequest,
+    RejectBookingRequest
 } from "@/src/lib/request-handlers/bookingMgt";
 import { toast } from "react-hot-toast";
 import { CautionRefundModal } from "../modals/CautionRefundModal";
@@ -44,10 +46,14 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
     const { mutate: refundCaution, isPending: isRefunding } = RefundCautionFee();
     const { mutate: deleteBooking, isPending: isDeleting } = DeleteBooking();
     const { mutate: approveCancellation, isPending: isApproving } = ApproveCancellation();
+    const { mutate: approveRequest, isPending: isApprovingRequest } = ApproveBookingRequest();
+    const { mutate: rejectRequest, isPending: isRejectingRequest } = RejectBookingRequest();
     const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showRefundModal, setShowRefundModal] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
 
     useEffect(() => {
         if (bookingData?.data?.data) {
@@ -68,6 +74,8 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                 return { text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', icon: '#dc2626' };
             case BookingStatus.COMPLETED:
                 return { text: 'text-zinc-600', bg: 'bg-zinc-50', border: 'border-zinc-200', icon: '#52525b' };
+            case BookingStatus.APPROVAL_PENDING:
+                return { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', icon: '#ea580c' };
             case BookingStatus.PENDING:
                 return { text: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200', icon: '#FFAE00' };
             case BookingStatus.PENDING_PAYMENT:
@@ -449,6 +457,32 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                     </div>
                                                 </div>
 
+                                                {/* Referral Information Card */}
+                                                {(bookingDetails as any).referral_code_used && (
+                                                    <div className="border border-violet-200 rounded-xl overflow-hidden mt-6">
+                                                        <div className="px-6 py-4 bg-violet-50 border-b border-violet-100">
+                                                            <h2 className="text-lg font-semibold text-violet-800 flex items-center gap-2">
+                                                                Referral Applied
+                                                            </h2>
+                                                        </div>
+                                                        <div className="p-6">
+                                                            <div className="flex justify-between items-center py-2">
+                                                                <span className="text-zinc-600">Referral Code Used</span>
+                                                                <span className="font-mono font-semibold text-zinc-800 tracking-widest">{(bookingDetails as any).referral_code_used}</span>
+                                                            </div>
+                                                            {(bookingDetails as any).referrer_id && (
+                                                                <div className="flex justify-between items-center py-2 border-t border-zinc-100">
+                                                                    <span className="text-zinc-600">Referrer ID</span>
+                                                                    <span className="font-mono text-sm text-zinc-500">{(bookingDetails as any).referrer_id}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-100 text-xs text-violet-700 italic">
+                                                                Agent commission reduced to 3%; referrer credited 2% of the booking value.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {/* Revenue Distribution Card (Staff Only) */}
                                                 {bookingDetails.revenue_split && (
                                                     <div className="border border-zinc-200 rounded-xl overflow-hidden mt-6">
@@ -571,6 +605,22 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                         <p className="text-red-700">{bookingDetails.cancellationReason}</p>
                                                     </div>
                                                 )}
+
+                                                {/* Rejection reason (if rejected booking request) */}
+                                                {status === BookingStatus.CANCELLED && ((bookingDetails as any).rejection_reason || (bookingDetails as any).rejectionReason) && (
+                                                    <div className="border border-orange-200 bg-orange-50 rounded-xl p-6">
+                                                        <h3 className="text-lg font-semibold text-orange-800 mb-2">Request Rejected</h3>
+                                                        <p className="text-orange-700">{(bookingDetails as any).rejection_reason || (bookingDetails as any).rejectionReason}</p>
+                                                    </div>
+                                                )}
+
+                                                {/* Approval Pending notice */}
+                                                {status === BookingStatus.APPROVAL_PENDING && (
+                                                    <div className="border border-orange-200 bg-orange-50 rounded-xl p-6">
+                                                        <h3 className="text-lg font-semibold text-orange-800 mb-1">Awaiting Owner Approval</h3>
+                                                        <p className="text-orange-700 text-sm">The guest has submitted a booking request. The dates are held pending your decision. Approve to let the guest proceed to payment, or reject to release the dates.</p>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -668,7 +718,37 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                         </div>
                                                     );
                                                 })()}
-                                                {status !== BookingStatus.CANCELLED && status !== BookingStatus.COMPLETED && status !== BookingStatus.CANCEL_REQUESTED && (
+                                                {/* Approve / Reject for APPROVAL_PENDING bookings */}
+                                                {status === BookingStatus.APPROVAL_PENDING && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                approveRequest(
+                                                                    { bookingId: bookingDetails.id },
+                                                                    {
+                                                                        onSuccess: () => {
+                                                                            toast.success('Booking request approved — guest can now pay');
+                                                                            setStatus(BookingStatus.PENDING);
+                                                                        },
+                                                                        onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to approve request')
+                                                                    }
+                                                                );
+                                                            }}
+                                                            disabled={isApprovingRequest}
+                                                            className="px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium disabled:opacity-50"
+                                                        >
+                                                            {isApprovingRequest ? 'Approving...' : 'Approve Request'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setShowRejectModal(true)}
+                                                            disabled={isRejectingRequest}
+                                                            className="px-6 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium disabled:opacity-50"
+                                                        >
+                                                            Reject Request
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {status !== BookingStatus.CANCELLED && status !== BookingStatus.COMPLETED && status !== BookingStatus.CANCEL_REQUESTED && status !== BookingStatus.APPROVAL_PENDING && (
                                                     <button
                                                         onClick={() => setShowCancelConfirm(true)}
                                                         className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
@@ -797,6 +877,62 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                                                 }
                                             );
                                         }}
+                                    />
+
+                                    {/* Reject Request Modal */}
+                                    <Modal
+                                        isOpen={showRejectModal}
+                                        onClose={() => { setShowRejectModal(false); setRejectReason(''); }}
+                                        title="Reject Booking Request"
+                                        content={
+                                            <div className="space-y-4">
+                                                <p className="text-zinc-600 text-sm">
+                                                    The guest will be notified that their request was rejected and the dates will be freed.
+                                                </p>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
+                                                        Reason (optional)
+                                                    </label>
+                                                    <textarea
+                                                        rows={3}
+                                                        value={rejectReason}
+                                                        onChange={(e) => setRejectReason(e.target.value)}
+                                                        placeholder="e.g. Property not available for those dates"
+                                                        className="w-full border border-zinc-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 resize-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        }
+                                        footer={
+                                            <div className="flex gap-3 justify-end">
+                                                <button
+                                                    onClick={() => { setShowRejectModal(false); setRejectReason(''); }}
+                                                    className="px-5 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors text-sm"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        rejectRequest(
+                                                            { bookingId: bookingDetails.id, reason: rejectReason || undefined },
+                                                            {
+                                                                onSuccess: () => {
+                                                                    toast.success('Booking request rejected');
+                                                                    setShowRejectModal(false);
+                                                                    setRejectReason('');
+                                                                    setStatus(BookingStatus.CANCELLED);
+                                                                },
+                                                                onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to reject request')
+                                                            }
+                                                        );
+                                                    }}
+                                                    disabled={isRejectingRequest}
+                                                    className="px-5 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-50"
+                                                >
+                                                    {isRejectingRequest ? 'Rejecting...' : 'Confirm Rejection'}
+                                                </button>
+                                            </div>
+                                        }
                                     />
                                 </>
                 }

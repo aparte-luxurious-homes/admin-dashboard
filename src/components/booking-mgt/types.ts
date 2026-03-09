@@ -3,6 +3,7 @@ import { IPropertyUnit } from "../properties-mgt/types";
 
 
 export enum BookingStatus {
+    APPROVAL_PENDING = 'APPROVAL_PENDING',
     PENDING = 'PENDING',
     PENDING_PAYMENT = 'PENDING_PAYMENT',
     CONFIRMED = 'CONFIRMED',
@@ -80,6 +81,8 @@ export interface IBooking {
     payment_proof_url?: string
     paymentNotes?: string
     payment_notes?: string
+    rejectionReason?: string
+    rejection_reason?: string
     revenueSplit?: {
         owner_amount: number;
         agent_amount: number;

@@ -9,6 +9,30 @@ import { toast } from "react-hot-toast";
 import axiosRequest from "@/src/lib/api";
 import InputGroup from "@/src/components/formcomponent/InputGroup";
 import { BASE_API_URL, API_ROUTES } from "@/src/lib/routes/endpoints";
+import { IoCopyOutline, IoCheckmarkOutline } from "react-icons/io5";
+
+const ReferralCodeBox = ({ code }: { code: string }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div className="flex items-center gap-3 mt-1">
+      <span className="font-mono font-bold text-xl tracking-widest text-primary">{code}</span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/5 transition-colors"
+      >
+        {copied ? <IoCheckmarkOutline className="text-green-500" /> : <IoCopyOutline />}
+        <span className={copied ? 'text-green-500' : ''}>{copied ? 'Copied!' : 'Copy'}</span>
+      </button>
+    </div>
+  );
+};
 
 const PersonalInfoPage = () => {
   const { user, isFetching } = useAuth();
@@ -137,6 +161,16 @@ const PersonalInfoPage = () => {
               />
             </Grid>
           </Grid>
+          {user?.profile?.referral_code && (
+            <div className="mt-8 p-5 rounded-xl border border-dashed border-primary/50 bg-primary/5">
+              <p className="text-sm text-zinc-500 mb-1 font-medium">Your Referral Code</p>
+              <ReferralCodeBox code={user.profile.referral_code} />
+              <p className="text-xs text-zinc-400 mt-2">
+                Share this code with guests. When they book using it, you earn 2% of the booking value.
+              </p>
+            </div>
+          )}
+
           <div className="mt-10 flex justify-center">
             <div className="w-full sm:w-1/3">
               <Button
