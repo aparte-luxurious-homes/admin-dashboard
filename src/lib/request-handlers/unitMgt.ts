@@ -155,7 +155,7 @@ export function DeleteUnitMedia() {
 }
 
 
-export function GetUnitAvailability(propertyId: string | number, unitId: string | number, startDate?: string, endDate?: string) {
+export function GetUnitAvailability(propertyId: string | number, unitId: string | number, startDate?: string, endDate?: string, enabled = true) {
     return useQuery({
         queryKey: [PropertyUnitRequestKeys.availability, propertyId, unitId, startDate, endDate],
         queryFn: () => {
@@ -166,6 +166,7 @@ export function GetUnitAvailability(propertyId: string | number, unitId: string 
             if (params.toString()) url += `?${params.toString()}`;
             return axiosRequest.get(url);
         },
+        enabled: enabled && !!propertyId && !!unitId,
         refetchOnWindowFocus: true,
         staleTime: 1000 * 60 * 5, // 5 minutes
     });

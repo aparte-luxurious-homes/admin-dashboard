@@ -9,6 +9,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import { GetAllProperties, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { GetUnitAvailability } from "@/src/lib/request-handlers/unitMgt";
 import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
 import { useEffect, useState, useMemo } from "react";
 import { IProperty, IPropertyUnit, PropertyType } from "../../properties-mgt/types";
@@ -63,6 +64,15 @@ export default function CreateBookingView() {
     // Fetch full property details to get units
     const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } = GetSingleProperty(selectedProperty?.id);
     const fullPropertyDetails = singlePropertyData?.data?.data;
+
+    // Fetch live availability for selected unit (accounts for active bookings occupancy)
+    const { data: liveAvailabilityData, isLoading: isLoadingAvailability } = GetUnitAvailability(
+        selectedProperty?.id || '',
+        selectedUnit?.id || '',
+        undefined,
+        undefined,
+        !!selectedProperty?.id && !!selectedUnit?.id
+    );
 
     const formik = useFormik({
         initialValues: {
@@ -156,8 +166,8 @@ export default function CreateBookingView() {
                             router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(values?.data?.data?.id))
                         }
                     },
-                    onError: (error) => {
-                        toast.error(error?.response?.data, {
+                    onError: (error: any) => {
+                        toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Something went wrong', {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
@@ -254,25 +264,22 @@ export default function CreateBookingView() {
         values.total_price // Add this to compare
     ])
 
-    // Memoize blocked dates calculation to ensure re-render when unit_count changes
+    // Memoize blocked dates from live availability (accounts for active bookings occupancy)
     const blockedDates = useMemo(() => {
-        if (!selectedUnit?.availability) return [];
+        const availability = liveAvailabilityData?.data?.data;
+        if (!availability) return [];
 
         const requestedUnits = Number(formik.values.unit_count || 1);
 
-        return selectedUnit.availability
+        return availability
             .filter((el: any) => {
-                const isBlackout = el?.is_blackout ?? el?.isBlackout ?? false;
-                const count = Number(el?.count ?? 0);
-
-                // Block if:
-                // 1. Explicitly blacked out
-                // 2. Remaining count is 0 or less
-                // 3. Remaining count is less than requested units
-                return isBlackout || count <= 0 || count < requestedUnits;
+                const isBlackout = el?.is_blackout ?? false;
+                // count is remaining capacity after active bookings
+                const remaining = Number(el?.count ?? 0);
+                return isBlackout || remaining < requestedUnits;
             })
             .map((el: any) => ({ date: el?.date }));
-    }, [selectedUnit?.availability, formik.values.unit_count]);
+    }, [liveAvailabilityData, formik.values.unit_count]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -561,7 +568,12 @@ export default function CreateBookingView() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-zinc-700">Stay Duration</label>
+                                <label className="text-sm font-medium text-zinc-700">
+                                    Stay Duration
+                                    {isLoadingAvailability && selectedUnit && (
+                                        <span className="ml-2 text-xs text-zinc-400 font-normal">Loading availability...</span>
+                                    )}
+                                </label>
                                 <BookingAvailabilityCalendar
                                     checkInDate={formik.values.start_date}
                                     checkOutDate={formik.values.end_date}
