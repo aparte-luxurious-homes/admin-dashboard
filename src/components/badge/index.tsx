@@ -35,22 +35,30 @@ export const BookingBadge: React.FC<BookingBageProps> = ({ status, textColour = 
     ? 'text-red-600'
     : status === BookingStatus.COMPLETED
       ? 'text-zinc-600'
-      : status === BookingStatus.PENDING
-        ? 'text-[#FFAE00]'
-        : status === BookingStatus.CONFIRMED
-          ? 'text-[#028090]'
-          : textColour;
+      : status === BookingStatus.APPROVAL_PENDING
+        ? 'text-orange-600'
+        : status === BookingStatus.PENDING
+          ? 'text-[#FFAE00]'
+          : status === BookingStatus.CONFIRMED
+            ? 'text-[#028090]'
+            : textColour;
 
   const bgHue = status === BookingStatus.CANCELLED
     ? 'bg-red-200'
     : status === BookingStatus.COMPLETED
       ? 'bg-zinc-300'
-      : status === BookingStatus.PENDING
-        ? 'bg-[#FFAE0033]'
-        : status === BookingStatus.CONFIRMED
-          ? 'bg-[#0280901A]'
-          : backgroundColour;
+      : status === BookingStatus.APPROVAL_PENDING
+        ? 'bg-orange-100'
+        : status === BookingStatus.PENDING
+          ? 'bg-[#FFAE0033]'
+          : status === BookingStatus.CONFIRMED
+            ? 'bg-[#0280901A]'
+            : backgroundColour;
 
+
+  const displayText = status === BookingStatus.APPROVAL_PENDING
+    ? 'Awaiting Approval'
+    : status?.toLowerCase().replace(/_/g, ' ');
 
   return (
     <p
@@ -59,7 +67,7 @@ export const BookingBadge: React.FC<BookingBageProps> = ({ status, textColour = 
         ${classNames}
       `}
     >
-      {status?.toLowerCase()}
+      {displayText}
     </p>
   );
 }

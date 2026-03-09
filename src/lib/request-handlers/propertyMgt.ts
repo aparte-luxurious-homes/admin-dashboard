@@ -21,6 +21,7 @@ enum PropertyRequestKeys {
     getPropertiesVerifications = "getPropertiesVerifications",
     propertyDocuments = "propertyDocuments",
     verifyPropertyDocument = "verifyPropertyDocument",
+    updateBookingMode = "updateBookingMode",
 }
 
 export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: UserRole, id?: string | number) {
@@ -297,6 +298,34 @@ export function UploadPropertyDocument() {
         onSuccess: (_, { propertyId }) => {
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyDocuments, propertyId] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+        },
+    });
+}
+
+export function UpdateBookingMode() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, booking_mode }: { propertyId: string | number, booking_mode: string }) =>
+            axiosRequest.patch(API_ROUTES.propertyManagement.properties.bookingMode(propertyId), { booking_mode }),
+
+        onSuccess: (_, { propertyId, booking_mode }) => {
+            // Patch the cache directly so the useEffect in the detail view reads the new value
+            // instead of overwriting the optimistic update when the refetch resolves
+            queryClient.setQueryData(
+                [PropertyRequestKeys.singleProperty, propertyId],
+                (old: any) => old ? {
+                    ...old,
+                    data: {
+                        ...old.data,
+                        data: {
+                            ...old.data?.data,
+                            booking_mode,
+                            bookingMode: booking_mode,
+                        }
+                    }
+                } : old
+            );
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
         },
     });
 }

@@ -69,6 +69,8 @@ const WalletPage = () => {
     const [bankCode, setBankCode] = useState("");
     const [accountNumber, setAccountNumber] = useState("");
     const [accountName, setAccountName] = useState("");
+    const [bvn, setBvn] = useState("");
+    const [hasBvn, setHasBvn] = useState(false);
     const [isResolving, setIsResolving] = useState(false);
     const [addBankError, setAddBankError] = useState("");
     const [addBankSuccess, setAddBankSuccess] = useState("");
@@ -110,6 +112,10 @@ const WalletPage = () => {
             const banksRes = await axiosRequest.get("/wallets/banks"); // Assuming this is the endpoint
             setBanks(banksRes?.data?.data || []);
 
+            // Check if user already has BVN on file
+            const profileRes = await axiosRequest.get("/profile");
+            setHasBvn(!!(profileRes?.data?.data?.profile?.bvn));
+
         } catch (err: any) {
             setError(formatError(err));
         } finally {
@@ -121,28 +127,24 @@ const WalletPage = () => {
         fetchData();
     }, [fetchData]);
 
-    // Account Resolution
+    // Auto-resolve account name once BVN is available (either on profile or entered in the field)
     useEffect(() => {
-        const resolveAccount = async () => {
-            if (accountNumber.length === 10 && bankCode) {
-                setIsResolving(true);
-                setAddBankError("");
-                try {
-                    const res = await axiosRequest.get(
-                        `/wallets/resolve-account?account_number=${accountNumber}&bank_code=${bankCode}`
-                    );
-                    if (res.data?.data?.account_name) {
-                        setAccountName(res.data.data.account_name);
-                    }
-                } catch (err: any) {
+        const effectiveBvn = hasBvn ? undefined : bvn.length === 11 ? bvn : undefined;
+        if (accountNumber.length === 10 && bankCode && (hasBvn || effectiveBvn)) {
+            setIsResolving(true);
+            setAddBankError("");
+            const params = new URLSearchParams({ account_number: accountNumber, bank_code: bankCode });
+            if (effectiveBvn) params.append("bvn", effectiveBvn);
+            axiosRequest.get(`/wallets/resolve-account?${params.toString()}`)
+                .then((res) => {
+                    if (res.data?.data?.account_name) setAccountName(res.data.data.account_name);
+                })
+                .catch((err: any) => {
                     setAddBankError(formatError(err));
-                } finally {
-                    setIsResolving(false);
-                }
-            }
-        };
-        resolveAccount();
-    }, [accountNumber, bankCode]);
+                })
+                .finally(() => setIsResolving(false));
+        }
+    }, [accountNumber, bankCode, bvn, hasBvn]);
 
     const handleAddBank = async () => {
         if (!wallet) return;
@@ -158,7 +160,8 @@ const WalletPage = () => {
                 bank_name: selectedBank?.name || "Unknown Bank",
                 bank_code: bankCode,
                 wallet_id: wallet.id,
-                user_id: user?.id
+                user_id: user?.id,
+                ...(!hasBvn && bvn ? { bvn } : {}),
             });
 
             setAddBankSuccess("Bank account added successfully!");
@@ -177,6 +180,7 @@ const WalletPage = () => {
                 setBankCode("");
                 setAccountNumber("");
                 setAccountName("");
+                setBvn("");
                 setAddBankSuccess("");
                 fetchData(); // Refresh list
             }, 1500);
@@ -191,7 +195,7 @@ const WalletPage = () => {
             await axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(wallet.id, accountId));
             fetchData();
         } catch (err: any) {
-            alert(formatError(err));
+            setAddBankError(formatError(err));
         }
     };
 
@@ -356,7 +360,7 @@ const WalletPage = () => {
             </Grid>
 
             {/* Add Bank Dialog */}
-            <Dialog open={isAddBankOpen} onClose={() => setIsAddBankOpen(false)} maxWidth="sm" fullWidth>
+            <Dialog open={isAddBankOpen} onClose={() => { setIsAddBankOpen(false); setBvn(""); setAddBankError(""); }} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ fontWeight: "bold" }}>Add Bank Account</DialogTitle>
                 <DialogContent>
                     {addBankError && <Alert severity="error" sx={{ mb: 2, mt: 1 }}>{addBankError}</Alert>}
@@ -396,9 +400,21 @@ const WalletPage = () => {
                         disabled={isResolving}
                         helperText="Must match your bank record exactly"
                     />
+
+                    {!hasBvn && (
+                        <TextField
+                            fullWidth
+                            label="BVN (Bank Verification Number)"
+                            value={bvn}
+                            onChange={(e) => setBvn(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                            margin="normal"
+                            inputProps={{ maxLength: 11 }}
+                            helperText="Your 11-digit BVN — optional but needed for account verification."
+                        />
+                    )}
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 3 }}>
-                    <Button onClick={() => setIsAddBankOpen(false)}>Cancel</Button>
+                    <Button onClick={() => { setIsAddBankOpen(false); setBvn(""); setAddBankError(""); }}>Cancel</Button>
                     <Button
                         variant="contained"
                         onClick={handleAddBank}
