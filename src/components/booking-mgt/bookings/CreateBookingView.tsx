@@ -84,6 +84,46 @@ export default function CreateBookingView() {
             guest_phone: '',
         },
         onSubmit: async (values) => {
+                if (!selectedProperty) {
+        toast.error('Please select a property');
+        return;
+        }
+    
+        if (!selectedUnit) {
+            toast.error('Please select a unit');
+            return;
+        }
+        
+        if (!values.start_date) {
+            toast.error('Please select a check-in date');
+            return;
+        }
+        
+        if (!values.end_date) {
+            toast.error('Please select a check-out date');
+            return;
+        }
+        
+        if (!isNewGuest && !selectedUser) {
+            toast.error('Please select a guest');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_email) {
+            toast.error('Guest email is required for new guests');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_first_name) {
+            toast.error('Guest first name is required for new guests');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_last_name) {
+            toast.error('Guest last name is required for new guests');
+            return;
+        }
+        
             // Validation: proof is mandatory for bank transfer if marking as paid
             if (values.mark_as_paid && values.payment_method === 'bank_transfer' && !values.payment_proof_url) {
                 toast.error('Proof of payment is mandatory for bank transfers');
@@ -116,18 +156,20 @@ export default function CreateBookingView() {
                             router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(values?.data?.data?.id))
                         }
                     },
-                    onError: () =>
-                        toast.error('Something went wrong', {
+                    onError: (error) => {
+                        toast.error(error?.response?.data, {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
                                 width: 'max-content'
                             }
-                        }),
+                        });
+                    }
                 }
             )
         }
     })
+    console.log('DEBUG: Formik Values:', formik.values);
 
     const handlePropertySelection = (name: string) => {
         const filteredProperties = properties?.filter(el => {
@@ -180,22 +222,36 @@ export default function CreateBookingView() {
 
     // Effect to calculate price
     useEffect(() => {
-        const days = getDayDifference(values.start_date as any, values.end_date as any)
+        // Only calculate if we have both dates and a selected unit
+        if (values.start_date && values.end_date && selectedUnit) {
+            const days = getDayDifference(values.start_date as any, values.end_date as any)
+            
+            // Ensure days is a positive number
+            if (days > 0) {
+                // Robust access to price and caution fee
+                const pricePerNight = Number(selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0);
+                const cautionFee = Number(selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0);
 
-        // Robust access to price and caution fee
-        const pricePerNight = Number(selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0);
-        const cautionFee = Number(selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0);
-
-        const firstPrice = days * (values.unit_count || 0) * pricePerNight;
-        const grandPrice = firstPrice + cautionFee;
-        setFieldValue('total_price', grandPrice)
+                const firstPrice = days * (values.unit_count || 1) * pricePerNight;
+                const grandPrice = firstPrice + cautionFee;
+                
+                // Only update if the price has changed to avoid unnecessary re-renders
+                if (grandPrice !== values.total_price) {
+                    setFieldValue('total_price', grandPrice);
+                }
+            }
+        } else {
+            // Reset total price if dates are missing
+            setFieldValue('total_price', 0);
+        }
 
     }, [
-        values.unit_count,
         values.start_date,
         values.end_date,
-        selectedUnit, // simplified dependency
+        values.unit_count,
+        selectedUnit,
         setFieldValue,
+        values.total_price // Add this to compare
     ])
 
     // Memoize blocked dates calculation to ensure re-render when unit_count changes
