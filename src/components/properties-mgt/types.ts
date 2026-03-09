@@ -35,6 +35,11 @@ export enum PropertyType {
     OTHERS = 'OTHERS',
 }
 
+export enum BookingMode {
+    INSTANT = 'INSTANT',
+    REQUEST_TO_BOOK = 'REQUEST_TO_BOOK',
+}
+
 export interface IAmenity {
     id: number
     name: string
@@ -138,6 +143,8 @@ export interface IProperty {
     id: number
     ownerId: number
     owner_id?: number
+    bookingMode?: BookingMode
+    booking_mode?: BookingMode
     assignedAgent?: number
     assigned_agent?: number
     name: string

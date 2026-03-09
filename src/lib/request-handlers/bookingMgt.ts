@@ -194,3 +194,27 @@ export function ApproveCancellation() {
         },
     });
 }
+
+export function ApproveBookingRequest() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(API_ROUTES.bookings.approveRequest(String(bookingId))),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function RejectBookingRequest() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId, reason }: { bookingId: string | number, reason?: string }) =>
+            axiosRequest.post(API_ROUTES.bookings.rejectRequest(String(bookingId)), { reason }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}

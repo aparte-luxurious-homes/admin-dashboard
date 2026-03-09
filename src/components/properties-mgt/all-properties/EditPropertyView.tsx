@@ -17,7 +17,8 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { DeleteProperty, FeatureProperty, UpdateProperty, UploadPropertyMedia, DeletePropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { DeleteProperty, FeatureProperty, UpdateProperty, UpdateBookingMode, UploadPropertyMedia, DeletePropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { BookingMode } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../../ui/Spinner";
@@ -87,6 +88,7 @@ export default function EditPropertyView({
         isPending: uploadedMediaPending
     } = UploadPropertyMedia();
     const { mutate: featureProperty } = FeatureProperty();
+    const { mutate: updateBookingMode } = UpdateBookingMode();
     const { mutate: deleteMedia, isPending: deleteMediaPending } = DeletePropertyMedia();
 
     const { user } = useAuth();
@@ -143,6 +145,7 @@ export default function EditPropertyView({
                 isVerified: propertyData?.isVerified ?? false,
                 isFeatured: propertyData?.isFeatured ?? false,
                 petsAllowed: propertyData?.isPetAllowed ?? false,
+                bookingMode: (propertyData?.bookingMode ?? propertyData?.booking_mode ?? BookingMode.INSTANT) as BookingMode,
                 amenities: propertyData?.amenities.map((el) => el.id),
                 amenityNames: propertyData?.amenities.map((el) => el.name),
             },
@@ -152,6 +155,10 @@ export default function EditPropertyView({
 
                 if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
                     featureProperty({ propertyId: propertyData.id })
+
+                const currentBookingMode = propertyData.bookingMode ?? propertyData.booking_mode ?? BookingMode.INSTANT;
+                if (values.bookingMode !== currentBookingMode)
+                    updateBookingMode({ propertyId: propertyData.id, booking_mode: values.bookingMode })
 
                 const updatePayload: IUpdateProperty = {
                     ...values,
@@ -528,6 +535,38 @@ export default function EditPropertyView({
                                         onChange={(val) => formik.setFieldValue("isVerified", val)}
                                     />
                                 )}
+                            </div>
+
+                            {/* Booking Mode */}
+                            <div className="pt-6 border-t border-zinc-100">
+                                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <Icon icon="solar:calendar-mark-bold-duotone" className="text-base text-primary" />
+                                    Booking Mode
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => formik.setFieldValue("bookingMode", BookingMode.INSTANT)}
+                                        className={`flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all ${formik.values.bookingMode === BookingMode.INSTANT ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}
+                                    >
+                                        <Icon icon="solar:bolt-bold-duotone" className={`text-2xl mt-0.5 flex-shrink-0 ${formik.values.bookingMode === BookingMode.INSTANT ? 'text-primary' : 'text-zinc-400'}`} />
+                                        <div>
+                                            <p className={`text-sm font-bold ${formik.values.bookingMode === BookingMode.INSTANT ? 'text-primary' : 'text-zinc-700'}`}>Instant Book</p>
+                                            <p className="text-xs text-zinc-500 mt-0.5">Guests can pay and book immediately based on availability.</p>
+                                        </div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => formik.setFieldValue("bookingMode", BookingMode.REQUEST_TO_BOOK)}
+                                        className={`flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all ${formik.values.bookingMode === BookingMode.REQUEST_TO_BOOK ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}
+                                    >
+                                        <Icon icon="solar:hand-shake-bold-duotone" className={`text-2xl mt-0.5 flex-shrink-0 ${formik.values.bookingMode === BookingMode.REQUEST_TO_BOOK ? 'text-primary' : 'text-zinc-400'}`} />
+                                        <div>
+                                            <p className={`text-sm font-bold ${formik.values.bookingMode === BookingMode.REQUEST_TO_BOOK ? 'text-primary' : 'text-zinc-700'}`}>Request to Book</p>
+                                            <p className="text-xs text-zinc-500 mt-0.5">Guests submit a request; you must approve before they can pay.</p>
+                                        </div>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
