@@ -440,10 +440,15 @@ export default function CreateBookingView() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-zinc-700">Select Guest</label>
                                             <AdjustableFilterDropdown
-                                                placeholder="Search by name or email..."
-                                                options={userList?.data?.data?.data?.map((user: any) => user.email).filter(Boolean) ?? []}
+                                                placeholder="Search by name, email or phone..."
+                                                options={userList?.data?.data?.data?.map((user: any) => {
+                                                    const name = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ');
+                                                    return [name, user.email, user.phone].filter(Boolean).join(' | ');
+                                                }).filter(Boolean) ?? []}
                                                 handleSelection={(val) => {
-                                                    const selected = userList?.data?.data?.data?.find((user: any) => user.email === val);
+                                                    const segments = val.split(' | ');
+                                                    const email = segments.length >= 2 ? segments[1] : segments[0];
+                                                    const selected = userList?.data?.data?.data?.find((user: any) => user.email === email);
                                                     setUserSearchTerm(val);
                                                     setSeletedUser(selected);
                                                     formik.setFieldValue('user_id', selected?.id);
@@ -460,6 +465,9 @@ export default function CreateBookingView() {
                                                     <div>
                                                         <p className="text-sm font-medium text-zinc-900">{selectedUser.profile?.firstName ?? 'Guest'} {selectedUser.profile?.lastName ?? ''}</p>
                                                         <p className="text-xs text-zinc-500">{selectedUser.email}</p>
+                                                        {selectedUser.phone && (
+                                                            <p className="text-xs text-zinc-400">{selectedUser.phone}</p>
+                                                        )}
                                                     </div>
                                                     <button type="button" onClick={() => router.push(PAGE_ROUTES.dashboard.userManagement.guests.details(selectedUser.id))} className="ml-auto text-xs font-medium text-primary underline hover:text-primary/80">View Profile</button>
                                                 </div>

@@ -20,7 +20,7 @@ const settingsOptions = [
   },
   {
     title: "Payments & payouts",
-    description: "Review payments & coupons",
+    description: "Configure payment gateways & payouts",
     route: "/settings/payments-payouts",
     icon: <Icon icon="material-symbols:payments" width="32" height="32" />,
   },

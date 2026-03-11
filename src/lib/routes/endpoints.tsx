@@ -29,7 +29,12 @@ export const API_ROUTES = {
             base: '/admin/users',
             onboard: '/admin/users/onboard',
             userById: (id: string | number) => `/admin/users/${id}`,
-            userByUuid: (id: string | number) => `/admin/users/${id}`
+            userByUuid: (id: string | number) => `/admin/users/${id}`,
+            roles: '/admin/users/roles',
+        },
+        integrations: {
+            configs: '/admin/integrations/configs',
+            configByKey: (key: string) => `/admin/integrations/configs/${key}`,
         }
     },
     profile: {
@@ -108,7 +113,8 @@ export const API_ROUTES = {
         validate: (paymentId: string) => `/wallets/payments/${paymentId}/validate`,
     },
     statistic: {
-        base: '/stats'
+        base: '/stats',
+        gatewayBalances: '/stats/gateway-balances',
     },
     transactions: {
         base: '/wallets/transactions',
