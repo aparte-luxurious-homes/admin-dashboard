@@ -1,6 +1,7 @@
 "use client";
 
 import UserEditForm from "@/src/components/user-management/UserEditForm";
+import KycStatusEditor from "@/src/components/user-management/KycStatusEditor";
 import { EditWalletModal } from "@/src/components/finance-mgt/modals/EditWalletModal";
 
 import BreadCrumb from "@/src/components/breadcrumb";
@@ -530,6 +531,13 @@ const AgentInfo = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* KYC Status Section */}
+                  <KycStatusEditor
+                    userId={String(id)}
+                    currentStatus={userInfo?.profile?.kyc_status || userInfo?.profile?.kycStatus || "PENDING"}
+                    onUpdate={fetchAUserInfo}
+                  />
                 </>
               )}
             </>
