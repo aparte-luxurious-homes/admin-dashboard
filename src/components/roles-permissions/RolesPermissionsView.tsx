@@ -12,6 +12,9 @@ import { Permission, RolePermissionsResponse } from "@/src/lib/types/permissions
 const ROLES = [
     { value: UserRole.SUPER_ADMIN, label: "Super Admin", color: "bg-purple-100 text-purple-700" },
     { value: UserRole.ADMIN, label: "Admin", color: "bg-blue-100 text-blue-700" },
+    { value: UserRole.OPERATIONS_ADMIN, label: "Operations Admin", color: "bg-teal-100 text-teal-700" },
+    { value: UserRole.SUPPORT_ADMIN, label: "Support Admin", color: "bg-cyan-100 text-cyan-700" },
+    { value: UserRole.ANALYST, label: "Analyst", color: "bg-indigo-100 text-indigo-700" },
     { value: UserRole.AGENT, label: "Agent", color: "bg-green-100 text-green-700" },
     { value: UserRole.OWNER, label: "Owner", color: "bg-orange-100 text-orange-700" },
     { value: UserRole.GUEST, label: "Guest", color: "bg-gray-100 text-gray-700" },

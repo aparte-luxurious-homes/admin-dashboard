@@ -138,6 +138,14 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
     const { data: rolesData } = GetAssignableRoles();
     const assignableRoles: string[] = rolesData?.data?.data?.assignable_roles ?? [];
 
+    // Sync createForm.role to first assignable role when API data loads,
+    // if the current default isn't in the assignable list (prevents submitting an unassignable role)
+    useEffect(() => {
+        if (assignableRoles.length > 0 && !assignableRoles.includes(createForm.role)) {
+            setCreateForm(prev => ({ ...prev, role: assignableRoles[0] }));
+        }
+    }, [assignableRoles]);
+
     const handleDownload = (type: "CSV" | "PDF") => {
         if (type === "CSV") {
             downloadCSV(data);

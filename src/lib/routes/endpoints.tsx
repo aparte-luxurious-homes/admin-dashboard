@@ -30,6 +30,7 @@ export const API_ROUTES = {
             onboard: '/admin/users/onboard',
             userById: (id: string | number) => `/admin/users/${id}`,
             userByUuid: (id: string | number) => `/admin/users/${id}`,
+            updateKyc: (id: string | number) => `/admin/users/${id}/kyc`,
             roles: '/admin/users/roles',
         },
         integrations: {
