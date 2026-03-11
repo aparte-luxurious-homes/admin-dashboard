@@ -49,22 +49,23 @@ const PaymentPayout = () => {
   const { data, isLoading, isError } = GetIntegrationConfigs();
   const mutation = UpdateIntegrationConfig();
 
-  const configs = data?.data?.data ?? [];
+  const configs = data?.data?.data ?? data?.data ?? [];
   const disbursementConfig = configs.find(
     (c: { key: string }) => c.key === DISBURSEMENT_KEY
   );
   const currentProvider: string = disbursementConfig?.value ?? "";
   const updatedAt: string | undefined = disbursementConfig?.updated_at;
 
-  const [selectedProvider, setSelectedProvider] = useState<string>("");
-  const hasChanges = selectedProvider !== "" && selectedProvider !== currentProvider;
+  const [userSelected, setUserSelected] = useState<string | null>(null);
+  const selectedProvider = userSelected ?? currentProvider;
+  const hasChanges = userSelected !== null && userSelected !== currentProvider;
 
-  // Sync local state when API data loads
+  // Reset user selection when API data updates (after save)
   useEffect(() => {
-    if (currentProvider) {
-      setSelectedProvider(currentProvider);
+    if (userSelected && userSelected === currentProvider) {
+      setUserSelected(null);
     }
-  }, [currentProvider]);
+  }, [currentProvider, userSelected]);
 
   const handleSave = () => {
     if (!hasChanges) return;
@@ -210,7 +211,7 @@ const PaymentPayout = () => {
               <button
                 key={provider.value}
                 type="button"
-                onClick={() => setSelectedProvider(provider.value)}
+                onClick={() => setUserSelected(provider.value)}
                 className={`
                   relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all cursor-pointer text-center
                   ${

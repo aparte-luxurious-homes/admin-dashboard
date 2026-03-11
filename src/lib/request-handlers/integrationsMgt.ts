@@ -7,10 +7,12 @@ enum IntegrationsRequestKeys {
     integrationConfigs = "integrationConfigs",
 }
 
-export function GetGatewayBalances() {
+export function GetGatewayBalances(enabled: boolean = true) {
     return useQuery({
         queryKey: [IntegrationsRequestKeys.gatewayBalances],
         queryFn: () => axiosRequest.get(API_ROUTES.statistic.gatewayBalances),
+        staleTime: 1000 * 60 * 2, // 2 minutes
+        enabled,
     });
 }
 
@@ -18,6 +20,7 @@ export function GetIntegrationConfigs() {
     return useQuery({
         queryKey: [IntegrationsRequestKeys.integrationConfigs],
         queryFn: () => axiosRequest.get(API_ROUTES.admin.integrations.configs),
+        staleTime: 1000 * 60 * 5, // 5 minutes
     });
 }
 

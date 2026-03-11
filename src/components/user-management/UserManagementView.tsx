@@ -8,7 +8,7 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
-import { CreateUser, OnboardUser, DeleteUser, UpdateUser } from "@/src/lib/request-handlers/userMgt";
+import { CreateUser, OnboardUser, DeleteUser, UpdateUser, GetAssignableRoles } from "@/src/lib/request-handlers/userMgt";
 import { toast } from "react-hot-toast";
 import { DotsIcon, FilterIcon, SearchIcon, TrashIcon } from "@/src/components/icons";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
@@ -110,7 +110,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
         firstName: '',
         lastName: '',
         gender: '',
-        role: role,
+        role: role as string,
         bio: '',
         isActive: true,
         isVerified: false,
@@ -134,6 +134,8 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
     const { mutate: onboardUser, isPending: onboarding } = OnboardUser();
     const { mutate: updateUser, isPending: updating } = UpdateUser();
     const { mutate: deleteUser, isPending: deleting } = DeleteUser();
+    const { data: rolesData } = GetAssignableRoles();
+    const assignableRoles: string[] = rolesData?.data?.data?.assignable_roles ?? [];
 
     const handleDownload = (type: "CSV" | "PDF") => {
         if (type === "CSV") {
@@ -586,16 +588,27 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700 ml-1">Default Role</label>
-                                    <div className="relative group opacity-80">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Role</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none">
                                             <Icon icon="mdi:shield-account" width="18" />
                                         </div>
-                                        <input
-                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl outline-none cursor-not-allowed"
-                                            value={role}
-                                            disabled
-                                        />
+                                        <select
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200 appearance-none"
+                                            value={createForm.role}
+                                            onChange={e => setCreateForm({ ...createForm, role: e.target.value })}
+                                        >
+                                            {assignableRoles.length > 0 ? (
+                                                assignableRoles.map((r: string) => (
+                                                    <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>
+                                                ))
+                                            ) : (
+                                                <option value={role}>{role.replace(/_/g, ' ')}</option>
+                                            )}
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <Icon icon="mdi:chevron-down" width="18" />
+                                        </div>
                                     </div>
                                 </div>
 
