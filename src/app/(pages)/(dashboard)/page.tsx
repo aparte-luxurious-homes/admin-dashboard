@@ -19,6 +19,8 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link";
 import ItemCount from "@/src/components/item-count/itemcount";
+import GatewayBalancesCard from "@/src/components/finance-mgt/GatewayBalancesCard";
+import { GetGatewayBalances } from "@/src/lib/request-handlers/integrationsMgt";
 
 interface Wallet {
   id: string;
@@ -130,6 +132,8 @@ const Home = () => {
   const [range, setRange] = useState<string>("year");
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const { user, isFetching } = useAuth();
+  const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances();
+  const balances = gatewayData?.data?.data || {};
 
   console.log(isFetching ? "Fetching User" : user);
 
@@ -500,6 +504,15 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalProperties?.percentageChange) > 0}
                 />
               </Grid>
+              {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && (
+                <Grid size={{ xs: 12 }}>
+                  <GatewayBalancesCard
+                    paystack={balances.paystack || { isAvailable: false, error: "No data" }}
+                    monnify={balances.monnify || { isAvailable: false, error: "No data" }}
+                    isLoading={gatewayLoading}
+                  />
+                </Grid>
+              )}
               <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
                 <div className={`p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md ${stats?.properties?.length === 0 && "flex items-center justify-center"}`}>
                   {isStatLoading ? (

@@ -56,6 +56,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.userManagement.agents.base,
                 allow: [UserRole.ADMIN],
             },
+            {
+                name: 'Admins',
+                pathName: 'admins',
+                link: PAGE_ROUTES.dashboard.userManagement.admins.base,
+                allow: [UserRole.ADMIN],
+            },
         ]
     },
     {
