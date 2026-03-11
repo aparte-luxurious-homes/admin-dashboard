@@ -77,7 +77,7 @@ interface User {
 }
 
 interface UserManagementViewProps {
-    role: 'GUEST' | 'OWNER' | 'AGENT' | 'ADMIN' | 'SUPER_ADMIN';
+    role: 'GUEST' | 'OWNER' | 'AGENT' | 'ADMIN' | 'SUPER_ADMIN' | 'OPERATIONS_ADMIN' | 'SUPPORT_ADMIN' | 'ANALYST';
     title: string;
     description: string;
     basePath: string; // e.g., "/user-management/guests"
