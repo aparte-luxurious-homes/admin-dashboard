@@ -254,6 +254,7 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                                         <input
                                             id={field.id}
                                             type="number"
+                                            min={0}
                                             value={formik.values[field.id as keyof typeof formik.initialValues] as any}
                                             onChange={(e) => formik.setFieldValue(field.id, Number(e.target.value))}
                                             className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-11 pr-3 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
