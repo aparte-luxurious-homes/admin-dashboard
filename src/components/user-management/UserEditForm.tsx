@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
+import { GetAssignableRoles } from '@/src/lib/request-handlers/userMgt';
 
 interface UserEditFormProps {
     initialData: {
@@ -28,6 +29,15 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     isSaving,
     showRoleSelector = true
 }) => {
+    const { data: rolesData, isLoading: rolesLoading } = GetAssignableRoles();
+    const assignableRoles: string[] = rolesData?.data?.data?.assignable_roles || rolesData?.data?.assignable_roles || [];
+
+    const FALLBACK_ROLES = ['GUEST', 'AGENT', 'OWNER', 'OPERATIONS_ADMIN', 'SUPPORT_ADMIN', 'ANALYST', 'ADMIN', 'SUPER_ADMIN'];
+    const roleOptions = assignableRoles.length > 0 ? assignableRoles : FALLBACK_ROLES;
+
+    const formatRoleLabel = (role: string) =>
+        role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
     const [formData, setFormData] = useState({
         firstName: initialData.firstName || '',
         lastName: initialData.lastName || '',
@@ -138,11 +148,15 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                                     value={formData.role}
                                     onChange={e => handleChange('role', e.target.value)}
                                 >
-                                    <option value="GUEST">Guest</option>
-                                    <option value="AGENT">Agent</option>
-                                    <option value="OWNER">Owner</option>
-                                    <option value="ADMIN">Admin</option>
-                                    <option value="SUPER_ADMIN">Super Admin</option>
+                                    {rolesLoading ? (
+                                        <option value="">Loading roles...</option>
+                                    ) : (
+                                        roleOptions.map((role: string) => (
+                                            <option key={role} value={role}>
+                                                {formatRoleLabel(role)}
+                                            </option>
+                                        ))
+                                    )}
                                 </select>
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                                     <Icon icon="mdi:chevron-down" width="18" />

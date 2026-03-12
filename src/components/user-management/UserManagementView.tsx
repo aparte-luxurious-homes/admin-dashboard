@@ -8,7 +8,7 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
-import { CreateUser, OnboardUser, DeleteUser, UpdateUser } from "@/src/lib/request-handlers/userMgt";
+import { CreateUser, OnboardUser, DeleteUser, UpdateUser, GetAssignableRoles } from "@/src/lib/request-handlers/userMgt";
 import { toast } from "react-hot-toast";
 import { DotsIcon, FilterIcon, SearchIcon, TrashIcon } from "@/src/components/icons";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
@@ -76,7 +76,7 @@ interface User {
 }
 
 interface UserManagementViewProps {
-    role: 'GUEST' | 'OWNER' | 'AGENT' | 'ADMIN' | 'SUPER_ADMIN';
+    role: string; // Single role or comma-separated (e.g., "ADMIN,SUPER_ADMIN,OPERATIONS_ADMIN,SUPPORT_ADMIN,ANALYST")
     title: string;
     description: string;
     basePath: string; // e.g., "/user-management/guests"
@@ -103,7 +103,8 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
     const modalRef = useRef<HTMLDivElement>(null);
     const [isQuickOnboard, setIsQuickOnboard] = useState(false);
 
-    // Create form state
+    // Create form state — use first role when comma-separated
+    const defaultRole = role.includes(',') ? role.split(',')[0].trim() : role;
     const [createForm, setCreateForm] = useState({
         email: '',
         phone: '',
@@ -111,7 +112,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
         firstName: '',
         lastName: '',
         gender: '',
-        role: role,
+        role: defaultRole,
         bio: '',
         is_active: true,
         isVerified: false,
@@ -135,6 +136,16 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
     const { mutate: onboardUser, isPending: onboarding } = OnboardUser();
     const { mutate: updateUser, isPending: updating } = UpdateUser();
     const { mutate: deleteUser, isPending: deleting } = DeleteUser();
+    const { data: rolesData } = GetAssignableRoles();
+    const assignableRoles: string[] = rolesData?.data?.data?.assignable_roles ?? [];
+
+    // Sync createForm.role to first assignable role when API data loads,
+    // if the current default isn't in the assignable list (prevents submitting an unassignable role)
+    useEffect(() => {
+        if (assignableRoles.length > 0 && !assignableRoles.includes(createForm.role)) {
+            setCreateForm(prev => ({ ...prev, role: assignableRoles[0] }));
+        }
+    }, [assignableRoles]);
 
     const handleDownload = (type: "CSV" | "PDF") => {
         if (type === "CSV") {
@@ -164,7 +175,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${role.toLowerCase()}_info.csv`;
+        a.download = `${title.toLowerCase().replace(/\s+/g, '_')}_info.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -188,7 +199,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
             styles: { fontSize: 10, cellPadding: 3 },
             theme: "grid",
         });
-        doc.save(`${role.toLowerCase()}_info.pdf`);
+        doc.save(`${title.toLowerCase().replace(/\s+/g, '_')}_info.pdf`);
     };
 
     const fetchUsers = useCallback(async () => {
@@ -206,7 +217,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
             setData(result.data);
             setRowCount(result.meta.total);
         } catch (err: any) {
-            toast.error(err.response?.data?.message || `Failed to fetch ${role.toLowerCase()}s`);
+            toast.error(err.response?.data?.message || `Failed to fetch ${title.toLowerCase()}`);
         } finally {
             setLoading(false);
         }
@@ -283,7 +294,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                     const user = data[selectedRow];
                     dispatch(
                         showAlert({
-                            title: `Delete ${role.charAt(0) + role.slice(1).toLowerCase()}?`,
+                            title: `Delete User?`,
                             description: `Are you sure you want to delete ${user.profile?.first_name || user.firstName || 'this user'}? This action cannot be undone.`,
                             confirmText: "Delete",
                             cancelText: "Cancel",
@@ -326,7 +337,11 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-primary hover:bg-primary/90 text-white text-xs sm:text-sm font-medium rounded-lg flex items-center justify-center gap-1.5"
                                 >
                                     <Icon icon="mdi:plus" className="w-4 h-4" />
+<<<<<<< HEAD
                                     <span className="whitespace-nowrap">Create {role.charAt(0) + role.slice(1).toLowerCase()}</span>
+=======
+                                    <span>Create {defaultRole.charAt(0) + defaultRole.slice(1).toLowerCase()}</span>
+>>>>>>> 4904358ae4066c75a1801e49067020617a81b207
                                 </button>
                                 <div className="relative">
                                     <button
@@ -362,8 +377,13 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                 <FilterIcon className="w-4 h-4" color="#6B7280" />
                                 <span>Filter</span>
                             </button>
+<<<<<<< HEAD
                             <div className="hidden sm:block ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium text-gray-600 shadow-sm">
                                 Total {role.charAt(0) + role.slice(1).toLowerCase()}s: <span className="text-primary">{rowCount}</span>
+=======
+                            <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                                Total Users: <span className="text-primary">{rowCount}</span>
+>>>>>>> 4904358ae4066c75a1801e49067020617a81b207
                             </div>
                         </div>
                         {/* Mobile Total Count */}
@@ -383,6 +403,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                         ) : data.length > 0 ? (
                             <table className="w-full text-left border-collapse min-w-[600px] sm:min-w-full">
                                 <thead className="bg-gray-50 border-b border-gray-200">
+<<<<<<< HEAD
                                     <tr className="text-[10px] sm:text-xs font-medium text-gray-700 uppercase tracking-wider">
                                         <th className="px-3 sm:px-6 py-3 sm:py-4">Full Name</th>
                                         <th className="px-3 sm:px-6 py-3 sm:py-4">Email / Phone</th>
@@ -390,6 +411,17 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-center">Verified</th>
                                         <th className="px-3 sm:px-6 py-3 sm:py-4 hidden md:table-cell">Date Created</th>
                                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-right">Actions</th>
+=======
+                                    <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                        <th className="px-6 py-4">Full Name</th>
+                                        <th className="px-6 py-4">Email / Phone</th>
+                                        {role.includes(',') && <th className="px-6 py-4">Role</th>}
+                                        <th className="px-6 py-4 text-center">KYC Status</th>
+                                        {/* <th className="px-6 py-4 text-center">Acc. Status</th> */}
+                                        <th className="px-6 py-4 text-center">Verified</th>
+                                        <th className="px-6 py-4">Date Created</th>
+                                        <th className="px-6 py-4 text-right">Actions</th>
+>>>>>>> 4904358ae4066c75a1801e49067020617a81b207
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -420,8 +452,20 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                                     <span className="text-[8px] sm:text-xs text-gray-500 truncate max-w-[80px] sm:max-w-none">{user.phone || "--"}</span>
                                                 </div>
                                             </td>
+<<<<<<< HEAD
                                             <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                                                 <span className={`inline-block px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-semibold uppercase ${(user.profile?.kyc_status || user.profile?.kycStatus) === 'VERIFIED' ? 'bg-green-100 text-green-700' :
+=======
+                                            {role.includes(',') && (
+                                                <td className="px-6 py-4">
+                                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase bg-primary/10 text-primary border border-primary/20">
+                                                        {(user.role || '').replace(/_/g, ' ')}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-semibold uppercase ${(user.profile?.kyc_status || user.profile?.kycStatus) === 'VERIFIED' ? 'bg-green-100 text-green-700' :
+>>>>>>> 4904358ae4066c75a1801e49067020617a81b207
                                                     (user.profile?.kyc_status || user.profile?.kycStatus) === 'REJECTED' ? 'bg-red-100 text-red-700' :
                                                         'bg-yellow-100 text-yellow-700'
                                                     }`}>
@@ -448,8 +492,13 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                 <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3 sm:mb-4">
                                     <Icon icon="hugeicons:album-not-found-01" width="24" height="24" className="sm:w-8 sm:h-8 text-gray-400" />
                                 </div>
+<<<<<<< HEAD
                                 <h3 className="text-sm sm:text-lg font-medium text-gray-900 mb-1">No {role.toLowerCase()}s found</h3>
                                 <p className="text-xs sm:text-sm text-gray-500 text-center">Try adjusting your search or create a new {role.toLowerCase()}</p>
+=======
+                                <h3 className="text-lg font-medium text-gray-900 mb-1">No users found</h3>
+                                <p className="text-sm text-gray-500">Try adjusting your search or create a new user</p>
+>>>>>>> 4904358ae4066c75a1801e49067020617a81b207
                             </div>
                         )}
                     </div>
@@ -599,6 +648,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                     </div>
                                 </div>
 
+<<<<<<< HEAD
                                 <div className="space-y-1.5 sm:space-y-2">
                                     <label className="text-xs sm:text-sm font-semibold text-gray-700 ml-1">Default Role</label>
                                     <div className="relative group opacity-80">
@@ -610,6 +660,30 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                             value={role}
                                             disabled
                                         />
+=======
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Role</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors pointer-events-none">
+                                            <Icon icon="mdi:shield-account" width="18" />
+                                        </div>
+                                        <select
+                                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-200 appearance-none"
+                                            value={createForm.role}
+                                            onChange={e => setCreateForm({ ...createForm, role: e.target.value })}
+                                        >
+                                            {assignableRoles.length > 0 ? (
+                                                assignableRoles.map((r: string) => (
+                                                    <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>
+                                                ))
+                                            ) : (
+                                                <option value={defaultRole}>{defaultRole.replace(/_/g, ' ')}</option>
+                                            )}
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <Icon icon="mdi:chevron-down" width="18" />
+                                        </div>
+>>>>>>> 4904358ae4066c75a1801e49067020617a81b207
                                     </div>
                                 </div>
 
