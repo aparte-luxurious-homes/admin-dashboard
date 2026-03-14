@@ -504,7 +504,7 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalProperties?.percentageChange) > 0}
                 />
               </Grid>
-              {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && (
+              {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" || user?.role === "ANALYST") && (
                 <Grid size={{ xs: 12 }}>
                   <GatewayBalancesCard
                     paystack={balances.paystack || { isAvailable: false, error: "No data" }}
@@ -517,7 +517,7 @@ const Home = () => {
                 <div className={`p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md ${stats?.properties?.length === 0 && "flex items-center justify-center"}`}>
                   {isStatLoading ? (
                     <Skeleton className="h-[200px] w-full rounded-md" />
-                  ) : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") ? (
+                  ) : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" || user?.role === "ANALYST") ? (
                     stats?.properties?.length > 0 ? (
                       <div>
                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-1 mb-1">
@@ -588,7 +588,7 @@ const Home = () => {
               </Grid>
             </Grid>
           </Grid>
-          {user?.role === "OWNER" || user?.role === "ADMIN" ? (
+          {user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" ? (
             <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }}>
               <div className="h-full p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                 <h3>Top Performing Agents</h3>
@@ -615,7 +615,10 @@ const Home = () => {
             </div>
             {searchResult?.length > 0 ? (
               <Table
-                columns={user?.role === "OWNER" ? propertyColumns : user?.role === "ADMIN" ? adminColumns : anAgentColumns}
+                columns={user?.role === "OWNER" ? propertyColumns
+                  : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" || user?.role === "SUPPORT_ADMIN" || user?.role === "ANALYST") ? adminColumns
+                  : user?.role === "AGENT" ? anAgentColumns
+                  : propertyColumns}
                 rows={searchResult}
                 getRowId={(row) => row?.id}
                 pagination={false}

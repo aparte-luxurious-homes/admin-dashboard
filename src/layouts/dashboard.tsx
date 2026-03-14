@@ -29,7 +29,8 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "?";
-  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN
+    || user?.role === UserRole.OPERATIONS_ADMIN || user?.role === UserRole.ANALYST;
   const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances(isAdmin);
 
   // Handle click to navigate
