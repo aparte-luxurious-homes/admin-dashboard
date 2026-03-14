@@ -56,6 +56,13 @@ export function ApproveWithdrawal() {
     });
 }
 
+export function VerifyPayoutAccount() {
+    return useMutation({
+        mutationFn: ({ walletId, accountId }: { walletId: string; accountId: string }) =>
+            axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(walletId, accountId)),
+    });
+}
+
 export interface RejectWithdrawalPayload {
     transaction_id: string;
     reason?: string;
