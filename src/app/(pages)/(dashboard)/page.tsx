@@ -465,7 +465,7 @@ const Home = () => {
   ];
 
   return (
-    <div className="full py-6">
+    <div className="full p-6">
       <div className="mb-6">
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
