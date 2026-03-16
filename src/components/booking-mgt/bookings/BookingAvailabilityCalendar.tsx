@@ -61,32 +61,46 @@ export default function BookingAvailabilityCalendar({
     };
 
     const handleDateClick = (date: Date) => {
-        if (isDateDisabled(date)) return;
+    if (isDateDisabled(date)) return;
 
-        if (!checkInDate || (checkInDate && checkOutDate)) {
-            // Start new selection
-            onCheckInDateSelect(date);
-            onCheckOutDateSelect(null);
-        } else {
-            // Complete selection
-            if (isBefore(date, checkInDate)) {
-                // If clicked date is before check-in, treat as new check-in
-                onCheckInDateSelect(date);
-                onCheckOutDateSelect(null);
-            } else {
-                // Validate range availability
-                const daysInterval = eachDayOfInterval({ start: checkInDate, end: date });
-                const isRangeAvailable = daysInterval.every(d => !isDateDisabled(d));
+    // No dates selected - set check-in
+    if (!checkInDate) {
+        onCheckInDateSelect(date);
+        onCheckOutDateSelect(null);
+        return;
+    }
 
-                if (!isRangeAvailable) {
-                    toast.error("Some dates in this range are unavailable");
-                    return;
-                }
-
-                onCheckOutDateSelect(date);
-                if (isMobileView) setShowCalendar(false); // Close drawer on selection complete
-            }
+    // If Only check-in selected - set check-out
+    if (checkInDate && !checkOutDate) {
+        // If clicked date is before check-in, swap them (new check-in, clear check-out)
+        if (isBefore(date, checkInDate)) {
+        onCheckInDateSelect(date);
+        onCheckOutDateSelect(null);
+        return;
         }
+        
+        // Validate range availability
+        const daysInterval = eachDayOfInterval({ start: checkInDate, end: date });
+        const isRangeAvailable = daysInterval.every(d => !isDateDisabled(d));
+
+        if (!isRangeAvailable) {
+        toast.error("Some dates in this range are unavailable");
+        return;
+        }
+
+        onCheckOutDateSelect(date);
+        if (isMobileView) setShowCalendar(false);
+        return;
+    }
+
+    // Both dates selected - user wants to change check-in
+    if (checkInDate && checkOutDate) {
+        // If clicked date is after current check-in, treat as new check-in and clear check-out
+        // This allows user to select a new check-in date
+        onCheckInDateSelect(date);
+        onCheckOutDateSelect(null);
+        return;
+    }
     };
 
     // Navigate months
