@@ -31,19 +31,6 @@ import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
 import { HiOutlineCloudUpload } from "react-icons/hi";
 import { MdOutlinePayments } from "react-icons/md";
 
-interface ApiError {
-    response?: {
-        data?: {
-            detail?: string;
-            message?: string;
-            [key: string]: any;
-        };
-        status?: number;
-        statusText?: string;
-    };
-    message?: string;
-}
-
 export default function CreateBookingView() {
     const router = useRouter();
     const { user } = useAuth();
