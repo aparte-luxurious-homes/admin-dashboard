@@ -215,7 +215,7 @@ const GuestInfo = () => {
                       gender: userInfo?.profile?.gender || "",
                       role: typeof userInfo?.role === 'string' ? userInfo.role : (userInfo?.role?.value || ""),
                       bio: userInfo?.profile?.bio || "",
-                      isActive: userInfo?.is_active ?? userInfo?.isActive ?? true,
+                      is_active: userInfo?.is_active ?? true,
                       isVerified: userInfo?.is_verified ?? userInfo?.isVerified ?? false,
                     }}
                     showRoleSelector={true}

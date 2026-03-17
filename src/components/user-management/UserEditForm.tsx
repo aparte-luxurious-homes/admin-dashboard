@@ -13,7 +13,7 @@ interface UserEditFormProps {
         gender?: string;
         role?: string;
         bio?: string;
-        isActive?: boolean;
+        is_active?: boolean;
         isVerified?: boolean;
     };
     onSave: (data: any) => void;
@@ -46,7 +46,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         gender: (initialData.gender || '').toLowerCase(),
         role: initialData.role || '',
         bio: initialData.bio || '',
-        isActive: initialData.isActive ?? true,
+        is_active: initialData.is_active ?? true,
         isVerified: initialData.isVerified ?? false,
     });
 
@@ -59,7 +59,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
             gender: (initialData.gender || '').toLowerCase(),
             role: initialData.role || '',
             bio: initialData.bio || '',
-            isActive: initialData.isActive ?? true,
+            is_active: initialData.is_active ?? true,
             isVerified: initialData.isVerified ?? false,
         });
     }, [initialData]);
@@ -222,7 +222,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                             <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between group hover:border-primary/20 transition-all duration-200">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                                        <Icon icon="mdi:account-check-outline" width="20" className={formData.isActive ? "text-green-500" : "text-gray-400"} />
+                                        <Icon icon="mdi:account-check-outline" width="20" className={formData.is_active ? "text-green-500" : "text-gray-400"} />
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold text-gray-900">Active Account</p>
@@ -230,10 +230,10 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => handleChange('isActive', !formData.isActive)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.isActive ? 'bg-primary' : 'bg-gray-200'}`}
+                                    onClick={() => handleChange('is_active', !formData.is_active)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.is_active ? 'bg-primary' : 'bg-gray-200'}`}
                                 >
-                                    <span className={`${formData.isActive ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                                    <span className={`${formData.is_active ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
                                 </button>
                             </div>
 

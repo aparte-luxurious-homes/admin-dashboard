@@ -47,7 +47,6 @@ interface User {
   last_name?: string | null;
   profileImage?: string | null;
   profile_image?: string | null;
-  isActive?: boolean;
   is_active?: boolean;
   isVerified?: boolean;
   is_verified?: boolean;
@@ -131,7 +130,7 @@ const AdminInfo = () => {
                       gender: userInfo?.profile?.gender || "",
                       role: typeof userInfo?.role === "string" ? userInfo.role : "",
                       bio: userInfo?.profile?.bio || "",
-                      isActive: userInfo?.is_active ?? userInfo?.isActive ?? true,
+                      is_active: userInfo?.is_active ?? userInfo?.is_active ?? true,
                       isVerified: userInfo?.is_verified ?? userInfo?.isVerified ?? false,
                     }}
                     showRoleSelector={true}
@@ -146,7 +145,7 @@ const AdminInfo = () => {
                             email: formData.email,
                             phone: formData.phone,
                             role: formData.role,
-                            isActive: formData.isActive,
+                            is_active: formData.is_active,
                             isVerified: formData.isVerified,
                             profile: {
                               first_name: formData.firstName,
@@ -254,7 +253,7 @@ const AdminInfo = () => {
                         </div>
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Account Active</p>
-                          <Badge status={userInfo?.is_active ?? userInfo?.isActive ?? false} />
+                          <Badge status={userInfo?.is_active ?? userInfo?.is_active ?? false} />
                         </div>
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Verified Identity</p>
