@@ -345,7 +345,7 @@ const AgentInfo = () => {
 
   return (
     <>
-      <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
+      <div className="p-[20px] mr-5 ml-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
         <BreadCrumb
           description=""
           active="Agent info"

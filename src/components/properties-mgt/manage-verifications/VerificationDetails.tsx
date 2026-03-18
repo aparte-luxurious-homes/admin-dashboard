@@ -149,8 +149,8 @@ export default function VerificationDetails({
                                     width: 'max-content'
                                 }
                             }),
-                        onError: (error) =>
-                            toast.error('Something went wrong', {
+                        onError: (error: any) =>
+                            toast.error(error?.response?.data?.detail || 'Failed to verify property', {
                                 duration: 6000,
                                 style: {
                                     maxWidth: '500px',
@@ -187,8 +187,8 @@ export default function VerificationDetails({
                                     width: 'max-content'
                                 }
                             }),
-                        onError: () =>
-                            toast.error('Something went wrong', {
+                        onError: (error: any) =>
+                            toast.error(error?.response?.data?.detail || 'Failed to verify property', {
                                 duration: 6000,
                                 style: {
                                     maxWidth: '500px',

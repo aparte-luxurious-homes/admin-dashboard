@@ -15,6 +15,7 @@ import {
   FaMoneyBillWave,
   FaChartPie,
 } from "react-icons/fa";
+import { Icon } from "@iconify/react";
 import { useEffect, useRef, useState } from "react";
 import {
   downloadScreenAsPDF,
@@ -793,6 +794,28 @@ export default function BookingDetailView({
                         <div className="mt-3 p-2 bg-zinc-50 rounded-lg border border-zinc-100 italic text-[10px] text-zinc-500">
                           Auto-calculated and credited upon confirmation
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!bookingDetails.is_caution_refunded && (
+                    <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                      <div className="flex items-start gap-2">
+                        <Icon icon="solar:info-circle-bold-duotone" className="text-amber-500 text-lg shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-700">
+                          Caution deposit will be refunded to the guest after check-out, subject to property inspection.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {bookingDetails.is_caution_refunded && (
+                    <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-100">
+                      <div className="flex items-start gap-2">
+                        <Icon icon="solar:check-read-circle-bold-duotone" className="text-green-500 text-lg shrink-0 mt-0.5" />
+                        <p className="text-xs text-green-700">
+                          Caution deposit has been successfully refunded to the guest.
+                        </p>
                       </div>
                     </div>
                   )}
