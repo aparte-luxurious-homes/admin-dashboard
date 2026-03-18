@@ -28,6 +28,206 @@ import toast from "react-hot-toast";
 import { Icon } from "@iconify/react";
 import CustomCheckbox from "@/components/ui/customCheckbox";
 
+// Define the type for form values
+type FormValues = {
+  name: string;
+  description: string;
+  price_per_night: string;
+  max_guests: number;
+  count: number;
+  is_whole_property: boolean;
+  bedroom_count: number;
+  living_room_count: number;
+  kitchen_count: number;
+  bathroom_count: number;
+  caution_fee: string;
+  amenities: never[];
+  amenityNames: never[];
+};
+
+// Define the type for configuration fields
+type ConfigField = {
+  id: keyof Pick<FormValues, 'bedroom_count' | 'kitchen_count' | 'bathroom_count' | 'living_room_count' | 'max_guests'>;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+// Custom Number Input Component with proper typing
+const NumberInput = ({ 
+  field, 
+  value, 
+  onChange, 
+  min = 0, 
+  max = 100 
+}: { 
+  field: ConfigField;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+}) => {
+  const [displayValue, setDisplayValue] = useState(value.toString());
+
+  useEffect(() => {
+    setDisplayValue(value.toString());
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    
+    // Allow empty string while typing
+    if (rawValue === '') {
+      setDisplayValue('');
+      return;
+    }
+
+    // Remove leading zeros and any non-numeric characters
+    const cleanedValue = rawValue.replace(/^0+/, '').replace(/[^\d]/g, '') || '0';
+    
+    if (cleanedValue) {
+      const numValue = parseInt(cleanedValue, 10);
+      
+      // Apply business rules validation
+      if (!isNaN(numValue)) {
+        // Clamp value between min and max
+        const clampedValue = Math.min(Math.max(numValue, min), max);
+        setDisplayValue(clampedValue.toString());
+        onChange(clampedValue);
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    // Ensure we have a valid number on blur
+    const numValue = parseInt(displayValue, 10) || 0;
+    const clampedValue = Math.min(Math.max(numValue, min), max);
+    setDisplayValue(clampedValue.toString());
+    onChange(clampedValue);
+  };
+
+  const increment = () => {
+    const newValue = Math.min((parseInt(displayValue, 10) || 0) + 1, max);
+    setDisplayValue(newValue.toString());
+    onChange(newValue);
+  };
+
+  const decrement = () => {
+    const newValue = Math.max((parseInt(displayValue, 10) || 0) - 1, min);
+    setDisplayValue(newValue.toString());
+    onChange(newValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Prevent entering 'e', 'E', '+', '-', etc.
+    if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-' || e.key === '.') {
+      e.preventDefault();
+    }
+  };
+
+  return (
+    <div className="relative group">
+      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+        <field.icon className="text-lg" />
+      </div>
+      <input
+        id={field.id}
+        type="text"
+        inputMode="numeric"
+        pattern="\d*"
+        value={displayValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-11 pr-12 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+      />
+      
+      {/* Custom increment/decrement buttons */}
+      <div className="absolute inset-y-0 right-0 flex flex-col border-l border-zinc-200">
+        <button
+          type="button"
+          onClick={increment}
+          className="flex-1 px-2 hover:bg-zinc-100 rounded-tr-xl transition-colors text-zinc-600 hover:text-zinc-900 text-[10px]"
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          onClick={decrement}
+          className="flex-1 px-2 hover:bg-zinc-100 rounded-br-xl transition-colors text-zinc-600 hover:text-zinc-900 text-[10px] border-t border-zinc-200"
+        >
+          ▼
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Count Input Component for the total units field
+const CountInput = ({ 
+  value, 
+  onChange, 
+  min = 0, 
+  max = 100 
+}: { 
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+}) => {
+  const [displayValue, setDisplayValue] = useState(value.toString());
+
+  useEffect(() => {
+    setDisplayValue(value.toString());
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    
+    if (rawValue === '') {
+      setDisplayValue('');
+      return;
+    }
+
+    const cleanedValue = rawValue.replace(/^0+/, '').replace(/[^\d]/g, '') || '0';
+    
+    if (cleanedValue) {
+      const numValue = parseInt(cleanedValue, 10);
+      
+      if (!isNaN(numValue)) {
+        const clampedValue = Math.min(Math.max(numValue, min), max);
+        setDisplayValue(clampedValue.toString());
+        onChange(clampedValue);
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    const numValue = parseInt(displayValue, 10) || 0;
+    const clampedValue = Math.min(Math.max(numValue, min), max);
+    setDisplayValue(clampedValue.toString());
+    onChange(clampedValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-' || e.key === '.') {
+      e.preventDefault();
+    }
+  };
+
+  return (
+    <input
+      id="count"
+      type="text"
+      inputMode="numeric"
+      pattern="\d*"
+      value={displayValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+    />
+  );
+};
 
 export default function CreateUnitView({ propertyId }: { propertyId: string | number }) {
     const { user } = useAuth();
@@ -42,6 +242,16 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
     const [loadedProperty, setLoadedProperty] = useState<IProperty>()
     const router = useRouter();
+
+    // Define max values per field based on business rules
+    const maxValues = {
+      bedroom_count: 20,
+      kitchen_count: 5,
+      bathroom_count: 15,
+      living_room_count: 10,
+      max_guests: 50,
+      count: 100, // Total units available
+    };
 
     const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
         const sortedAmenities = []
@@ -64,96 +274,104 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
         setLoadedProperty(propertyData?.data?.data)
     }, [propertyData])
 
-    const formik =
-        useFormik({
-            initialValues: {
-                name: "",
-                description: "",
-                price_per_night: "",
-                max_guests: 0,
-                count: 0,
-                is_whole_property: false,
-                bedroom_count: 0,
-                living_room_count: 0,
-                kitchen_count: 0,
-                bathroom_count: 0,
-                caution_fee: "0.00",
-                amenities: [],
-                amenityNames: [],
+    const formik = useFormik<FormValues>({
+        initialValues: {
+            name: "",
+            description: "",
+            price_per_night: "",
+            max_guests: 0,
+            count: 0,
+            is_whole_property: false,
+            bedroom_count: 0,
+            living_room_count: 0,
+            kitchen_count: 0,
+            bathroom_count: 0,
+            caution_fee: "0.00",
+            amenities: [],
+            amenityNames: [],
+        },
+
+        onSubmit: (values) => {
+            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames);
+
+            const payload: ICreatePropertyUnit[] = [{
+                ...values,
+                amenities: sortedAmenities,
+                price_per_night: String(values.price_per_night),
+                caution_fee: String(values.caution_fee)
+            }]
+
+            mutate({
+                propertyId: String(propertyId),
+                payload
             },
+                {
+                    onSuccess: (response) => {
+                        const unitId = response?.data?.data[0]?.id
+                        const formData = new FormData();
 
-            onSubmit: (values) => {
-                const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames);
+                        if (unitId) {
+                            if (uploadedMedia.length > 0) {
+                                uploadedMedia?.forEach(file => {
+                                    formData.append("media_file", file);
+                                });
 
-                const payload: ICreatePropertyUnit[] = [{
-                    ...values,
-                    amenities: sortedAmenities,
-                }]
+                                formData.append("media_type", MediaType.IMAGE);
+                                formData.append("is_featured", "true");
 
-                mutate({
-                    propertyId: String(propertyId),
-                    payload
-                },
-                    {
-                        onSuccess: (response) => {
-                            const unitId = response?.data?.data[0]?.id
-                            const formData = new FormData();
-
-                            if (unitId) {
-                                if (uploadedMedia.length > 0) {
-                                    uploadedMedia?.forEach(file => {
-                                        formData.append("media_file", file);
-                                    });
-
-                                    formData.append("media_type", MediaType.IMAGE);
-                                    formData.append("is_featured", "true");
-
-                                    uploadMedia(
-                                        {
-                                            propertyId: String(propertyId),
-                                            unitId,
-                                            payload: formData,
-                                        },
-                                        {
-                                            onError: (error: any) =>
-                                                toast.error(error.status === 422 ? 'Media file(s) include Invalid format' : 'Media upload failed', {
-                                                    duration: 6000,
-                                                    style: {
-                                                        maxWidth: '500px',
-                                                        width: 'max-content'
-                                                    }
-                                                }),
-                                        }
-                                    );
-
-
-                                    toast.success('Property unit created successfully', {
-                                        duration: 6000,
-                                        style: {
-                                            maxWidth: '500px',
-                                            width: 'max-content'
-                                        }
-                                    })
-                                }
+                                uploadMedia(
+                                    {
+                                        propertyId: String(propertyId),
+                                        unitId,
+                                        payload: formData,
+                                    },
+                                    {
+                                        onError: (error: any) =>
+                                            toast.error(error.status === 422 ? 'Media file(s) include Invalid format' : 'Media upload failed', {
+                                                duration: 6000,
+                                                style: {
+                                                    maxWidth: '500px',
+                                                    width: 'max-content'
+                                                }
+                                            }),
+                                    }
+                                );
                             }
 
-                            router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(propertyId, unitId))
-                        },
-                        onError: () =>
-                            toast.error('Something went wrong', {
+                            toast.success('Property unit created successfully', {
                                 duration: 6000,
                                 style: {
                                     maxWidth: '500px',
                                     width: 'max-content'
                                 }
-                            })
-                    })
-            },
-        });
+                            });
 
+                            router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(propertyId, unitId));
+                        }
+                    },
+                    onError: () =>
+                        toast.error('Something went wrong', {
+                            duration: 6000,
+                            style: {
+                                maxWidth: '500px',
+                                width: 'max-content'
+                            }
+                        })
+                });
+        },
+    });
+
+    // Configuration fields array with proper typing
+    const configFields: ConfigField[] = [
+        { id: 'bedroom_count', label: 'Bedrooms', icon: IoBedOutline },
+        { id: 'kitchen_count', label: 'Kitchens', icon: TbToolsKitchen },
+        { id: 'bathroom_count', label: 'Bathrooms', icon: PiBathtub },
+        { id: 'living_room_count', label: 'Lounges', icon: LuSofa },
+        { id: 'max_guests', label: 'Max Guests', icon: LuUsers }
+    ];
 
     return (
-        <div className="relative">
+        <div className="relative mr-5 ml-5 mt-5">
             {/* Header section refined */}
             <div className="flex items-center justify-between mb-8">
                 <div className="space-y-1">
@@ -238,28 +456,16 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                             Unit Configuration
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-                            {[
-                                { id: 'bedroom_count', label: 'Bedrooms', icon: IoBedOutline },
-                                { id: 'kitchen_count', label: 'Kitchens', icon: TbToolsKitchen },
-                                { id: 'bathroom_count', label: 'Bathrooms', icon: PiBathtub },
-                                { id: 'living_room_count', label: 'Lounges', icon: LuSofa },
-                                { id: 'max_guests', label: 'Max Guests', icon: LuUsers }
-                            ].map((field) => (
+                            {configFields.map((field) => (
                                 <div key={field.id} className="space-y-2">
                                     <label htmlFor={field.id} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">{field.label}</label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                            <field.icon className="text-lg" />
-                                        </div>
-                                        <input
-                                            id={field.id}
-                                            type="number"
-                                            min={0}
-                                            value={formik.values[field.id as keyof typeof formik.initialValues] as any}
-                                            onChange={(e) => formik.setFieldValue(field.id, Number(e.target.value))}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-11 pr-3 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
-                                        />
-                                    </div>
+                                    <NumberInput
+                                        field={field}
+                                        value={formik.values[field.id]}
+                                        onChange={(newValue) => formik.setFieldValue(field.id, newValue)}
+                                        min={0}
+                                        max={maxValues[field.id]}
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -271,12 +477,11 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                             />
                             <div className="w-1/4 space-y-2">
                                 <label htmlFor="count" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Total Units Avail.</label>
-                                <input
-                                    id="count"
-                                    type="number"
+                                <CountInput
                                     value={formik.values.count}
-                                    onChange={(e) => formik.setFieldValue('count', Number(e.target.value))}
-                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+                                    onChange={(newValue) => formik.setFieldValue('count', newValue)}
+                                    min={0}
+                                    max={maxValues.count}
                                 />
                             </div>
                         </div>
