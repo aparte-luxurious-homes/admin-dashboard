@@ -33,6 +33,7 @@ import { format, addMonths } from "date-fns";
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: string | number, unitId: string | number }) {
     const dispatch = useDispatch();
     const { data, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
+    console.log("data", data);
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const router = useRouter();
     const pathname = usePathname();
@@ -288,8 +289,8 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                     </h3>
                                     <div className="space-y-1 sm:space-y-2 lg:space-y-3">
                                         {[
-                                            { icon: LuUsers, label: 'Capacity', value: `${propertyUnit?.maxGuests || 0} Guests` },
-                                            { icon: 'solar:dollar-minimalistic-bold-duotone', label: 'Caution Fee', value: `${formatMoney(propertyUnit?.cautionFee || 0)}` },
+                                            { icon: LuUsers, label: 'Capacity', value: `${propertyUnit?.max_guests || 0} Guests` },
+                                            { icon: 'solar:dollar-minimalistic-bold-duotone', label: 'Caution Fee', value: `${formatMoney(propertyUnit?.caution_fee || 0)}` },
                                             { icon: 'solar:box-bold-duotone', label: 'Available Inventory', value: `${propertyUnit?.count || 1} Units` }
                                         ].map((spec, i) => (
                                             <div key={i} className="flex justify-between items-center group/spec">
