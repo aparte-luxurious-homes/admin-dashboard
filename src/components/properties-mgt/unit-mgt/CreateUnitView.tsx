@@ -398,7 +398,7 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                     <StatCard icon={TbToolsKitchen} label="Kitchens" value={formik.values.kitchen_count} />
                     <StatCard icon={PiBathtub} label="Bathrooms" value={formik.values.bathroom_count} />
                     <StatCard icon={LuSofa} label="Lounges" value={formik.values.living_room_count} />
-                    <StatCard icon={LuUsers} label="Guests" value={formik.values.max_guests} suffix="pax" />
+                    <StatCard icon={LuUsers} label="Guests" value={formik.values.max_guests} suffix="" />
                 </div>
             </div>
             {showAmenityForm && (
