@@ -15,11 +15,11 @@ interface DeleteBookingDialogProps {
     onClose: () => void;
     onConfirm: (reason: string) => void;
     bookingId?: string | number;
-    propertyName?: string;
     isPending?: boolean;
     title?: string;
     description?: React.ReactNode;
     confirmText?: string;
+    propertyName?: string;
 }
 
 export default function DeleteBookingDialog({
@@ -27,10 +27,10 @@ export default function DeleteBookingDialog({
     onClose,
     onConfirm,
     bookingId,
-    propertyName,
     isPending = false,
     title = "Cancel Booking?",
     description,
+    propertyName,
     confirmText = "Cancel Booking"
 }: DeleteBookingDialogProps) {
     const [reason, setReason] = useState("");

@@ -1187,6 +1187,7 @@ export default function BookingDetailView({
               onClose={() => setShowDeleteConfirm(false)}
               bookingId={bookingDetails.id}
               isPending={isDeleting}
+              propertyName={bookingDetails.unit?.name}
               title="Delete Booking Record?"
               description={`Are you sure you want to permanently delete booking ${bookingDetails.booking_id}?`}
               confirmText="Delete Permanently"
