@@ -8,29 +8,6 @@ export const API_ROUTES = {
         resendOtp: '/auth/otp/resend',
         logout: '/auth/logout',
     },
-    admin: {
-        kyc: {
-            base: '/admin/kyc',
-            update: (docId: string | number) => `/admin/kyc/${docId}`,
-        },
-        properties: {
-            assign: (id: string | number) => `/admin/properties/${id}/assign`,
-            verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
-            feature: (id: string | number) => `/admin/properties/${id}/feature`,
-        },
-        bookings: {
-            base: '/bookings',
-            update: (id: string | number) => `/admin/bookings/${id}`,
-        },
-        auditLogs: {
-            index: '/admin/audit-logs',
-        },
-        users: {
-            base: '/admin/users',
-            userById: (id: string | number) => `/admin/users/${id}`,
-            userByUuid: (id: string | number) => `/admin/users/${id}`
-        }
-    },
     profile: {
         show: '/profile',
         update: '/profile',
@@ -110,6 +87,59 @@ export const API_ROUTES = {
         assignToRole: (role: string, permissionId: string) => `/permissions/roles/${role}/assign/${permissionId}`,
         removeFromRole: (role: string, permissionId: string) => `/permissions/roles/${role}/remove/${permissionId}`,
         seed: '/permissions/seed',
+    },
+    reviews: {
+        base: '/reviews',
+        propertyReviews: (propertyId: string | number) => `/properties/${propertyId}/reviews`,
+        propertySummary: (propertyId: string | number) => `/properties/${propertyId}/reviews/summary`,
+    },
+    disputes: {
+        base: '/disputes',
+        myDisputes: '/disputes/my',
+        evidence: (disputeId: string | number) => `/disputes/${disputeId}/evidence`,
+    },
+    referrals: {
+        myCode: '/referrals/my-code',
+        stats: '/referrals/stats',
+        list: '/referrals/list',
+    },
+    admin: {
+        kyc: {
+            base: '/admin/kyc',
+            update: (docId: string | number) => `/admin/kyc/${docId}`,
+        },
+        properties: {
+            assign: (id: string | number) => `/admin/properties/${id}/assign`,
+            verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
+            feature: (id: string | number) => `/admin/properties/${id}/feature`,
+        },
+        bookings: {
+            base: '/bookings',
+            update: (id: string | number) => `/admin/bookings/${id}`,
+        },
+        auditLogs: {
+            index: '/admin/audit-logs',
+        },
+        users: {
+            base: '/admin/users',
+            userById: (id: string | number) => `/admin/users/${id}`,
+            userByUuid: (id: string | number) => `/admin/users/${id}`
+        },
+        reviews: {
+            base: '/admin/reviews',
+            flag: (reviewId: string | number) => `/admin/reviews/${reviewId}/flag`,
+            remove: (reviewId: string | number) => `/admin/reviews/${reviewId}`,
+        },
+        disputes: {
+            base: '/admin/disputes',
+            status: (disputeId: string | number) => `/admin/disputes/${disputeId}/status`,
+            requestEvidence: (disputeId: string | number) => `/admin/disputes/${disputeId}/request-evidence`,
+            resolve: (disputeId: string | number) => `/admin/disputes/${disputeId}/resolve`,
+            reopen: (disputeId: string | number) => `/admin/disputes/${disputeId}/reopen`,
+        },
+        referrals: {
+            base: '/admin/referrals',
+        }
     },
 };
 
