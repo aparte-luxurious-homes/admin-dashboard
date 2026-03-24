@@ -17,25 +17,27 @@ export default makeStyles(() => ({
   },
   bg: {
     color: ({ status }: { status: string | boolean }) => {
-        return(
-            status === "rejected" ? "#FF0000" : 
-            status === false ? "#FF0000" : 
-            status === "verified" ? "#028090": 
-            status === "successful" ? "#028090": 
-            status === true ? "#028090": 
-            status === "pending" ? "#FFAE00" : "#667185"
-        );
+      return (
+        status === "rejected" ? "#FF0000" :
+          status === false ? "#FF0000" :
+            status === "verified" ? "#028090" :
+              status === "successful" ? "#028090" :
+                status === true ? "#028090" :
+                  status === "pending" ? "#FFAE00" :
+                    status === "pending_approval" ? "#F3A218" : "#667185"
+      );
     },
     backgroundColor: ({ status }: { status: string | boolean }) => {
-        return (
-            status === true ? tinycolor("#028090").lighten(65).toHexString() :
-            status === false  ? tinycolor("#FF0000").lighten(45).toHexString() : 
+      return (
+        status === true ? tinycolor("#028090").lighten(65).toHexString() :
+          status === false ? tinycolor("#FF0000").lighten(45).toHexString() :
             status === "pending" ? tinycolor("#FFAE00").lighten(45).toHexString() :
-            status === "verified" ? tinycolor("#028090").lighten(65).toHexString() :
-            status === "successful" ? tinycolor("#028090").lighten(65).toHexString() :
-            status === "rejected" ? tinycolor("#FF0000").lighten(45).toHexString() : 
-            tinycolor("#667185").lighten(45).toHexString()
-        );
+              status === "verified" ? tinycolor("#028090").lighten(65).toHexString() :
+                status === "successful" ? tinycolor("#028090").lighten(65).toHexString() :
+                  status === "pending_approval" ? tinycolor("#F3A218").lighten(40).toHexString() :
+                    status === "rejected" ? tinycolor("#FF0000").lighten(45).toHexString() :
+                      tinycolor("#667185").lighten(45).toHexString()
+      );
     }
   }
 }));

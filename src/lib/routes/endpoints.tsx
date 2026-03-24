@@ -8,6 +8,51 @@ export const API_ROUTES = {
         resendOtp: '/auth/otp/resend',
         logout: '/auth/logout',
     },
+    admin: {
+        kyc: {
+            base: '/admin/kyc',
+            update: (docId: string | number) => `/admin/kyc/${docId}`,
+        },
+        properties: {
+            assign: (id: string | number) => `/admin/properties/${id}/assign`,
+            verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
+            feature: (id: string | number) => `/admin/properties/${id}/feature`,
+        },
+        bookings: {
+            base: '/bookings',
+            update: (id: string | number) => `/admin/bookings/${id}`,
+        },
+        auditLogs: {
+            index: '/admin/audit-logs',
+        },
+        users: {
+            base: '/admin/users',
+            onboard: '/admin/users/onboard',
+            userById: (id: string | number) => `/admin/users/${id}`,
+            userByUuid: (id: string | number) => `/admin/users/${id}`,
+            updateKyc: (id: string | number) => `/admin/users/${id}/kyc`,
+            roles: '/admin/users/roles',
+        },
+        integrations: {
+            configs: '/admin/integrations/configs',
+            configByKey: (key: string) => `/admin/integrations/configs/${key}`,
+        },
+        reviews: {
+            base: '/admin/reviews',
+            flag: (reviewId: string | number) => `/admin/reviews/${reviewId}/flag`,
+            remove: (reviewId: string | number) => `/admin/reviews/${reviewId}`,
+        },
+        disputes: {
+            base: '/admin/disputes',
+            status: (disputeId: string | number) => `/admin/disputes/${disputeId}/status`,
+            requestEvidence: (disputeId: string | number) => `/admin/disputes/${disputeId}/request-evidence`,
+            resolve: (disputeId: string | number) => `/admin/disputes/${disputeId}/resolve`,
+            reopen: (disputeId: string | number) => `/admin/disputes/${disputeId}/reopen`,
+        },
+        referrals: {
+            base: '/admin/referrals',
+        }
+    },
     profile: {
         show: '/profile',
         update: '/profile',
@@ -32,11 +77,12 @@ export const API_ROUTES = {
                 amenities: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/amenities`,
                 media: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/media`,
                 availability: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/availability`,
+                deleteMedia: (propertyId: string | number, unitId: string | number, mediaId: string | number) => `/properties/${propertyId}/units/${unitId}/media/${mediaId}`,
             },
-            // verifications: {
-            //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
-            //     details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
-            // }
+            deleteMedia: (propertyId: string | number, mediaId: string | number) => `/properties/${propertyId}/media/${mediaId}`,
+            documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
+            verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
+            bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
         },
         amenities: {
             base: '/amenities',
@@ -51,12 +97,17 @@ export const API_ROUTES = {
         details: (id: string) => `/bookings/${id}`,
         status: (id: string | number) => `/bookings/${id}/status`,
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
+        approveRequest: (id: string | number) => `/bookings/${id}/approve-request`,
+        rejectRequest: (id: string | number) => `/bookings/${id}/reject-request`,
     },
     wallet: {
         base: '/wallets',
         details: (id: string) => `/wallets/${id}`,
+        update: (id: string) => `/wallets/${id}`,
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
-        validateWithdrawal: (id: string | number) => `/wallets/${id}/validate-withdrawal`,
+        approveWithdrawal: (id: string | number) => `/wallets/${id}/approve-withdrawal`,
+        rejectWithdrawal: (id: string | number) => `/wallets/${id}/reject-withdrawal`,
+        pendingWithdrawals: '/wallets/pending-withdrawals',
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,
             details: (walletId: string, transactionId: string) => `/wallets/${walletId}/transactions/${transactionId}`,
@@ -74,11 +125,13 @@ export const API_ROUTES = {
         validate: (paymentId: string) => `/wallets/payments/${paymentId}/validate`,
     },
     statistic: {
-        base: '/stats'
+        base: '/stats',
+        gatewayBalances: '/stats/gateway-balances',
     },
     transactions: {
         base: '/wallets/transactions',
-        details: (transactionId: string) => `/wallets/transactions/${transactionId}`
+        details: (transactionId: string) => `/wallets/transactions/${transactionId}`,
+        approveRefund: (transactionId: string) => `/wallets/transactions/${transactionId}/approve-refund`
     },
     permissions: {
         base: '/permissions',
@@ -102,44 +155,6 @@ export const API_ROUTES = {
         myCode: '/referrals/my-code',
         stats: '/referrals/stats',
         list: '/referrals/list',
-    },
-    admin: {
-        kyc: {
-            base: '/admin/kyc',
-            update: (docId: string | number) => `/admin/kyc/${docId}`,
-        },
-        properties: {
-            assign: (id: string | number) => `/admin/properties/${id}/assign`,
-            verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
-            feature: (id: string | number) => `/admin/properties/${id}/feature`,
-        },
-        bookings: {
-            base: '/bookings',
-            update: (id: string | number) => `/admin/bookings/${id}`,
-        },
-        auditLogs: {
-            index: '/admin/audit-logs',
-        },
-        users: {
-            base: '/admin/users',
-            userById: (id: string | number) => `/admin/users/${id}`,
-            userByUuid: (id: string | number) => `/admin/users/${id}`
-        },
-        reviews: {
-            base: '/admin/reviews',
-            flag: (reviewId: string | number) => `/admin/reviews/${reviewId}/flag`,
-            remove: (reviewId: string | number) => `/admin/reviews/${reviewId}`,
-        },
-        disputes: {
-            base: '/admin/disputes',
-            status: (disputeId: string | number) => `/admin/disputes/${disputeId}/status`,
-            requestEvidence: (disputeId: string | number) => `/admin/disputes/${disputeId}/request-evidence`,
-            resolve: (disputeId: string | number) => `/admin/disputes/${disputeId}/resolve`,
-            reopen: (disputeId: string | number) => `/admin/disputes/${disputeId}/reopen`,
-        },
-        referrals: {
-            base: '/admin/referrals',
-        }
     },
 };
 

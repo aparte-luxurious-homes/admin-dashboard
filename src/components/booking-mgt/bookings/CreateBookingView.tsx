@@ -9,6 +9,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import { GetAllProperties, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { GetUnitAvailability } from "@/src/lib/request-handlers/unitMgt";
 import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
 import { useEffect, useState, useMemo } from "react";
 import { IProperty, IPropertyUnit, PropertyType } from "../../properties-mgt/types";
@@ -45,7 +46,7 @@ export default function CreateBookingView() {
 
     // Queries
     const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm);
-    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
+    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm, UserRole.GUEST)
     const { mutate, isPending } = CreateBooking();
     const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
 
@@ -58,10 +59,20 @@ export default function CreateBookingView() {
     const [selectedProperty, setSeletedProperty] = useState<IProperty | any | null>(null)
     const [selectedUnit, setSeletedUnit] = useState<IPropertyUnit | null>(null)
     const [selectedUser, setSeletedUser] = useState<IUser | null>(null)
+    const [isNewGuest, setIsNewGuest] = useState<boolean>(false)
 
     // Fetch full property details to get units
     const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } = GetSingleProperty(selectedProperty?.id);
     const fullPropertyDetails = singlePropertyData?.data?.data;
+
+    // Fetch live availability for selected unit (accounts for active bookings occupancy)
+    const { data: liveAvailabilityData, isLoading: isLoadingAvailability } = GetUnitAvailability(
+        selectedProperty?.id || '',
+        selectedUnit?.id || '',
+        undefined,
+        undefined,
+        !!selectedProperty?.id && !!selectedUnit?.id
+    );
 
     const formik = useFormik({
         initialValues: {
@@ -70,27 +81,76 @@ export default function CreateBookingView() {
             start_date: null,
             end_date: null,
             guests_count: 1,
-            unit_count: 0,
+            unit_count: 1,
             total_price: 0,
             payment_method: 'cash',
             payment_proof_url: '',
             payment_notes: '',
             mark_as_paid: false,
+            // Onboarding fields
+            guest_first_name: '',
+            guest_last_name: '',
+            guest_email: '',
+            guest_phone: '',
         },
         onSubmit: async (values) => {
+                if (!selectedProperty) {
+        toast.error('Please select a property');
+        return;
+        }
+    
+        if (!selectedUnit) {
+            toast.error('Please select a unit');
+            return;
+        }
+        
+        if (!values.start_date) {
+            toast.error('Please select a check-in date');
+            return;
+        }
+        
+        if (!values.end_date) {
+            toast.error('Please select a check-out date');
+            return;
+        }
+        
+        if (!isNewGuest && !selectedUser) {
+            toast.error('Please select a guest');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_email) {
+            toast.error('Guest email is required for new guests');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_first_name) {
+            toast.error('Guest first name is required for new guests');
+            return;
+        }
+        
+        if (isNewGuest && !values.guest_last_name) {
+            toast.error('Guest last name is required for new guests');
+            return;
+        }
+        
             // Validation: proof is mandatory for bank transfer if marking as paid
             if (values.mark_as_paid && values.payment_method === 'bank_transfer' && !values.payment_proof_url) {
                 toast.error('Proof of payment is mandatory for bank transfers');
                 return;
             }
 
+            const payload = {
+                ...values,
+                start_date: formatDateToYYYYMMDD(values.start_date!),
+                end_date: formatDateToYYYYMMDD(values.end_date!),
+                // Ensure user_id is null if we are creating a new guest
+                user_id: isNewGuest ? null : values.user_id
+            };
+
             mutate(
                 {
-                    payload: {
-                        ...values,
-                        start_date: formatDateToYYYYMMDD(values.start_date!),
-                        end_date: formatDateToYYYYMMDD(values.end_date!)
-                    },
+                    payload: payload as any,
                 },
                 {
                     onSuccess: (values) => {
@@ -106,18 +166,20 @@ export default function CreateBookingView() {
                             router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(values?.data?.data?.id))
                         }
                     },
-                    onError: () =>
-                        toast.error('Something went wrong', {
+                    onError: (error: any) => {
+                        toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Something went wrong', {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
                                 width: 'max-content'
                             }
-                        }),
+                        });
+                    }
                 }
             )
         }
     })
+    console.log('DEBUG: Formik Values:', formik.values);
 
     const handlePropertySelection = (name: string) => {
         const filteredProperties = properties?.filter(el => {
@@ -139,6 +201,7 @@ export default function CreateBookingView() {
             console.log('DEBUG: Unit Availability:', unit.availability);
             setSeletedUnit(unit);
             formik.setFieldValue('unit_id', unit.id);
+            formik.setFieldValue('unit_count', 1);
         }
     }
 
@@ -169,43 +232,54 @@ export default function CreateBookingView() {
 
     // Effect to calculate price
     useEffect(() => {
-        const days = getDayDifference(values.start_date as any, values.end_date as any)
+        // Only calculate if we have both dates and a selected unit
+        if (values.start_date && values.end_date && selectedUnit) {
+            const days = getDayDifference(values.start_date as any, values.end_date as any)
+            
+            // Ensure days is a positive number
+            if (days > 0) {
+                // Robust access to price and caution fee
+                const pricePerNight = Number(selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0);
+                const cautionFee = Number(selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0);
 
-        // Robust access to price and caution fee
-        const pricePerNight = Number(selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0);
-        const cautionFee = Number(selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0);
-
-        const firstPrice = days * (values.unit_count || 0) * pricePerNight;
-        const grandPrice = firstPrice + cautionFee;
-        setFieldValue('total_price', grandPrice)
+                const firstPrice = days * (values.unit_count || 1) * pricePerNight;
+                const grandPrice = firstPrice + cautionFee;
+                
+                // Only update if the price has changed to avoid unnecessary re-renders
+                if (grandPrice !== values.total_price) {
+                    setFieldValue('total_price', grandPrice);
+                }
+            }
+        } else {
+            // Reset total price if dates are missing
+            setFieldValue('total_price', 0);
+        }
 
     }, [
-        values.unit_count,
         values.start_date,
         values.end_date,
-        selectedUnit, // simplified dependency
+        values.unit_count,
+        selectedUnit,
         setFieldValue,
+        values.total_price // Add this to compare
     ])
 
-    // Memoize blocked dates calculation to ensure re-render when unit_count changes
+    // Memoize blocked dates from live availability (accounts for active bookings occupancy)
     const blockedDates = useMemo(() => {
-        if (!selectedUnit?.availability) return [];
+        const availability = liveAvailabilityData?.data?.data;
+        if (!availability) return [];
 
         const requestedUnits = Number(formik.values.unit_count || 1);
 
-        return selectedUnit.availability
+        return availability
             .filter((el: any) => {
-                const isBlackout = el?.is_blackout ?? el?.isBlackout ?? false;
-                const count = Number(el?.count ?? 0);
-
-                // Block if:
-                // 1. Explicitly blacked out
-                // 2. Remaining count is 0 or less
-                // 3. Remaining count is less than requested units
-                return isBlackout || count <= 0 || count < requestedUnits;
+                const isBlackout = el?.is_blackout ?? false;
+                // count is remaining capacity after active bookings
+                const remaining = Number(el?.count ?? 0);
+                return isBlackout || remaining < requestedUnits;
             })
             .map((el: any) => ({ date: el?.date }));
-    }, [selectedUnit?.availability, formik.values.unit_count]);
+    }, [liveAvailabilityData, formik.values.unit_count]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -343,75 +417,158 @@ export default function CreateBookingView() {
                                 Guest & Stay
                             </h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-zinc-700">Select Guest</label>
-                                    <AdjustableFilterDropdown
-                                        placeholder="Search by name or email..."
-                                        options={userList?.data?.data?.data?.map((user: any) => user.email).filter(Boolean) ?? []}
-                                        handleSelection={(val) => {
-                                            const selected = userList?.data?.data?.data?.find((user: any) => user.email === val);
-                                            setUserSearchTerm(val);
-                                            setSeletedUser(selected);
-                                            formik.setFieldValue('user_id', selected?.id);
-                                        }}
-                                        searchTerm={userSearchTerm}
-                                        setSearchTerm={setUserSearchTerm}
-                                        isLoading={usersLoading}
-                                    />
-                                    {selectedUser && (
-                                        <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-medium border border-zinc-200">
-                                                {selectedUser.profile?.firstName?.[0] ?? 'G'}{selectedUser.profile?.lastName?.[0] ?? ''}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-zinc-900">{selectedUser.profile?.firstName ?? 'Guest'} {selectedUser.profile?.lastName ?? ''}</p>
-                                                <p className="text-xs text-zinc-500">{selectedUser.email}</p>
-                                            </div>
-                                            <button type="button" onClick={() => router.push(PAGE_ROUTES.dashboard.userManagement.guests.details(selectedUser.id))} className="ml-auto text-xs font-medium text-primary underline hover:text-primary/80">View Profile</button>
-                                        </div>
-                                    )}
+                            <div className="mb-8">
+                                <div className="flex items-center gap-2 mb-4 p-1 bg-zinc-100 rounded-lg w-fit">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsNewGuest(false)}
+                                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${!isNewGuest ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                    >
+                                        Existing Guest
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsNewGuest(true)}
+                                        className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${isNewGuest ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                    >
+                                        New Guest Onboarding
+                                    </button>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {!isNewGuest ? (
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-zinc-700">Guests</label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    disabled={!selectedUnit}
-                                                    max={selectedUnit?.maxGuests ?? selectedUnit?.max_guests ?? 10}
-                                                    className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
-                                                    value={formik.values.guests_count}
-                                                    onChange={(e) => {
-                                                        const val = Number(e.target.value);
-                                                        const max = selectedUnit?.maxGuests ?? selectedUnit?.max_guests ?? 10;
-                                                        if (val <= max) {
-                                                            formik.setFieldValue('guests_count', val);
-                                                        } else {
-                                                            toast.error(`Max guests for this unit is ${max}`);
-                                                            formik.setFieldValue('guests_count', max);
-                                                        }
-                                                    }}
-                                                />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">People</span>
+                                            <label className="text-sm font-medium text-zinc-700">Select Guest</label>
+                                            <AdjustableFilterDropdown
+                                                placeholder="Search by name, email or phone..."
+                                                options={userList?.data?.data?.data?.map((user: any) => {
+                                                    const name = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ');
+                                                    return [name, user.email, user.phone].filter(Boolean).join(' | ');
+                                                }).filter(Boolean) ?? []}
+                                                handleSelection={(val) => {
+                                                    const segments = val.split(' | ');
+                                                    const email = segments.length >= 2 ? segments[1] : segments[0];
+                                                    const selected = userList?.data?.data?.data?.find((user: any) => user.email === email);
+                                                    setUserSearchTerm(val);
+                                                    setSeletedUser(selected);
+                                                    formik.setFieldValue('user_id', selected?.id);
+                                                }}
+                                                searchTerm={userSearchTerm}
+                                                setSearchTerm={setUserSearchTerm}
+                                                isLoading={usersLoading}
+                                            />
+                                            {selectedUser && (
+                                                <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-medium border border-zinc-200">
+                                                        {selectedUser.profile?.firstName?.[0] ?? 'G'}{selectedUser.profile?.lastName?.[0] ?? ''}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-zinc-900">{selectedUser.profile?.firstName ?? 'Guest'} {selectedUser.profile?.lastName ?? ''}</p>
+                                                        <p className="text-xs text-zinc-500">{selectedUser.email}</p>
+                                                        {selectedUser.phone && (
+                                                            <p className="text-xs text-zinc-400">{selectedUser.phone}</p>
+                                                        )}
+                                                    </div>
+                                                    <button type="button" onClick={() => router.push(PAGE_ROUTES.dashboard.userManagement.guests.details(selectedUser.id))} className="ml-auto text-xs font-medium text-primary underline hover:text-primary/80">View Profile</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="col-span-1 space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-zinc-500 uppercase">First Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                                        placeholder="e.g. John"
+                                                        {...formik.getFieldProps('guest_first_name')}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-zinc-500 uppercase">Last Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                                        placeholder="e.g. Doe"
+                                                        {...formik.getFieldProps('guest_last_name')}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-zinc-500 uppercase">Email Address <span className="text-red-500">*</span></label>
+                                                    <input
+                                                        type="email"
+                                                        className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                                        placeholder="guest@example.com"
+                                                        {...formik.getFieldProps('guest_email')}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-zinc-500 uppercase">Phone Number</label>
+                                                    <input
+                                                        type="tel"
+                                                        className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                                        placeholder="+234..."
+                                                        {...formik.getFieldProps('guest_phone')}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-zinc-700">Units</label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    disabled={!selectedUnit}
-                                                    max={selectedUnit?.count ?? 1}
-                                                    className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
-                                                    value={formik.values.unit_count}
-                                                    onChange={(e) => formik.setFieldValue('unit_count', Number(e.target.value))}
-                                                />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">Qty</span>
+                                    )}
+
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-zinc-700">Guests</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        disabled={!selectedUnit}
+                                                        max={selectedUnit?.maxGuests ?? selectedUnit?.max_guests ?? 10}
+                                                        className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
+                                                        value={formik.values.guests_count}
+                                                        onChange={(e) => {
+                                                            const val = Number(e.target.value);
+                                                            const max = selectedUnit?.maxGuests ?? selectedUnit?.max_guests ?? 10;
+                                                            if (val <= max) {
+                                                                formik.setFieldValue('guests_count', val);
+                                                            } else {
+                                                                toast.error(`Max guests for this unit is ${max}`);
+                                                                formik.setFieldValue('guests_count', max);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">People</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-zinc-700">Units</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        disabled={!selectedUnit}
+                                                        max={selectedUnit?.count ?? 1}
+                                                        className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
+                                                        value={formik.values.unit_count}
+                                                        onChange={(e) => {
+                                                            const val = Number(e.target.value);
+                                                            const max = selectedUnit?.count ?? 1;
+                                                            if (val < 1) {
+                                                                formik.setFieldValue('unit_count', 1);
+                                                            } else if (val > max) {
+                                                                toast.error(`Only ${max} units available`);
+                                                                formik.setFieldValue('unit_count', max);
+                                                            } else {
+                                                                formik.setFieldValue('unit_count', val);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">Qty</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -419,7 +576,12 @@ export default function CreateBookingView() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-zinc-700">Stay Duration</label>
+                                <label className="text-sm font-medium text-zinc-700">
+                                    Stay Duration
+                                    {isLoadingAvailability && selectedUnit && (
+                                        <span className="ml-2 text-xs text-zinc-400 font-normal">Loading availability...</span>
+                                    )}
+                                </label>
                                 <BookingAvailabilityCalendar
                                     checkInDate={formik.values.start_date}
                                     checkOutDate={formik.values.end_date}
@@ -442,6 +604,14 @@ export default function CreateBookingView() {
                             <h3 className="text-lg font-semibold text-zinc-900 mb-6 border-b border-zinc-100 pb-4">Booking Summary</h3>
 
                             <div className="space-y-4 mb-8">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-500">Guest</span>
+                                    <span className="text-zinc-900 font-medium text-right w-1/2 truncate">
+                                        {isNewGuest
+                                            ? (formik.values.guest_first_name || formik.values.guest_email || 'New Guest')
+                                            : (selectedUser?.profile?.firstName ? `${selectedUser.profile.firstName} ${selectedUser.profile.lastName || ''}` : selectedUser?.email || '-')}
+                                    </span>
+                                </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-zinc-500">Property</span>
                                     <span className="text-zinc-900 font-medium text-right w-1/2 truncate">{selectedProperty?.name || '-'}</span>
@@ -587,7 +757,7 @@ export default function CreateBookingView() {
 
                             <button
                                 onClick={() => formik.handleSubmit()}
-                                disabled={!formik.isValid || !formik.dirty || isPending || !selectedProperty || !selectedUnit || !selectedUser || !formik.values.start_date || isUploading}
+                                disabled={!formik.isValid || !formik.dirty || isPending || !selectedProperty || !selectedUnit || (!isNewGuest && !selectedUser) || (isNewGuest && !formik.values.guest_email) || !formik.values.start_date || isUploading}
                                 className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all mt-6 flex items-center justify-center gap-2"
                             >
                                 {isPending ? <Spinner /> : (
@@ -597,7 +767,7 @@ export default function CreateBookingView() {
                                     </>
                                 )}
                             </button>
-                            {(!selectedProperty || !selectedUnit || !selectedUser || !formik.values.start_date) && (
+                            {(!selectedProperty || !selectedUnit || (!isNewGuest && !selectedUser) || (isNewGuest && !formik.values.guest_email) || !formik.values.start_date) && (
                                 <p className="text-xs text-center text-zinc-400 mt-2">Complete all fields to proceed</p>
                             )}
                         </div>

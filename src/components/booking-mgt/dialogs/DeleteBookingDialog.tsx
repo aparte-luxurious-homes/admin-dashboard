@@ -54,7 +54,10 @@ export default function DeleteBookingDialog({
                         {description || (
                             <>
                                 Are you sure you want to cancel booking <strong>{bookingId}</strong>? This action cannot be undone.
-                                Unit availability will be restored, and any applicable refunds will be processed.
+                                Unit availability will be restored.{" "}
+                                <span className="text-amber-700 font-medium">
+                                    Refunds only apply to confirmed (paid) bookings — the initial 20% booking fee is always non-refundable. Guests receive up to 80% of the base booking price back to their wallet.
+                                </span>
                             </>
                         )}
                     </AlertDialogDescription>

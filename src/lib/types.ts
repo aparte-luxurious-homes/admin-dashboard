@@ -128,6 +128,7 @@ export interface IUserProfile {
   average_rating?: string;
   kycStatus: KycStatus;
   kyc_status?: KycStatus;
+  referral_code?: string | null;
   createdAt: string;
   created_at?: string;
   updatedAt?: string;

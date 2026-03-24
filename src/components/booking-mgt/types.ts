@@ -3,6 +3,7 @@ import { IPropertyUnit } from "../properties-mgt/types";
 
 
 export enum BookingStatus {
+    APPROVAL_PENDING = 'APPROVAL_PENDING',
     PENDING = 'PENDING',
     PENDING_PAYMENT = 'PENDING_PAYMENT',
     CONFIRMED = 'CONFIRMED',
@@ -57,6 +58,12 @@ export interface IBooking {
     caution_fee?: number
     isCautionRefunded?: boolean
     is_caution_refunded?: boolean
+    cautionRefundNotes?: string
+    caution_refund_notes?: string
+    cautionRefundActionBy?: string
+    caution_refund_action_by?: string
+    checkoutVerifiedAt?: string
+    checkout_verified_at?: string
     status: BookingStatus
     cancellationReason: string
     cancellation_reason?: string
@@ -68,9 +75,37 @@ export interface IBooking {
     updated_at?: string
     user: IUser
     unit: IPropertyUnit
+    paymentMethod?: string
+    payment_method?: string
+    paymentProofUrl?: string
+    payment_proof_url?: string
+    paymentNotes?: string
+    payment_notes?: string
+    rejectionReason?: string
+    rejection_reason?: string
+    revenueSplit?: {
+        owner_amount: number;
+        agent_amount: number;
+        platform_amount: number;
+        percentages: {
+            owner: number;
+            agent: number;
+            platform: number;
+        };
+    };
+    revenue_split?: {
+        owner_amount: number;
+        agent_amount: number;
+        platform_amount: number;
+        percentages: {
+            owner: number;
+            agent: number;
+            platform: number;
+        };
+    };
 }
 export interface ICreateBooking {
-    user_id: string | number
+    user_id?: string | number
     unit_id: string | number
     start_date: string
     end_date: string
@@ -83,6 +118,12 @@ export interface ICreateBooking {
     payment_proof_url?: string
     payment_notes?: string
     mark_as_paid?: boolean
+
+    // Quick Guest Onboarding
+    guest_first_name?: string
+    guest_last_name?: string
+    guest_email?: string
+    guest_phone?: string
 }
 
 export interface IUpdateBooking {
@@ -92,5 +133,10 @@ export interface IUpdateBooking {
     guests_count: number
     unit_count: number
     status?: BookingStatus
+    total_price?: number
+    payment_method?: string
+    payment_proof_url?: string
+    payment_notes?: string
+    mark_as_paid?: boolean
 }
 
