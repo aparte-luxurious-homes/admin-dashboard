@@ -37,6 +37,18 @@ export const useMyDisputes = () => {
   });
 };
 
+// 🔹 Fetch Dispute Details
+export const useDisputeDetails = (disputeId: string | number) => {
+  return useQuery({
+    queryKey: ["dispute-details", disputeId],
+    queryFn: async () => {
+      const response = await axiosRequest.get<IBaseResponse<IDispute>>(`${API_ROUTES.disputes.base}/${disputeId}`);
+      return response.data;
+    },
+    enabled: !!disputeId,
+  });
+};
+
 // 🔹 Raise Dispute
 export const useRaiseDispute = () => {
   const queryClient = useQueryClient();

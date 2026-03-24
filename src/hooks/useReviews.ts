@@ -17,6 +17,18 @@ export const useAdminReviews = (params?: { property_id?: string; page?: number; 
   });
 };
 
+// 🔹 Fetch Review Details
+export const useReviewDetails = (reviewId: string | number) => {
+  return useQuery({
+    queryKey: ["review-details", reviewId],
+    queryFn: async () => {
+      const response = await axiosRequest.get<IBaseResponse<IReview>>(`${API_ROUTES.reviews.base}/${reviewId}`);
+      return response.data;
+    },
+    enabled: !!reviewId,
+  });
+};
+
 // 🔹 Fetch Property Reviews (Public)
 export const usePropertyReviews = (propertyId: string | number, params?: { page?: number; size?: number }) => {
   return useQuery({
