@@ -93,7 +93,7 @@ export default function AllVerificationsTable() {
                                 refetch();
                             },
                             onError: (error: any) => {
-                                toast.error(error?.response?.data?.message || 'Failed to verify property', {
+                                toast.error(error?.response?.data?.detail || 'Failed to verify property', {
                                     duration: 6000,
                                     style: {
                                         maxWidth: '500px',

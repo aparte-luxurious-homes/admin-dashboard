@@ -152,6 +152,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 height={170}
                 width={170}
               />
+              {user?.role === "ADMIN" ? (
               <Image
                 src="/svg/admin_text.svg"
                 alt="admin"
@@ -159,6 +160,11 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 height={30}
                 width={30}
               />
+              ) : user?.role === "AGENT" ? (
+                <h3 className="absolute right-0.5 font-tt-firs-neue-trl">
+                  AGENT
+                </h3>
+              ) : null}
             </div>
           </div>
           <div

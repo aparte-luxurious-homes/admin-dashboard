@@ -259,6 +259,16 @@ export default function CreatePropertyView({ }) {
                             const formData = new FormData();
 
                             if (propertyId) {
+                                if (uploadedMedia.length < 3) {
+                                    toast.error(`Please upload at least 3 images of the property`, {
+                                        duration: 6000,
+                                        style: {
+                                            maxWidth: '500px',
+                                            width: 'max-content'
+                                        }
+                                    });
+                                    return;
+                                }
 
                                 if (uploadedMedia.length > 0) {
                                     uploadedMedia?.forEach(file => {
@@ -344,7 +354,7 @@ export default function CreatePropertyView({ }) {
 
 
     return (
-        <div className="relative">
+        <div className="relative m-5">
             {/* Header section refined */}
             <div className="flex items-center justify-between mb-8">
                 <div className="space-y-1">
@@ -673,9 +683,10 @@ export default function CreatePropertyView({ }) {
                         </h3>
                         <div className="w-full mx-auto">
                             <CustomDropzone
-                                onDrop={setUploadedMedia}
+                                onDrop={(files: File[]) => setUploadedMedia(files)}
                                 multiple
                                 previewsRef={uploadRef}
+                                minFiles={3}
                             />
                         </div>
                     </div>
