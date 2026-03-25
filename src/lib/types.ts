@@ -1,14 +1,85 @@
-import { KycStatus, UserRole } from "./enums";
+import { KycStatus, UserRole, DisputeCategory, DisputeStatus, DisputeOutcome } from "./enums";
+
+export interface IReview {
+  id: string;
+  booking_id: string;
+  property_id: string;
+  user_id: string;
+  rating: number;
+  comment: string;
+  is_flagged: boolean;
+  is_removed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IReviewSummary {
+  average_rating: number;
+  total_reviews: number;
+}
+
+export interface IDisputeEvidence {
+  media_url: string;
+  media_type: "IMAGE" | "VIDEO" | "DOCUMENT";
+}
+
+export interface IDispute {
+  id: string;
+  dispute_id: string;
+  booking_id: string;
+  raised_by: string;
+  category: DisputeCategory;
+  description: string;
+  status: DisputeStatus;
+  outcome: DisputeOutcome | null;
+  admin_notes: string | null;
+  evidence: IDisputeEvidence[];
+  logs: any[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IReferralInfo {
+  code: string;
+  link: string;
+}
+
+export interface IAgentReferralStats {
+  total_referrals: number;
+  active_referrals: number;
+  total_bookings: number;
+}
+
+export interface IReferralItem {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface IReferralRelationship {
+  id: string;
+  referrer_id: string;
+  referred_id: string;
+  created_at: string;
+}
+
 
 // Auth and Axios related interfaces
 
-export interface IResponse<T> {
-  total_count: number;
+export interface IPaginatedResponse<T> {
   status: 'success' | 'error';
   code: string;
   message: string;
-  count?: number;
-  data: T;
+  data: {
+    data: T;
+    meta: {
+      total: number;
+      [key: string]: any;
+    }
+  }
 }
 
 export interface IBaseResponse<T> {

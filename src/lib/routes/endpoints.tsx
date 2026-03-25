@@ -36,6 +36,21 @@ export const API_ROUTES = {
         integrations: {
             configs: '/admin/integrations/configs',
             configByKey: (key: string) => `/admin/integrations/configs/${key}`,
+        },
+        reviews: {
+            base: '/admin/reviews',
+            flag: (reviewId: string | number) => `/admin/reviews/${reviewId}/flag`,
+            remove: (reviewId: string | number) => `/admin/reviews/${reviewId}`,
+        },
+        disputes: {
+            base: '/admin/disputes',
+            status: (disputeId: string | number) => `/admin/disputes/${disputeId}/status`,
+            requestEvidence: (disputeId: string | number) => `/admin/disputes/${disputeId}/request-evidence`,
+            resolve: (disputeId: string | number) => `/admin/disputes/${disputeId}/resolve`,
+            reopen: (disputeId: string | number) => `/admin/disputes/${disputeId}/reopen`,
+        },
+        referrals: {
+            base: '/admin/referrals',
         }
     },
     profile: {
@@ -68,10 +83,6 @@ export const API_ROUTES = {
             documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
             verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
             bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
-            // verifications: {
-            //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
-            //     details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
-            // }
         },
         amenities: {
             base: '/amenities',
@@ -129,6 +140,21 @@ export const API_ROUTES = {
         assignToRole: (role: string, permissionId: string) => `/permissions/roles/${role}/assign/${permissionId}`,
         removeFromRole: (role: string, permissionId: string) => `/permissions/roles/${role}/remove/${permissionId}`,
         seed: '/permissions/seed',
+    },
+    reviews: {
+        base: '/reviews',
+        propertyReviews: (propertyId: string | number) => `/properties/${propertyId}/reviews`,
+        propertySummary: (propertyId: string | number) => `/properties/${propertyId}/reviews/summary`,
+    },
+    disputes: {
+        base: '/disputes',
+        myDisputes: '/disputes/my',
+        evidence: (disputeId: string | number) => `/disputes/${disputeId}/evidence`,
+    },
+    referrals: {
+        myCode: '/referrals/my-code',
+        stats: '/referrals/stats',
+        list: '/referrals/list',
     },
 };
 
