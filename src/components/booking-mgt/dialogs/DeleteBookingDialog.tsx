@@ -15,6 +15,7 @@ interface DeleteBookingDialogProps {
     onClose: () => void;
     onConfirm: (reason: string) => void;
     bookingId?: string | number;
+    propertyName?: string;
     isPending?: boolean;
     title?: string;
     description?: React.ReactNode;
@@ -26,6 +27,7 @@ export default function DeleteBookingDialog({
     onClose,
     onConfirm,
     bookingId,
+    propertyName,
     isPending = false,
     title = "Cancel Booking?",
     description,
@@ -50,16 +52,27 @@ export default function DeleteBookingDialog({
                     <AlertDialogTitle className="text-xl font-semibold text-gray-900">
                         {title}
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="text-gray-500 mt-2">
-                        {description || (
-                            <>
-                                Are you sure you want to cancel booking <strong>{bookingId}</strong>? This action cannot be undone.
-                                Unit availability will be restored.{" "}
-                                <span className="text-amber-700 font-medium">
-                                    Refunds only apply to confirmed (paid) bookings — the initial 20% booking fee is always non-refundable. Guests receive up to 80% of the base booking price back to their wallet.
-                                </span>
-                            </>
-                        )}
+                    <AlertDialogDescription asChild>
+                        <div className="text-gray-500 mt-2">
+                            {description || (
+                                <>
+                                    <p>
+                                        You are about to cancel the booking
+                                        {propertyName ? <> for <strong className="text-gray-700">{propertyName}</strong></> : bookingId ? <> <strong className="text-gray-700">{bookingId}</strong></> : null}.
+                                        This will make the unit available again.
+                                    </p>
+                                    <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                                        <p className="text-sm font-semibold text-amber-800 mb-2">Refund Details</p>
+                                        <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                                            <li>Only paid bookings qualify for a refund.</li>
+                                            <li>20% booking fee is non-refundable.</li>
+                                            <li>Guests will receive up to 80% of the base booking price in their wallet.</li>
+                                            <li>Caution fee is also immediately refunded.</li>
+                                        </ul>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
 

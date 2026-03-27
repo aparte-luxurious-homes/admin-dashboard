@@ -1157,6 +1157,7 @@ export default function BookingDetailView({
               isOpen={showCancelConfirm}
               onClose={() => setShowCancelConfirm(false)}
               bookingId={bookingDetails.id}
+              propertyName={(bookingDetails as any).property?.name || bookingDetails.unit?.property?.name}
               isPending={isDeleting}
               onConfirm={(reason) => {
                 deleteBooking(
