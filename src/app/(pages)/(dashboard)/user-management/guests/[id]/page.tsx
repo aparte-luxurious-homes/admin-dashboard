@@ -189,7 +189,7 @@ const GuestInfo = () => {
 
   return (
     <>
-      <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
+      <div className="p-[20px] mr-5 ml-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
         <BreadCrumb
           description=""
           active="Guest info"
@@ -215,7 +215,7 @@ const GuestInfo = () => {
                       gender: userInfo?.profile?.gender || "",
                       role: typeof userInfo?.role === 'string' ? userInfo.role : (userInfo?.role?.value || ""),
                       bio: userInfo?.profile?.bio || "",
-                      isActive: userInfo?.is_active ?? userInfo?.isActive ?? true,
+                      is_active: userInfo?.is_active ?? true,
                       isVerified: userInfo?.is_verified ?? userInfo?.isVerified ?? false,
                     }}
                     showRoleSelector={true}

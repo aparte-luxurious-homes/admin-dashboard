@@ -126,7 +126,7 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
             formik.setFieldValue('latitude', lat);
             formik.setFieldValue('longitude', lng);
 
-            results[0].address_components.forEach(component => {
+            results[0].address_components.forEach((component: any) => {
                 const types = component.types;
                 if (types.includes('locality')) {
                     formik.setFieldValue('city', component.long_name);
@@ -155,7 +155,7 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
             />
             {status === "OK" && (
                 <ul className="absolute z-50 w-full bg-white border border-zinc-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-auto">
-                    {data.map(({ place_id, description }) => (
+                    {(data as any[]).map(({ place_id, description }: { place_id: string, description: string }) => (
                         <li
                             key={place_id}
                             onClick={() => handleSelect(description)}
@@ -259,6 +259,16 @@ export default function CreatePropertyView({ }) {
                             const formData = new FormData();
 
                             if (propertyId) {
+                                if (uploadedMedia.length < 3) {
+                                    toast.error(`Please upload at least 3 images of the property`, {
+                                        duration: 6000,
+                                        style: {
+                                            maxWidth: '500px',
+                                            width: 'max-content'
+                                        }
+                                    });
+                                    return;
+                                }
 
                                 if (uploadedMedia.length > 0) {
                                     uploadedMedia?.forEach(file => {
@@ -344,7 +354,7 @@ export default function CreatePropertyView({ }) {
 
 
     return (
-        <div className="relative">
+        <div className="relative m-5">
             {/* Header section refined */}
             <div className="flex items-center justify-between mb-8">
                 <div className="space-y-1">
@@ -548,7 +558,7 @@ export default function CreatePropertyView({ }) {
                                                 mapContainerStyle={{ height: '100%', width: '100%' }}
                                                 center={{ lat: formik.values.latitude || 6.5244, lng: formik.values.longitude || 3.3792 }}
                                                 zoom={formik.values.latitude ? 15 : 12}
-                                                onClick={(e) => {
+                                                onClick={(e: any) => {
                                                     if (e.latLng) {
                                                         formik.setFieldValue('latitude', e.latLng.lat());
                                                         formik.setFieldValue('longitude', e.latLng.lng());
@@ -559,7 +569,7 @@ export default function CreatePropertyView({ }) {
                                                     <Marker
                                                         position={{ lat: formik.values.latitude, lng: formik.values.longitude }}
                                                         draggable={true}
-                                                        onDragEnd={(e) => {
+                                                        onDragEnd={(e: any) => {
                                                             if (e.latLng) {
                                                                 formik.setFieldValue('latitude', e.latLng.lat());
                                                                 formik.setFieldValue('longitude', e.latLng.lng());
@@ -673,9 +683,10 @@ export default function CreatePropertyView({ }) {
                         </h3>
                         <div className="w-full mx-auto">
                             <CustomDropzone
-                                onDrop={setUploadedMedia}
+                                onDrop={(files: File[]) => setUploadedMedia(files)}
                                 multiple
                                 previewsRef={uploadRef}
+                                minFiles={3}
                             />
                         </div>
                     </div>

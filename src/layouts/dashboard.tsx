@@ -152,6 +152,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 height={170}
                 width={170}
               />
+              {user?.role === "ADMIN" ? (
               <Image
                 src="/svg/admin_text.svg"
                 alt="admin"
@@ -159,6 +160,11 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 height={30}
                 width={30}
               />
+              ) : user?.role === "AGENT" ? (
+                <h3 className="absolute right-0.5 font-tt-firs-neue-trl">
+                  AGENT
+                </h3>
+              ) : null}
             </div>
           </div>
           <div
@@ -268,7 +274,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
-        <div className="px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-full flex-1 overflow-y-auto">{children}</div>
+        <div className="px-2 sm:px-1 md:px-1 py-2 sm:py-1 w-full flex-1 overflow-y-auto">{children}</div>
       </div>
 
       {/* Mobile Menu Overlay */}

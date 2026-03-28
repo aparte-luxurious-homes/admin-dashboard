@@ -1,5 +1,5 @@
 import { JSX } from "react";
-import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon } from "../../components/icons";
+import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon, RateIcon, PriceTagIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
 
@@ -115,6 +115,15 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
+        name: 'Reviews',
+        pathName: 'reviews',
+        link: PAGE_ROUTES.dashboard.reviews.base,
+        icon: <RateIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        secondary: false,
+        children: undefined,
+    },
+    {
         name: 'Financials',
         pathName: 'financials',
         link: '/financials',
@@ -167,6 +176,34 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'refunds',
                 link: PAGE_ROUTES.dashboard.transactions.refunds.base,
                 allow: [UserRole.ADMIN],
+            },
+        ]
+    },
+    {
+        name: 'Referrals',
+        pathName: 'referrals',
+        link: PAGE_ROUTES.dashboard.referrals.base,
+        icon: <PriceTagIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT],
+        secondary: true,
+        children: [
+            {
+                name: 'Overview',
+                pathName: 'referrals',
+                link: PAGE_ROUTES.dashboard.referrals.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+            },
+            {
+                name: 'My Referrals',
+                pathName: 'list',
+                link: PAGE_ROUTES.dashboard.referrals.list,
+                allow: [UserRole.AGENT],
+            },
+            {
+                name: 'Stats',
+                pathName: 'stats',
+                link: PAGE_ROUTES.dashboard.referrals.agentStats,
+                allow: [UserRole.AGENT],
             },
         ]
     },

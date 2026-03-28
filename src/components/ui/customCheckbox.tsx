@@ -17,7 +17,7 @@ export default function CustomCheckbox({ label, checked = false, disabled = fals
   };
 
   return (
-    <label className={`flex items-center gap-x-4 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+    <label className={`flex items-center gap-x-2 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
       <input
         type="checkbox"
         checked={isChecked}
@@ -26,22 +26,23 @@ export default function CustomCheckbox({ label, checked = false, disabled = fals
         className="hidden"
       />
       <div
-        className={`size-6 border-2 rounded-md flex items-center justify-center transition-all ${isChecked ? "bg-primary border-primary" : "border-gray-400"
-          }`}
+        className={`w-4 h-4 border-2 rounded flex items-center justify-center transition-all ${
+          isChecked ? "bg-primary border-primary" : "border-zinc-300 bg-white hover:border-zinc-400"
+        }`}
       >
         {isChecked && (
           <svg
-            className="size-6 text-white"
+            className="w-3 h-3 text-white"
             fill="none"
             stroke="currentColor"
-            strokeWidth="4"
+            strokeWidth="3"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         )}
       </div>
-      {label && <span className="text-gray-800 text-xl">{label}</span>}
+      {label && <span className="text-zinc-700 text-xs font-medium">{label}</span>}
     </label>
   );
 }
