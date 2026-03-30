@@ -19,12 +19,14 @@ export default makeStyles(() => ({
     color: ({ status }: { status: string | boolean }) => {
       return (
         status === "rejected" ? "#FF0000" :
-          status === false ? "#FF0000" :
-            status === "verified" ? "#028090" :
-              status === "successful" ? "#028090" :
-                status === true ? "#028090" :
-                  status === "pending" ? "#FFAE00" :
-                    status === "pending_approval" ? "#F3A218" : "#667185"
+          status === "failed" ? "#FF0000" :
+            status === false ? "#FF0000" :
+              status === "verified" ? "#028090" :
+                status === "successful" ? "#028090" :
+                  status === true ? "#028090" :
+                    status === "pending" ? "#FFAE00" :
+                      status === "pending_approval" ? "#F3A218" :
+                        status === "offline_refunded" ? "#6B7280" : "#667185"
       );
     },
     backgroundColor: ({ status }: { status: string | boolean }) => {
@@ -36,7 +38,9 @@ export default makeStyles(() => ({
                 status === "successful" ? tinycolor("#028090").lighten(65).toHexString() :
                   status === "pending_approval" ? tinycolor("#F3A218").lighten(40).toHexString() :
                     status === "rejected" ? tinycolor("#FF0000").lighten(45).toHexString() :
-                      tinycolor("#667185").lighten(45).toHexString()
+                      status === "failed" ? tinycolor("#FF0000").lighten(45).toHexString() :
+                        status === "offline_refunded" ? tinycolor("#6B7280").lighten(45).toHexString() :
+                          tinycolor("#667185").lighten(45).toHexString()
       );
     }
   }
