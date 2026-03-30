@@ -26,7 +26,8 @@ export default makeStyles(() => ({
                   status === true ? "#028090" :
                     status === "pending" ? "#FFAE00" :
                       status === "pending_approval" ? "#F3A218" :
-                        status === "offline_refunded" ? "#6B7280" : "#667185"
+                        status === "awaiting_authorization" ? "#3B82F6" :
+                          status === "offline_refunded" ? "#6B7280" : "#667185"
       );
     },
     backgroundColor: ({ status }: { status: string | boolean }) => {
@@ -37,7 +38,8 @@ export default makeStyles(() => ({
               status === "verified" ? tinycolor("#028090").lighten(65).toHexString() :
                 status === "successful" ? tinycolor("#028090").lighten(65).toHexString() :
                   status === "pending_approval" ? tinycolor("#F3A218").lighten(40).toHexString() :
-                    status === "rejected" ? tinycolor("#FF0000").lighten(45).toHexString() :
+                    status === "awaiting_authorization" ? tinycolor("#3B82F6").lighten(40).toHexString() :
+                      status === "rejected" ? tinycolor("#FF0000").lighten(45).toHexString() :
                       status === "failed" ? tinycolor("#FF0000").lighten(45).toHexString() :
                         status === "offline_refunded" ? tinycolor("#6B7280").lighten(45).toHexString() :
                           tinycolor("#667185").lighten(45).toHexString()

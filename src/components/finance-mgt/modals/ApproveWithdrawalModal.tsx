@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "../../modal/Modal";
-import { ApproveWithdrawal, VerifyPayoutAccount } from "@/src/lib/request-handlers/financeMgt";
+import { ApproveWithdrawal, VerifyPayoutAccount, AuthorizeDisbursement, ResendDisbursementOtp } from "@/src/lib/request-handlers/financeMgt";
 import { toast } from "react-hot-toast";
 
 interface ProviderMismatchInfo {
@@ -13,6 +13,8 @@ interface ProviderMismatchInfo {
     disbursement_provider: string;
 }
 
+type ModalStep = "confirm" | "mismatch" | "reverifying" | "otp";
+
 interface ApproveWithdrawalModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -22,6 +24,7 @@ interface ApproveWithdrawalModalProps {
     amount: string | number;
     currency: string;
     walletId: string;
+    initialStep?: "confirm" | "otp";
 }
 
 export function ApproveWithdrawalModal({
@@ -32,16 +35,28 @@ export function ApproveWithdrawalModal({
     email,
     amount,
     currency,
-    walletId
+    walletId,
+    initialStep = "confirm"
 }: ApproveWithdrawalModalProps) {
     const approveWithdrawal = ApproveWithdrawal();
     const verifyPayout = VerifyPayoutAccount();
+    const authorizeDisbursement = AuthorizeDisbursement();
+    const resendOtp = ResendDisbursementOtp();
     const [mismatch, setMismatch] = useState<ProviderMismatchInfo | null>(null);
-    const [step, setStep] = useState<"confirm" | "mismatch" | "reverifying">("confirm");
+    const [step, setStep] = useState<ModalStep>(initialStep);
+    const [otpValue, setOtpValue] = useState("");
+
+    useEffect(() => {
+        if (isOpen) {
+            setStep(initialStep);
+            setOtpValue("");
+        }
+    }, [isOpen, initialStep]);
 
     const handleClose = () => {
         setMismatch(null);
         setStep("confirm");
+        setOtpValue("");
         onClose();
     };
 
@@ -55,9 +70,15 @@ export function ApproveWithdrawalModal({
         approveWithdrawal.mutate(
             { walletId, payload },
             {
-                onSuccess: () => {
-                    toast.success("Withdrawal approved and payout initiated");
-                    handleClose();
+                onSuccess: (response: any) => {
+                    const data = response?.data;
+                    if (data?.requires_otp || data?.data?.status === "AWAITING_AUTHORIZATION") {
+                        setStep("otp");
+                        toast.success("OTP sent to merchant admin. Enter it to complete the disbursement.");
+                    } else {
+                        toast.success("Withdrawal approved and payout initiated");
+                        handleClose();
+                    }
                 },
                 onError: (err: any) => {
                     const detail = err?.response?.data?.detail;
@@ -86,7 +107,6 @@ export function ApproveWithdrawalModal({
             {
                 onSuccess: () => {
                     toast.success("Payout account re-verified successfully. Retrying approval...");
-                    // Auto-retry the approval
                     handleApprove();
                 },
                 onError: (err: any) => {
@@ -100,7 +120,42 @@ export function ApproveWithdrawalModal({
         );
     };
 
-    const isProcessing = approveWithdrawal.isPending || verifyPayout.isPending;
+    const handleSubmitOtp = () => {
+        if (!otpValue.trim()) return;
+
+        authorizeDisbursement.mutate(
+            { walletId, payload: { transaction_id: transactionId, otp: otpValue.trim() } },
+            {
+                onSuccess: () => {
+                    toast.success("Disbursement authorized successfully");
+                    handleClose();
+                },
+                onError: (err: any) => {
+                    const detail = err?.response?.data?.detail;
+                    toast.error(
+                        typeof detail === "string" ? detail : detail?.message || "OTP authorization failed. Please try again."
+                    );
+                }
+            }
+        );
+    };
+
+    const handleResendOtp = () => {
+        resendOtp.mutate(
+            { walletId, payload: { transaction_id: transactionId } },
+            {
+                onSuccess: () => toast.success("OTP resent successfully"),
+                onError: (err: any) => {
+                    const detail = err?.response?.data?.detail;
+                    toast.error(
+                        typeof detail === "string" ? detail : detail?.message || "Failed to resend OTP"
+                    );
+                }
+            }
+        );
+    };
+
+    const isProcessing = approveWithdrawal.isPending || verifyPayout.isPending || authorizeDisbursement.isPending;
 
     const confirmContent = (
         <div className="text-left space-y-6">
@@ -178,12 +233,83 @@ export function ApproveWithdrawalModal({
         </div>
     );
 
+    const otpContent = (
+        <div className="text-left space-y-6">
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-start gap-3">
+                    <span className="text-blue-500 text-xl mt-0.5">&#128274;</span>
+                    <div>
+                        <p className="text-sm font-semibold text-blue-800">OTP Authorization Required</p>
+                        <p className="text-sm text-blue-700 mt-1">
+                            Monnify has sent an OTP to the merchant admin&apos;s registered email/phone.
+                            Enter the code below to authorize the disbursement of <span className="font-bold">{currency} {Number(amount).toLocaleString()}</span>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Authorization Code (OTP)</label>
+                <input
+                    type="text"
+                    value={otpValue}
+                    onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Enter OTP code"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors"
+                    maxLength={10}
+                    autoFocus
+                />
+            </div>
+
+            <div className="flex items-center">
+                <button
+                    onClick={handleResendOtp}
+                    disabled={resendOtp.isPending}
+                    className="text-sm text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50"
+                >
+                    {resendOtp.isPending ? "Resending..." : "Resend OTP"}
+                </button>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                    onClick={handleClose}
+                    disabled={isProcessing}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={handleSubmitOtp}
+                    disabled={!otpValue.trim() || isProcessing}
+                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                    {authorizeDisbursement.isPending ? "Authorizing..." : "Submit OTP"}
+                </button>
+            </div>
+        </div>
+    );
+
+    const titleMap: Record<ModalStep, string> = {
+        confirm: "Approve Withdrawal",
+        mismatch: "Payout Account Mismatch",
+        reverifying: "Payout Account Mismatch",
+        otp: "Enter Authorization Code",
+    };
+
+    const contentMap: Record<ModalStep, React.ReactNode> = {
+        confirm: confirmContent,
+        mismatch: mismatchContent,
+        reverifying: mismatchContent,
+        otp: otpContent,
+    };
+
     return (
         <Modal
             isOpen={isOpen}
             onClose={handleClose}
-            title={step === "confirm" ? "Approve Withdrawal" : "Payout Account Mismatch"}
-            content={step === "confirm" ? confirmContent : mismatchContent}
+            title={titleMap[step]}
+            content={contentMap[step]}
         />
     );
 }

@@ -107,6 +107,8 @@ export const API_ROUTES = {
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
         approveWithdrawal: (id: string | number) => `/wallets/${id}/approve-withdrawal`,
         rejectWithdrawal: (id: string | number) => `/wallets/${id}/reject-withdrawal`,
+        authorizeDisbursement: (id: string | number) => `/wallets/${id}/authorize-disbursement`,
+        resendDisbursementOtp: (id: string | number) => `/wallets/${id}/resend-disbursement-otp`,
         pendingWithdrawals: '/wallets/pending-withdrawals',
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,
