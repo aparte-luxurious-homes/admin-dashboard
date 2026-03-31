@@ -32,6 +32,18 @@ export function UploadPaymentProof() {
     });
 }
 
+export function GuestLookup(email?: string, phone?: string) {
+    const params = new URLSearchParams();
+    if (email) params.append('email', email);
+    if (phone) params.append('phone', phone);
+
+    return useQuery({
+        queryKey: ['guestLookup', email, phone],
+        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.guestLookup}?${params.toString()}`),
+        enabled: !!(email || phone),
+    });
+}
+
 export function GetAllBookings(
     page = 1,
     limit = 10,
