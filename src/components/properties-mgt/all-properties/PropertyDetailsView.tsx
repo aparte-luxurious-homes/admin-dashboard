@@ -83,6 +83,7 @@ export default function PropertyDetailsView({
     const docPreviewsRef = useRef<{ url: string; file: File }[]>([]);
     const [selectedDoc, setSelectedDoc] = useState<IPropertyDocument | null>(null);
     const [docUploadPending, setDocUploadPending] = useState(false);
+    const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
     const { mutate: uploadDoc } = UploadPropertyDocument();
     const { mutate: verifyDoc, isPending: docVerifyPending } = UpdatePropertyDocumentStatus();
 
@@ -839,9 +840,9 @@ export default function PropertyDetailsView({
                                 <div className="space-y-1 sm:space-y-2">
                                     <label className="text-xs sm:text-sm font-bold text-zinc-700">Document Type</label>
                                     <CustomDropdown
-                                        selected={DocumentType.PROOF_OF_OWNERSHIP}
+                                        selected={selectedDocType}
                                         options={Object.values(DocumentType)}
-                                        handleSelection={(val) => { }}
+                                        handleSelection={(val) => setSelectedDocType(val as DocumentType)}
                                     />
                                 </div>
                                 <div className="w-full">
@@ -850,7 +851,7 @@ export default function PropertyDetailsView({
                                             if (files.length > 0) {
                                                 const formData = new FormData();
                                                 formData.append('document_file', files[0]);
-                                                formData.append('document_type', DocumentType.PROOF_OF_OWNERSHIP);
+                                                formData.append('document_type', selectedDocType);
 
                                                 setDocUploadPending(true);
                                                 uploadDoc({
