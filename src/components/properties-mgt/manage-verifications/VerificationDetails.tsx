@@ -269,7 +269,7 @@ export default function VerificationDetails({
                 setEditMode(true);
             }
         }
-    }, [verificationData, verificationId])
+    }, [verificationData, verificationId, searchParams, user?.role])
 
     if (verificationLoading) {
         return (
