@@ -44,6 +44,8 @@ export default function AllVerificationsTable() {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [selectedVerification, setSelectedVerification] = useState<IPropertyVerification | null>(null);
     const [feedbackText, setFeedbackText] = useState("");
+    const [skipKycCheck, setSkipKycCheck] = useState(false);
+    const [skipDocumentCheck, setSkipDocumentCheck] = useState(false);
 
     const handleCopyId = async (id: string | number, event: React.MouseEvent) => {
         event.stopPropagation();
@@ -75,7 +77,9 @@ export default function AllVerificationsTable() {
                             propertyId,
                             payload: {
                                 feedback: feedbackText || "Property verified successfully",
-                                status: PropertyVerificationStatus.VERIFIED
+                                status: PropertyVerificationStatus.VERIFIED,
+                                skip_kyc_check: skipKycCheck,
+                                skip_document_check: skipDocumentCheck
                             }
                         },
                         {
@@ -89,6 +93,8 @@ export default function AllVerificationsTable() {
                                 });
                                 setShowVerifyModal(false);
                                 setFeedbackText("");
+                                setSkipKycCheck(false);
+                                setSkipDocumentCheck(false);
                                 setSelectedVerification(null);
                                 refetch();
                             },
@@ -166,6 +172,8 @@ export default function AllVerificationsTable() {
     const openVerifyModal = (verification: IPropertyVerification) => {
         setSelectedVerification(verification);
         setFeedbackText("");
+        setSkipKycCheck(false);
+        setSkipDocumentCheck(false);
         setShowVerifyModal(true);
         setSelectedRow(null);
     };
@@ -442,6 +450,8 @@ export default function AllVerificationsTable() {
                 onClose={() => {
                     setShowVerifyModal(false);
                     setFeedbackText("");
+                    setSkipKycCheck(false);
+                    setSkipDocumentCheck(false);
                     setSelectedVerification(null);
                 }}
                 title="Verify Property"
@@ -474,11 +484,37 @@ export default function AllVerificationsTable() {
                                 </p>
                             </div>
 
+                            {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && (
+                                <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                    <p className="text-sm font-medium text-amber-800 mb-2">Override Checks</p>
+                                    <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={skipKycCheck}
+                                            onChange={(e) => setSkipKycCheck(e.target.checked)}
+                                            className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                        />
+                                        <span className="text-sm text-amber-700">Skip owner KYC verification check</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={skipDocumentCheck}
+                                            onChange={(e) => setSkipDocumentCheck(e.target.checked)}
+                                            className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                        />
+                                        <span className="text-sm text-amber-700">Skip document verification check</span>
+                                    </label>
+                                </div>
+                            )}
+
                             <div className="flex justify-end gap-3 mt-6">
                                 <button
                                     onClick={() => {
                                         setShowVerifyModal(false);
                                         setFeedbackText("");
+                                        setSkipKycCheck(false);
+                                        setSkipDocumentCheck(false);
                                         setSelectedVerification(null);
                                     }}
                                     className="px-4 py-2 text-sm font-medium text-zinc-700 bg-zinc-100 rounded-lg hover:bg-zinc-200 transition-colors"

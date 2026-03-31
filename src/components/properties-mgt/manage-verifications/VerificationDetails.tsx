@@ -46,6 +46,8 @@ export default function VerificationDetails({
     const [agents, setAgents] = useState<IUser[]>(agentsList?.data?.data?.data)
     const [selectedAgent, setSelectedAgent] = useState<IUser | null>(null)
     const [showAgentSelection, setShowAgentSelecteion] = useState(false);
+    const [skipKycCheck, setSkipKycCheck] = useState(false);
+    const [skipDocumentCheck, setSkipDocumentCheck] = useState(false);
 
 
     const formik =
@@ -137,7 +139,9 @@ export default function VerificationDetails({
                         propertyId,
                         payload: {
                             feedback: formik.values.feedback,
-                            status: PropertyVerificationStatus.VERIFIED
+                            status: PropertyVerificationStatus.VERIFIED,
+                            skip_kyc_check: skipKycCheck,
+                            skip_document_check: skipDocumentCheck
                         }
                     },
                     {
@@ -175,7 +179,9 @@ export default function VerificationDetails({
                         propertyId,
                         payload: {
                             feedback: formik.values.feedback,
-                            status: PropertyVerificationStatus.VERIFIED
+                            status: PropertyVerificationStatus.VERIFIED,
+                            skip_kyc_check: skipKycCheck,
+                            skip_document_check: skipDocumentCheck
                         }
                     },
                     {
@@ -501,6 +507,33 @@ export default function VerificationDetails({
                     }
                 </section>
 
+                {/* Override Checks */}
+                {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && verification?.status === PropertyVerificationStatus.PENDING && !editMode && (
+                    <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10'>
+                        <div className='p-3 bg-amber-50 rounded-lg border border-amber-100'>
+                            <p className='text-sm font-medium text-amber-800 mb-2'>Override Checks</p>
+                            <label className='flex items-center gap-2 mb-2 cursor-pointer'>
+                                <input
+                                    type='checkbox'
+                                    checked={skipKycCheck}
+                                    onChange={(e) => setSkipKycCheck(e.target.checked)}
+                                    className='w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500'
+                                />
+                                <span className='text-sm text-amber-700'>Skip owner KYC verification check</span>
+                            </label>
+                            <label className='flex items-center gap-2 cursor-pointer'>
+                                <input
+                                    type='checkbox'
+                                    checked={skipDocumentCheck}
+                                    onChange={(e) => setSkipDocumentCheck(e.target.checked)}
+                                    className='w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500'
+                                />
+                                <span className='text-sm text-amber-700'>Skip document verification check</span>
+                            </label>
+                        </div>
+                    </section>
+                )}
+
                 {/* Action Buttons */}
                 <section className='my-6 sm:my-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6'>
                     <div className='w-full flex justify-between items-center'>
@@ -550,7 +583,7 @@ export default function VerificationDetails({
                                         }
 
                                         {
-                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.ADMIN &&
+                                            verification?.status === PropertyVerificationStatus.PENDING && (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) &&
                                             <button
                                                 type='button'
                                                 disabled={verificationLoading || verificationUdateLoading}

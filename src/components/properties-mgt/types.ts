@@ -204,6 +204,8 @@ export interface IPropertyDocumentCreate {
 export interface IUpdatePropertyVerification {
     status: PropertyVerificationStatus,
     feedback: string,
+    skip_kyc_check?: boolean,
+    skip_document_check?: boolean,
 }
 
 export interface ICreateProperty {
