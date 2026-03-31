@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowIcon } from "../icons";
 
-export default function CustomDropdown({ selected, handleSelection, options }: { selected: string, handleSelection: (option: any) => void; options: any[] }) {
+export default function CustomDropdown({ selected, handleSelection, options, formatLabel }: { selected: string, handleSelection: (option: any) => void; options: any[], formatLabel?: (option: any) => string }) {
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -26,7 +26,7 @@ export default function CustomDropdown({ selected, handleSelection, options }: {
         <div className="relative" ref={dropdownRef}>
             <div onClick={() => setIsOpen(!isOpen)} className="relative w-full border border-zinc-400 rounded-lg p-5 h-14 mt-2 text-lg flex justify-start items-center cursor-pointer">
                 <span>
-                    {selected}
+                    {formatLabel ? formatLabel(selected) : selected}
                 </span>
                 <ArrowIcon
                     className={`absolute top-[36%] right-4 transition-all ease-in-out ${isOpen ? 'rotate-[90deg]' : 'rotate-[270deg]'} `}
@@ -42,7 +42,7 @@ export default function CustomDropdown({ selected, handleSelection, options }: {
             >
                 {
                     options.map((option, index) => (
-                        <p 
+                        <p
                             key={index}
                             onClick={() => {
                                 handleSelection(option);
@@ -50,7 +50,7 @@ export default function CustomDropdown({ selected, handleSelection, options }: {
                             }}
                             className={`p-4 text-left text-lg hover:bg-zinc-200 text-zinc-900 cursor-pointer ${selected === option && 'bg-zinc-200'}`}
                         >
-                            {option}
+                            {formatLabel ? formatLabel(option) : option}
                         </p>
                     ))
                 }

@@ -345,7 +345,7 @@ export default function PropertyDetailsView({
                                                                         <Icon icon="solar:file-text-bold-duotone" className="text-zinc-500 group-hover:text-primary text-sm sm:text-base" />
                                                                     </div>
                                                                     <div className="min-w-0 flex-1">
-                                                                        <p className="font-bold text-zinc-800 text-xs sm:text-sm truncate">{(doc?.document_type as string)?.replace(/_/g, ' ')}</p>
+                                                                        <p className="font-bold text-zinc-800 text-xs sm:text-sm truncate">{(doc?.document_type as string)?.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
                                                                         <p className="text-[8px] sm:text-[10px] text-zinc-400 capitalize truncate">{doc?.status?.toLowerCase()}</p>
                                                                     </div>
                                                                 </div>
@@ -843,6 +843,7 @@ export default function PropertyDetailsView({
                                         selected={selectedDocType}
                                         options={Object.values(DocumentType)}
                                         handleSelection={(val) => setSelectedDocType(val as DocumentType)}
+                                        formatLabel={(val: string) => val.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                     />
                                 </div>
                                 <div className="w-full">
@@ -891,7 +892,7 @@ export default function PropertyDetailsView({
                             <div className="w-full space-y-4 sm:space-y-5 pt-2 sm:pt-3">
                                 <div className="bg-zinc-50 p-2 sm:p-3 rounded-lg sm:rounded-xl">
                                     <p className="text-[10px] sm:text-xs font-bold text-zinc-400 uppercase mb-1">Document Type</p>
-                                    <p className="text-xs sm:text-sm font-bold text-zinc-800">{(selectedDoc?.document_type as string)?.replace(/_/g, ' ')}</p>
+                                    <p className="text-xs sm:text-sm font-bold text-zinc-800">{(selectedDoc?.document_type as string)?.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
                                 </div>
 
                                 <div className="flex gap-2 sm:gap-3">
