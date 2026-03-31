@@ -203,9 +203,9 @@ export default function CreatePropertyView({ }) {
         console.error("Google Maps load error:", loadError);
     }
 
-    if (typeof window !== 'undefined') {
-        console.log('[CreateProperty] Map loaded:', isLoaded, 'API Key exists:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
-    }
+    // if (typeof window !== 'undefined') {
+    //     console.log('[CreateProperty] Map loaded:', isLoaded, 'API Key exists:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+    // }
 
     const sortAmenities = (amenities: IAmenity[] = [], newAmeities: string[] = []): number[] => {
         const sortedAmenities: number[] = []

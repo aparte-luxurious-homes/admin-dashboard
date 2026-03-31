@@ -157,7 +157,7 @@ export function AssignToProperty(propertyId: string | number) {
             axiosRequest.post(API_ROUTES.admin.properties.assign(propertyId), payload),
 
         onSuccess: (values) => {
-            console.log(values)
+            // console.log(values)
             // Invalidate the specific property query so it refetches
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.assignToProperty] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });

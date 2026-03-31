@@ -84,7 +84,6 @@ const GuestInfo = () => {
   const [showEditWallet, setShowEditWallet] = useState(false);
   const params = useParams();
   const id = params?.id;
-  console.log("params", params?.id);
 
   const fetchWallet = useCallback(async (userId: string | number) => {
     try {
@@ -102,7 +101,6 @@ const GuestInfo = () => {
       const response = await axiosRequest.get(
         `${API_ROUTES.admin.users.userByUuid(String(id))}`
       );
-      console.log("response", response);
       const userData = response?.data?.data;
       setUserInfo(userData);
       setUserLoading(false);
@@ -124,8 +122,6 @@ const GuestInfo = () => {
   useEffect(() => {
     fetchAUserInfo();
   }, [fetchAUserInfo]);
-
-  console.log("userInfo", userInfo);
 
   const handleEditToggle = () => {
     if (isEditing) {

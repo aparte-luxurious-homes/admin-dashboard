@@ -66,15 +66,12 @@ const PersonalInfoPage = () => {
       });
   };
 
-  console.log("personalInfo", personalInfo);
-
   const handleTextChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setPersonalInfo({ ...personalInfo, [name]: value });
   };
-  console.log(isFetching ? "Fetching User" : user);
   return (
     <>
       <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
@@ -128,7 +125,7 @@ const PersonalInfoPage = () => {
                 inputName="phone"
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
+            {/* <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
                 label="Identity Verification"
                 required
@@ -138,7 +135,7 @@ const PersonalInfoPage = () => {
                 inputType="text"
                 inputName="verification"
               />
-            </Grid>
+            </Grid> */}
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
                 label="Address"
