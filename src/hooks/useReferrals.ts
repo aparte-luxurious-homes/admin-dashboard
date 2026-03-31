@@ -34,7 +34,7 @@ export const useMyReferrals = (params?: { page?: number; size?: number }) => {
         queryKey: ["my-referrals", params],
         queryFn: async () => {
             const response = await axiosRequest.get<IAdminPaginatedResponse<IReferralItem>>(API_ROUTES.referrals.list, { params });
-            return response.data.data;
+            return response.data;
         },
     });
 };
