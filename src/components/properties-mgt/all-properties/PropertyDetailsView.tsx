@@ -91,6 +91,15 @@ export default function PropertyDetailsView({
         router.push(`${pathname}?${urlSearchParams.toString()}`);
     };
 
+    const EmptyState = ({ icon, label }: { icon: string; label: string }) => {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+                <Icon icon={icon} className="w-16 h-16 mb-4 text-gray-400" />
+                <p className="text-gray-500">{label}</p>
+            </div>
+        )
+    }
+
     const handleDelete = () => {
         dispatch(
             showAlert({
@@ -683,107 +692,99 @@ export default function PropertyDetailsView({
                                 )}
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
 
-            {/* ══════════════════════════════════════
-                MODALS
-            ══════════════════════════════════════ */}
+                        {/* Modals */}
+                        <CustomModal isOpen={showVerification} onClose={() => setShowVerification(false)} title="Property verification details">
+                            <div className="w-full p-1 flex flex-col gap-6">
+                                <ModalSection title="Agent">
+                                    <div className="flex gap-3 items-center mt-2">
+                                        <Image
+                                            alt="agent-image"
+                                            src={(property?.agent?.profile?.profileImage || property?.agent?.profile?.profile_image) ?? '/png/sample_profile.png'}
+                                            height={44} width={44}
+                                            className="w-11 h-11 rounded-full object-cover ring-2 ring-zinc-100"
+                                        />
+                                        <div>
+                                            <p className="text-sm font-semibold text-zinc-900">
+                                                {property?.agent?.profile?.firstName ? `${property?.agent?.profile?.firstName} ${property?.agent?.profile?.lastName}` : property?.agent?.email || '--/--'}
+                                                <span className="text-xs font-normal text-zinc-500 ml-1"><em>(Assigned agent)</em></span>
+                                            </p>
+                                            <p className="text-xs text-zinc-500 mt-0.5">{property?.agent?.email ?? '--/--'}</p>
+                                        </div>
+                                    </div>
+                                </ModalSection>
 
-            {/* Verification Details Modal */}
-            <CustomModal isOpen={showVerification} onClose={() => setShowVerification(false)} title="Property verification details">
-                <div className="w-full p-1 flex flex-col gap-6">
-                    <ModalSection title="Agent">
-                        <div className="flex gap-3 items-center mt-2">
-                            <Image
-                                alt="agent-image"
-                                src={(property?.agent?.profile?.profileImage || property?.agent?.profile?.profile_image) ?? '/png/sample_profile.png'}
-                                height={44} width={44}
-                                className="w-11 h-11 rounded-full object-cover ring-2 ring-zinc-100"
-                            />
-                            <div>
-                                <p className="text-sm font-semibold text-zinc-900">
-                                    {property?.agent?.profile?.firstName ? `${property?.agent?.profile?.firstName} ${property?.agent?.profile?.lastName}` : property?.agent?.email || '--/--'}
-                                    <span className="text-xs font-normal text-zinc-500 ml-1"><em>(Assigned agent)</em></span>
-                                </p>
-                                <p className="text-xs text-zinc-500 mt-0.5">{property?.agent?.email ?? '--/--'}</p>
-                            </div>
-                        </div>
-                    </ModalSection>
-
-                    <ModalSection title="Agent feedback">
-                        <p className="text-sm text-zinc-700 mt-1.5">
-                            {property?.verifications?.[0]?.feedback ?? <em className="text-zinc-400 font-normal">No comments yet</em>}
-                        </p>
-                    </ModalSection>
-
-                    <ModalSection title="KYC details">
-                        <p className="text-sm text-zinc-400 italic mt-1.5">Coming soon...</p>
-                    </ModalSection>
-                </div>
-            </CustomModal>
-
-            {/* Assign Agent Modal */}
-            <CustomModal
-                isOpen={showAgentSelection}
-                onClose={() => { setShowAgentSelection(false); setSelectedAgent(null); }}
-                title="Assign agent to property"
-            >
-                <div className="w-full p-1">
-                    {!selectedAgent ? (
-                        <div className="mt-2">
-                            <label className="text-sm text-zinc-600 font-medium block mb-2">Search agents</label>
-                            <AdjustableFilterDropdown
-                                placeholder="Search by email..."
-                                options={agents?.map(el => el?.email)}
-                                handleSelection={(val) => handleAgentSelection(val)}
-                                searchTerm={agentSearchTerm}
-                                setSearchTerm={setAgentSearchTerm}
-                                isLoading={agentsLoading}
-                            />
-                        </div>
-                    ) : (
-                        <div className="mt-2 space-y-4">
-                            <div className="flex gap-3 items-center p-3 bg-zinc-50 rounded-xl">
-                                <Image
-                                    alt="agent-image"
-                                    src={(selectedAgent?.profile?.profileImage || selectedAgent?.profile?.profile_image) ?? '/png/sample_profile.png'}
-                                    height={44} width={44}
-                                    className="w-11 h-11 rounded-full object-cover ring-2 ring-zinc-100"
-                                />
-                                <div>
-                                    <p className="text-sm font-semibold text-zinc-900">
-                                        {selectedAgent?.firstName ? `${selectedAgent?.firstName} ${selectedAgent?.lastName}` : selectedAgent?.email || '--/--'}
+                                <ModalSection title="Agent feedback">
+                                    <p className="text-sm text-zinc-700 mt-1.5">
+                                        {property?.verifications?.[0]?.feedback ?? <em className="text-zinc-400 font-normal">No comments yet</em>}
                                     </p>
-                                    <p className="text-xs text-zinc-500">{selectedAgent?.email}</p>
-                                </div>
+                                </ModalSection>
+
+                                <ModalSection title="KYC details">
+                                    <p className="text-sm text-zinc-400 italic mt-1.5">Coming soon...</p>
+                                </ModalSection>
                             </div>
-                            <p className="text-sm text-zinc-700">
-                                Assign <strong>{selectedAgent?.firstName ? `${selectedAgent?.firstName} ${selectedAgent?.lastName}` : (selectedAgent?.email || 'this agent')}</strong> to this property?
-                            </p>
-                            <div className="flex gap-3 pt-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedAgent(null)}
-                                    disabled={assignmentLoading}
-                                    className="flex-1 py-2.5 font-semibold rounded-xl text-sm border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-60 transition-all"
-                                >
-                                    Back
-                                </button>
-                                <button
-                                    onClick={() => handleAgentAssignment(String(selectedAgent?.id))}
-                                    disabled={assignmentLoading}
-                                    type="button"
-                                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-60 transition-all"
-                                >
-                                    {assignmentLoading ? <Spinner /> : 'Assign'}
-                                </button>
+                        </CustomModal>
+
+                        <CustomModal
+                            isOpen={showAgentSelection}
+                            onClose={() => { setShowAgentSelection(false); setSelectedAgent(null); }}
+                            title="Assign agent to property"
+                        >
+                            <div className="w-full p-1">
+                                {!selectedAgent ? (
+                                    <div className="mt-2">
+                                        <label className="text-sm text-zinc-600 font-medium block mb-2">Search agents</label>
+                                        <AdjustableFilterDropdown
+                                            placeholder="Search by email..."
+                                            options={agents?.map(el => el?.email)}
+                                            handleSelection={(val) => handleAgentSelection(val)}
+                                            searchTerm={agentSearchTerm}
+                                            setSearchTerm={setAgentSearchTerm}
+                                            isLoading={agentsLoading}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="mt-2 space-y-4">
+                                        <div className="flex gap-3 items-center p-3 bg-zinc-50 rounded-xl">
+                                            <Image
+                                                alt="agent-image"
+                                                src={(selectedAgent?.profile?.profileImage || selectedAgent?.profile?.profile_image) ?? '/png/sample_profile.png'}
+                                                height={44} width={44}
+                                                className="w-11 h-11 rounded-full object-cover ring-2 ring-zinc-100"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-semibold text-zinc-900">
+                                                    {selectedAgent?.firstName ? `${selectedAgent?.firstName} ${selectedAgent?.lastName}` : selectedAgent?.email || '--/--'}
+                                                </p>
+                                                <p className="text-xs text-zinc-500">{selectedAgent?.email}</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-zinc-700">
+                                            Assign <strong>{selectedAgent?.firstName ? `${selectedAgent?.firstName} ${selectedAgent?.lastName}` : (selectedAgent?.email || 'this agent')}</strong> to this property?
+                                        </p>
+                                        <div className="flex gap-3 pt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedAgent(null)}
+                                                disabled={assignmentLoading}
+                                                className="flex-1 py-2.5 font-semibold rounded-xl text-sm border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-60 transition-all"
+                                            >
+                                                Back
+                                            </button>
+                                            <button
+                                                onClick={() => handleAgentAssignment(String(selectedAgent?.id))}
+                                                disabled={assignmentLoading}
+                                                type="button"
+                                                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-60 transition-all"
+                                            >
+                                                {assignmentLoading ? <Spinner /> : 'Assign'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )}
-                </div>
-            </CustomModal>
+                        </CustomModal>
 
                         <CustomModal
                             isOpen={showDocUpload}
@@ -892,7 +893,7 @@ export default function PropertyDetailsView({
                                 </div>
                             </div>
                         </CustomModal>
-                    </>
+                    </div>
                 )}
             </div>
         </div>
