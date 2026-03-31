@@ -32,15 +32,11 @@ export function UploadPaymentProof() {
     });
 }
 
-export function GuestLookup(email?: string, phone?: string) {
-    const params = new URLSearchParams();
-    if (email) params.append('email', email);
-    if (phone) params.append('phone', phone);
-
+export function GuestLookup(search?: string) {
     return useQuery({
-        queryKey: ['guestLookup', email, phone],
-        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.guestLookup}?${params.toString()}`),
-        enabled: !!(email || phone),
+        queryKey: ['guestLookup', search],
+        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.guestLookup}?search=${encodeURIComponent(search!)}`),
+        enabled: !!search && search.length >= 2,
     });
 }
 

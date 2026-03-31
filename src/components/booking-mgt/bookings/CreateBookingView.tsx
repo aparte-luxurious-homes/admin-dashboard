@@ -37,9 +37,7 @@ export default function CreateBookingView() {
 
     // State
     const [guestSearchInput, setGuestSearchInput] = useState<string>('')
-    const [guestLookupEmail, setGuestLookupEmail] = useState<string>('')
-    const [guestLookupPhone, setGuestLookupPhone] = useState<string>('')
-    const [guestNotFound, setGuestNotFound] = useState<boolean>(false)
+    const [guestSearchTerm, setGuestSearchTerm] = useState<string>('')
     const [propertySearchTerm, setPropertySearchTerm] = useState<string>('')
     const [unitSearchTerm, setUnitSearchTerm] = useState<string>('')
     const [propPage, setPropPage] = useState<number>(1);
@@ -47,7 +45,7 @@ export default function CreateBookingView() {
 
     // Queries
     const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm);
-    const { data: guestLookupResult, isLoading: guestLookupLoading, isFetched: guestLookupFetched } = GuestLookup(guestLookupEmail, guestLookupPhone);
+    const { data: guestLookupResult, isLoading: guestLookupLoading } = GuestLookup(guestSearchTerm);
     const { mutate, isPending } = CreateBooking();
     const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
 
@@ -220,50 +218,28 @@ export default function CreateBookingView() {
         setProperties(next as IProperty[])
     }, [propertyList])
 
-    // Effect to handle guest lookup result
-    useEffect(() => {
-        if (!guestLookupFetched) return;
-        const guest = guestLookupResult?.data?.data;
-        if (guest) {
-            setSeletedUser({
-                id: guest.id,
-                email: guest.email,
-                phone: guest.phone,
-                profile: {
-                    firstName: guest.first_name,
-                    lastName: guest.last_name,
-                    first_name: guest.first_name,
-                    last_name: guest.last_name,
-                },
-            } as any);
-            formik.setFieldValue('user_id', guest.id);
-            setGuestNotFound(false);
-        } else if (guestLookupEmail || guestLookupPhone) {
-            setSeletedUser(null);
-            formik.setFieldValue('user_id', 0);
-            setGuestNotFound(true);
-        }
-    }, [guestLookupResult, guestLookupFetched]);
+    // Derived: guest search results list
+    const guestResults: any[] = guestLookupResult?.data?.data ?? [];
 
-    const handleGuestSearch = useCallback(() => {
-        const input = guestSearchInput.trim();
-        if (!input) return;
-        setGuestNotFound(false);
-        setSeletedUser(null);
-        formik.setFieldValue('user_id', 0);
-        // Detect if input looks like an email or phone
-        if (input.includes('@')) {
-            setGuestLookupPhone('');
-            setGuestLookupEmail(input);
-        } else {
-            setGuestLookupEmail('');
-            setGuestLookupPhone(input);
-        }
-    }, [guestSearchInput]);
+    const handleGuestSelect = useCallback((guest: any) => {
+        setSeletedUser({
+            id: guest.id,
+            email: guest.email,
+            phone: guest.phone,
+            profile: {
+                firstName: guest.first_name,
+                lastName: guest.last_name,
+                first_name: guest.first_name,
+                last_name: guest.last_name,
+            },
+        } as any);
+        formik.setFieldValue('user_id', guest.id);
+        setGuestSearchInput('');
+        setGuestSearchTerm('');
+    }, []);
 
     const handleSwitchToNewGuest = useCallback(() => {
         setIsNewGuest(true);
-        // Pre-fill the new guest form with the search input
         const input = guestSearchInput.trim();
         if (input.includes('@')) {
             formik.setFieldValue('guest_email', input);
@@ -483,26 +459,65 @@ export default function CreateBookingView() {
                                     {!isNewGuest ? (
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-zinc-700">Find Guest</label>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    className="flex-1 h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                                    placeholder="Enter email or phone number..."
-                                                    value={guestSearchInput}
-                                                    onChange={(e) => setGuestSearchInput(e.target.value)}
-                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleGuestSearch(); } }}
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={handleGuestSearch}
-                                                    disabled={!guestSearchInput.trim() || guestLookupLoading}
-                                                    className="h-11 px-5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                                >
-                                                    {guestLookupLoading ? <Spinner /> : 'Search'}
-                                                </button>
-                                            </div>
-                                            {selectedUser && (
-                                                <div className="mt-4 flex items-center gap-4 p-3 bg-green-50 border border-green-200 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                                            {!selectedUser ? (
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                                        placeholder="Search by name, email or phone..."
+                                                        value={guestSearchInput}
+                                                        onChange={(e) => {
+                                                            setGuestSearchInput(e.target.value);
+                                                            // Debounce: trigger search after typing pauses
+                                                            const val = e.target.value.trim();
+                                                            if (val.length >= 2) {
+                                                                setGuestSearchTerm(val);
+                                                            } else {
+                                                                setGuestSearchTerm('');
+                                                            }
+                                                        }}
+                                                    />
+                                                    {guestLookupLoading && (
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                            <Spinner />
+                                                        </div>
+                                                    )}
+                                                    {/* Results dropdown */}
+                                                    {guestSearchTerm && !guestLookupLoading && guestResults.length > 0 && (
+                                                        <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                            {guestResults.map((guest: any) => (
+                                                                <button
+                                                                    key={guest.id}
+                                                                    type="button"
+                                                                    onClick={() => handleGuestSelect(guest)}
+                                                                    className="w-full px-4 py-3 text-left hover:bg-zinc-50 border-b border-zinc-100 last:border-b-0 transition-colors"
+                                                                >
+                                                                    <p className="text-sm font-medium text-zinc-900">
+                                                                        {[guest.first_name, guest.last_name].filter(Boolean).join(' ') || 'Guest'}
+                                                                    </p>
+                                                                    <p className="text-xs text-zinc-500">
+                                                                        {[guest.email, guest.phone].filter(Boolean).join(' \u00b7 ')}
+                                                                    </p>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {/* No results */}
+                                                    {guestSearchTerm && !guestLookupLoading && guestResults.length === 0 && (
+                                                        <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg p-4">
+                                                            <p className="text-sm text-zinc-500">No guests found.</p>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleSwitchToNewGuest}
+                                                                className="mt-1 text-sm font-medium text-primary hover:text-primary/80 underline"
+                                                            >
+                                                                Create as new guest instead
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-4 p-3 bg-green-50 border border-green-200 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
                                                     <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-zinc-500 font-medium border border-zinc-200">
                                                         {selectedUser.profile?.firstName?.[0] ?? 'G'}{selectedUser.profile?.lastName?.[0] ?? ''}
                                                     </div>
@@ -519,25 +534,11 @@ export default function CreateBookingView() {
                                                             setSeletedUser(null);
                                                             formik.setFieldValue('user_id', 0);
                                                             setGuestSearchInput('');
-                                                            setGuestLookupEmail('');
-                                                            setGuestLookupPhone('');
-                                                            setGuestNotFound(false);
+                                                            setGuestSearchTerm('');
                                                         }}
                                                         className="ml-auto text-xs font-medium text-red-500 hover:text-red-600"
                                                     >
                                                         Clear
-                                                    </button>
-                                                </div>
-                                            )}
-                                            {guestNotFound && !selectedUser && (
-                                                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    <p className="text-sm text-amber-800">No existing guest found with that detail.</p>
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleSwitchToNewGuest}
-                                                        className="mt-1 text-sm font-medium text-primary hover:text-primary/80 underline"
-                                                    >
-                                                        Create as new guest instead
                                                     </button>
                                                 </div>
                                             )}
