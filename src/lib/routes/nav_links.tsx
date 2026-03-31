@@ -110,7 +110,7 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Booking disputes',
                 pathName: 'booking-disputes',
                 link: PAGE_ROUTES.dashboard.bookingManagement.bookingDisputes.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
         ]
     },

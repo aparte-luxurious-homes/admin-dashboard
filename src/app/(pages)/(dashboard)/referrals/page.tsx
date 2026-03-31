@@ -80,19 +80,27 @@ const ReferralsPage = () => {
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 uppercase tracking-wider text-xs">
                                     <tr>
-                                        <th className="px-6 py-4 text-center">Referrer ID</th>
-                                        <th className="px-6 py-4 text-center">Referred ID</th>
+                                        <th className="px-6 py-4">Referrer</th>
+                                        <th className="px-6 py-4">Referred User</th>
+                                        <th className="px-6 py-4">Code Used</th>
                                         <th className="px-6 py-4 text-center">Date Joined</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {relationships.map((rel: any) => (
-                                        <tr key={rel.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 text-center font-mono text-xs text-gray-600">
-                                                {rel.referrer_id}
+                                    {relationships.map((rel: any, idx: number) => (
+                                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="font-medium text-gray-900">{rel.referrer_name}</div>
+                                                <div className="text-xs text-gray-500 font-mono">{rel.referrer_id}</div>
                                             </td>
-                                            <td className="px-6 py-4 text-center font-mono text-xs text-gray-600">
-                                                {rel.referred_id}
+                                            <td className="px-6 py-4">
+                                                <div className="font-medium text-gray-900">{rel.referred_user_name}</div>
+                                                <div className="text-xs text-gray-500 font-mono">{rel.referred_user_id}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-bold uppercase tracking-wider">
+                                                    {rel.referral_code_used}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 text-center text-gray-500">
                                                 {new Date(rel.created_at).toLocaleDateString()}

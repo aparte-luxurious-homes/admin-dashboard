@@ -21,21 +21,21 @@ const DisputeDetailsView = () => {
     const disputeId = id as string;
     const router = useRouter();
 
-    const { data: disputeResponse, isLoading } = useDisputeDetails(disputeId);
-    const dispute = disputeResponse?.data;
+    const { data: dispute, isLoading } = useDisputeDetails(disputeId);
 
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
     const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
 
-    const updateStatusMutation = useUpdateDisputeStatus(disputeId);
-    const requestEvidenceMutation = useRequestDisputeEvidence(disputeId);
-    const resolveMutation = useResolveDispute(disputeId);
+    const updateStatusMutation = useUpdateDisputeStatus();
+    const requestEvidenceMutation = useRequestDisputeEvidence();
+    const resolveMutation = useResolveDispute();
 
     const [adminNotes, setAdminNotes] = useState("");
     const [newStatus, setNewStatus] = useState<DisputeStatus>(DisputeStatus.OPEN);
     const [evidenceReason, setEvidenceReason] = useState("");
     const [outcome, setOutcome] = useState<DisputeOutcome>(DisputeOutcome.NO_ACTION);
+    const [amount, setAmount] = useState<number>(0);
 
     if (isLoading) {
         return (
@@ -58,7 +58,7 @@ const DisputeDetailsView = () => {
     }
 
     const handleUpdateStatus = () => {
-        updateStatusMutation.mutate({ status: newStatus, admin_notes: adminNotes }, {
+        updateStatusMutation.mutate({ id: disputeId, status: newStatus, admin_notes: adminNotes }, {
             onSuccess: () => {
                 setIsStatusModalOpen(false);
                 setAdminNotes("");
@@ -67,7 +67,7 @@ const DisputeDetailsView = () => {
     };
 
     const handleRequestEvidence = () => {
-        requestEvidenceMutation.mutate({ reason: evidenceReason }, {
+        requestEvidenceMutation.mutate({ id: disputeId, reason: evidenceReason }, {
             onSuccess: () => {
                 setIsEvidenceModalOpen(false);
                 setEvidenceReason("");
@@ -76,10 +76,11 @@ const DisputeDetailsView = () => {
     };
 
     const handleResolve = () => {
-        resolveMutation.mutate({ outcome, admin_notes: adminNotes }, {
+        resolveMutation.mutate({ id: disputeId, outcome, admin_notes: adminNotes, amount }, {
             onSuccess: () => {
                 setIsResolveModalOpen(false);
                 setAdminNotes("");
+                setAmount(0);
             }
         });
     };
@@ -104,7 +105,7 @@ const DisputeDetailsView = () => {
                         <ArrowIcon className="w-3.5 h-3.5 rotate-180 group-hover:-translate-x-0.5 transition-transform" />
                         BACK TO DISPUTES
                     </button>
-                    <h1 className="text-2xl font-bold text-gray-900">Case ID: {disputeId.split('-')[0].toUpperCase()}</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Case ID: {dispute.dispute_id || disputeId.split('-')[0].toUpperCase()}</h1>
                     <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(dispute.status)}`}>
                             {dispute.status}
@@ -195,6 +196,34 @@ const DisputeDetailsView = () => {
                                 </div>
                             )}
                         </div>
+
+                        {/* Logs */}
+                        {dispute.logs && dispute.logs.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Timeline & Logs</h3>
+                                <div className="space-y-4">
+                                    {dispute.logs.map((log: any, idx: number) => (
+                                        <div key={idx} className="flex gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                                <Icon icon="solar:history-bold-duotone" className="text-primary text-xl" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <p className="text-sm font-bold text-gray-900">{log.action}</p>
+                                                    <p className="text-[10px] text-gray-400">{format(new Date(log.created_at), "MMM d, HH:mm")}</p>
+                                                </div>
+                                                <p className="text-xs text-gray-600 mt-1">{log.comment || "No comment"}</p>
+                                                {log.new_status && (
+                                                    <span className="inline-block mt-2 px-2 py-0.5 bg-white border border-gray-100 rounded text-[10px] font-bold text-primary uppercase">
+                                                        {log.new_status}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -216,9 +245,8 @@ const DisputeDetailsView = () => {
                                 </div>
                             </div>
                             <div className="w-full h-px bg-white/5" />
-                            {/* Property info usually comes from booking but we don't have it here yet. Just placeholders. */}
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary italic">P</div>
+                                <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary italic">B</div>
                                 <div>
                                     <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">REFERENCED BOOKING</p>
                                     <p className="text-sm font-bold text-white"># {dispute.booking_id.split('-')[0].toUpperCase()}</p>
@@ -312,6 +340,18 @@ const DisputeDetailsView = () => {
                             ))}
                         </div>
                     </div>
+                    {(outcome === DisputeOutcome.PARTIAL_REFUND || outcome === DisputeOutcome.PARTIAL_COMPENSATION || outcome === DisputeOutcome.FULL_COMPENSATION) && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Refund/Compensation Amount (NGN)</label>
+                            <input 
+                                type="number"
+                                value={amount}
+                                onChange={(e) => setAmount(Number(e.target.value))}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3.5 text-sm font-medium focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                                placeholder="Enter amount..."
+                            />
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Resolution Summary</label>
                         <textarea 

@@ -40,10 +40,13 @@ export const API_ROUTES = {
         reviews: {
             base: '/admin/reviews',
             flag: (reviewId: string | number) => `/admin/reviews/${reviewId}/flag`,
+            unflag: (reviewId: string | number) => `/admin/reviews/${reviewId}/unflag`,
+            restore: (reviewId: string | number) => `/admin/reviews/${reviewId}/restore`,
             remove: (reviewId: string | number) => `/admin/reviews/${reviewId}`,
         },
         disputes: {
             base: '/admin/disputes',
+            details: (id: string | number) => `/admin/disputes/${id}`,
             status: (disputeId: string | number) => `/admin/disputes/${disputeId}/status`,
             requestEvidence: (disputeId: string | number) => `/admin/disputes/${disputeId}/request-evidence`,
             resolve: (disputeId: string | number) => `/admin/disputes/${disputeId}/resolve`,
