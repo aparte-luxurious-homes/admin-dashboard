@@ -6,7 +6,7 @@ import { FaMapLocationDot, FaPlus, FaArrowLeftLong } from "react-icons/fa6";
 import { TrashIcon } from "../../icons";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
-import { IAmenity, IProperty, IPropertyMedia, IUpdateProperty, MediaType, PropertyType, PropertyVerificationStatus } from "../types";
+import { DocumentType, IAmenity, IProperty, IPropertyDocument, IPropertyMedia, IUpdateProperty, MediaType, PropertyType, PropertyVerificationStatus } from "../types";
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -17,7 +17,7 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { DeleteProperty, FeatureProperty, UpdateProperty, UpdateBookingMode, UploadPropertyMedia, DeletePropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { DeleteProperty, FeatureProperty, UpdateProperty, UpdateBookingMode, UploadPropertyMedia, DeletePropertyMedia, UploadPropertyDocument, GetPropertyDocuments } from "@/src/lib/request-handlers/propertyMgt";
 import { BookingMode } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
@@ -140,6 +140,12 @@ export default function EditPropertyView({
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
+
+    // Document upload state
+    const { mutate: uploadDoc, isPending: docUploadPending } = UploadPropertyDocument();
+    const { data: docsData, refetch: refetchDocs } = GetPropertyDocuments(propertyData.id);
+    const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
+    const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
 
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
@@ -345,6 +351,11 @@ export default function EditPropertyView({
             }
         }
     }, [uploadData]);
+
+    useEffect(() => {
+        const docs = docsData?.data?.data?.data ?? docsData?.data?.data ?? [];
+        if (Array.isArray(docs)) setDocuments(docs);
+    }, [docsData]);
 
     return (
         <div className="relative">
@@ -714,6 +725,82 @@ export default function EditPropertyView({
                                 )}
                             </button>
                         )}
+                    </div>
+
+                    {/* Documents Section */}
+                    <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-8 space-y-4 md:space-y-5 shadow-sm">
+                        <h3 className="text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-1.5">
+                            <Icon icon="solar:file-text-bold-duotone" className="text-lg sm:text-xl text-primary" />
+                            Ownership Documents
+                        </h3>
+                        <p className="text-[10px] sm:text-xs text-zinc-500">Upload proof of ownership documents (PDF, JPG, PNG). These will be reviewed during verification.</p>
+
+                        {/* Existing Documents */}
+                        {documents.length > 0 && (
+                            <div className="space-y-2">
+                                {documents.map((doc) => (
+                                    <div key={doc.id} className="flex items-center justify-between p-2.5 sm:p-3 bg-zinc-50 rounded-lg sm:rounded-xl border border-zinc-100 group">
+                                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                                            <Icon icon="solar:file-text-bold-duotone" className="text-base sm:text-lg text-primary flex-shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-xs sm:text-sm font-bold text-zinc-800 truncate">{(doc.document_type as string)?.replace(/_/g, ' ')}</p>
+                                                <p className="text-[8px] sm:text-[10px] text-zinc-400 capitalize">{doc.status?.toLowerCase()}</p>
+                                            </div>
+                                        </div>
+                                        <a href={doc.document_url} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-zinc-100 rounded-lg transition-colors text-zinc-500 flex-shrink-0">
+                                            <Icon icon="solar:eye-bold-duotone" className="text-sm sm:text-base" />
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Upload New Document */}
+                        <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-zinc-100">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Document Type</label>
+                                <CustomDropdown
+                                    selected={selectedDocType}
+                                    options={Object.values(DocumentType)}
+                                    handleSelection={(val) => setSelectedDocType(val as DocumentType)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1 mb-1.5 block">Select File</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            const formData = new FormData();
+                                            formData.append('document_file', file);
+                                            formData.append('document_type', selectedDocType);
+                                            uploadDoc({
+                                                propertyId: propertyData.id,
+                                                payload: formData
+                                            }, {
+                                                onSuccess: () => {
+                                                    toast.success('Document uploaded successfully');
+                                                    refetchDocs();
+                                                },
+                                                onError: (err: any) => {
+                                                    toast.error(err?.response?.data?.detail || 'Document upload failed');
+                                                }
+                                            });
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                    disabled={docUploadPending}
+                                    className="w-full text-xs sm:text-sm file:mr-3 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-3 sm:file:px-4 file:rounded-lg sm:file:rounded-xl file:border-0 file:text-xs sm:file:text-sm file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer disabled:opacity-50"
+                                />
+                                {docUploadPending && (
+                                    <div className="flex items-center gap-2 mt-2 text-xs text-zinc-500">
+                                        <Spinner /> Uploading document...
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
