@@ -128,6 +128,8 @@ export interface IUserProfile {
   average_rating?: string;
   kycStatus: KycStatus;
   kyc_status?: KycStatus;
+  kycProvider?: string | null;
+  kyc_provider?: string | null;
   referral_code?: string | null;
   createdAt: string;
   created_at?: string;
@@ -158,6 +160,7 @@ export interface IUser {
   verification_token?: string;
   profile: IUserProfile;
   kyc?: [],
+  kycDocuments?: any[],
   wallets?: IWallet[],
 }
 
