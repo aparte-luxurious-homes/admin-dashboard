@@ -24,7 +24,6 @@ const DisputesView = () => {
     const { data, isLoading } = useAdminDisputes({
         page,
         size: pageSize,
-        status: statusFilter || undefined,
     });
 
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
@@ -48,8 +47,8 @@ const DisputesView = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const disputes = data?.data?.data || [];
-    const totalCount = data?.data?.meta?.total || 0;
+    const disputes = data?.items || [];
+    const totalCount = data?.total || 0;
 
     const getStatusStyles = (status: DisputeStatus) => {
         switch (status) {
@@ -84,7 +83,7 @@ const DisputesView = () => {
                             <input
                                 type="text"
                                 className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
-                                placeholder="Search by Dispute UUID..."
+                                placeholder="Search by Dispute ID..."
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                         </div>
@@ -204,7 +203,6 @@ const DisputesView = () => {
                             className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm font-medium text-amber-600 transition-colors border-b border-gray-100 group last:border-b-0"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                // I could open a mini-modal for quick status update here
                                 toast.success("Full detail page recommended for resolution");
                                 setSelectedRow(null);
                             }}

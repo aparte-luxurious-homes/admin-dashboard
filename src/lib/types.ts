@@ -19,8 +19,21 @@ export interface IReviewSummary {
 }
 
 export interface IDisputeEvidence {
+  id: string;
   media_url: string;
-  media_type: "IMAGE" | "VIDEO" | "DOCUMENT";
+  media_type: string;
+  uploaded_by: string;
+  created_at: string;
+}
+
+export interface IDisputeLog {
+  id: string;
+  action: string;
+  performer_id: string;
+  previous_status: DisputeStatus | null;
+  new_status: DisputeStatus;
+  comment: string | null;
+  created_at: string;
 }
 
 export interface IDispute {
@@ -34,7 +47,7 @@ export interface IDispute {
   outcome: DisputeOutcome | null;
   admin_notes: string | null;
   evidence: IDisputeEvidence[];
-  logs: any[];
+  logs: IDisputeLog[];
   created_at: string;
   updated_at: string;
 }
@@ -60,9 +73,11 @@ export interface IReferralItem {
 }
 
 export interface IReferralRelationship {
-  id: string;
+  referred_user_id: string;
+  referred_user_name: string;
   referrer_id: string;
-  referred_id: string;
+  referrer_name: string;
+  referral_code_used: string;
   created_at: string;
 }
 
@@ -80,6 +95,13 @@ export interface IPaginatedResponse<T> {
       [key: string]: any;
     }
   }
+}
+
+export interface IAdminPaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
 }
 
 export interface IBaseResponse<T> {
