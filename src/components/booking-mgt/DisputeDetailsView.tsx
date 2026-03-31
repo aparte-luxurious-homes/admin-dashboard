@@ -21,8 +21,7 @@ const DisputeDetailsView = () => {
     const disputeId = id as string;
     const router = useRouter();
 
-    const { data: disputeResponse, isLoading } = useDisputeDetails(disputeId);
-    const dispute = disputeResponse?.data;
+    const { data: dispute, isLoading } = useDisputeDetails(disputeId);
 
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
