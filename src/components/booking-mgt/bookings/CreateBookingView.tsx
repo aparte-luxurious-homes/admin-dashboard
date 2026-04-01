@@ -152,7 +152,6 @@ export default function CreateBookingView() {
                 },
                 {
                     onSuccess: (values) => {
-                        console.log(values)
                         toast.success('Booking created successfully', {
                             duration: 6000,
                             style: {
@@ -177,7 +176,6 @@ export default function CreateBookingView() {
             )
         }
     })
-    console.log('DEBUG: Formik Values:', formik.values);
 
     const handlePropertySelection = (name: string) => {
         const filteredProperties = properties?.filter(el => {
@@ -194,9 +192,7 @@ export default function CreateBookingView() {
     const handleUnitSelection = (name: string) => {
         // Use full details to find the unit
         const unit = fullPropertyDetails?.units?.find((u: IPropertyUnit) => u.name === name);
-        console.log('DEBUG: Selected Unit:', unit);
         if (unit) {
-            console.log('DEBUG: Unit Availability:', unit.availability);
             setSeletedUnit(unit);
             formik.setFieldValue('unit_id', unit.id);
             formik.setFieldValue('unit_count', 1);
@@ -204,11 +200,11 @@ export default function CreateBookingView() {
     }
 
     // Effect to inspect full details
-    useEffect(() => {
-        if (fullPropertyDetails) {
-            console.log('DEBUG: Full Property Details:', fullPropertyDetails);
-        }
-    }, [fullPropertyDetails]);
+    // useEffect(() => {
+    //     if (fullPropertyDetails) {
+    //         console.log('DEBUG: Full Property Details:', fullPropertyDetails);
+    //     }
+    // }, [fullPropertyDetails]);
 
     // Effect to sync properties list
     useEffect(() => {

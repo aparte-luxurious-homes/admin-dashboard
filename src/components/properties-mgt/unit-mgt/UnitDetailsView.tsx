@@ -33,7 +33,6 @@ import { format, addMonths } from "date-fns";
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: string | number, unitId: string | number }) {
     const dispatch = useDispatch();
     const { data, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
-    console.log("data", data);
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const router = useRouter();
     const pathname = usePathname();
@@ -68,7 +67,6 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                             { propertyId: String(propertyId), unitId: Number(unitId) },
                             {
                                 onSuccess: (response) => {
-                                    console.log(response)
                                     toast.success(response?.data?.message, {
                                         duration: 6000,
                                         style: {

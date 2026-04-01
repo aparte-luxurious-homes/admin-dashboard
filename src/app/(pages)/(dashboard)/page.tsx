@@ -135,8 +135,6 @@ const Home = () => {
   const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances();
   const balances = gatewayData?.data?.data || {};
 
-  console.log(isFetching ? "Fetching User" : user);
-
   const fetchProperties = useCallback(async () => {
     setLoading(true);
     try {
@@ -190,11 +188,6 @@ const Home = () => {
     fetchStatistics();
     fetchWallet();
   }, [fetchProperties, fetchStatistics, fetchWallet]);
-
-  console.log("stats", stats);
-  console.log(error)
-  console.log(statError)
-  console.log("properties", properties);
 
   const dataByRange = {
     year: stats?.users?.map((item) => ({
