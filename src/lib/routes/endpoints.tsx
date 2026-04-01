@@ -114,10 +114,11 @@ export const API_ROUTES = {
 };
 
 
-const rawUrl = process.env.NEXT_PUBLIC_BASE_API_URL ||
-    process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
-    process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
-    "";
+const rawUrl = process.env.NEXT_PUBLIC_BASE_STAGING_API_URL
+// .NEXT_PUBLIC_BASE_API_URL ||
+//     process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
+//     process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
+//     "";
 
 export const BASE_API_URL = rawUrl.trim().replace(/\/+$/, "");
 
