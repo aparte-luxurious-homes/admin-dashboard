@@ -34,7 +34,7 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import Image from "next/image";
 import { MdRefresh, MdCopyAll, MdCheck } from "react-icons/md";
 import Modal from "../../modal/Modal";
-// import PDFContent from "./component/pdf";
+import BookingPrintView from "../BookingPreview";
 import DeleteBookingDialog from "../dialogs/DeleteBookingDialog";
 import {
   RetryBookingPayment,
@@ -48,6 +48,7 @@ import {
 } from "@/src/lib/request-handlers/bookingMgt";
 import { toast } from "react-hot-toast";
 import { CautionRefundModal } from "../modals/CautionRefundModal";
+import html2canvas from "html2canvas";
 
 export default function BookingDetailView({
   bookingId,
@@ -58,11 +59,13 @@ export default function BookingDetailView({
   const searchParams = useSearchParams();
   const router = useRouter();
   const targetRef = useRef<HTMLDivElement>(null);
+  const printContentRef = useRef<HTMLDivElement>(null);
   const [editMode, setEditMode] = useState<boolean>(
     Boolean(searchParams.get("edit")),
   );
   const [copied, setCopied] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [status, setStatus] = useState(BookingStatus.PENDING);
   const { data: bookingData, isLoading, error } = GetBookingDetails(bookingId);
   const [bookingDetails, setBookingDetails] = useState<IBooking | null>(null);
@@ -83,6 +86,70 @@ export default function BookingDetailView({
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  const handlePrint = () => {
+    setShowPrintPreview(true);
+  };
+
+  const handleGeneratePDF = async () => {
+    if (!printContentRef.current) return;
+    
+    setIsGeneratingPDF(true);
+    try {
+      // Wait for any images to load
+      const images = printContentRef.current.querySelectorAll('img');
+      await Promise.all(Array.from(images).map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      }));
+
+      // Capture the content
+      const canvas = await html2canvas(printContentRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: printContentRef.current.scrollWidth,
+        windowHeight: printContentRef.current.scrollHeight,
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new (await import('jspdf')).jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      pdf.save(`booking-${bookingDetails?.bookingId || bookingDetails?.id}.pdf`);
+      setShowPrintPreview(false);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   useEffect(() => {
     if (bookingData?.data?.data) {
@@ -281,17 +348,64 @@ export default function BookingDetailView({
                       <span>Edit</span>
                     </button>
                     <button
-                      onClick={() =>
-                        downloadScreenAsPDF({
-                          name: `booking-${bookingDetails.bookingId}.pdf`,
-                          element: targetRef,
-                        })
-                      }
+                      onClick={handlePrint}
                       className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-primary text-white rounded-lg text-xs sm:text-sm hover:bg-primary/90 transition-colors"
                     >
                       <LiaPrintSolid className="text-sm sm:text-base" />
                       <span>Print</span>
                     </button>
+
+                    {showPrintPreview && (
+                      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-auto relative">
+                          <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center z-10">
+                            <h3 className="text-lg font-semibold text-gray-800">Print Preview</h3>
+                            <button
+                              onClick={() => setShowPrintPreview(false)}
+                              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="p-6 overflow-visible">
+                            <BookingPrintView 
+                              ref={printContentRef} 
+                              bookingDetails={bookingDetails} 
+                            />
+                          </div>
+                          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex justify-center gap-3 z-10">
+                            <button
+                              onClick={handleGeneratePDF}
+                              disabled={isGeneratingPDF}
+                              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isGeneratingPDF ? (
+                                <>
+                                  <svg className="animate-spin inline w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Generating PDF...
+                                </>
+                              ) : (
+                                <>
+                                  <LiaPrintSolid className="inline mr-2" />
+                                  Download PDF
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => setShowPrintPreview(false)}
+                              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

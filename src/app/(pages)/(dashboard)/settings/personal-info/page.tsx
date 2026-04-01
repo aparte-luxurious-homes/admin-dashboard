@@ -43,7 +43,7 @@ const PersonalInfoPage = () => {
 
   const handleEditProfile = () => {
     setIsEditing(true);
-    axiosRequest.patch(`${API_ROUTES?.profile?.update}`, personalInfo)
+    axiosRequest.put(`${API_ROUTES?.admin?.users?.userById(user!.id)}`, personalInfo)
       .then((res) => {
         setIsEditing(false);
         toast.success(res?.data?.message, {
@@ -56,6 +56,7 @@ const PersonalInfoPage = () => {
       })
       .catch((err) => {
         setIsEditing(false);
+        console.log("Error updating profile:", err);
         toast.error(err?.response?.data?.message, {
           duration: 3000,
           style: {
@@ -146,7 +147,7 @@ const PersonalInfoPage = () => {
                 inputName="address"
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
+            {/* <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
                 label="Date Joined"
                 required
@@ -156,7 +157,7 @@ const PersonalInfoPage = () => {
                 inputType="date"
                 inputName="date"
               />
-            </Grid>
+            </Grid> */}
           </Grid>
           {user?.profile?.referral_code && (
             <div className="mt-8 p-5 rounded-xl border border-dashed border-primary/50 bg-primary/5">
