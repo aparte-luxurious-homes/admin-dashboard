@@ -3,16 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
 import { useRouter } from "next/navigation";
-import { IProperty, IPropertyVerification, PropertyType, PropertyVerificationStatus } from "../types";
-import { GetAllProperties, GetAllVerifications, UpdatePropertyVerification } from "@/src/lib/request-handlers/propertyMgt";
+import { IPropertyVerification, PropertyVerificationStatus } from "../types";
+import { GetAllVerifications, UpdatePropertyVerification } from "@/src/lib/request-handlers/propertyMgt";
 import Loader from "../../loader";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { BookingBadge, VerificationBadge } from "../../badge";
+import { VerificationBadge } from "../../badge";
 import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import { LuEye } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
-import { BookingStatus } from "../../booking-mgt/types";
 import { MdOutlineVerified } from "react-icons/md";
 import { ImCancelCircle } from "react-icons/im";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -31,7 +30,8 @@ export default function AllVerificationsTable() {
     const modalRef = useRef(null);
     const [page, setPage] = useState<number>(1);
     const [searchTerm, setSearchTerm] = useState<string>("");
-    const { data: verificationList, isLoading: verificationsLoading, refetch } = GetAllVerifications(page, 12, searchTerm, user?.role || UserRole.GUEST)
+    const [statusFilter, setStatusFilter] = useState<string>("");
+    const { data: verificationList, isLoading: verificationsLoading, refetch } = GetAllVerifications(page, 10, searchTerm, statusFilter || undefined, user?.role || UserRole.GUEST)
     const [verifications, setVerifications] = useState<IPropertyVerification[]>(verificationList?.data?.data?.data);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const { mutate: updateVerification, isPending: verificationUpdating } = UpdatePropertyVerification();
@@ -44,6 +44,8 @@ export default function AllVerificationsTable() {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [selectedVerification, setSelectedVerification] = useState<IPropertyVerification | null>(null);
     const [feedbackText, setFeedbackText] = useState("");
+    const [skipKycCheck, setSkipKycCheck] = useState(false);
+    const [skipDocumentCheck, setSkipDocumentCheck] = useState(false);
 
     const handleCopyId = async (id: string | number, event: React.MouseEvent) => {
         event.stopPropagation();
@@ -75,7 +77,9 @@ export default function AllVerificationsTable() {
                             propertyId,
                             payload: {
                                 feedback: feedbackText || "Property verified successfully",
-                                status: PropertyVerificationStatus.VERIFIED
+                                status: PropertyVerificationStatus.VERIFIED,
+                                skip_kyc_check: skipKycCheck,
+                                skip_document_check: skipDocumentCheck
                             }
                         },
                         {
@@ -89,6 +93,8 @@ export default function AllVerificationsTable() {
                                 });
                                 setShowVerifyModal(false);
                                 setFeedbackText("");
+                                setSkipKycCheck(false);
+                                setSkipDocumentCheck(false);
                                 setSelectedVerification(null);
                                 refetch();
                             },
@@ -148,7 +154,7 @@ export default function AllVerificationsTable() {
                                 refetch();
                             },
                             onError: (error: any) => {
-                                toast.error(error?.response?.data?.message || 'Failed to reject property', {
+                                toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Failed to reject property', {
                                     duration: 6000,
                                     style: {
                                         maxWidth: '500px',
@@ -166,6 +172,8 @@ export default function AllVerificationsTable() {
     const openVerifyModal = (verification: IPropertyVerification) => {
         setSelectedVerification(verification);
         setFeedbackText("");
+        setSkipKycCheck(false);
+        setSkipDocumentCheck(false);
         setShowVerifyModal(true);
         setSelectedRow(null);
     };
@@ -176,6 +184,10 @@ export default function AllVerificationsTable() {
         setShowRejectModal(true);
         setSelectedRow(null);
     };
+
+    const canVerify = [UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user?.role as UserRole);
+    const selectedStatus = selectedRow !== null ? verifications?.[selectedRow]?.status : null;
+    const showVerifyReject = canVerify && selectedStatus === PropertyVerificationStatus.PENDING;
 
     const detailButtons = [
         {
@@ -200,24 +212,26 @@ export default function AllVerificationsTable() {
                 setSelectedRow(null)
             },
         },
-        {
-            label: "Verify",
-            Icon: <MdOutlineVerified />,
-            onClick: () => {
-                if (selectedRow !== null) {
-                    openVerifyModal(verifications[selectedRow]);
-                }
+        ...(showVerifyReject ? [
+            {
+                label: "Verify",
+                Icon: <MdOutlineVerified />,
+                onClick: () => {
+                    if (selectedRow !== null) {
+                        openVerifyModal(verifications[selectedRow]);
+                    }
+                },
             },
-        },
-        {
-            label: "Reject",
-            Icon: <ImCancelCircle className="size-3.5" />,
-            onClick: () => {
-                if (selectedRow !== null) {
-                    openRejectModal(verifications[selectedRow]);
-                }
+            {
+                label: "Reject",
+                Icon: <ImCancelCircle className="size-3.5" />,
+                onClick: () => {
+                    if (selectedRow !== null) {
+                        openRejectModal(verifications[selectedRow]);
+                    }
+                },
             },
-        },
+        ] : []),
     ];
 
     // Handle click outside modal
@@ -250,18 +264,37 @@ export default function AllVerificationsTable() {
 
                     {/* Header Section */}
                     <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
-                        <div className="w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-5">
-                            <p className="text-lg sm:text-xl md:text-2xl font-medium">Verifications</p>
-                            <div className="relative w-full sm:w-[250px] md:w-[300px] lg:w-[350px]">
+                        <div className="w-full flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
+                            <p className="text-lg sm:text-xl md:text-2xl font-medium shrink-0">Verifications</p>
+                            <div className="relative w-full sm:w-[220px] md:w-[280px]">
                                 <input
                                     type="text"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
                                     className="border border-zinc-500/20 bg-background rounded-lg w-full h-9 sm:h-10 pl-9 pr-3 text-xs sm:text-sm"
                                     placeholder="Search property..."
                                 />
                                 <SearchIcon className="absolute top-1/2 -translate-y-1/2 left-3 w-4 sm:w-5" color="black" />
                             </div>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                                className="border border-zinc-500/20 bg-background rounded-lg h-9 sm:h-10 px-3 text-xs sm:text-sm w-full sm:w-auto"
+                            >
+                                <option value="">All Statuses</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="VERIFIED">Verified</option>
+                                <option value="REJECTED">Rejected</option>
+                            </select>
+                            {(searchTerm || statusFilter) && (
+                                <button
+                                    onClick={() => { setSearchTerm(""); setStatusFilter(""); setPage(1); }}
+                                    className="flex items-center gap-1 text-xs sm:text-sm text-zinc-500 hover:text-zinc-700 transition-colors"
+                                >
+                                    <Icon icon="lucide:x" width="14" height="14" />
+                                    Clear
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -426,10 +459,10 @@ export default function AllVerificationsTable() {
                 {!verificationsLoading && verificationList && verifications && verifications.length > 0 && (
                     <div className="mt-4 sm:mt-6 w-full">
                         <TablePagination
-                            total={verificationList?.data?.data?.meta?.total}
+                            total={verificationList?.data?.data?.meta?.total ?? 0}
                             currentPage={page}
                             setPage={setPage}
-                            firstPage={verificationList?.data?.data?.meta?.firstPage}
+                            firstPage={verificationList?.data?.data?.meta?.firstPage ?? 1}
                             itemsPerPage={10}
                         />
                     </div>
@@ -442,6 +475,8 @@ export default function AllVerificationsTable() {
                 onClose={() => {
                     setShowVerifyModal(false);
                     setFeedbackText("");
+                    setSkipKycCheck(false);
+                    setSkipDocumentCheck(false);
                     setSelectedVerification(null);
                 }}
                 title="Verify Property"
@@ -474,11 +509,37 @@ export default function AllVerificationsTable() {
                                 </p>
                             </div>
 
+                            {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && (
+                                <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                    <p className="text-sm font-medium text-amber-800 mb-2">Override Checks</p>
+                                    <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={skipKycCheck}
+                                            onChange={(e) => setSkipKycCheck(e.target.checked)}
+                                            className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                        />
+                                        <span className="text-sm text-amber-700">Skip owner KYC verification check</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={skipDocumentCheck}
+                                            onChange={(e) => setSkipDocumentCheck(e.target.checked)}
+                                            className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                        />
+                                        <span className="text-sm text-amber-700">Skip document verification check</span>
+                                    </label>
+                                </div>
+                            )}
+
                             <div className="flex justify-end gap-3 mt-6">
                                 <button
                                     onClick={() => {
                                         setShowVerifyModal(false);
                                         setFeedbackText("");
+                                        setSkipKycCheck(false);
+                                        setSkipDocumentCheck(false);
                                         setSelectedVerification(null);
                                     }}
                                     className="px-4 py-2 text-sm font-medium text-zinc-700 bg-zinc-100 rounded-lg hover:bg-zinc-200 transition-colors"

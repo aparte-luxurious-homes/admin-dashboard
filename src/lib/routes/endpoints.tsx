@@ -40,10 +40,13 @@ export const API_ROUTES = {
         reviews: {
             base: '/admin/reviews',
             flag: (reviewId: string | number) => `/admin/reviews/${reviewId}/flag`,
+            unflag: (reviewId: string | number) => `/admin/reviews/${reviewId}/unflag`,
+            restore: (reviewId: string | number) => `/admin/reviews/${reviewId}/restore`,
             remove: (reviewId: string | number) => `/admin/reviews/${reviewId}`,
         },
         disputes: {
             base: '/admin/disputes',
+            details: (id: string | number) => `/admin/disputes/${id}`,
             status: (disputeId: string | number) => `/admin/disputes/${disputeId}/status`,
             requestEvidence: (disputeId: string | number) => `/admin/disputes/${disputeId}/request-evidence`,
             resolve: (disputeId: string | number) => `/admin/disputes/${disputeId}/resolve`,
@@ -94,6 +97,7 @@ export const API_ROUTES = {
     },
     bookings: {
         base: '/bookings',
+        guestLookup: '/bookings/guest-lookup',
         details: (id: string) => `/bookings/${id}`,
         status: (id: string | number) => `/bookings/${id}/status`,
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
@@ -107,6 +111,8 @@ export const API_ROUTES = {
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
         approveWithdrawal: (id: string | number) => `/wallets/${id}/approve-withdrawal`,
         rejectWithdrawal: (id: string | number) => `/wallets/${id}/reject-withdrawal`,
+        authorizeDisbursement: (id: string | number) => `/wallets/${id}/authorize-disbursement`,
+        resendDisbursementOtp: (id: string | number) => `/wallets/${id}/resend-disbursement-otp`,
         pendingWithdrawals: '/wallets/pending-withdrawals',
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,

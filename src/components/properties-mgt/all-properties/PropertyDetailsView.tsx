@@ -83,6 +83,7 @@ export default function PropertyDetailsView({
     const docPreviewsRef = useRef<{ url: string; file: File }[]>([]);
     const [selectedDoc, setSelectedDoc] = useState<IPropertyDocument | null>(null);
     const [docUploadPending, setDocUploadPending] = useState(false);
+    const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
     const { mutate: uploadDoc } = UploadPropertyDocument();
     const { mutate: verifyDoc, isPending: docVerifyPending } = UpdatePropertyDocumentStatus();
 
@@ -344,7 +345,7 @@ export default function PropertyDetailsView({
                                                                         <Icon icon="solar:file-text-bold-duotone" className="text-zinc-500 group-hover:text-primary text-sm sm:text-base" />
                                                                     </div>
                                                                     <div className="min-w-0 flex-1">
-                                                                        <p className="font-bold text-zinc-800 text-xs sm:text-sm truncate">{(doc?.document_type as string)?.replace(/_/g, ' ')}</p>
+                                                                        <p className="font-bold text-zinc-800 text-xs sm:text-sm truncate">{(doc?.document_type as string)?.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
                                                                         <p className="text-[8px] sm:text-[10px] text-zinc-400 capitalize truncate">{doc?.status?.toLowerCase()}</p>
                                                                     </div>
                                                                 </div>
@@ -839,9 +840,10 @@ export default function PropertyDetailsView({
                                 <div className="space-y-1 sm:space-y-2">
                                     <label className="text-xs sm:text-sm font-bold text-zinc-700">Document Type</label>
                                     <CustomDropdown
-                                        selected={DocumentType.PROOF_OF_OWNERSHIP}
+                                        selected={selectedDocType}
                                         options={Object.values(DocumentType)}
-                                        handleSelection={(val) => { }}
+                                        handleSelection={(val) => setSelectedDocType(val as DocumentType)}
+                                        formatLabel={(val: string) => val.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                     />
                                 </div>
                                 <div className="w-full">
@@ -850,7 +852,7 @@ export default function PropertyDetailsView({
                                             if (files.length > 0) {
                                                 const formData = new FormData();
                                                 formData.append('document_file', files[0]);
-                                                formData.append('document_type', DocumentType.PROOF_OF_OWNERSHIP);
+                                                formData.append('document_type', selectedDocType);
 
                                                 setDocUploadPending(true);
                                                 uploadDoc({
@@ -890,7 +892,7 @@ export default function PropertyDetailsView({
                             <div className="w-full space-y-4 sm:space-y-5 pt-2 sm:pt-3">
                                 <div className="bg-zinc-50 p-2 sm:p-3 rounded-lg sm:rounded-xl">
                                     <p className="text-[10px] sm:text-xs font-bold text-zinc-400 uppercase mb-1">Document Type</p>
-                                    <p className="text-xs sm:text-sm font-bold text-zinc-800">{(selectedDoc?.document_type as string)?.replace(/_/g, ' ')}</p>
+                                    <p className="text-xs sm:text-sm font-bold text-zinc-800">{(selectedDoc?.document_type as string)?.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
                                 </div>
 
                                 <div className="flex gap-2 sm:gap-3">

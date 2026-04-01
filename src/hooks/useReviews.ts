@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import { IReview, IReviewSummary, IBaseResponse, IPaginatedResponse } from "@/src/lib/types";
+import { IReview, IReviewSummary, IBaseResponse, IPaginatedResponse, IAdminPaginatedResponse } from "@/src/lib/types";
 import { toast } from "react-hot-toast";
 
 // 🔹 Fetch Admin Reviews (Search/Filter)
@@ -11,7 +11,7 @@ export const useAdminReviews = (params?: { property_id?: string; page?: number; 
   return useQuery({
     queryKey: ["admin-reviews", params],
     queryFn: async () => {
-      const response = await axiosRequest.get<IPaginatedResponse<IReview[]>>(API_ROUTES.admin.reviews.base, { params });
+      const response = await axiosRequest.get<IAdminPaginatedResponse<IReview>>(API_ROUTES.admin.reviews.base, { params });
       return response.data;
     },
   });
@@ -71,6 +71,42 @@ export const useFlagReview = () => {
   });
 };
 
+// 🔹 Unflag Review (Admin)
+export const useUnflagReview = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (reviewId: string | number) => {
+      const response = await axiosRequest.patch<IBaseResponse<IReview>>(API_ROUTES.admin.reviews.unflag(reviewId));
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+      toast.success("Review unflagged successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to unflag review");
+    },
+  });
+};
+
+// 🔹 Restore Review (Admin)
+export const useRestoreReview = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (reviewId: string | number) => {
+      const response = await axiosRequest.patch<IBaseResponse<IReview>>(API_ROUTES.admin.reviews.restore(reviewId));
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+      toast.success("Review restored successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to restore review");
+    },
+  });
+};
+
 // 🔹 Remove Review (Admin)
 export const useRemoveReview = () => {
   const queryClient = useQueryClient();
@@ -89,7 +125,7 @@ export const useRemoveReview = () => {
   });
 };
 
-// 🔹 Submit Review (Guest - for reference, though maybe not used in admin dash)
+// 🔹 Submit Review (Guest)
 export const useSubmitReview = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -97,8 +133,7 @@ export const useSubmitReview = () => {
       const response = await axiosRequest.post<IBaseResponse<IReview>>(API_ROUTES.reviews.base, data);
       return response.data.data;
     },
-    onSuccess: (_, variables) => {
-        // We could invalidate property reviews if we knew the property_id
+    onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["property-reviews"] });
         toast.success("Review submitted successfully");
     },

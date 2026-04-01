@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminReviews, useFlagReview, useRemoveReview } from "@/src/hooks/useReviews";
+import { useAdminReviews, useFlagReview, useUnflagReview, useRestoreReview, useRemoveReview } from "@/src/hooks/useReviews";
 import { useState } from "react";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { Icon } from "@iconify/react";
@@ -26,6 +26,8 @@ const ReviewsView = () => {
     });
 
     const { mutate: flagReview } = useFlagReview();
+    const { mutate: unflagReview } = useUnflagReview();
+    const { mutate: restoreReview } = useRestoreReview();
     const { mutate: removeReview } = useRemoveReview();
 
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
@@ -49,8 +51,8 @@ const ReviewsView = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const reviews = data?.data?.data || [];
-    const totalCount = data?.data?.meta?.total || 0;
+    const reviews = data?.items || [];
+    const totalCount = data?.total || 0;
 
     const renderStars = (rating: number) => {
         return (
@@ -133,17 +135,15 @@ const ReviewsView = () => {
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex justify-center gap-2">
-                                                {review.is_flagged && (
-                                                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-red-100 text-red-700 font-bold uppercase">
-                                                        Flagged
-                                                    </span>
-                                                )}
-                                                {review.is_removed && (
+                                                {review.is_removed ? (
                                                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-700 font-bold uppercase">
                                                         Removed
                                                     </span>
-                                                )}
-                                                {!review.is_flagged && !review.is_removed && (
+                                                ) : review.is_flagged ? (
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-red-100 text-red-700 font-bold uppercase">
+                                                        Flagged
+                                                    </span>
+                                                ) : (
                                                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-green-100 text-green-700 font-bold uppercase">
                                                         Active
                                                     </span>
@@ -195,45 +195,85 @@ const ReviewsView = () => {
                 >
                     {isAdmin && (
                         <>
-                            <button
-                                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 transition-colors border-b border-gray-100 group"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const review = reviews[selectedRow];
-                                    dispatch(showAlert({
-                                        title: "Flag Review",
-                                        description: "Are you sure you want to flag this review? This will alert other users that it may contain inappropriate content.",
-                                        confirmText: "Flag",
-                                        cancelText: "Cancel",
-                                        onConfirm: () => flagReview(review.id)
-                                    }));
-                                    setSelectedRow(null);
-                                }}
-                            >
-                                <Icon icon="mdi:flag" className="text-gray-400 group-hover:text-amber-500" width="18" />
-                                <span>Flag Review</span>
-                            </button>
-                            <button
-                                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-50 cursor-pointer text-sm text-red-600 transition-colors border-b border-gray-100 group last:border-b-0"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const review = reviews[selectedRow];
-                                    dispatch(showAlert({
-                                        title: "Remove Review",
-                                        description: "Are you sure you want to remove this review? This action is permanent and it will no longer be visible on the platform.",
-                                        confirmText: "Remove",
-                                        cancelText: "Cancel",
-                                        onConfirm: () => {
-                                            removeReview(review.id);
-                                            toast.success("Review removed successfully.");
-                                        }
-                                    }));
-                                    setSelectedRow(null);
-                                }}
-                            >
-                                <Icon icon="mdi:trash-can" className="text-red-400 group-hover:text-red-600" width="18" />
-                                <span>Remove Review</span>
-                            </button>
+                            {!reviews[selectedRow].is_flagged ? (
+                                <button
+                                    className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 transition-colors border-b border-gray-100 group"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const review = reviews[selectedRow];
+                                        dispatch(showAlert({
+                                            title: "Flag Review",
+                                            description: "Are you sure you want to flag this review? This will alert other users that it may contain inappropriate content.",
+                                            confirmText: "Flag",
+                                            cancelText: "Cancel",
+                                            onConfirm: () => flagReview(review.id)
+                                        }));
+                                        setSelectedRow(null);
+                                    }}
+                                >
+                                    <Icon icon="mdi:flag" className="text-gray-400 group-hover:text-amber-500" width="18" />
+                                    <span>Flag Review</span>
+                                </button>
+                            ) : (
+                                <button
+                                    className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 transition-colors border-b border-gray-100 group"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const review = reviews[selectedRow];
+                                        dispatch(showAlert({
+                                            title: "Unflag Review",
+                                            description: "Are you sure you want to unflag this review?",
+                                            confirmText: "Unflag",
+                                            cancelText: "Cancel",
+                                            onConfirm: () => unflagReview(review.id)
+                                        }));
+                                        setSelectedRow(null);
+                                    }}
+                                >
+                                    <Icon icon="mdi:flag-off" className="text-gray-400 group-hover:text-green-500" width="18" />
+                                    <span>Unflag Review</span>
+                                </button>
+                            )}
+
+                            {reviews[selectedRow].is_removed ? (
+                                <button
+                                    className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 transition-colors border-b border-gray-100 group last:border-b-0"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const review = reviews[selectedRow];
+                                        dispatch(showAlert({
+                                            title: "Restore Review",
+                                            description: "Are you sure you want to restore this review? It will be visible on the platform again.",
+                                            confirmText: "Restore",
+                                            cancelText: "Cancel",
+                                            onConfirm: () => restoreReview(review.id)
+                                        }));
+                                        setSelectedRow(null);
+                                    }}
+                                >
+                                    <Icon icon="mdi:restore" className="text-gray-400 group-hover:text-blue-500" width="18" />
+                                    <span>Restore Review</span>
+                                </button>
+                            ) : (
+                                <button
+                                    className="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-50 cursor-pointer text-sm text-red-600 transition-colors border-b border-gray-100 group last:border-b-0"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const review = reviews[selectedRow];
+                                        dispatch(showAlert({
+                                            title: "Remove Review",
+                                            description: "Are you sure you want to remove this review? This action is permanent and it will no longer be visible on the platform.",
+                                            confirmText: "Remove",
+                                            cancelText: "Cancel",
+                                            onConfirm: () => removeReview(review.id)
+                                        }));
+                                        setSelectedRow(null);
+                                    }}
+                                >
+                                    <Icon icon="mdi:trash-can" className="text-red-400 group-hover:text-red-600" width="18" />
+                                    <span>Remove Review</span>
+                                </button>
+                            )}
                         </>
                     )}
                 </div>
