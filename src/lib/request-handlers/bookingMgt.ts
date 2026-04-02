@@ -32,6 +32,14 @@ export function UploadPaymentProof() {
     });
 }
 
+export function GuestLookup(search?: string) {
+    return useQuery({
+        queryKey: ['guestLookup', search],
+        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.guestLookup}?search=${encodeURIComponent(search!)}`),
+        enabled: !!search && search.length >= 2,
+    });
+}
+
 export function GetAllBookings(
     page = 1,
     limit = 10,
@@ -162,8 +170,8 @@ export function CheckOutBooking() {
 export function RefundCautionFee() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`),
+        mutationFn: ({ bookingId, payload }: { bookingId: string | number, payload: { should_refund: boolean, notes?: string } }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`, payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
@@ -188,6 +196,30 @@ export function ApproveCancellation() {
     return useMutation({
         mutationFn: ({ bookingId }: { bookingId: string | number }) =>
             axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/approve-cancellation`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function ApproveBookingRequest() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(API_ROUTES.bookings.approveRequest(String(bookingId))),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function RejectBookingRequest() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId, reason }: { bookingId: string | number, reason?: string }) =>
+            axiosRequest.post(API_ROUTES.bookings.rejectRequest(String(bookingId)), { reason }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });

@@ -1,6 +1,8 @@
 "use client";
 
 import UserEditForm from "@/src/components/user-management/UserEditForm";
+import KycStatusEditor from "@/src/components/user-management/KycStatusEditor";
+import { EditWalletModal } from "@/src/components/finance-mgt/modals/EditWalletModal";
 
 import BreadCrumb from "@/src/components/breadcrumb";
 import Grid from "@mui/material/Grid2";
@@ -56,6 +58,7 @@ interface Property {
   description: string;
   isPetAllowed: boolean;
   isVerified: boolean;
+  is_active: boolean;
   latitude: number | null;
   longitude: number | null;
   propertyType: string;
@@ -104,7 +107,6 @@ interface User {
   last_name?: string | null;
   profileImage?: string | null;
   profile_image?: string | null;
-  isActive?: boolean;
   is_active?: boolean;
   isVerified?: boolean;
   is_verified?: boolean;
@@ -134,9 +136,18 @@ const AgentInfo = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<any>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [wallet, setWallet] = useState<{ id: string; balance: string | number; pending_cash?: string | number; currency: string } | null>(null);
+  const [showEditWallet, setShowEditWallet] = useState(false);
   const params = useParams();
   const id = params?.id;
-  console.log("params", params?.id);
+
+  const fetchWallet = useCallback(async (userId: string | number) => {
+    try {
+      const res = await axiosRequest.get(`${API_ROUTES.wallet.base}?user_id=${userId}`);
+      const items = res?.data?.data?.items || [];
+      setWallet(items.find((w: any) => w.currency === "NGN") || items[0] || null);
+    } catch { /* non-critical */ }
+  }, []);
 
   const fetchAUserInfo = useCallback(async () => {
     if (!id) return;
@@ -146,9 +157,10 @@ const AgentInfo = () => {
       const response = await axiosRequest.get(
         `${API_ROUTES.admin.users.userByUuid(String(id))}`
       );
-      console.log("response", response);
-      setUserInfo(response?.data?.data);
+      const userData = response?.data?.data;
+      setUserInfo(userData);
       setUserLoading(false);
+      if (userData?.id) fetchWallet(userData.id);
     } catch (error: any) {
       toast.error(error.response?.data?.message, {
         duration: 6000,
@@ -160,7 +172,7 @@ const AgentInfo = () => {
     } finally {
       setUserLoading(false);
     }
-  }, [id]);
+  }, [id, fetchWallet]);
 
   useEffect(() => {
     fetchAUserInfo();
@@ -174,7 +186,6 @@ const AgentInfo = () => {
       const response = await axiosRequest.get(
         `${API_ROUTES.propertyManagement.properties.base}`
       );
-      console.log("response prop", response);
 
       const filteredProperties = response?.data?.data?.data.filter(
         (agent: Property) => agent?.assignedAgent === Number(id)
@@ -190,8 +201,6 @@ const AgentInfo = () => {
       setLoading(false);
     }
   }, [id]);
-
-  console.log("properties", properties);
 
   useEffect(() => {
     fetchProperties();
@@ -331,7 +340,7 @@ const AgentInfo = () => {
 
   return (
     <>
-      <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
+      <div className="p-[20px] mr-5 ml-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
         <BreadCrumb
           description=""
           active="Agent info"
@@ -357,7 +366,7 @@ const AgentInfo = () => {
                       gender: userInfo?.profile?.gender || "",
                       role: typeof userInfo?.role === 'string' ? userInfo.role : (userInfo?.role?.value || ""),
                       bio: userInfo?.profile?.bio || "",
-                      isActive: userInfo?.is_active ?? userInfo?.isActive ?? true,
+                      is_active: userInfo?.is_active ?? userInfo?.is_active ?? true,
                       isVerified: userInfo?.is_verified ?? userInfo?.isVerified ?? false,
                     }}
                     showRoleSelector={true}
@@ -372,7 +381,7 @@ const AgentInfo = () => {
                             email: formData.email,
                             phone: formData.phone,
                             role: formData.role,
-                            isActive: formData.isActive,
+                            is_active: formData.is_active,
                             isVerified: formData.isVerified,
                             profile: {
                               first_name: formData.firstName,
@@ -473,7 +482,7 @@ const AgentInfo = () => {
                         </div>
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Account Active</p>
-                          <Badge status={userInfo?.is_active ?? userInfo?.isActive ?? false} />
+                          <Badge status={userInfo?.is_active ?? userInfo?.is_active ?? false} />
                         </div>
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Verified Identity</p>
@@ -482,12 +491,71 @@ const AgentInfo = () => {
                       </div>
                     </Grid>
                   </Grid>
+
+                  {/* Wallet Section */}
+                  {wallet && (
+                    <div className="mt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                          <Icon icon="solar:wallet-bold-duotone" width="20" />
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800">Wallet</h4>
+                      </div>
+                      <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance</p>
+                            <p className="text-lg font-bold text-primary">
+                              {wallet.currency} {Number(wallet.balance).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pending Cash</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {wallet.currency} {Number(wallet.pending_cash ?? 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="flex justify-end">
+                            <Button
+                              buttonName={<><Icon icon="mdi:pencil" className="mr-2" />Edit Wallet</>}
+                              onClick={() => setShowEditWallet(true)}
+                              variant="primary"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* KYC Status Section */}
+                  <KycStatusEditor
+                    userId={String(id)}
+                    currentStatus={userInfo?.profile?.kyc_status || userInfo?.profile?.kycStatus || "PENDING"}
+                    onUpdate={fetchAUserInfo}
+                  />
                 </>
               )}
             </>
           )}
         </div>
       </div>
+
+      {wallet && (
+        <EditWalletModal
+          isOpen={showEditWallet}
+          onClose={() => setShowEditWallet(false)}
+          walletId={wallet.id}
+          currentBalance={wallet.balance}
+          currentPendingCash={wallet.pending_cash}
+          currency={wallet.currency}
+          userName={
+            userInfo?.profile?.first_name || userInfo?.profile?.firstName
+              ? `${userInfo?.profile?.first_name || userInfo?.profile?.firstName} ${userInfo?.profile?.last_name || userInfo?.profile?.lastName || ""}`.trim()
+              : userInfo?.email
+          }
+          onSuccess={() => fetchWallet(userInfo.id)}
+        />
+      )}
     </>
   );
 };

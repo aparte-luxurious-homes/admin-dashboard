@@ -1,14 +1,107 @@
-import { KycStatus, UserRole } from "./enums";
+import { KycStatus, UserRole, DisputeCategory, DisputeStatus, DisputeOutcome } from "./enums";
+
+export interface IReview {
+  id: string;
+  booking_id: string;
+  property_id: string;
+  user_id: string;
+  rating: number;
+  comment: string;
+  is_flagged: boolean;
+  is_removed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IReviewSummary {
+  average_rating: number;
+  total_reviews: number;
+}
+
+export interface IDisputeEvidence {
+  id: string;
+  media_url: string;
+  media_type: string;
+  uploaded_by: string;
+  created_at: string;
+}
+
+export interface IDisputeLog {
+  id: string;
+  action: string;
+  performer_id: string;
+  previous_status: DisputeStatus | null;
+  new_status: DisputeStatus;
+  comment: string | null;
+  created_at: string;
+}
+
+export interface IDispute {
+  id: string;
+  dispute_id: string;
+  booking_id: string;
+  raised_by: string;
+  category: DisputeCategory;
+  description: string;
+  status: DisputeStatus;
+  outcome: DisputeOutcome | null;
+  admin_notes: string | null;
+  evidence: IDisputeEvidence[];
+  logs: IDisputeLog[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IReferralInfo {
+  code: string;
+  link: string;
+}
+
+export interface IAgentReferralStats {
+  total_referrals: number;
+  active_referrals: number;
+  total_bookings: number;
+}
+
+export interface IReferralItem {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface IReferralRelationship {
+  referred_user_id: string;
+  referred_user_name: string;
+  referrer_id: string;
+  referrer_name: string;
+  referral_code_used: string;
+  created_at: string;
+}
+
 
 // Auth and Axios related interfaces
 
-export interface IResponse<T> {
-  total_count: number;
+export interface IPaginatedResponse<T> {
   status: 'success' | 'error';
   code: string;
   message: string;
-  count?: number;
-  data: T;
+  data: {
+    data: T;
+    meta: {
+      total: number;
+      [key: string]: any;
+    }
+  }
+}
+
+export interface IAdminPaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
 }
 
 export interface IBaseResponse<T> {
@@ -57,6 +150,9 @@ export interface IUserProfile {
   average_rating?: string;
   kycStatus: KycStatus;
   kyc_status?: KycStatus;
+  kycProvider?: string | null;
+  kyc_provider?: string | null;
+  referral_code?: string | null;
   createdAt: string;
   created_at?: string;
   updatedAt?: string;
@@ -86,6 +182,7 @@ export interface IUser {
   verification_token?: string;
   profile: IUserProfile;
   kyc?: [],
+  kycDocuments?: any[],
   wallets?: IWallet[],
 }
 

@@ -1,5 +1,5 @@
 import { JSX } from "react";
-import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon } from "../../components/icons";
+import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon, RateIcon, PriceTagIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
 
@@ -35,26 +35,32 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'user-management',
         link: PAGE_ROUTES.dashboard.userManagement.guests.base,
         icon: <UsersIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
         secondary: true,
         children: [
             {
                 name: 'Guests',
                 pathName: 'guests',
                 link: PAGE_ROUTES.dashboard.userManagement.guests.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
             {
                 name: 'Owners',
                 pathName: 'owners',
                 link: PAGE_ROUTES.dashboard.userManagement.owners.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
             {
                 name: 'Agents',
                 pathName: 'agents',
                 link: PAGE_ROUTES.dashboard.userManagement.agents.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
+            {
+                name: 'Admins',
+                pathName: 'admins',
+                link: PAGE_ROUTES.dashboard.userManagement.admins.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
         ]
     },
@@ -91,22 +97,31 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'booking-management',
         link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
         icon: <BookingIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
         secondary: true,
         children: [
             {
                 name: 'Bookings',
                 pathName: 'bookings',
                 link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
-                allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
             {
                 name: 'Booking disputes',
                 pathName: 'booking-disputes',
                 link: PAGE_ROUTES.dashboard.bookingManagement.bookingDisputes.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
         ]
+    },
+    {
+        name: 'Reviews',
+        pathName: 'reviews',
+        link: PAGE_ROUTES.dashboard.reviews.base,
+        icon: <RateIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        secondary: false,
+        children: undefined,
     },
     {
         name: 'Financials',
@@ -134,7 +149,7 @@ export const NAV_LINKS: ILink[] = [
         name: 'Transactions',
         pathName: 'transactions',
         link: PAGE_ROUTES.dashboard.transactions.payments.base,
-        allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
         secondary: true,
         children: [
@@ -142,13 +157,13 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Payments',
                 pathName: 'payments',
                 link: PAGE_ROUTES.dashboard.transactions.payments.base,
-                allow: [UserRole.ADMIN, UserRole.AGENT, UserRole.OWNER],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
             },
             {
                 name: 'Withdrawals',
                 pathName: 'withdrawals',
                 link: PAGE_ROUTES.dashboard.transactions.withdrawals.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
             },
             {
                 name: 'Booking withdrawals',
@@ -161,6 +176,34 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'refunds',
                 link: PAGE_ROUTES.dashboard.transactions.refunds.base,
                 allow: [UserRole.ADMIN],
+            },
+        ]
+    },
+    {
+        name: 'Referrals',
+        pathName: 'referrals',
+        link: PAGE_ROUTES.dashboard.referrals.base,
+        icon: <PriceTagIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT],
+        secondary: true,
+        children: [
+            {
+                name: 'Overview',
+                pathName: 'referrals',
+                link: PAGE_ROUTES.dashboard.referrals.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+            },
+            {
+                name: 'My Referrals',
+                pathName: 'list',
+                link: PAGE_ROUTES.dashboard.referrals.list,
+                allow: [UserRole.AGENT],
+            },
+            {
+                name: 'Stats',
+                pathName: 'stats',
+                link: PAGE_ROUTES.dashboard.referrals.agentStats,
+                allow: [UserRole.AGENT],
             },
         ]
     },
@@ -192,6 +235,15 @@ export const NAV_LINKS: ILink[] = [
         children: undefined,
     },
     {
+        name: 'My Wallet',
+        pathName: 'wallet',
+        link: PAGE_ROUTES.dashboard.wallet.base,
+        icon: <FinancialsIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.OWNER, UserRole.AGENT],
+        secondary: false,
+        children: undefined,
+    },
+    {
         name: 'Settings',
         pathName: 'settings',
         link: PAGE_ROUTES.dashboard.settings.base,
@@ -201,4 +253,3 @@ export const NAV_LINKS: ILink[] = [
         children: undefined,
     },
 ]
-

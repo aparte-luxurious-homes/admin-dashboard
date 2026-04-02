@@ -8,6 +8,7 @@ enum UsersRequestKeys {
     createUser = "createUser",
     updateUser = "updateUser",
     deleteUser = "deleteUser",
+    assignableRoles = "assignableRoles",
 }
 
 export function GetAllUsers(page = 1, size = 10, searchQuery = '', role: UserRole | string = '', isVerified: string = '') {
@@ -23,6 +24,17 @@ export function GetAllUsers(page = 1, size = 10, searchQuery = '', role: UserRol
             }
         }),
         refetchOnWindowFocus: true,
+    });
+}
+
+export function OnboardUser() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ payload }: { payload: any }) =>
+            axiosRequest.post(API_ROUTES.admin.users.onboard, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.getAllUsers] });
+        },
     });
 }
 
@@ -56,5 +68,12 @@ export function DeleteUser() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.getAllUsers] });
         },
+    });
+}
+
+export function GetAssignableRoles() {
+    return useQuery({
+        queryKey: [UsersRequestKeys.assignableRoles],
+        queryFn: () => axiosRequest.get(API_ROUTES.admin.users.roles),
     });
 }

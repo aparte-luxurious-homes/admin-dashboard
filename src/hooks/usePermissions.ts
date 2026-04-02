@@ -21,6 +21,9 @@ export const usePermissions = () => {
     const canViewUsers = isAdmin;
     const canViewAuditLogs = isAdmin;
     const canViewSettings = isAdmin;
+    const canViewReviews = isAdmin || isStaff;
+    const canViewReferrals = isAdmin || isAgent;
+    const canViewDisputes = isAdmin || isOwner || isAgent;
 
     // Specific Actions
     const canCreateProperty = isStaff;
@@ -32,6 +35,10 @@ export const usePermissions = () => {
     const canCancelBooking = isAdmin || isOwner || isAgent;
 
     const canManageFinances = isAdmin; // Withdrawals etc.
+    const canFlagReview = isAdmin;
+    const canRemoveReview = isAdmin;
+    const canManageDisputes = isAdmin; // Admin can resolve, update status etc.
+    const canRaiseDispute = isOwner; // Owners can raise disputes after checkout
 
     return {
         role,
@@ -49,6 +56,9 @@ export const usePermissions = () => {
         canViewUsers,
         canViewAuditLogs,
         canViewSettings,
+        canViewReviews,
+        canViewReferrals,
+        canViewDisputes,
 
         canCreateProperty,
         canEditProperty,
@@ -57,6 +67,10 @@ export const usePermissions = () => {
 
         canManageBookings,
         canCancelBooking,
-        canManageFinances
+        canManageFinances,
+        canFlagReview,
+        canRemoveReview,
+        canManageDisputes,
+        canRaiseDispute,
     };
 };

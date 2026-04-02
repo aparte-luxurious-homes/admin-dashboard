@@ -1,0 +1,100 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axiosRequest from "../api";
+import { API_ROUTES } from "../routes/endpoints"; // Ensure endpoints are defined
+
+// Keys for caching
+export enum FinanceRequestKeys {
+    getAllTransactions = "getAllTransactions",
+    getTransactionDetails = "getTransactionDetails",
+    approveRefund = "approveRefund",
+    approveWithdrawal = "approveWithdrawal",
+    updateWallet = "updateWallet",
+}
+
+export interface UpdateWalletPayload {
+    balance?: string;
+    pending_cash?: string;
+}
+
+export function UpdateWallet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string; payload: UpdateWalletPayload }) =>
+            axiosRequest.patch(API_ROUTES.wallet.update(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+        },
+    });
+}
+
+export interface ApproveRefundPayload {
+    refund_method: string;
+    notes?: string;
+    refund_proof?: string;
+}
+
+export function ApproveRefund() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ transactionId, payload }: { transactionId: string, payload: ApproveRefundPayload }) =>
+            axiosRequest.post(API_ROUTES.transactions.approveRefund(transactionId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+export function ApproveWithdrawal() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: any }) =>
+            axiosRequest.post(API_ROUTES.wallet.approveWithdrawal(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+
+export function VerifyPayoutAccount() {
+    return useMutation({
+        mutationFn: ({ walletId, accountId }: { walletId: string; accountId: string }) =>
+            axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(walletId, accountId)),
+    });
+}
+
+export interface RejectWithdrawalPayload {
+    transaction_id: string;
+    reason?: string;
+}
+
+export function RejectWithdrawal() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: RejectWithdrawalPayload }) =>
+            axiosRequest.post(API_ROUTES.wallet.rejectWithdrawal(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+
+export function AuthorizeDisbursement() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: { transaction_id: string; otp: string } }) =>
+            axiosRequest.post(API_ROUTES.wallet.authorizeDisbursement(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+
+export function ResendDisbursementOtp() {
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: { transaction_id: string } }) =>
+            axiosRequest.post(API_ROUTES.wallet.resendDisbursementOtp(walletId), payload),
+    });
+}

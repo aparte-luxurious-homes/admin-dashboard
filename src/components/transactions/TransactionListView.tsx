@@ -15,9 +15,13 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import autoTable from "jspdf-autotable";
 import { formatDate, formatMoney } from "@/src/lib/utils";
+import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
+import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
+import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
 
 interface Transaction {
     id: string;
+    wallet_id?: string;
     user_id: string | number;
     amount: string | number;
     currency: string;
@@ -68,6 +72,13 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
+
+    // Approval/Rejection Modal State
+    const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+    const [selectedTxForApproval, setSelectedTxForApproval] = useState<Transaction | null>(null);
+    const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
+    const [withdrawalModalInitialStep, setWithdrawalModalInitialStep] = useState<"confirm" | "otp">("confirm");
+    const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
 
     const handleDownload = (type: "CSV" | "PDF") => {
         if (type === "CSV") {
@@ -202,6 +213,17 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const handleApproveClick = (tx: Transaction) => {
+        setSelectedTxForApproval(tx);
+        if (tx.transaction_type === "WITHDRAWAL") {
+            setWithdrawalModalInitialStep("confirm");
+            setIsWithdrawalApprovalOpen(true);
+        } else {
+            setIsApproveModalOpen(true);
+        }
+        setSelectedRow(null); // Close context menu
+    };
+
     const detailButtons = [
         {
             label: "View Details",
@@ -214,6 +236,42 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
             },
         }
     ];
+
+    if (selectedRow !== null && data[selectedRow]?.status === "PENDING_APPROVAL") {
+        const tx = data[selectedRow];
+        detailButtons.push({
+            label: tx.transaction_type === "WITHDRAWAL" ? "Approve Withdrawal" : "Approve Refund",
+            Icon: <Icon icon="mdi:check-circle-outline" />,
+            onClick: () => handleApproveClick(tx),
+        });
+        if (tx.transaction_type === "WITHDRAWAL") {
+            detailButtons.push({
+                label: "Reject Withdrawal",
+                Icon: <Icon icon="mdi:close-circle-outline" />,
+                onClick: () => {
+                    setSelectedTxForApproval(tx);
+                    setIsWithdrawalRejectionOpen(true);
+                    setSelectedRow(null);
+                },
+            });
+        }
+    }
+
+    if (selectedRow !== null && data[selectedRow]?.status === "AWAITING_AUTHORIZATION") {
+        const tx = data[selectedRow];
+        if (tx.transaction_type === "WITHDRAWAL") {
+            detailButtons.push({
+                label: "Enter OTP",
+                Icon: <Icon icon="mdi:key-outline" />,
+                onClick: () => {
+                    setSelectedTxForApproval(tx);
+                    setWithdrawalModalInitialStep("otp");
+                    setIsWithdrawalApprovalOpen(true);
+                    setSelectedRow(null);
+                },
+            });
+        }
+    }
 
     return (
         <div className="p-6">
@@ -286,7 +344,10 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                     >
                                         <option value="">All Statuses</option>
                                         <option value="PENDING">Pending</option>
+                                        <option value="PENDING_APPROVAL">Pending Approval</option>
+                                        <option value="AWAITING_AUTHORIZATION">Awaiting OTP</option>
                                         <option value="SUCCESSFUL">Successful</option>
+                                        <option value="OFFLINE_REFUNDED">Offline Refunded</option>
                                         <option value="FAILED">Failed</option>
                                     </select>
                                 </div>
@@ -450,6 +511,55 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                         </button>
                     ))}
                 </div>
+            )}
+
+            {/* Approval Modal */}
+            {selectedTxForApproval && (
+                <ApproveRefundModal
+                    isOpen={isApproveModalOpen}
+                    onClose={() => {
+                        setIsApproveModalOpen(false);
+                        setSelectedTxForApproval(null);
+                        fetchTransactions();
+                    }}
+                    transactionId={selectedTxForApproval.id}
+                    amount={selectedTxForApproval.amount}
+                    currency={selectedTxForApproval.currency}
+                />
+            )}
+
+            {selectedTxForApproval && selectedTxForApproval.transaction_type === "WITHDRAWAL" && (
+                <ApproveWithdrawalModal
+                    isOpen={isWithdrawalApprovalOpen}
+                    onClose={() => {
+                        setIsWithdrawalApprovalOpen(false);
+                        setSelectedTxForApproval(null);
+                        fetchTransactions();
+                    }}
+                    transactionId={selectedTxForApproval.id}
+                    userId={String(selectedTxForApproval.user_id)}
+                    email={selectedTxForApproval.user?.email || selectedTxForApproval.customer_email || selectedTxForApproval.customerEmail || ""}
+                    amount={selectedTxForApproval.amount}
+                    currency={selectedTxForApproval.currency}
+                    walletId={String(selectedTxForApproval.wallet_id || "")}
+                    initialStep={withdrawalModalInitialStep}
+                />
+            )}
+
+            {selectedTxForApproval && selectedTxForApproval.transaction_type === "WITHDRAWAL" && (
+                <RejectWithdrawalModal
+                    isOpen={isWithdrawalRejectionOpen}
+                    onClose={() => {
+                        setIsWithdrawalRejectionOpen(false);
+                        setSelectedTxForApproval(null);
+                        fetchTransactions();
+                    }}
+                    transactionId={selectedTxForApproval.id}
+                    email={selectedTxForApproval.user?.email || selectedTxForApproval.customer_email || selectedTxForApproval.customerEmail || ""}
+                    amount={selectedTxForApproval.amount}
+                    currency={selectedTxForApproval.currency}
+                    walletId={String(selectedTxForApproval.wallet_id || "")}
+                />
             )}
         </div>
     );
