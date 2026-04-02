@@ -84,6 +84,7 @@ export const useLogin = () => {
         credentials
       );
 
+      console.log('[useLogin] Login response:', response.data);
       const raw = response.data as any;
       const payload: ILoginResponse = raw?.data?.user ? raw.data : raw;
 
