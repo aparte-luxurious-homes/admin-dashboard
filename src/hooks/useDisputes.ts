@@ -12,8 +12,8 @@ export const useDisputeDetails = (id: string) => {
   return useQuery({
     queryKey: ["dispute-details", id],
     queryFn: async () => {
-      const response = await axiosRequest.get<IDispute>(API_ROUTES.admin.disputes.details(id));
-      return response.data;
+      const response = await axiosRequest.get<IBaseResponse<IDispute>>(API_ROUTES.admin.disputes.details(id));
+      return response.data.data;
     },
   });
 };
