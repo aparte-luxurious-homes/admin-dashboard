@@ -178,6 +178,8 @@ export interface IUser {
   role: UserRole;
   verificationToken?: string;
   verification_token?: string;
+  referralCode?: string | null;
+  referralLink?: string | null;
   profile: IUserProfile;
   kyc?: [],
   wallets?: IWallet[],
