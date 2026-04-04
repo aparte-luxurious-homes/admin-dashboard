@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
@@ -6,7 +6,15 @@ import { FaMapLocationDot, FaPlus, FaArrowLeftLong } from "react-icons/fa6";
 import { TrashIcon } from "../../icons";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
-import { DocumentType, IAmenity, IProperty, IPropertyDocument, IPropertyMedia, IUpdateProperty, MediaType, PropertyType, PropertyVerificationStatus } from "../types";
+import {
+  DocumentType, IAmenity,
+  IProperty,
+  IPropertyDocument, IPropertyMedia,
+  IUpdateProperty,
+  MediaType,
+  PropertyType,
+  PropertyVerificationStatus,
+} from "../types";
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -16,8 +24,15 @@ import Image from "next/image";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import CustomDropzone from "../../ui/CustomDropzone";
-import { useFormik } from 'formik';
-import { DeleteProperty, FeatureProperty, UpdateProperty, UpdateBookingMode, UploadPropertyMedia, DeletePropertyMedia, UploadPropertyDocument, GetPropertyDocuments } from "@/src/lib/request-handlers/propertyMgt";
+import { useFormik } from "formik";
+import {
+  DeleteProperty,
+  FeatureProperty,
+  UpdateProperty,
+  UpdateBookingMode,
+  UploadPropertyMedia,
+  DeletePropertyMedia, UploadPropertyDocument, GetPropertyDocuments,
+} from "@/src/lib/request-handlers/propertyMgt";
 import { BookingMode } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
@@ -27,59 +42,66 @@ import CustomModal from "../../ui/CustomModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
-import { usePathname } from 'next/navigation';
+import { usePathname } from "next/navigation";
 import { Icon } from "@iconify/react";
-
 import axios from "axios";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
-import usePlacesAutocomplete, { getGeocode, getLatLng } from "use-places-autocomplete";
+import usePlacesAutocomplete, {
+  getGeocode,
+  getLatLng,
+} from "use-places-autocomplete";
+
 const libraries: any = ["places"];
 
-function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: boolean }) {
-    const {
-        ready,
-        value,
-        suggestions: { status, data },
-        setValue,
-        clearSuggestions,
-    } = usePlacesAutocomplete({
-        requestOptions: {
-            componentRestrictions: { country: "ng" }
-        },
-        debounce: 300,
-        defaultValue: formik.values.address
-    });
+// ─────────────────────────────────────────────────────────────────────────────
+// ADDRESS AUTOCOMPLETE
+// ─────────────────────────────────────────────────────────────────────────────
+function AddressAutocomplete({
+  formik,
+  isLoaded,
+}: {
+  formik: any;
+  isLoaded: boolean;
+}) {
+  const {
+    ready,
+    value,
+    suggestions: { status, data },
+    setValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({
+    requestOptions: { componentRestrictions: { country: "ng" } },
+    debounce: 300,
+    defaultValue: formik.values.address,
+  });
 
-    const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setValue(e.target.value);
-        formik.setFieldValue('address', e.target.value);
-    };
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+    formik.setFieldValue("address", e.target.value);
+  };
 
-    const handleSelect = async (description: string) => {
-        setValue(description, false);
-        formik.setFieldValue('address', description);
-        clearSuggestions();
-
-        try {
-            const results = await getGeocode({ address: description });
-            const { lat, lng } = await getLatLng(results[0]);
-            formik.setFieldValue('latitude', lat);
-            formik.setFieldValue('longitude', lng);
-
-            results[0].address_components.forEach((component: any) => {
-                const types = component.types;
-                if (types.includes('locality')) {
-                    formik.setFieldValue('city', component.long_name);
-                } else if (types.includes('administrative_area_level_1')) {
-                    formik.setFieldValue('state', component.long_name);
-                } else if (types.includes('country')) {
-                    formik.setFieldValue('country', component.long_name);
-                }
-            });
-        } catch (error) {
-            console.error("Error geocoding selection:", error);
-        }
-    };
+  const handleSelect = async (description: string) => {
+    setValue(description, false);
+    formik.setFieldValue("address", description);
+    clearSuggestions();
+    try {
+      const results = await getGeocode({ address: description });
+      const { lat, lng } = await getLatLng(results[0]);
+      formik.setFieldValue("latitude", lat);
+      formik.setFieldValue("longitude", lng);
+      results[0].address_components.forEach((component: any) => {
+        const types = component.types;
+        if (types.includes("locality"))
+          formik.setFieldValue("city", component.long_name);
+        else if (types.includes("administrative_area_level_1"))
+          formik.setFieldValue("state", component.long_name);
+        else if (types.includes("country"))
+          formik.setFieldValue("country", component.long_name);
+      });
+    } catch (error) {
+      console.error("Error geocoding selection:", error);
+    }
+  };
 
     return (
         <div className="relative group w-full">
@@ -95,7 +117,7 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
             />
             {status === "OK" && (
                 <ul className="absolute z-50 w-full bg-white border border-zinc-200 rounded-lg sm:rounded-xl mt-1 shadow-lg max-h-48 sm:max-h-60 overflow-auto text-sm">
-                    {(data as any[]).map(({ place_id, description }: { place_id: string, description: string }) => (
+                    {data.map(({ place_id, description }) => (
                         <li
                             key={place_id}
                             onClick={() => handleSelect(description)}
@@ -110,36 +132,77 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
     );
 }
 
-export default function EditPropertyView({
-    handleEditMode,
-    propertyData,
-    availableAmenities,
+function FormCard({
+  icon,
+  title,
+  children,
 }: {
-    handleEditMode: Dispatch<SetStateAction<boolean>>,
-    propertyData: IProperty,
-    availableAmenities: IAmenity[],
+  icon: string;
+  title: string;
+  children: React.ReactNode;
 }) {
-    const dispatch = useDispatch();
-    const pathname = usePathname();
-    const { mutate, isPending } = UpdateProperty()
-    const { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
-    const {
-        mutate: uploadMedia,
-        data: uploadData,
-        isPending: uploadedMediaPending
-    } = UploadPropertyMedia();
-    const { mutate: featureProperty } = FeatureProperty();
-    const { mutate: updateBookingMode } = UpdateBookingMode();
-    const { mutate: deleteMedia, isPending: deleteMediaPending } = DeletePropertyMedia();
+  return (
+    <div className="mb-4 mt-4 bg-white border border-zinc-100 rounded-2xl p-5 sm:p-6 md:p-7 space-y-5 shadow-sm">
+      <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+        <Icon icon={icon} className="text-base text-primary" />
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
 
-    const { user } = useAuth();
-    const router = useRouter();
-    const searchParams = useSearchParams();
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block ml-0.5">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
 
-    const [media, setMedia] = useState<IPropertyMedia[]>(propertyData?.media ?? [])
-    const [uploadedMedia, setUploadedMedia] = useState<File[]>([])
-    const uploadRef = useRef<{ url: string; file: File }[]>([]);
-    const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
+export default function EditPropertyView({
+  handleEditMode,
+  propertyData,
+  availableAmenities,
+}: {
+  handleEditMode: Dispatch<SetStateAction<boolean>>;
+  propertyData: IProperty;
+  availableAmenities: IAmenity[];
+}) {
+  const dispatch = useDispatch();
+  const pathname = usePathname();
+  const { mutate, isPending } = UpdateProperty();
+  const { mutate: deleteMutation, isPending: deleteIsPending } =
+    DeleteProperty();
+  const {
+    mutate: uploadMedia,
+    data: uploadData,
+    isPending: uploadedMediaPending,
+  } = UploadPropertyMedia();
+  const { mutate: featureProperty } = FeatureProperty();
+  const { mutate: updateBookingMode } = UpdateBookingMode();
+  const { mutate: deleteMedia, isPending: deleteMediaPending } =
+    DeletePropertyMedia();
+
+  const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [media, setMedia] = useState<IPropertyMedia[]>(
+    propertyData?.media ?? [],
+  );
+  const [uploadedMedia, setUploadedMedia] = useState<File[]>([]);
+  const uploadRef = useRef<{ url: string; file: File }[]>([]);
+  const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false);
 
     // Document upload state
     const { mutate: uploadDoc, isPending: docUploadPending } = UploadPropertyDocument();
@@ -147,585 +210,719 @@ export default function EditPropertyView({
     const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
     const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
 
-    const { isLoaded, loadError } = useJsApiLoader({
-        id: 'google-map-script',
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-        libraries
-    });
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries,
+  });
 
-    if (loadError) {
-        console.error("Google Maps load error:", loadError);
+  if (loadError) console.error("Google Maps load error:", loadError);
+
+  const sortAmenities = (amenities: IAmenity[], newAmenities: string[]) => {
+    const sortedAmenities: any[] = [];
+    const prevAmenityNames = amenities.map((a) => a.name);
+    for (const amenity of newAmenities) {
+      if (prevAmenityNames.includes(amenity)) {
+        const pos = prevAmenityNames.indexOf(amenity);
+        sortedAmenities.push(amenities[pos].id);
+      }
     }
+    return sortedAmenities;
+  };
 
-    const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
-        const sortedAmenities = []
-        let prevAmenityNames = amenities.map((a) => a.name);
-        for (const amenity of newAmeities) {
-            if (prevAmenityNames.includes(amenity)) {
-                const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos].id)
+  const formik = useFormik({
+    initialValues: {
+      name: propertyData?.name ?? "",
+      address: propertyData?.address ?? "",
+      type: propertyData?.propertyType ?? PropertyType.DUPLEX,
+      country: propertyData?.country ?? "Nigeria",
+      state: propertyData?.state ?? "Lagos",
+      city: propertyData?.city ?? "Ikeja",
+      description: propertyData?.description ?? "",
+      latitude: propertyData?.latitude ?? 0,
+      longitude: propertyData?.longitude ?? 0,
+      ownerId: propertyData?.ownerId ?? 0,
+      units: String(propertyData?.units?.length) ?? "0",
+      isVerified: propertyData?.isVerified ?? false,
+      isFeatured: propertyData?.isFeatured ?? false,
+      petsAllowed: propertyData?.isPetAllowed ?? false,
+      bookingMode: (propertyData?.bookingMode ??
+        propertyData?.booking_mode ??
+        BookingMode.INSTANT) as BookingMode,
+      amenities: propertyData?.amenities.map((el) => el.id),
+      amenityNames: propertyData?.amenities.map((el) => el.name),
+    },
+    onSubmit: (values: any) => {
+      const sortedAmenities = sortAmenities(
+        availableAmenities,
+        values.amenityNames,
+      );
+      if (values.isFeatured !== propertyData.isFeatured)
+        featureProperty({ propertyId: propertyData.id });
+      const currentBookingMode =
+        propertyData.bookingMode ??
+        propertyData.booking_mode ??
+        BookingMode.INSTANT;
+      if (values.bookingMode !== currentBookingMode)
+        updateBookingMode({
+          propertyId: propertyData.id,
+          booking_mode: values.bookingMode,
+        });
+
+      const updatePayload: IUpdateProperty = {
+        ...values,
+        amenities: sortedAmenities,
+        property_type: values.type,
+        is_pet_allowed: values.petsAllowed,
+      };
+
+      mutate(
+        { propertyId: propertyData.id, payload: updatePayload },
+        {
+          onSuccess: () => {
+            if (uploadedMedia.length > 0) {
+              const formData = new FormData();
+              uploadedMedia.forEach((file) =>
+                formData.append("media_file", file),
+              );
+              formData.append("media_type", MediaType.IMAGE);
+              formData.append("is_featured", "true");
+              uploadMedia({ propertyId: propertyData.id, payload: formData });
             }
-        }
-        return sortedAmenities;
-    }
-
-    const formik = useFormik({
-        initialValues: {
-            name: propertyData?.name ?? "",
-            address: propertyData?.address ?? "",
-            type: propertyData?.propertyType ?? PropertyType.DUPLEX,
-            country: propertyData?.country ?? "Nigeria",
-            state: propertyData?.state ?? "Lagos",
-            city: propertyData?.city ?? "Ikeja",
-            description: propertyData?.description ?? "",
-            latitude: propertyData?.latitude ?? 0,
-            longitude: propertyData?.longitude ?? 0,
-            ownerId: propertyData?.ownerId ?? 0,
-            units: String(propertyData?.units?.length) ?? "0",
-            isVerified: propertyData?.isVerified ?? false,
-            isFeatured: propertyData?.isFeatured ?? false,
-            petsAllowed: propertyData?.isPetAllowed ?? false,
-            bookingMode: (propertyData?.bookingMode ?? propertyData?.booking_mode ?? BookingMode.INSTANT) as BookingMode,
-            amenities: propertyData?.amenities.map((el) => el.id),
-            amenityNames: propertyData?.amenities.map((el) => el.name),
-        },
-
-        onSubmit: (values: any) => {
-            const sortedAmenities = sortAmenities(availableAmenities, values.amenityNames)
-
-            if (values.isFeatured !== propertyData.isFeatured)   // Update isFeatured if changed
-                featureProperty({ propertyId: propertyData.id })
-
-            const currentBookingMode = propertyData.bookingMode ?? propertyData.booking_mode ?? BookingMode.INSTANT;
-            if (values.bookingMode !== currentBookingMode)
-                updateBookingMode({ propertyId: propertyData.id, booking_mode: values.bookingMode })
-
-            const updatePayload: IUpdateProperty = {
-                ...values,
-                amenities: sortedAmenities,
-                property_type: values.type,
-                is_pet_allowed: values.petsAllowed,
-            };
-
-            mutate({                                            // Update proprety
-                propertyId: propertyData.id,
-                payload: updatePayload,
-            },
-                {
-                    onSuccess: () => {
-                        if (uploadedMedia.length > 0) {
-                            const formData = new FormData();
-                            uploadedMedia.forEach(file => {
-                                formData.append("media_file", file);
-                            });
-                            formData.append("media_type", MediaType.IMAGE);
-                            formData.append("is_featured", "true");
-
-                            uploadMedia({
-                                propertyId: propertyData.id,
-                                payload: formData,
-                            });
-                        }
-
-                        toast.success('Property update successful', {
-                            duration: 6000,
-                            style: {
-                                maxWidth: '500px',
-                                width: 'max-content'
-                            }
-                        }),
-                            removeParam('edit')
-                        handleEditMode(false);
-                    },
-                    onError: () =>
-                        toast.error('Something went wrong, Please try again later', {
-                            duration: 6000,
-                            style: {
-                                maxWidth: '500px',
-                                width: 'max-content'
-                            }
-                        }),
-                })
-        },
-    });
-
-    const handleGeocode = async () => {
-        const { address, city, state, country } = formik.values;
-        if (!address) {
-            toast.error("Please enter a physical address first");
-            return;
-        }
-        const fullAddress = `${address}, ${city}, ${state}, ${country}`;
-        const toastId = toast.loading("Fetching coordinates...");
-
-        try {
-            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-            const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
-                params: {
-                    address: fullAddress,
-                    key: apiKey
-                }
+            toast.success("Property update successful", {
+              duration: 6000,
+              style: { maxWidth: "500px", width: "max-content" },
             });
+            removeParam("edit");
+            handleEditMode(false);
+          },
+          onError: () =>
+            toast.error("Something went wrong, please try again", {
+              duration: 6000,
+              style: { maxWidth: "500px", width: "max-content" },
+            }),
+        },
+      );
+    },
+  });
 
-            if (response.data.status === 'OK' && response.data.results.length > 0) {
-                const { lat, lng } = response.data.results[0].geometry.location;
-                formik.setFieldValue('latitude', lat);
-                formik.setFieldValue('longitude', lng);
-                toast.success(`Coordinates found: ${lat}, ${lng}`, { id: toastId });
-            } else {
-                toast.error("Coordinates not found for this address. Please enter manually.", { id: toastId });
-            }
-        } catch (error) {
-            console.error("Geocoding failed:", error);
-            toast.error("Failed to fetch coordinates. Please enter manually.", { id: toastId });
-        }
-    };
-
-    const removeParam = (param: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete(param);
-        const newQueryString = params.toString();
-        router.push(newQueryString ? `?${newQueryString}` : pathname, { scroll: false });
-    };
-
-    const handleDeleteImage = (id: string) => {
-        dispatch(
-            showAlert({
-                title: "Are you sure?",
-                description: `This action cannot be undone. This will permanently delete the image.`,
-                confirmText: "Delete",
-                cancelText: "Cancel",
-                onConfirm: () => {
-                    deleteMedia({
-                        propertyId: propertyData.id,
-                        mediaId: id
-                    }, {
-                        onSuccess: () => {
-                            toast.success("Image deleted successfully");
-                        },
-                        onError: (error: any) => {
-                            toast.error(error?.response?.data?.detail || "Failed to delete image");
-                        }
-                    });
-                },
-            })
-        );
+  const handleGeocode = async () => {
+    const { address, city, state, country } = formik.values;
+    if (!address) {
+      toast.error("Please enter a physical address first");
+      return;
     }
+    const fullAddress = `${address}, ${city}, ${state}, ${country}`;
+    const toastId = toast.loading("Fetching coordinates...");
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      const response = await axios.get(
+        "https://maps.googleapis.com/maps/api/geocode/json",
+        { params: { address: fullAddress, key: apiKey } },
+      );
+      if (response.data.status === "OK" && response.data.results.length > 0) {
+        const { lat, lng } = response.data.results[0].geometry.location;
+        formik.setFieldValue("latitude", lat);
+        formik.setFieldValue("longitude", lng);
+        toast.success(`Coordinates found: ${lat}, ${lng}`, { id: toastId });
+      } else {
+        toast.error("Coordinates not found. Please enter manually.", {
+          id: toastId,
+        });
+      }
+    } catch (error) {
+      toast.error("Failed to fetch coordinates.", { id: toastId });
+    }
+  };
 
-    const handleDelete = () => {
-        dispatch(
-            showAlert({
-                title: "Are you sure?",
-                description: "This action cannot be undone. This will permanently delete this property.",
-                confirmText: "Delete",
-                cancelText: "Cancel",
-                onConfirm: () => {
-                    deleteMutation(
-                        { propertyId: propertyData.id },
-                        {
-                            onSuccess: (response) => {
-                                removeParam('edit')
-                                toast.success(response?.data?.message, {
-                                    duration: 6000,
-                                    style: {
-                                        maxWidth: '500px',
-                                        width: 'max-content'
-                                    }
-                                });
-                                if (response.status === 204)
-                                    router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.base)
-                            }
-                        }
-                    )
-                },
-            })
-        );
-    };
+  const removeParam = (param: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(param);
+    const newQueryString = params.toString();
+    router.push(newQueryString ? `?${newQueryString}` : pathname, {
+      scroll: false,
+    });
+  };
 
-    useEffect(() => {
-        if (uploadData?.data) {
-            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.media_url || el?.data?.mediaUrl) : [uploadData.data?.data])]);
-            if (uploadData.status === 201) {
-                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
-                uploadRef.current = []
-            }
-        }
-    }, [uploadData]);
+  const handleDeleteImage = (id: string) => {
+    dispatch(
+      showAlert({
+        title: "Delete image?",
+        description: "This action cannot be undone.",
+        confirmText: "Delete",
+        cancelText: "Cancel",
+        onConfirm: () => {
+          deleteMedia(
+            { propertyId: propertyData.id, mediaId: id },
+            {
+              onSuccess: () => toast.success("Image deleted successfully"),
+              onError: (error: any) =>
+                toast.error(
+                  error?.response?.data?.detail || "Failed to delete image",
+                ),
+            },
+          );
+        },
+      }),
+    );
+  };
+
+  const handleDelete = () => {
+    dispatch(
+      showAlert({
+        title: "Delete property?",
+        description:
+          "This action cannot be undone. This will permanently delete this property.",
+        confirmText: "Delete",
+        cancelText: "Cancel",
+        onConfirm: () => {
+          deleteMutation(
+            { propertyId: propertyData.id },
+            {
+              onSuccess: (response) => {
+                removeParam("edit");
+                toast.success(response?.data?.message, {
+                  duration: 6000,
+                  style: { maxWidth: "500px", width: "max-content" },
+                });
+                if (response.status === 204)
+                  router.push(
+                    PAGE_ROUTES.dashboard.propertyManagement.allProperties.base,
+                  );
+              },
+            },
+          );
+        },
+      }),
+    );
+  };
+
+  useEffect(() => {
+    if (uploadData?.data) {
+      setMedia((prev) => [
+        ...prev,
+        ...(Array.isArray(uploadData.data)
+          ? uploadData.data.map(
+              (el: any) => el?.data?.media_url || el?.data?.mediaUrl,
+            )
+          : [uploadData.data?.data]),
+      ]);
+      if (uploadData.status === 201) {
+        uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+        uploadRef.current = [];
+      }
+    }
+  }, [uploadData]);
+
+  const isInstant = formik.values.bookingMode === BookingMode.INSTANT;
+  const isRequest = formik.values.bookingMode === BookingMode.REQUEST_TO_BOOK;
 
     useEffect(() => {
         const docs = docsData?.data?.data?.data ?? docsData?.data?.data ?? [];
         if (Array.isArray(docs)) setDocuments(docs);
     }, [docsData]);
 
-    return (
-        <div className="relative">
-            {/* Header Section - Mobile Optimized */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-5 md:mb-6">
-                <div className="space-y-0.5 sm:space-y-1">
-                    <div className="flex items-center gap-2 mb-1 sm:mb-2">
-                        <button
-                            onClick={() => { removeParam('edit'); handleEditMode(false); }}
-                            className="text-[10px] sm:text-xs font-bold text-primary hover:underline flex items-center gap-1 transition-all"
-                        >
-                            <FaArrowLeftLong className="text-[8px] sm:text-[10px]" /> Back
-                        </button>
-                    </div>
-                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-zinc-900 tracking-tight">Edit {propertyData.name}</h2>
-                    <p className="text-xs sm:text-sm font-medium text-zinc-500">Update property details</p>
+  return (
+    <div className="relative">
+      {/* ── Page Header ── */}
+      <div className="flex items-start justify-between gap-4 mb-6 md:mb-8">
+        <div>
+          <button
+            onClick={() => {
+              removeParam("edit");
+              handleEditMode(false);
+            }}
+            className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/70 transition-colors mb-2"
+          >
+            <FaArrowLeftLong className="text-[10px]" />
+            Back to details
+          </button>
+          <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight leading-tight">
+            Edit property
+          </h2>
+          <p className="text-sm text-zinc-400 mt-1">{propertyData.name}</p>
+        </div>
+        <button
+          onClick={handleDelete}
+          disabled={deleteIsPending}
+          title="Delete Property"
+          className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-500 text-xs font-bold rounded-xl hover:bg-red-100 transition-all border border-red-100 flex-shrink-0"
+        >
+          {deleteIsPending ? (
+            <Spinner />
+          ) : (
+            <>
+              <Icon
+                icon="solar:trash-bin-trash-bold-duotone"
+                className="text-base"
+              />{" "}
+              Delete
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Amenity Modal */}
+      {showAmenityForm && (
+        <CustomModal
+          title="Create Amenity"
+          onClose={() => setShowAmenityForm(false)}
+          isOpen={showAmenityForm}
+        >
+          <CreateAmenityForm show={setShowAmenityForm} />
+        </CustomModal>
+      )}
+
+      {/* ── Form ── */}
+      <form
+        id="edit-property-form"
+        className=""
+        onSubmit={(e) => {
+          e.preventDefault();
+          formik.handleSubmit();
+        }}
+      >
+        <div className="">
+          {/* Basic Information */}
+          <FormCard
+            icon="solar:info-circle-bold-duotone"
+            title="Basic Information"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <Field label="Property Name">
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-400 group-focus-within:text-primary transition-colors">
+                    <FaRegBuilding className="text-sm" />
+                  </div>
+                  <input
+                    id="name"
+                    type="text"
+                    placeholder="e.g. Sunset Villa"
+                    value={formik.values.name}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium placeholder:text-zinc-400"
+                  />
                 </div>
-                <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
-                    <button
-                        onClick={handleDelete}
-                        disabled={deleteIsPending}
-                        className="p-1.5 sm:p-2 bg-red-50 text-red-500 rounded-lg sm:rounded-xl hover:bg-red-100 transition-colors"
-                        title="Delete Property"
-                    >
-                        {deleteIsPending ? <Spinner /> : <Icon icon="solar:trash-bin-trash-bold-duotone" className="text-lg sm:text-xl" />}
-                    </button>
-                    <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg sm:rounded-xl">
-                        <Icon icon="solar:pen-new-square-bold-duotone" className="text-lg sm:text-xl text-primary" />
+              </Field>
+
+              <Field label="Property Type">
+                <CustomDropdown
+                  selected={formik.values.type}
+                  handleSelection={(val) => formik.setFieldValue("type", val)}
+                  options={Object.values(PropertyType)}
+                />
+              </Field>
+
+              <div className="sm:col-span-2">
+                <Field label="Description">
+                  <div className="relative">
+                    <textarea
+                      id="description"
+                      maxLength={300}
+                      rows={4}
+                      placeholder="Describe this property in a few sentences..."
+                      value={formik.values.description}
+                      onChange={formik.handleChange}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none placeholder:text-zinc-400 leading-relaxed"
+                    />
+                    <div className="absolute bottom-3 right-3 text-[10px] font-bold text-zinc-400 bg-white px-1.5 py-0.5 rounded-md border border-zinc-100">
+                      {formik.values.description.length}/300
                     </div>
-                </div>
+                  </div>
+                </Field>
+              </div>
             </div>
+          </FormCard>
 
-            {showAmenityForm && (
-                <CustomModal
-                    title="Create Amenity"
-                    onClose={() => setShowAmenityForm(false)}
-                    isOpen={showAmenityForm}
+          {/* Location */}
+          <FormCard
+            icon="solar:map-point-bold-duotone"
+            title="Location & Address"
+          >
+            <div className="space-y-5 mb-4 mt-4">
+              <Field label="Physical Address">
+                <AddressAutocomplete formik={formik} isLoaded={isLoaded} />
+              </Field>
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-2 mb-4 mt-3">
+                <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest flex items-center gap-1.5">
+                  <Icon
+                    icon="solar:lightbulb-bold-duotone"
+                    className="text-sm"
+                  />
+                  Tips
+                </p>
+                <ul className="space-y-1.5">
+                  {[
+                    "Search for an address to auto-fill coordinates.",
+                    "Drag the map pin to refine location.",
+                    "Add high-quality images to attract more guests.",
+                  ].map((tip, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-[11px] text-amber-700 leading-relaxed"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0 mt-1.5" />
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Map */}
+              {isLoaded && (
+                <div className="w-full h-52 sm:h-64 md:h-72 rounded-xl overflow-hidden border border-zinc-200">
+                  <GoogleMap
+                    mapContainerStyle={{ height: "100%", width: "100%" }}
+                    center={{
+                      lat: formik.values.latitude || 6.5244,
+                      lng: formik.values.longitude || 3.3792,
+                    }}
+                    zoom={formik.values.latitude ? 15 : 12}
+                    onClick={(e: any) => {
+                      if (e.latLng) {
+                        formik.setFieldValue("latitude", e.latLng.lat());
+                        formik.setFieldValue("longitude", e.latLng.lng());
+                      }
+                    }}
+                  >
+                    {formik.values.latitude && formik.values.longitude && (
+                      <Marker
+                        position={{
+                          lat: formik.values.latitude,
+                          lng: formik.values.longitude,
+                        }}
+                        draggable={true}
+                        onDragEnd={(e: any) => {
+                          if (e.latLng) {
+                            formik.setFieldValue("latitude", e.latLng.lat());
+                            formik.setFieldValue("longitude", e.latLng.lng());
+                          }
+                        }}
+                      />
+                    )}
+                  </GoogleMap>
+                </div>
+              )}
+
+              {/* Coordinates */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Latitude">
+                  <input
+                    id="latitude"
+                    type="number"
+                    step="any"
+                    placeholder="0.0000"
+                    value={formik.values.latitude}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                  />
+                </Field>
+                <Field label="Longitude">
+                  <input
+                    id="longitude"
+                    type="number"
+                    step="any"
+                    placeholder="0.0000"
+                    value={formik.values.longitude}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                  />
+                </Field>
+              </div>
+
+              {/* Country / State / City */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Field label="Country">
+                  <CustomFilterDropdown
+                    placeholder={formik.values.country}
+                    options={Object.keys(ALL_COUNTRIES)}
+                    handleSelection={(val) =>
+                      formik.setFieldValue("country", val)
+                    }
+                    selected={formik.values.country}
+                  />
+                </Field>
+                <Field label="State">
+                  <CustomFilterDropdown
+                    placeholder="Select state"
+                    options={Object.keys(
+                      ALL_COUNTRIES[formik.values.country] || {},
+                    )}
+                    handleSelection={(val) =>
+                      formik.setFieldValue("state", val)
+                    }
+                    selected={
+                      Object.keys(
+                        ALL_COUNTRIES[formik.values.country] || {},
+                      )?.includes(formik.values.state)
+                        ? formik.values.state
+                        : ""
+                    }
+                  />
+                </Field>
+                <Field label="City">
+                  <CustomFilterDropdown
+                    placeholder="Select city"
+                    options={
+                      ALL_COUNTRIES[formik.values.country]?.[
+                        formik.values.state
+                      ] || []
+                    }
+                    handleSelection={(val) => formik.setFieldValue("city", val)}
+                    selected={
+                      ALL_COUNTRIES[formik.values.country]?.[
+                        formik.values.state
+                      ]?.includes(formik.values.city)
+                        ? formik.values.city
+                        : ""
+                    }
+                  />
+                </Field>
+              </div>
+            </div>
+          </FormCard>
+
+          {/* Amenities & Features */}
+          <FormCard icon="solar:star-bold-duotone" title="Amenities & Features">
+            <div className="space-y-5">
+              {user?.role === UserRole.ADMIN && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowAmenityForm(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <FaPlus className="text-[9px]" /> Add Amenity
+                  </button>
+                </div>
+              )}
+
+              <MultipleChoice
+                options={availableAmenities?.map((am) => am.name) || []}
+                selected={formik.values.amenityNames}
+                onChange={(val) =>
+                  formik.setFieldValue("amenityNames", [...val])
+                }
+              />
+
+              {/* Flags */}
+              <div className="pt-4 border-t border-zinc-50">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">
+                  Flags
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <CustomCheckbox
+                    label="Pets allowed"
+                    checked={formik.values.petsAllowed}
+                    onChange={(val) => formik.setFieldValue("petsAllowed", val)}
+                  />
+                  {user?.role === UserRole.ADMIN && (
+                    <CustomCheckbox
+                      label="Featured"
+                      checked={formik.values.isFeatured}
+                      onChange={(val) =>
+                        formik.setFieldValue("isFeatured", val)
+                      }
+                    />
+                  )}
+                  {user?.role === UserRole.ADMIN &&
+                    propertyData?.verifications?.[0]?.status ===
+                      PropertyVerificationStatus.VERIFIED && (
+                      <CustomCheckbox
+                        label="Verified"
+                        checked={formik.values.isVerified}
+                        onChange={(val) =>
+                          formik.setFieldValue("isVerified", val)
+                        }
+                      />
+                    )}
+                </div>
+              </div>
+
+              {/* Booking Mode */}
+              <div className="pt-4 border-t border-zinc-50">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Icon
+                    icon="solar:calendar-mark-bold-duotone"
+                    className="text-sm text-primary"
+                  />
+                  Booking Mode
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      formik.setFieldValue("bookingMode", BookingMode.INSTANT)
+                    }
+                    className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all
+                                            ${isInstant ? "border-primary bg-primary/5" : "border-zinc-100 bg-white hover:border-zinc-200"}`}
+                  >
+                    <div
+                      className={`p-2 rounded-lg flex-shrink-0 mt-0.5 ${isInstant ? "bg-primary/15" : "bg-zinc-100"}`}
+                    >
+                      <Icon
+                        icon="solar:bolt-bold-duotone"
+                        className={`text-base ${isInstant ? "text-primary" : "text-zinc-400"}`}
+                      />
+                    </div>
+                    <div>
+                      <p
+                        className={`text-sm font-bold ${isInstant ? "text-primary" : "text-zinc-700"}`}
+                      >
+                        Instant Book
+                      </p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                        Guests book immediately, no approval needed.
+                      </p>
+                    </div>
+                    {isInstant && (
+                      <Icon
+                        icon="solar:check-circle-bold-duotone"
+                        className="text-primary text-base shrink-0 ml-auto mt-0.5"
+                      />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      formik.setFieldValue(
+                        "bookingMode",
+                        BookingMode.REQUEST_TO_BOOK,
+                      )
+                    }
+                    className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all
+                                            ${isRequest ? "border-violet-400 bg-violet-50" : "border-zinc-100 bg-white hover:border-zinc-200"}`}
+                  >
+                    <div
+                      className={`p-2 rounded-lg flex-shrink-0 mt-0.5 ${isRequest ? "bg-violet-100" : "bg-zinc-100"}`}
+                    >
+                      <Icon
+                        icon="solar:hand-shake-bold-duotone"
+                        className={`text-base ${isRequest ? "text-violet-600" : "text-zinc-400"}`}
+                      />
+                    </div>
+                    <div>
+                      <p
+                        className={`text-sm font-bold ${isRequest ? "text-violet-700" : "text-zinc-700"}`}
+                      >
+                        Request to Book
+                      </p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                        You review and approve each request.
+                      </p>
+                    </div>
+                    {isRequest && (
+                      <Icon
+                        icon="solar:check-circle-bold-duotone"
+                        className="text-violet-600 text-base shrink-0 ml-auto mt-0.5"
+                      />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </FormCard>
+
+          {/* Media */}
+          <FormCard icon="solar:camera-bold-duotone" title="Property Gallery">
+            <div className="space-y-4">
+              {media.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                  {media.map((item) => (
+                    <div
+                      key={item.id}
+                      className="relative group aspect-square rounded-xl overflow-hidden bg-zinc-100 border border-zinc-100"
+                    >
+                      <Image
+                        src={
+                          item.media_url ||
+                          item.mediaUrl ||
+                          "/png/placeholder.png"
+                        }
+                        alt="Property media"
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImage(item.id)}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-md"
+                      >
+                        <Icon
+                          icon="solar:trash-bin-trash-bold"
+                          className="text-xs"
+                        />
+                      </button>
+                      {item.isFeatured && (
+                        <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-primary text-[9px] font-bold text-white rounded-md shadow-sm uppercase tracking-wider">
+                          Featured
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <CustomDropzone
+                onDrop={setUploadedMedia}
+                multiple
+                previewsRef={uploadRef}
+              />
+
+              {uploadedMedia.length > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData();
+                    uploadedMedia.forEach((file) =>
+                      formData.append("media_file", file),
+                    );
+                    formData.append("media_type", MediaType.IMAGE);
+                    formData.append("is_featured", "true");
+                    uploadMedia(
+                      { propertyId: propertyData.id, payload: formData },
+                      {
+                        onSuccess: () =>
+                          toast.success("Media uploaded successfully", {
+                            duration: 6000,
+                            style: { maxWidth: "500px", width: "max-content" },
+                          }),
+                        onError: (error: any) =>
+                          toast.error(
+                            error.status === 422
+                              ? "Invalid format"
+                              : "Upload failed",
+                            {
+                              duration: 6000,
+                              style: {
+                                maxWidth: "500px",
+                                width: "max-content",
+                              },
+                            },
+                          ),
+                      },
+                    );
+                  }}
+                  disabled={uploadedMediaPending}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-60"
                 >
-                    <CreateAmenityForm show={setShowAmenityForm} />
-                </CustomModal>
-            )}
-
-            <form
-                id="edit-property-form"
-                className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-5 lg:gap-6 items-start pb-10 sm:pb-12 md:pb-16 lg:pb-20"
-                onSubmit={(e) => { e.preventDefault(); formik.handleSubmit(); }}
-            >
-                {/* Main Form Content - Left Side */}
-                <div className="lg:col-span-8 space-y-4 md:space-y-5 lg:space-y-6">
-                    {/* Basic Information Section */}
-                    <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-8 space-y-4 md:space-y-5 shadow-sm">
-                        <h3 className="text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-1.5">
-                            <Icon icon="solar:info-circle-bold-duotone" className="text-lg sm:text-xl text-primary" />
-                            Basic Information
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-                            <div className="md:col-span-1 space-y-1.5">
-                                <label htmlFor="name" className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Property Name</label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                        <FaRegBuilding className="text-sm sm:text-base" />
-                                    </div>
-                                    <input
-                                        id="name"
-                                        type="text"
-                                        placeholder="Property name"
-                                        value={formik.values.name}
-                                        onChange={formik.handleChange}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl sm:rounded-2xl pl-9 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 text-sm sm:text-base focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-                                    />
-                                </div>
-                            </div>
-                            <div className="md:col-span-1 space-y-1.5">
-                                <label htmlFor="type" className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Property Type</label>
-                                <CustomDropdown
-                                    selected={formik.values.type}
-                                    handleSelection={(val) => formik.setFieldValue("type", val)}
-                                    options={Object.values(PropertyType)}
-                                />
-                            </div>
-                            <div className="md:col-span-2 space-y-1.5">
-                                <label htmlFor="description" className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Description</label>
-                                <div className="relative">
-                                    <textarea
-                                        id="description"
-                                        maxLength={300}
-                                        rows={3}
-                                        placeholder="Describe this property..."
-                                        value={formik.values.description}
-                                        onChange={formik.handleChange}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-sm sm:text-base focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none"
-                                    />
-                                    <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 text-[8px] sm:text-[10px] font-bold text-zinc-400 bg-white/80 px-1.5 py-0.5 rounded">
-                                        {formik.values.description.length}/300
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Location Section */}
-                    <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-8 space-y-4 md:space-y-5 shadow-sm">
-                        <h3 className="text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-1.5">
-                            <Icon icon="solar:map-point-bold-duotone" className="text-lg sm:text-xl text-primary" />
-                            Location & Address
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
-                            <div className="md:col-span-3 space-y-1.5">
-                                <label htmlFor="address" className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Physical Address</label>
-                                <div className="space-y-3 sm:space-y-4">
-                                    <AddressAutocomplete formik={formik} isLoaded={isLoaded} />
-
-                                    {isLoaded && (
-                                        <div className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[300px] rounded-xl sm:rounded-2xl overflow-hidden border border-zinc-200">
-                                            <GoogleMap
-                                                mapContainerStyle={{ height: '100%', width: '100%' }}
-                                                center={{ lat: formik.values.latitude || 6.5244, lng: formik.values.longitude || 3.3792 }}
-                                                zoom={formik.values.latitude ? 15 : 12}
-                                                onClick={(e: any) => {
-                                                    if (e.latLng) {
-                                                        formik.setFieldValue('latitude', e.latLng.lat());
-                                                        formik.setFieldValue('longitude', e.latLng.lng());
-                                                    }
-                                                }}
-                                            >
-                                                {formik.values.latitude && formik.values.longitude && (
-                                                    <Marker
-                                                        position={{ lat: formik.values.latitude, lng: formik.values.longitude }}
-                                                        draggable={true}
-                                                        onDragEnd={(e: any) => {
-                                                            if (e.latLng) {
-                                                                formik.setFieldValue('latitude', e.latLng.lat());
-                                                                formik.setFieldValue('longitude', e.latLng.lng());
-                                                            }
-                                                        }}
-                                                    />
-                                                )}
-                                            </GoogleMap>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 md:col-span-3 gap-3 sm:gap-4">
-                                <div className="space-y-1">
-                                    <label htmlFor="latitude" className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Latitude</label>
-                                    <input
-                                        id="latitude"
-                                        type="number"
-                                        step="any"
-                                        placeholder="0.0000"
-                                        value={formik.values.latitude}
-                                        onChange={formik.handleChange}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label htmlFor="longitude" className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Longitude</label>
-                                    <input
-                                        id="longitude"
-                                        type="number"
-                                        step="any"
-                                        placeholder="0.0000"
-                                        value={formik.values.longitude}
-                                        onChange={formik.handleChange}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Country</label>
-                                <CustomFilterDropdown
-                                    placeholder={formik.values.country}
-                                    options={Object.keys(ALL_COUNTRIES)}
-                                    handleSelection={(val) => formik.setFieldValue("country", val)}
-                                    selected={formik.values.country}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">State</label>
-                                <CustomFilterDropdown
-                                    placeholder="Lagos"
-                                    options={Object.keys(ALL_COUNTRIES[formik.values.country] || {})}
-                                    handleSelection={(val) => formik.setFieldValue("state", val)}
-                                    selected={Object.keys(ALL_COUNTRIES[formik.values.country] || {})?.includes(formik.values.state) ? formik.values.state : ''}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">City</label>
-                                <CustomFilterDropdown
-                                    placeholder="Ikeja"
-                                    options={ALL_COUNTRIES[formik.values.country]?.[formik.values.state] || []}
-                                    handleSelection={(val) => formik.setFieldValue("city", val)}
-                                    selected={ALL_COUNTRIES[formik.values.country]?.[formik.values.state]?.includes(formik.values.city) ? formik.values.city : ''}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Amenities & Features Section */}
-                    <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-8 space-y-4 md:space-y-5 shadow-sm">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h3 className="text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-1.5">
-                                <Icon icon="solar:star-bold-duotone" className="text-lg sm:text-xl text-primary" />
-                                Amenities & Features
-                            </h3>
-                            {user?.role === UserRole.ADMIN && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAmenityForm(true)}
-                                    className="text-[8px] sm:text-[10px] font-bold text-primary hover:text-primary/70 transition-colors flex items-center gap-1"
-                                >
-                                    <FaPlus className="text-[6px] sm:text-[8px]" /> ADD AMENITY
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="bg-zinc-50/50 border border-zinc-100 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-5 space-y-4 sm:space-y-5">
-                            <MultipleChoice
-                                options={availableAmenities?.map(am => am.name) || []}
-                                selected={formik.values.amenityNames}
-                                onChange={(val) => formik.setFieldValue("amenityNames", [...val])}
-                            />
-
-                            <div className="pt-4 sm:pt-5 border-t border-zinc-100 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                <CustomCheckbox
-                                    label="Pets allowed"
-                                    checked={formik.values.petsAllowed}
-                                    onChange={(val) => formik.setFieldValue("petsAllowed", val)}
-                                />
-                                {user?.role === UserRole.ADMIN && (
-                                    <CustomCheckbox
-                                        label="Featured"
-                                        checked={formik.values.isFeatured}
-                                        onChange={(val) => formik.setFieldValue("isFeatured", val)}
-                                    />
-                                )}
-                                {user?.role === UserRole.ADMIN && propertyData?.verifications?.[0]?.status === PropertyVerificationStatus.VERIFIED && (
-                                    <CustomCheckbox
-                                        label="Verified"
-                                        checked={formik.values.isVerified}
-                                        onChange={(val) => formik.setFieldValue("isVerified", val)}
-                                    />
-                                )}
-                            </div>
-
-                            {/* Booking Mode */}
-                            <div className="pt-4 sm:pt-5 border-t border-zinc-100">
-                                <h4 className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-1.5">
-                                    <Icon icon="solar:calendar-mark-bold-duotone" className="text-sm sm:text-base text-primary" />
-                                    Booking Mode
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => formik.setFieldValue("bookingMode", BookingMode.INSTANT)}
-                                        className={`flex items-start gap-2 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border-2 text-left transition-all ${formik.values.bookingMode === BookingMode.INSTANT ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}
-                                    >
-                                        <Icon icon="solar:bolt-bold-duotone" className={`text-lg sm:text-xl mt-0.5 flex-shrink-0 ${formik.values.bookingMode === BookingMode.INSTANT ? 'text-primary' : 'text-zinc-400'}`} />
-                                        <div className="min-w-0">
-                                            <p className={`text-xs sm:text-sm font-bold ${formik.values.bookingMode === BookingMode.INSTANT ? 'text-primary' : 'text-zinc-700'}`}>Instant Book</p>
-                                            <p className="text-[8px] sm:text-[10px] text-zinc-500 mt-0.5 line-clamp-2">Guests book immediately.</p>
-                                        </div>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => formik.setFieldValue("bookingMode", BookingMode.REQUEST_TO_BOOK)}
-                                        className={`flex items-start gap-2 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border-2 text-left transition-all ${formik.values.bookingMode === BookingMode.REQUEST_TO_BOOK ? 'border-primary bg-primary/5' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}
-                                    >
-                                        <Icon icon="solar:hand-shake-bold-duotone" className={`text-lg sm:text-xl mt-0.5 flex-shrink-0 ${formik.values.bookingMode === BookingMode.REQUEST_TO_BOOK ? 'text-primary' : 'text-zinc-400'}`} />
-                                        <div className="min-w-0">
-                                            <p className={`text-xs sm:text-sm font-bold ${formik.values.bookingMode === BookingMode.REQUEST_TO_BOOK ? 'text-primary' : 'text-zinc-700'}`}>Request to Book</p>
-                                            <p className="text-[8px] sm:text-[10px] text-zinc-500 mt-0.5 line-clamp-2">You approve requests.</p>
-                                        </div>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Media Section */}
-                    <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-8 space-y-4 md:space-y-5 shadow-sm">
-                        <h3 className="text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-1.5">
-                            <Icon icon="solar:camera-bold-duotone" className="text-lg sm:text-xl text-primary" />
-                            Property Gallery
-                        </h3>
-
-                        {/* Existing Media */}
-                        {media.length > 0 && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-5">
-                                {media.map((item) => (
-                                    <div key={item.id} className="relative group aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200 shadow-sm">
-                                        <Image
-                                            src={item.media_url || item.mediaUrl || "/png/placeholder.png"}
-                                            alt="Property"
-                                            fill
-                                            className="object-cover transition-transform group-hover:scale-105"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteImage(item.id)}
-                                            className="absolute top-1 right-1 p-1 bg-red-500/90 text-white rounded-md opacity-0 group-hover:opacity-100 transition-all shadow-sm"
-                                        >
-                                            <Icon icon="solar:trash-bin-trash-bold" className="text-xs sm:text-sm" />
-                                        </button>
-                                        {item.isFeatured && (
-                                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-primary text-[6px] sm:text-[8px] font-bold text-white rounded shadow-sm">FEATURED</div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="w-full">
-                            <CustomDropzone
-                                onDrop={setUploadedMedia}
-                                multiple
-                                previewsRef={uploadRef}
-                            />
-                        </div>
-
-                        {uploadedMedia.length > 0 && (
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault()
-                                    const formData = new FormData();
-                                    uploadedMedia?.forEach(file => {
-                                        formData.append("media_file", file);
-                                    });
-                                    formData.append("media_type", MediaType.IMAGE);
-                                    formData.append("is_featured", "true");
-
-                                    uploadMedia(
-                                        {
-                                            propertyId: propertyData.id,
-                                            payload: formData,
-                                        },
-                                        {
-                                            onSuccess: () =>
-                                                toast.success('Media uploaded successfully', {
-                                                    duration: 6000,
-                                                    style: {
-                                                        maxWidth: '500px',
-                                                        width: 'max-content'
-                                                    }
-                                                }),
-                                            onError: (error: any) =>
-                                                toast.error(error.status === 422 ? 'Invalid format' : 'Upload failed', {
-                                                    duration: 6000,
-                                                    style: {
-                                                        maxWidth: '500px',
-                                                        width: 'max-content'
-                                                    }
-                                                }),
-                                        }
-                                    );
-                                }}
-                                className="w-full flex justify-center items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-zinc-900 hover:bg-zinc-800 text-white text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl mt-4 transition-all shadow-lg disabled:opacity-75"
-                                disabled={uploadedMediaPending}
-                            >
-                                {uploadedMediaPending ? (
-                                    <Spinner color="white" />
-                                ) : (
-                                    <>
-                                        <Icon icon="solar:upload-bold-duotone" className="text-base sm:text-lg" />
-                                        <span>UPLOAD {uploadedMedia.length} NEW IMAGE{uploadedMedia.length > 1 ? 'S' : ''}</span>
-                                    </>
-                                )}
-                            </button>
-                        )}
-                    </div>
+                  {uploadedMediaPending ? (
+                    <Spinner color="white" />
+                  ) : (
+                    <>
+                      <Icon
+                        icon="solar:upload-bold-duotone"
+                        className="text-base"
+                      />
+                      Upload {uploadedMedia.length} image
+                      {uploadedMedia.length > 1 ? "s" : ""}
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </FormCard>
 
                     {/* Documents Section */}
                     <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-8 space-y-4 md:space-y-5 shadow-sm">
@@ -802,56 +999,84 @@ export default function EditPropertyView({
                             </div>
                         </div>
                     </div>
-                </div>
+        </div>
 
-                {/* Sidebar Sticky Content - Right Side */}
-                <div className="lg:col-span-4 space-y-4 md:space-y-5 sticky top-4 sm:top-6">
-                    {/* Management Notice Card */}
-                    <div className="bg-zinc-900 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 text-white shadow-xl shadow-zinc-900/20 relative overflow-hidden border border-zinc-800">
-                        <div className="absolute top-0 right-0 w-40 sm:w-48 md:w-56 lg:w-64 h-40 sm:h-48 md:h-56 lg:h-64 bg-primary/5 rounded-full blur-[60px] sm:blur-[80px] -mr-16 sm:-mr-20 lg:-mr-24 -mt-16 sm:-mt-20 lg:-mt-24" />
-                        <h3 className="text-base sm:text-lg font-bold mb-3 flex items-center gap-1.5 relative z-10">
-                            <Icon icon="solar:settings-bold-duotone" className="text-lg sm:text-xl text-primary" />
-                            Management
-                        </h3>
-                        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4 sm:mb-5 relative z-10">
-                            Keep property information accurate.
-                        </p>
-                        <div className="p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/5 relative z-10">
-                            <div className="flex items-center gap-2 sm:gap-3">
-                                <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-primary/20 rounded-lg sm:rounded-xl flex items-center justify-center text-primary flex-shrink-0">
-                                    <Icon icon="solar:info-circle-bold-duotone" className="text-base sm:text-lg md:text-xl" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Ownership</p>
-                                    <p className="text-xs sm:text-sm font-bold text-white truncate">
-                                        {propertyData.owner?.profile?.firstName} {propertyData.owner?.profile?.lastName}
-                                    </p>
-                                </div>
+        <div className="">
+          {/* <div className="bg-zinc-900 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+                        <div className="absolute -top-16 -right-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 relative z-10">Property Owner</p>
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <Icon icon="solar:user-bold-duotone" className="text-lg text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-white truncate">
+                                    {propertyData.owner?.profile?.firstName} {propertyData.owner?.profile?.lastName}
+                                </p>
+                                <p className="text-xs text-zinc-500 truncate">{propertyData.owner?.email ?? 'Owner'}</p>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
-                    {/* Action Buttons */}
-                    <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
-                        <button
-                            form="edit-property-form"
-                            type="submit"
-                            disabled={isPending || uploadedMediaPending}
-                            className="w-full h-10 sm:h-12 bg-primary text-white text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl hover:bg-primary/90 hover:shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                            {isPending ? <Spinner /> : <><Icon icon="solar:check-read-bold" className="text-sm sm:text-base" /> SAVE</>}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => { removeParam('edit'); handleEditMode(false); }}
-                            className="w-full h-9 sm:h-10 border border-zinc-200 text-zinc-600 text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl hover:bg-zinc-50 transition-all uppercase tracking-wider flex items-center justify-center"
-                        >
-                            CANCEL
-                        </button>
-                    </div>
-                </div>
-            </form>
+          {/* Save / Cancel */}
+          <div className="bg-white border mb-3 border-zinc-100 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+            <button
+              form="edit-property-form"
+              type="submit"
+              disabled={isPending || uploadedMediaPending}
+              className="w-full h-11 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm shadow-primary/20"
+            >
+              {isPending ? (
+                <Spinner />
+              ) : (
+                <>
+                  <Icon icon="solar:check-read-bold" className="text-base" />{" "}
+                  Save changes
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                removeParam("edit");
+                handleEditMode(false);
+              }}
+              className="w-full h-10 border border-zinc-200 text-zinc-500 text-xs font-bold rounded-xl hover:bg-zinc-50 transition-all uppercase tracking-wider"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
-    );
+      </form>
+
+      {/* ── Mobile sticky bottom action bar (hidden on lg+) ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-100 px-4 py-3 flex items-center gap-3 shadow-xl">
+        <button
+          type="button"
+          onClick={() => {
+            removeParam("edit");
+            handleEditMode(false);
+          }}
+          className="h-11 px-5 border border-zinc-200 text-zinc-500 text-xs font-bold rounded-xl hover:bg-zinc-50 transition-all uppercase tracking-wider flex-shrink-0"
+        >
+          Cancel
+        </button>
+        <button
+          form="edit-property-form"
+          type="submit"
+          disabled={isPending || uploadedMediaPending}
+          className="flex-1 h-11 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm shadow-primary/20"
+        >
+          {isPending ? (
+            <Spinner />
+          ) : (
+            <>
+              <Icon icon="solar:check-read-bold" className="text-base" /> Save
+              changes
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
 }

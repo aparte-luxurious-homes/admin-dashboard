@@ -1,17 +1,19 @@
 "use client";
 
-import { useMyReferrals, useAgentReferralStats } from "@/src/hooks/useReferrals";
+import { useMyReferrals, useAgentReferralStats, useMyReferralInfo } from "@/src/hooks/useReferrals";
 import { useState } from "react";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { Icon } from "@iconify/react";
 import TablePagination from "@/src/components/TablePagination";
 import { toast } from "react-hot-toast";
+import { IReferralItem } from "@/src/lib/types";
 
 const MyReferralsPage = () => {
     const [page, setPage] = useState(1);
     const pageSize = 10;
 
     const { data: stats, isLoading: statsLoading } = useAgentReferralStats();
+    const { data: myReferralInfo, isLoading: infoLoading } = useMyReferralInfo();
     const { data: myReferralsData, isLoading: referralsLoading } = useMyReferrals({
         page,
         size: pageSize,
@@ -20,12 +22,63 @@ const MyReferralsPage = () => {
     const referrals = myReferralsData?.items || [];
     const totalCount = myReferralsData?.total || 0;
 
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard!");
+    };
+
     return (
         <div className="p-6 space-y-6">
             <div>
                 <h1 className="text-xl font-semibold text-gray-900">My Referrals</h1>
                 <p className="text-sm text-gray-500 mt-1">Track people you've invited to the platform and rewards you've earned</p>
             </div>
+
+            {/* Referral Code & Link Card */}
+            {infoLoading ? (
+                <Skeleton className="h-28 w-full rounded-2xl" />
+            ) : myReferralInfo && (
+                <div className="bg-primary rounded-2xl p-6 text-white shadow-lg shadow-primary/20">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
+                                <Icon icon="mdi:ticket-percent" width="28" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold">Your Referral Code</h2>
+                                <p className="text-primary-foreground/80 text-sm">Share your code or link to earn rewards</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
+                            <div className="px-4 py-2 bg-white text-primary font-bold rounded-lg tracking-wider uppercase">
+                                {myReferralInfo.code}
+                            </div>
+                            <button
+                                onClick={() => copyToClipboard(myReferralInfo.code)}
+                                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                                title="Copy code"
+                            >
+                                <Icon icon="mdi:content-copy" width="20" />
+                            </button>
+                        </div>
+                    </div>
+                    {myReferralInfo.link && (
+                        <div className="mt-4 flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3 backdrop-blur-md border border-white/20">
+                            <Icon icon="mdi:link-variant" width="20" className="text-white/80 flex-shrink-0" />
+                            <span className="text-sm text-white/90 truncate flex-1 font-mono">
+                                {myReferralInfo.link}
+                            </span>
+                            <button
+                                onClick={() => copyToClipboard(myReferralInfo.link)}
+                                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
+                                title="Copy referral link"
+                            >
+                                <Icon icon="mdi:content-copy" width="18" />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:border-primary/20 transition-all duration-200 group">
@@ -81,7 +134,7 @@ const MyReferralsPage = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {referrals.map((item: any) => (
+                                {referrals.map((item: IReferralItem) => (
                                     <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-gray-900">{item.name}</td>
                                         <td className="px-6 py-4 text-gray-600">{item.email}</td>

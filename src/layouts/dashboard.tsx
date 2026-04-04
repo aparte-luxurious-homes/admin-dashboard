@@ -44,23 +44,23 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = Cookies.get("token");
 
-    console.log('[Dashboard] Auth check:', {
-      hasToken: !!token,
-      hasUser: !!user,
-      userId: user?.id,
-      isFetching
-    });
+    // console.log('[Dashboard] Auth check:', {
+    //   hasToken: !!token,
+    //   hasUser: !!user,
+    //   userId: user?.id,
+    //   isFetching
+    // });
 
     // If no token and no user in Redux, redirect to login
     if (!token && !user) {
-      console.log('[Dashboard] No token and no user - redirecting to login');
+      // console.log('[Dashboard] No token and no user - redirecting to login');
       router.replace(PAGE_ROUTES.auth.login);
       return;
     }
 
     // If we have user data (either from Redux persistence or fresh fetch), show dashboard
     if (user && user.id) {
-      console.log('[Dashboard] User authenticated:', user.email);
+      // console.log('[Dashboard] User authenticated:', user.email);
       setIsCheckingAuth(false);
       return;
     }
@@ -68,10 +68,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     // If we have a token but no user, wait briefly for fetch to complete
     if (token && !user) {
       if (isFetching) {
-        console.log('[Dashboard] Token exists, fetching user...');
+        // console.log('[Dashboard] Token exists, fetching user...');
         setIsCheckingAuth(true);
       } else {
-        console.log('[Dashboard] Token exists but no user and not fetching - might be invalid token');
+        // console.log('[Dashboard] Token exists but no user and not fetching - might be invalid token');
         // Give it a moment for query to start
         const timeout = setTimeout(() => {
           // Re-check token and user after timeout
@@ -79,7 +79,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
           const currentUser = user;
 
           if (currentToken && !currentUser) {
-            console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
+            // console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
             Cookies.remove("token");
             router.replace(PAGE_ROUTES.auth.login);
           }

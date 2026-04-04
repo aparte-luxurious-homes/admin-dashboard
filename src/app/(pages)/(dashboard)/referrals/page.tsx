@@ -7,6 +7,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import { Icon } from "@iconify/react";
 import TablePagination from "@/src/components/TablePagination";
 import { toast } from "react-hot-toast";
+import { IReferralRelationship } from "@/src/lib/types";
 
 const ReferralsPage = () => {
     const { isAdmin, isAgent } = usePermissions();
@@ -38,28 +39,49 @@ const ReferralsPage = () => {
             </div>
 
             {/* Referral Code Card (For Agents/Admins) */}
-            {myReferralInfo && (
-                <div className="bg-primary rounded-2xl p-6 text-white shadow-lg shadow-primary/20 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
-                            <Icon icon="mdi:ticket-percent" width="28" />
+            {infoLoading ? (
+                <Skeleton className="h-28 w-full rounded-2xl" />
+            ) : myReferralInfo && (
+                <div className="bg-primary rounded-2xl p-6 text-white shadow-lg shadow-primary/20">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
+                                <Icon icon="mdi:ticket-percent" width="28" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold">Your Referral Program</h2>
+                                <p className="text-primary-foreground/80 text-sm">Share your code and earn rewards when others join Aparte</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold">Your Referral Program</h2>
-                            <p className="text-primary-foreground/80 text-sm">Share your code and earn rewards when others join Aparte</p>
+                        <div className="flex items-center gap-3 bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
+                            <div className="px-4 py-2 bg-white text-primary font-bold rounded-lg tracking-wider uppercase">
+                                {myReferralInfo.code}
+                            </div>
+                            <button 
+                                onClick={() => copyToClipboard(myReferralInfo.code)}
+                                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                                title="Copy code"
+                            >
+                                <Icon icon="mdi:content-copy" width="20" />
+                            </button>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
-                        <div className="px-4 py-2 bg-white text-primary font-bold rounded-lg tracking-wider uppercase">
-                            {myReferralInfo.code}
+                    {/* Referral Link */}
+                    {myReferralInfo.link && (
+                        <div className="mt-4 flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3 backdrop-blur-md border border-white/20">
+                            <Icon icon="mdi:link-variant" width="20" className="text-white/80 flex-shrink-0" />
+                            <span className="text-sm text-white/90 truncate flex-1 font-mono">
+                                {myReferralInfo.link}
+                            </span>
+                            <button
+                                onClick={() => copyToClipboard(myReferralInfo.link)}
+                                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
+                                title="Copy referral link"
+                            >
+                                <Icon icon="mdi:content-copy" width="18" />
+                            </button>
                         </div>
-                        <button 
-                            onClick={() => copyToClipboard(myReferralInfo.code)}
-                            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                        >
-                            <Icon icon="mdi:content-copy" width="20" />
-                        </button>
-                    </div>
+                    )}
                 </div>
             )}
 
@@ -87,7 +109,7 @@ const ReferralsPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {relationships.map((rel: any, idx: number) => (
+                                    {relationships.map((rel: IReferralRelationship, idx: number) => (
                                         <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="font-medium text-gray-900">{rel.referrer_name}</div>

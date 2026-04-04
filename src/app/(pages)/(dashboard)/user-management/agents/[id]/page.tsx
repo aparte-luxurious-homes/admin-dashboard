@@ -140,7 +140,6 @@ const AgentInfo = () => {
   const [showEditWallet, setShowEditWallet] = useState(false);
   const params = useParams();
   const id = params?.id;
-  console.log("params", params?.id);
 
   const fetchWallet = useCallback(async (userId: string | number) => {
     try {
@@ -158,7 +157,6 @@ const AgentInfo = () => {
       const response = await axiosRequest.get(
         `${API_ROUTES.admin.users.userByUuid(String(id))}`
       );
-      console.log("response", response);
       const userData = response?.data?.data;
       setUserInfo(userData);
       setUserLoading(false);
@@ -188,7 +186,6 @@ const AgentInfo = () => {
       const response = await axiosRequest.get(
         `${API_ROUTES.propertyManagement.properties.base}`
       );
-      console.log("response prop", response);
 
       const filteredProperties = response?.data?.data?.data.filter(
         (agent: Property) => agent?.assignedAgent === Number(id)
@@ -204,8 +201,6 @@ const AgentInfo = () => {
       setLoading(false);
     }
   }, [id]);
-
-  console.log("properties", properties);
 
   useEffect(() => {
     fetchProperties();

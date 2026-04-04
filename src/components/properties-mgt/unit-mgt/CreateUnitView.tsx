@@ -351,7 +351,10 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                             router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(propertyId, unitId));
                         }
                     },
-                    onError: () => toast.error('Something went wrong')
+                    onError: (error: any) => {
+                        console.error("Error creating property unit:", error);
+                        toast.error(error?.response?.data?.message || 'Failed to create property unit. Please try again later.'); 
+                    }
                 });
         },
     });
