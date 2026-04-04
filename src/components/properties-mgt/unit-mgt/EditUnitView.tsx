@@ -216,11 +216,14 @@ export default function EditUnitView({
 
     useEffect(() => {
         if (uploadData?.data) {
-            // Ensure uploadData.data is an array before spreading
-            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.media_url || el?.data?.mediaUrl) : [uploadData.data?.data])]);
+            // Response shape: { data: { message, data: [{id, media_url, ...}, ...] }, status }
+            const newMedia = uploadData.data?.data ?? uploadData.data;
+            const mediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
+            setMedia((prev) => [...prev, ...mediaArray]);
             if (uploadData.status === 201) {
-                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url)); // Revoke object URLs
-                uploadRef.current = []
+                setUploadedMedia([]);
+                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+                uploadRef.current = [];
             }
         }
     }, [uploadData]);

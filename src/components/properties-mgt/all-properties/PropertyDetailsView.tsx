@@ -204,7 +204,7 @@ export default function PropertyDetailsView({
                                                     priority={index === 0}
                                                 />
                                                 {/* Gradient overlay */}
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                                             </div>
                                         </SwiperSlide>
                                     ))
