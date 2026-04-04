@@ -287,14 +287,35 @@ export default function EditPropertyView({
               );
               formData.append("media_type", MediaType.IMAGE);
               formData.append("is_featured", "true");
-              uploadMedia({ propertyId: propertyData.id, payload: formData });
+              uploadMedia(
+                { propertyId: propertyData.id, payload: formData },
+                {
+                  onSuccess: () => {
+                    toast.success("Property updated with new images", {
+                      duration: 6000,
+                      style: { maxWidth: "500px", width: "max-content" },
+                    });
+                    removeParam("edit");
+                    handleEditMode(false);
+                  },
+                  onError: () => {
+                    toast.error("Property updated but image upload failed", {
+                      duration: 6000,
+                      style: { maxWidth: "500px", width: "max-content" },
+                    });
+                    removeParam("edit");
+                    handleEditMode(false);
+                  },
+                },
+              );
+            } else {
+              toast.success("Property update successful", {
+                duration: 6000,
+                style: { maxWidth: "500px", width: "max-content" },
+              });
+              removeParam("edit");
+              handleEditMode(false);
             }
-            toast.success("Property update successful", {
-              duration: 6000,
-              style: { maxWidth: "500px", width: "max-content" },
-            });
-            removeParam("edit");
-            handleEditMode(false);
           },
           onError: () =>
             toast.error("Something went wrong, please try again", {
@@ -399,15 +420,12 @@ export default function EditPropertyView({
 
   useEffect(() => {
     if (uploadData?.data) {
-      setMedia((prev) => [
-        ...prev,
-        ...(Array.isArray(uploadData.data)
-          ? uploadData.data.map(
-              (el: any) => el?.data?.media_url || el?.data?.mediaUrl,
-            )
-          : [uploadData.data?.data]),
-      ]);
+      // Response shape: { data: { message, data: [{id, media_url, ...}, ...] }, status }
+      const newMedia = uploadData.data?.data ?? uploadData.data;
+      const mediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
+      setMedia((prev) => [...prev, ...mediaArray]);
       if (uploadData.status === 201) {
+        setUploadedMedia([]);
         uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
         uploadRef.current = [];
       }
