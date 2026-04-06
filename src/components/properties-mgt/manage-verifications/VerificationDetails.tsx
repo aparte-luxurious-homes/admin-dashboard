@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import { MdCopyAll } from "react-icons/md";
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import { IoLocationOutline } from 'react-icons/io5';
@@ -22,6 +23,8 @@ import { IUser } from '@/src/lib/types';
 import toast from 'react-hot-toast';
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
 import Spinner from '../../ui/Spinner';
+import Loader from '../../loader';
+import { PAGE_ROUTES } from '@/src/lib/routes/page_routes';
 
 
 export default function VerificationDetails({
@@ -32,6 +35,9 @@ export default function VerificationDetails({
     verificationId: string | number
 }) {
     const dispatch = useDispatch();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const editFromUrlRef = useRef(false);
     const { user } = useAuth();
     const { mutate: assignAgent, isPending: assignmentLoading } = AssignToProperty(propertyId)
     const { mutate: updateVerification, isPending: verificationUdateLoading } = UpdatePropertyVerification()
@@ -46,12 +52,15 @@ export default function VerificationDetails({
     const [agents, setAgents] = useState<IUser[]>(agentsList?.data?.data?.data)
     const [selectedAgent, setSelectedAgent] = useState<IUser | null>(null)
     const [showAgentSelection, setShowAgentSelecteion] = useState(false);
+    const [skipKycCheck, setSkipKycCheck] = useState(false);
+    const [skipDocumentCheck, setSkipDocumentCheck] = useState(false);
 
 
     const formik =
         useFormik({
+            enableReinitialize: true,
             initialValues: {
-                feedback: verification?.feedback ?? ``
+                feedback: verification?.feedback ?? ''
             },
             onSubmit: async () => {
                 updateVerification(
@@ -137,7 +146,9 @@ export default function VerificationDetails({
                         propertyId,
                         payload: {
                             feedback: formik.values.feedback,
-                            status: PropertyVerificationStatus.VERIFIED
+                            status: PropertyVerificationStatus.VERIFIED,
+                            skip_kyc_check: skipKycCheck,
+                            skip_document_check: skipDocumentCheck
                         }
                     },
                     {
@@ -175,7 +186,9 @@ export default function VerificationDetails({
                         propertyId,
                         payload: {
                             feedback: formik.values.feedback,
-                            status: PropertyVerificationStatus.VERIFIED
+                            status: PropertyVerificationStatus.VERIFIED,
+                            skip_kyc_check: skipKycCheck,
+                            skip_document_check: skipDocumentCheck
                         }
                     },
                     {
@@ -248,7 +261,23 @@ export default function VerificationDetails({
         setVerification(verificationData?.data?.data)
         setProperty(verificationData?.data?.data?.property)
         setSelectedAgent(verificationData?.data?.data?.property?.agent)
-    }, [verificationData, verificationId])
+
+        // Handle ?edit=true from URL (only once, only for agents)
+        if (verificationData?.data?.data && !editFromUrlRef.current && searchParams?.get('edit') === 'true') {
+            editFromUrlRef.current = true;
+            if (user?.role === UserRole.AGENT && verificationData?.data?.data?.status === PropertyVerificationStatus.PENDING) {
+                setEditMode(true);
+            }
+        }
+    }, [verificationData, verificationId, searchParams, user?.role])
+
+    if (verificationLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[50vh] w-full">
+                <Loader />
+            </div>
+        );
+    }
 
     return (
         <div className="p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 w-full max-w-[1600px] mx-auto">
@@ -330,7 +359,16 @@ export default function VerificationDetails({
                             </div>
 
                             <div className='flex flex-col sm:flex-row lg:flex-col gap-2 sm:gap-3 w-full'>
-                                <button type='button' className="flex-1 text-center cursor-pointer rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed transition-colors">
+                                <button
+                                    type='button'
+                                    onClick={() => {
+                                        const agentId = selectedAgent?.id;
+                                        if (agentId) {
+                                            router.push(PAGE_ROUTES.dashboard.userManagement.agents.details(agentId));
+                                        }
+                                    }}
+                                    className="flex-1 text-center cursor-pointer rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed transition-colors"
+                                >
                                     View Agent
                                 </button>
                                 {
@@ -434,9 +472,36 @@ export default function VerificationDetails({
                         </div>
                     </div>
 
-                    {/* Mobile/Tablet: Grid layout (your existing mobile code) */}
-                    <div className="lg:hidden grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {/* ... your mobile grid items ... */}
+                    {/* Mobile/Tablet: Grid layout */}
+                    <div className="lg:hidden grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <div className="bg-white px-3 py-2.5 rounded-xl border border-zinc-100 shadow-sm">
+                            <p className="text-xs text-zinc-500 font-medium mb-1">Property ID</p>
+                            <p className="text-sm font-semibold text-zinc-900 truncate">APRT25-{property?.id}</p>
+                        </div>
+                        <div className="bg-white px-3 py-2.5 rounded-xl border border-zinc-100 shadow-sm">
+                            <p className="text-xs text-zinc-500 font-medium mb-1">Status</p>
+                            <VerificationBadge status={verification?.status ?? PropertyVerificationStatus.PENDING} />
+                        </div>
+                        <div className="bg-white px-3 py-2.5 rounded-xl border border-zinc-100 shadow-sm">
+                            <p className="text-xs text-zinc-500 font-medium mb-1">Verified</p>
+                            <p className="text-sm font-medium text-zinc-900">
+                                {verification?.verificationDate ? formatDate(verification.verificationDate) : '--/--'}
+                            </p>
+                        </div>
+                        <div className="bg-white px-3 py-2.5 rounded-xl border border-zinc-100 shadow-sm">
+                            <p className="text-xs text-zinc-500 font-medium mb-1">Type</p>
+                            <p className="text-sm font-semibold text-zinc-900 capitalize">
+                                {property?.propertyType?.toLowerCase() || 'N/A'}
+                            </p>
+                        </div>
+                        <div className="bg-white px-3 py-2.5 rounded-xl border border-zinc-100 shadow-sm col-span-2 sm:col-span-1">
+                            <p className="text-xs text-zinc-500 font-medium mb-1">Owner</p>
+                            <p className="text-sm text-teal-700 font-medium truncate">
+                                {property?.owner?.profile?.firstName
+                                    ? `${property.owner.profile.firstName} ${property.owner.profile.lastName || ''}`
+                                    : property?.owner?.email || '--/--'}
+                            </p>
+                        </div>
                     </div>
 
                     {/* Amenities - common for all screens */}
@@ -463,12 +528,78 @@ export default function VerificationDetails({
 
                 {/* KYC Details */}
                 <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-5'>
-                    <p className="text-sm sm:text-base font-medium text-zinc-900 mb-2">KYC Details</p>
-                    <div className="p-4 sm:p-5 bg-background/70 rounded-xl">
-                        <p className="text-sm text-zinc-400 italic">
-                            Coming soon...
-                        </p>
-                    </div>
+                    <p className="text-sm sm:text-base font-medium text-zinc-900 mb-2">Owner KYC Details</p>
+                    {property?.owner?.profile ? (
+                        <div className="p-4 sm:p-5 bg-background/70 rounded-xl space-y-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div>
+                                    <p className="text-xs text-zinc-500 mb-1">KYC Status</p>
+                                    <VerificationBadge status={property.owner.profile.kycStatus || 'PENDING'} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-zinc-500 mb-1">BVN</p>
+                                    <p className="text-sm font-medium text-zinc-800">{property.owner.profile.bvn || 'Not provided'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-zinc-500 mb-1">NIN</p>
+                                    <p className="text-sm font-medium text-zinc-800">{property.owner.profile.nin || 'Not provided'}</p>
+                                </div>
+                                {property.owner.profile.kycProvider && (
+                                    <div>
+                                        <p className="text-xs text-zinc-500 mb-1">Provider</p>
+                                        <p className="text-sm font-medium text-zinc-800 capitalize">{property.owner.profile.kycProvider}</p>
+                                    </div>
+                                )}
+                            </div>
+                            {property.owner.kycDocuments && property.owner.kycDocuments.length > 0 && (
+                                <div className="pt-3 border-t border-zinc-200">
+                                    <p className="text-xs text-zinc-500 mb-2">KYC Documents</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {property.owner.kycDocuments.map((doc: any, i: number) => (
+                                            <div key={i} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-zinc-100">
+                                                <div>
+                                                    <p className="text-xs font-medium text-zinc-800 capitalize">{doc.documentType?.replace(/_/g, ' ')?.toLowerCase()}</p>
+                                                    <VerificationBadge status={doc.status} />
+                                                </div>
+                                                <a href={doc.documentUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View</a>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="p-4 sm:p-5 bg-background/70 rounded-xl">
+                            <p className="text-sm text-zinc-400 italic">No KYC information available</p>
+                        </div>
+                    )}
+                </section>
+
+                {/* Property Documents */}
+                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-5'>
+                    <p className="text-sm sm:text-base font-medium text-zinc-900 mb-2">Property Documents</p>
+                    {property?.documents && property.documents.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {property.documents.map((doc: any, index: number) => (
+                                <div key={index} className="p-4 bg-background/70 rounded-xl border border-zinc-100 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-zinc-800 capitalize">{doc.documentType?.replace(/_/g, ' ')?.toLowerCase()}</p>
+                                        <div className="mt-1">
+                                            <VerificationBadge status={doc.status} />
+                                        </div>
+                                        {doc.rejectionReason && (
+                                            <p className="text-xs text-red-500 mt-1">{doc.rejectionReason}</p>
+                                        )}
+                                    </div>
+                                    <a href={doc.documentUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline shrink-0 ml-3">View</a>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="p-4 sm:p-5 bg-background/70 rounded-xl">
+                            <p className="text-sm text-zinc-400 italic">No documents uploaded</p>
+                        </div>
+                    )}
                 </section>
 
                 {/* Feedback Section */}
@@ -487,10 +618,10 @@ export default function VerificationDetails({
                             </div>
                             :
                             <div className="relative mt-2">
-                                <span className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 text-xs sm:text-sm text-zinc-400">{`${formik.values.feedback.length}/1000`}</span>
+                                <span className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 text-xs sm:text-sm text-zinc-400">{`${formik.values.feedback.length}/500`}</span>
                                 <textarea
                                     id="description"
-                                    maxLength={300}
+                                    maxLength={500}
                                     rows={6}
                                     placeholder={'Enter your feedback about this property...'}
                                     value={formik.values.feedback}
@@ -500,6 +631,33 @@ export default function VerificationDetails({
                             </div>
                     }
                 </section>
+
+                {/* Override Checks */}
+                {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && verification?.status === PropertyVerificationStatus.PENDING && !editMode && (
+                    <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10'>
+                        <div className='p-3 bg-amber-50 rounded-lg border border-amber-100'>
+                            <p className='text-sm font-medium text-amber-800 mb-2'>Override Checks</p>
+                            <label className='flex items-center gap-2 mb-2 cursor-pointer'>
+                                <input
+                                    type='checkbox'
+                                    checked={skipKycCheck}
+                                    onChange={(e) => setSkipKycCheck(e.target.checked)}
+                                    className='w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500'
+                                />
+                                <span className='text-sm text-amber-700'>Skip owner KYC verification check</span>
+                            </label>
+                            <label className='flex items-center gap-2 cursor-pointer'>
+                                <input
+                                    type='checkbox'
+                                    checked={skipDocumentCheck}
+                                    onChange={(e) => setSkipDocumentCheck(e.target.checked)}
+                                    className='w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500'
+                                />
+                                <span className='text-sm text-amber-700'>Skip document verification check</span>
+                            </label>
+                        </div>
+                    </section>
+                )}
 
                 {/* Action Buttons */}
                 <section className='my-6 sm:my-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6'>
@@ -550,7 +708,7 @@ export default function VerificationDetails({
                                         }
 
                                         {
-                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.ADMIN &&
+                                            verification?.status === PropertyVerificationStatus.PENDING && (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) &&
                                             <button
                                                 type='button'
                                                 disabled={verificationLoading || verificationUdateLoading}

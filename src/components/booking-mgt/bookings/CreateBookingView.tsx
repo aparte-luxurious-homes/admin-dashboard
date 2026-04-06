@@ -10,8 +10,7 @@ import { Navigation, Autoplay } from 'swiper/modules';
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import { GetAllProperties, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { GetUnitAvailability } from "@/src/lib/request-handlers/unitMgt";
-import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { IProperty, IPropertyUnit, PropertyType } from "../../properties-mgt/types";
 import { IUser } from "@/src/lib/types";
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
@@ -21,11 +20,10 @@ import BookingAvailabilityCalendar from "./BookingAvailabilityCalendar";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { addYears } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CreateBooking } from "@/src/lib/request-handlers/bookingMgt";
+import { CreateBooking, GuestLookup } from "@/src/lib/request-handlers/bookingMgt";
 import Spinner from "../../ui/Spinner";
 import { useAuth } from "@/src/hooks/useAuth";
 import toast from "react-hot-toast";
-import { UserRole } from "@/src/lib/enums";
 import { useMediaQuery } from "@mui/material";
 import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
 import { HiOutlineCloudUpload } from "react-icons/hi";
@@ -38,7 +36,8 @@ export default function CreateBookingView() {
     const isMobile = useMediaQuery("(max-width: 768px)");
 
     // State
-    const [userSearchTerm, setUserSearchTerm] = useState<string>('')
+    const [guestSearchInput, setGuestSearchInput] = useState<string>('')
+    const [guestSearchTerm, setGuestSearchTerm] = useState<string>('')
     const [propertySearchTerm, setPropertySearchTerm] = useState<string>('')
     const [unitSearchTerm, setUnitSearchTerm] = useState<string>('')
     const [propPage, setPropPage] = useState<number>(1);
@@ -46,14 +45,13 @@ export default function CreateBookingView() {
 
     // Queries
     const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm);
-    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm, UserRole.GUEST)
+    const { data: guestLookupResult, isLoading: guestLookupLoading } = GuestLookup(guestSearchTerm);
     const { mutate, isPending } = CreateBooking();
     const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
 
     // Local Data State
     const [selectionMode, setSelectionMode] = useState<boolean>(true)
     const [properties, setProperties] = useState<IProperty[]>([])
-    const [users, setUsers] = useState<IUser[]>([])
 
     // Selection State
     const [selectedProperty, setSeletedProperty] = useState<IProperty | any | null>(null)
@@ -154,7 +152,6 @@ export default function CreateBookingView() {
                 },
                 {
                     onSuccess: (values) => {
-                        console.log(values)
                         toast.success('Booking created successfully', {
                             duration: 6000,
                             style: {
@@ -179,7 +176,6 @@ export default function CreateBookingView() {
             )
         }
     })
-    console.log('DEBUG: Formik Values:', formik.values);
 
     const handlePropertySelection = (name: string) => {
         const filteredProperties = properties?.filter(el => {
@@ -196,9 +192,7 @@ export default function CreateBookingView() {
     const handleUnitSelection = (name: string) => {
         // Use full details to find the unit
         const unit = fullPropertyDetails?.units?.find((u: IPropertyUnit) => u.name === name);
-        console.log('DEBUG: Selected Unit:', unit);
         if (unit) {
-            console.log('DEBUG: Unit Availability:', unit.availability);
             setSeletedUnit(unit);
             formik.setFieldValue('unit_id', unit.id);
             formik.setFieldValue('unit_count', 1);
@@ -206,11 +200,11 @@ export default function CreateBookingView() {
     }
 
     // Effect to inspect full details
-    useEffect(() => {
-        if (fullPropertyDetails) {
-            console.log('DEBUG: Full Property Details:', fullPropertyDetails);
-        }
-    }, [fullPropertyDetails]);
+    // useEffect(() => {
+    //     if (fullPropertyDetails) {
+    //         console.log('DEBUG: Full Property Details:', fullPropertyDetails);
+    //     }
+    // }, [fullPropertyDetails]);
 
     // Effect to sync properties list
     useEffect(() => {
@@ -220,13 +214,35 @@ export default function CreateBookingView() {
         setProperties(next as IProperty[])
     }, [propertyList])
 
-    // Effect to sync users list
-    useEffect(() => {
-        const fromItems = (userList as any)?.data?.data?.items ?? (userList as any)?.data?.items;
-        const fromData = (userList as any)?.data?.data?.data ?? [];
-        const next = Array.isArray(fromItems) ? fromItems : (Array.isArray(fromData) ? fromData : []);
-        setUsers(next as IUser[])
-    }, [userList])
+    // Derived: guest search results list
+    const guestResults: any[] = guestLookupResult?.data?.data ?? [];
+
+    const handleGuestSelect = useCallback((guest: any) => {
+        setSeletedUser({
+            id: guest.id,
+            email: guest.email,
+            phone: guest.phone,
+            profile: {
+                firstName: guest.first_name,
+                lastName: guest.last_name,
+                first_name: guest.first_name,
+                last_name: guest.last_name,
+            },
+        } as any);
+        formik.setFieldValue('user_id', guest.id);
+        setGuestSearchInput('');
+        setGuestSearchTerm('');
+    }, []);
+
+    const handleSwitchToNewGuest = useCallback(() => {
+        setIsNewGuest(true);
+        const input = guestSearchInput.trim();
+        if (input.includes('@')) {
+            formik.setFieldValue('guest_email', input);
+        } else {
+            formik.setFieldValue('guest_phone', input);
+        }
+    }, [guestSearchInput]);
 
     const { values, setFieldValue } = formik;
 
@@ -438,28 +454,67 @@ export default function CreateBookingView() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {!isNewGuest ? (
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-zinc-700">Select Guest</label>
-                                            <AdjustableFilterDropdown
-                                                placeholder="Search by name, email or phone..."
-                                                options={userList?.data?.data?.data?.map((user: any) => {
-                                                    const name = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ');
-                                                    return [name, user.email, user.phone].filter(Boolean).join(' | ');
-                                                }).filter(Boolean) ?? []}
-                                                handleSelection={(val) => {
-                                                    const segments = val.split(' | ');
-                                                    const email = segments.length >= 2 ? segments[1] : segments[0];
-                                                    const selected = userList?.data?.data?.data?.find((user: any) => user.email === email);
-                                                    setUserSearchTerm(val);
-                                                    setSeletedUser(selected);
-                                                    formik.setFieldValue('user_id', selected?.id);
-                                                }}
-                                                searchTerm={userSearchTerm}
-                                                setSearchTerm={setUserSearchTerm}
-                                                isLoading={usersLoading}
-                                            />
-                                            {selectedUser && (
-                                                <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-medium border border-zinc-200">
+                                            <label className="text-sm font-medium text-zinc-700">Find Guest</label>
+                                            {!selectedUser ? (
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                                        placeholder="Search by name, email or phone..."
+                                                        value={guestSearchInput}
+                                                        onChange={(e) => {
+                                                            setGuestSearchInput(e.target.value);
+                                                            // Debounce: trigger search after typing pauses
+                                                            const val = e.target.value.trim();
+                                                            if (val.length >= 2) {
+                                                                setGuestSearchTerm(val);
+                                                            } else {
+                                                                setGuestSearchTerm('');
+                                                            }
+                                                        }}
+                                                    />
+                                                    {guestLookupLoading && (
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                            <Spinner />
+                                                        </div>
+                                                    )}
+                                                    {/* Results dropdown */}
+                                                    {guestSearchTerm && !guestLookupLoading && guestResults.length > 0 && (
+                                                        <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                            {guestResults.map((guest: any) => (
+                                                                <button
+                                                                    key={guest.id}
+                                                                    type="button"
+                                                                    onClick={() => handleGuestSelect(guest)}
+                                                                    className="w-full px-4 py-3 text-left hover:bg-zinc-50 border-b border-zinc-100 last:border-b-0 transition-colors"
+                                                                >
+                                                                    <p className="text-sm font-medium text-zinc-900">
+                                                                        {[guest.first_name, guest.last_name].filter(Boolean).join(' ') || 'Guest'}
+                                                                    </p>
+                                                                    <p className="text-xs text-zinc-500">
+                                                                        {[guest.email, guest.phone].filter(Boolean).join(' \u00b7 ')}
+                                                                    </p>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {/* No results */}
+                                                    {guestSearchTerm && !guestLookupLoading && guestResults.length === 0 && (
+                                                        <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg p-4">
+                                                            <p className="text-sm text-zinc-500">No guests found.</p>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleSwitchToNewGuest}
+                                                                className="mt-1 text-sm font-medium text-primary hover:text-primary/80 underline"
+                                                            >
+                                                                Create as new guest instead
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-4 p-3 bg-green-50 border border-green-200 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-zinc-500 font-medium border border-zinc-200">
                                                         {selectedUser.profile?.firstName?.[0] ?? 'G'}{selectedUser.profile?.lastName?.[0] ?? ''}
                                                     </div>
                                                     <div>
@@ -469,7 +524,18 @@ export default function CreateBookingView() {
                                                             <p className="text-xs text-zinc-400">{selectedUser.phone}</p>
                                                         )}
                                                     </div>
-                                                    <button type="button" onClick={() => router.push(PAGE_ROUTES.dashboard.userManagement.guests.details(selectedUser.id))} className="ml-auto text-xs font-medium text-primary underline hover:text-primary/80">View Profile</button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSeletedUser(null);
+                                                            formik.setFieldValue('user_id', 0);
+                                                            setGuestSearchInput('');
+                                                            setGuestSearchTerm('');
+                                                        }}
+                                                        className="ml-auto text-xs font-medium text-red-500 hover:text-red-600"
+                                                    >
+                                                        Clear
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>

@@ -21,11 +21,15 @@ import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { toast } from "react-hot-toast";
 
+type StatusFilter = 'all' | 'verified' | 'unverified';
+
 export default function PropertiesTable() {
     const { user } = useAuth();
     const [page, setPage] = useState<number>(1);
     const [searchTerm, setSearchTerm] = useState<string>("");
-    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id);
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const isVerifiedParam = statusFilter === 'all' ? null : statusFilter === 'verified';
+    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id, isVerifiedParam);
     const [propertyList, setPropertyList] = useState<IProperty[]>([]);
     const router = useRouter();
 
@@ -108,7 +112,7 @@ export default function PropertiesTable() {
 
     useEffect(() => {
         setPage(1)
-    }, [searchTerm])
+    }, [searchTerm, statusFilter])
 
     return (
         <div className="p-6">
@@ -138,10 +142,18 @@ export default function PropertiesTable() {
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                         </div>
-                        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700">
-                            <FilterIcon className="w-4 h-4" color="#6B7280" />
-                            <span>Filter</span>
-                        </button>
+                        <div className="relative">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                                className="px-4 py-2 pr-8 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-700 appearance-none cursor-pointer bg-white"
+                            >
+                                <option value="all">All Status</option>
+                                <option value="verified">Verified</option>
+                                <option value="unverified">Unverified</option>
+                            </select>
+                            <FilterIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" color="#6B7280" />
+                        </div>
                     </div>
                 </div>
 

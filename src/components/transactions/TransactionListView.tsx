@@ -77,6 +77,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [selectedTxForApproval, setSelectedTxForApproval] = useState<Transaction | null>(null);
     const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
+    const [withdrawalModalInitialStep, setWithdrawalModalInitialStep] = useState<"confirm" | "otp">("confirm");
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
 
     const handleDownload = (type: "CSV" | "PDF") => {
@@ -215,6 +216,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
     const handleApproveClick = (tx: Transaction) => {
         setSelectedTxForApproval(tx);
         if (tx.transaction_type === "WITHDRAWAL") {
+            setWithdrawalModalInitialStep("confirm");
             setIsWithdrawalApprovalOpen(true);
         } else {
             setIsApproveModalOpen(true);
@@ -249,6 +251,22 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                 onClick: () => {
                     setSelectedTxForApproval(tx);
                     setIsWithdrawalRejectionOpen(true);
+                    setSelectedRow(null);
+                },
+            });
+        }
+    }
+
+    if (selectedRow !== null && data[selectedRow]?.status === "AWAITING_AUTHORIZATION") {
+        const tx = data[selectedRow];
+        if (tx.transaction_type === "WITHDRAWAL") {
+            detailButtons.push({
+                label: "Enter OTP",
+                Icon: <Icon icon="mdi:key-outline" />,
+                onClick: () => {
+                    setSelectedTxForApproval(tx);
+                    setWithdrawalModalInitialStep("otp");
+                    setIsWithdrawalApprovalOpen(true);
                     setSelectedRow(null);
                 },
             });
@@ -327,6 +345,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                         <option value="">All Statuses</option>
                                         <option value="PENDING">Pending</option>
                                         <option value="PENDING_APPROVAL">Pending Approval</option>
+                                        <option value="AWAITING_AUTHORIZATION">Awaiting OTP</option>
                                         <option value="SUCCESSFUL">Successful</option>
                                         <option value="OFFLINE_REFUNDED">Offline Refunded</option>
                                         <option value="FAILED">Failed</option>
@@ -523,6 +542,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                     amount={selectedTxForApproval.amount}
                     currency={selectedTxForApproval.currency}
                     walletId={String(selectedTxForApproval.wallet_id || "")}
+                    initialStep={withdrawalModalInitialStep}
                 />
             )}
 

@@ -17,7 +17,11 @@ import Spinner from "@/src/components/ui/Spinner";
 import { format } from "date-fns";
 import CustomModal from "@/src/components/ui/CustomModal";
 import toast from "react-hot-toast";
+<<<<<<< HEAD
 import { usePermissions } from "@/src/hooks/usePermissions";
+=======
+import Image from "next/image";
+>>>>>>> 332afbb4ddf29663e6dcd9e275c9c478c3da1f93
 
 const DisputeDetailsView = () => {
     const { id } = useParams();
@@ -218,7 +222,7 @@ const DisputeDetailsView = () => {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                     {dispute.evidence.map((item, idx) => (
                                         <div key={idx} className="group relative aspect-square rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 hover:shadow-lg transition-all">
-                                            <img src={item.media_url} alt="Evidence" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            <Image src={item.media_url} alt="Evidence" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                 <a href={item.media_url} target="_blank" className="p-2 bg-white rounded-full text-gray-900 shadow-xl transform scale-75 group-hover:scale-100 transition-transform">
                                                     <Icon icon="solar:eye-bold" />

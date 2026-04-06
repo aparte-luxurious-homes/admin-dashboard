@@ -179,10 +179,13 @@ export interface IProperty {
 }
 
 export enum DocumentType {
-    PROOF_OF_OWNERSHIP = 'PROOF_OF_OWNERSHIP',
-    GOVERNMENT_ID = 'GOVERNMENT_ID',
+    INTERNATIONAL_PASSPORT = 'INTERNATIONAL_PASSPORT',
+    DRIVERS_LICENSE = 'DRIVERS_LICENSE',
     UTILITY_BILL = 'UTILITY_BILL',
-    OTHERS = 'OTHERS'
+    POWER_BILL = 'POWER_BILL',
+    TENANCY_AGREEMENT = 'TENANCY_AGREEMENT',
+    TITLE_DEED = 'TITLE_DEED',
+    CERTIFICATE_OF_OCCUPANCY = 'CERTIFICATE_OF_OCCUPANCY',
 }
 
 export interface IPropertyDocument {
@@ -204,6 +207,8 @@ export interface IPropertyDocumentCreate {
 export interface IUpdatePropertyVerification {
     status: PropertyVerificationStatus,
     feedback: string,
+    skip_kyc_check?: boolean,
+    skip_document_check?: boolean,
 }
 
 export interface ICreateProperty {

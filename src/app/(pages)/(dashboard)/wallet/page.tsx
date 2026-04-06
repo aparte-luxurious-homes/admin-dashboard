@@ -30,6 +30,7 @@ import {
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { useAuth } from "@/src/hooks/useAuth";
+import toast from "react-hot-toast";
 
 interface Wallet {
     id: string;
@@ -170,8 +171,8 @@ const WalletPage = () => {
             if (res.data?.data?.id) {
                 try {
                     await axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(wallet.id, res.data.data.id));
-                } catch (e) {
-                    console.log("Auto-verify failed", e);
+                } catch (e: any) {
+                                toast.error(e?.response?.data?.detail || "An Error Occurred while verifying the bank account")
                 }
             }
 
@@ -195,7 +196,8 @@ const WalletPage = () => {
             await axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(wallet.id, accountId));
             fetchData();
         } catch (err: any) {
-            setAddBankError(formatError(err));
+            toast.error(err?.response?.data?.detail || "An Error Occurred while verifying the bank account")
+            setAddBankError(formatError(err?.response?.data?.detail || "An Error Occurred while verifying the bank account"));
         }
     };
 

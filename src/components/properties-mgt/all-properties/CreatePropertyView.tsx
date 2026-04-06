@@ -4,7 +4,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
-import { IAmenity, ICreateProperty, MediaType, PropertyType } from "../types";
+import { DocumentType, IAmenity, ICreateProperty, MediaType, PropertyType } from "../types";
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -12,7 +12,7 @@ import { ALL_COUNTRIES } from "@/src/data/countries";
 import { FaPlus, FaMapLocationDot, FaArrowLeftLong } from "react-icons/fa6";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { CreateAmenity, CreateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { CreateAmenity, CreateProperty, UploadPropertyMedia, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import Spinner from "../../ui/Spinner";
 import { GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
@@ -177,6 +177,7 @@ export default function CreatePropertyView({ }) {
     const { mutate, isPending } = CreateProperty();
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate: uploadMedia } = UploadPropertyMedia();
+    const { mutate: uploadDoc } = UploadPropertyDocument();
 
     const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
     const [isNewOwner, setIsNewOwner] = useState<boolean>(true);
@@ -188,6 +189,10 @@ export default function CreatePropertyView({ }) {
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
 
+    // Document upload state
+    const [docFiles, setDocFiles] = useState<{ file: File; type: DocumentType }[]>([]);
+    const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
+
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
@@ -198,9 +203,9 @@ export default function CreatePropertyView({ }) {
         console.error("Google Maps load error:", loadError);
     }
 
-    if (typeof window !== 'undefined') {
-        console.log('[CreateProperty] Map loaded:', isLoaded, 'API Key exists:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
-    }
+    // if (typeof window !== 'undefined') {
+    //     console.log('[CreateProperty] Map loaded:', isLoaded, 'API Key exists:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+    // }
 
     const sortAmenities = (amenities: IAmenity[] = [], newAmeities: string[] = []): number[] => {
         const sortedAmenities: number[] = []
@@ -294,6 +299,24 @@ export default function CreatePropertyView({ }) {
                                                 }),
                                         },
                                     );
+                                }
+
+                                // Upload documents
+                                if (docFiles.length > 0) {
+                                    docFiles.forEach(({ file, type }) => {
+                                        const docFormData = new FormData();
+                                        docFormData.append('document_file', file);
+                                        docFormData.append('document_type', type);
+                                        uploadDoc({
+                                            propertyId,
+                                            payload: docFormData
+                                        }, {
+                                            onError: () => toast.error('Document upload failed', {
+                                                duration: 6000,
+                                                style: { maxWidth: '500px', width: 'max-content' }
+                                            }),
+                                        });
+                                    });
                                 }
 
                                 toast.success('Property created successfully', {
@@ -688,6 +711,65 @@ export default function CreatePropertyView({ }) {
                                 previewsRef={uploadRef}
                                 minFiles={3}
                             />
+                        </div>
+                    </div>
+
+                    {/* Documents Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                            <Icon icon="solar:file-text-bold-duotone" className="text-xl text-primary" />
+                            Ownership Documents
+                        </h3>
+                        <p className="text-xs text-zinc-500">Upload proof of ownership documents (PDF, JPG, PNG). These will be reviewed during verification.</p>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Document Type</label>
+                                <CustomDropdown
+                                    selected={selectedDocType}
+                                    options={Object.values(DocumentType)}
+                                    handleSelection={(val) => setSelectedDocType(val as DocumentType)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1 mb-2 block">Select File</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            setDocFiles(prev => [...prev, { file, type: selectedDocType }]);
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                    className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+                                />
+                            </div>
+
+                            {docFiles.length > 0 && (
+                                <div className="space-y-2">
+                                    {docFiles.map((doc, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <Icon icon="solar:file-text-bold-duotone" className="text-lg text-primary flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-zinc-800 truncate">{doc.file.name}</p>
+                                                    <p className="text-[10px] text-zinc-400">{doc.type.replace(/_/g, ' ')}</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDocFiles(prev => prev.filter((_, i) => i !== idx))}
+                                                className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                                            >
+                                                <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

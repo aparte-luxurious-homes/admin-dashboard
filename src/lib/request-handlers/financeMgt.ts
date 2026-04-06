@@ -79,3 +79,22 @@ export function RejectWithdrawal() {
         },
     });
 }
+
+export function AuthorizeDisbursement() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: { transaction_id: string; otp: string } }) =>
+            axiosRequest.post(API_ROUTES.wallet.authorizeDisbursement(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+
+export function ResendDisbursementOtp() {
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: { transaction_id: string } }) =>
+            axiosRequest.post(API_ROUTES.wallet.resendDisbursementOtp(walletId), payload),
+    });
+}
