@@ -9,8 +9,8 @@ export const usePermissions = () => {
 
     const isSuperAdmin = role === UserRole.SUPER_ADMIN;
     const isAdmin = role === UserRole.ADMIN || isSuperAdmin;
-    const isAgent = role === UserRole.AGENT;
-    const isOwner = role === UserRole.OWNER;
+    const isAgent = role === UserRole.AGENT || role === UserRole.AGENT_OWNER;
+    const isOwner = role === UserRole.OWNER || role === UserRole.AGENT_OWNER;
     const isStaff = isAdmin || isAgent || isOwner;
 
     // Module Access

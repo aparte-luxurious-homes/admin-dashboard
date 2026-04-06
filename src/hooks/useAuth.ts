@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDispatch, useSelector } from "react-redux";
 import Cookies from "js-cookie";
+import * as Sentry from "@sentry/nextjs";
 import axiosRequest from "@/lib/api";
 import { setUser, clearUser } from "@/lib/slices/authSlice";
 import { useEffect } from "react";
@@ -51,8 +52,8 @@ export const useAuth = () => {
   // Sync Redux only if data exists and is different from the current user
   useEffect(() => {
     if (data && data.id && data.id !== user?.id) {
-      // console.log('[useAuth] Setting user in Redux:', data.email);
       dispatch(setUser(data));
+      Sentry.setUser({ id: String(data.id), email: data.email, role: data.role });
     }
   }, [data, dispatch, user]);
 
@@ -148,6 +149,7 @@ export const useLogin = () => {
 
       // Update state before navigation
       dispatch(setUser(user));
+      Sentry.setUser({ id: String(user.id), email: user.email, role: user.role });
       queryClient.setQueryData(["authUser"], user);
 
       // console.log('[useLogin] State updated, waiting for persistence...');
@@ -186,8 +188,8 @@ export const useLogout = () => {
     },
     onSuccess: () => {
       dispatch(clearUser());
+      Sentry.setUser(null);
       queryClient.setQueryData(["authUser"], null);
-      // Redirect to login after logout
       window.location.href = PAGE_ROUTES.auth.login;
     },
   });

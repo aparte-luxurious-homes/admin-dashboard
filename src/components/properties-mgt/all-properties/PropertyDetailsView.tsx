@@ -307,7 +307,7 @@ export default function PropertyDetailsView({
                                                     <Icon icon="solar:folder-with-files-bold-duotone" className="text-base text-primary" />
                                                     Documents
                                                 </h3>
-                                                {user?.role === UserRole.OWNER && (
+                                                {(user?.role === UserRole.OWNER || user?.role === UserRole.AGENT_OWNER) && (
                                                     <button
                                                         onClick={() => setShowDocUpload(true)}
                                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-xl hover:bg-primary hover:text-white transition-all"
@@ -566,7 +566,7 @@ export default function PropertyDetailsView({
                                     <div className="space-y-4">
 
                                         {/* Owner */}
-                                        {user?.role !== UserRole.OWNER && (
+                                        {user?.role !== UserRole.OWNER && user?.role !== UserRole.AGENT_OWNER && (
                                             <div>
                                                 <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-2.5">Owner</p>
                                                 <PersonRow
@@ -580,10 +580,10 @@ export default function PropertyDetailsView({
                                             </div>
                                         )}
 
-                                        {user?.role !== UserRole.OWNER && <div className="h-px bg-zinc-50" />}
+                                        {user?.role !== UserRole.OWNER && user?.role !== UserRole.AGENT_OWNER && <div className="h-px bg-zinc-50" />}
 
                                         {/* Agent */}
-                                        {property?.agent && user?.role !== UserRole.AGENT ? (
+                                        {property?.agent && user?.role !== UserRole.AGENT && user?.role !== UserRole.AGENT_OWNER ? (
                                             <div>
                                                 <div className="flex items-center justify-between mb-2.5">
                                                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Assigned Agent</p>
@@ -621,7 +621,7 @@ export default function PropertyDetailsView({
                                 </div>
 
                                 {/* ── Booking Mode Card ── */}
-                                {(user?.role === UserRole.OWNER || user?.role === UserRole.ADMIN) && !editMode && (
+                                {(user?.role === UserRole.OWNER || user?.role === UserRole.AGENT_OWNER || user?.role === UserRole.ADMIN) && !editMode && (
                                     <div className="bg-white border border-zinc-100 rounded-2xl p-4 sm:p-5 shadow-sm">
                                         <div className="pb-3 border-b border-zinc-50 mb-1">
                                             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">

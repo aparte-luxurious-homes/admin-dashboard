@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import Cookies from "js-cookie";
+import * as Sentry from "@sentry/nextjs";
 import { BASE_API_URL } from "./routes/endpoints";
 import { PAGE_ROUTES } from "./routes/page_routes";
 
@@ -64,10 +65,21 @@ axiosRequest.interceptors.request.use((config) => {
 // Flag to prevent multiple simultaneous redirects
 let isRedirecting = false;
 
-// 🔹 Handle token expiration (401 errors)
+// 🔹 Handle errors and token expiration
 axiosRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Capture server errors (5xx) to Sentry
+    if (error.response?.status >= 500) {
+      Sentry.captureException(error, {
+        extra: {
+          url: error.config?.url,
+          method: error.config?.method,
+          status: error.response?.status,
+        },
+      });
+    }
+
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       const requestUrl: string = error.config?.url || '';

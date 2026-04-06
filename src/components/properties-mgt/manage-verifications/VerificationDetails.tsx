@@ -265,7 +265,7 @@ export default function VerificationDetails({
         // Handle ?edit=true from URL (only once, only for agents)
         if (verificationData?.data?.data && !editFromUrlRef.current && searchParams?.get('edit') === 'true') {
             editFromUrlRef.current = true;
-            if (user?.role === UserRole.AGENT && verificationData?.data?.data?.status === PropertyVerificationStatus.PENDING) {
+            if ((user?.role === UserRole.AGENT || user?.role === UserRole.AGENT_OWNER) && verificationData?.data?.data?.status === PropertyVerificationStatus.PENDING) {
                 setEditMode(true);
             }
         }
@@ -291,7 +291,7 @@ export default function VerificationDetails({
                 {/* Main Content Section */}
                 <section className="flex flex-col lg:flex-row justify-between gap-4 sm:gap-6 w-full p-4 sm:p-6 md:p-8 lg:p-10">
                     {/* Image Slider */}
-                    <div className={`${user?.role !== UserRole.AGENT ? 'w-full lg:w-[70%]' : 'w-full'} relative`}>
+                    <div className={`${user?.role !== UserRole.AGENT && user?.role !== UserRole.AGENT_OWNER ? 'w-full lg:w-[70%]' : 'w-full'} relative`}>
                         <Swiper
                             loop={true}
                             modules={[Navigation, Autoplay]}
@@ -335,7 +335,7 @@ export default function VerificationDetails({
 
                     {/* Agent Info (Desktop Sidebar) */}
                     {
-                        user?.role !== UserRole.AGENT &&
+                        user?.role !== UserRole.AGENT && user?.role !== UserRole.AGENT_OWNER &&
                         <div className='w-full lg:w-[30%] flex flex-col gap-y-3 sm:gap-y-4'>
                             <div className='size-full flex flex-col justify-center items-center bg-background rounded-xl p-4 sm:p-6 border border-zinc-100'>
                                 <p className='text-sm sm:text-base text-zinc-800 font-medium text-center mb-2'>
@@ -372,7 +372,7 @@ export default function VerificationDetails({
                                     View Agent
                                 </button>
                                 {
-                                    verification?.status !== PropertyVerificationStatus.PENDING && user?.role !== UserRole.OWNER &&
+                                    verification?.status !== PropertyVerificationStatus.PENDING && user?.role !== UserRole.OWNER && user?.role !== UserRole.AGENT_OWNER &&
                                     <button
                                         type='button'
                                         onClick={() => {
@@ -696,7 +696,7 @@ export default function VerificationDetails({
                                     : !property?.isVerified &&
                                     <div className='w-full flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 items-center'>
                                         {
-                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
+                                            verification?.status === PropertyVerificationStatus.PENDING && (user?.role === UserRole.AGENT || user?.role === UserRole.AGENT_OWNER) &&
                                             <button
                                                 type='button'
                                                 disabled={verificationLoading || verificationUdateLoading}
@@ -720,7 +720,7 @@ export default function VerificationDetails({
                                         }
 
                                         {
-                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
+                                            verification?.status === PropertyVerificationStatus.PENDING && (user?.role === UserRole.AGENT || user?.role === UserRole.AGENT_OWNER) &&
                                             <button
                                                 type='button'
                                                 disabled={verificationLoading || verificationUdateLoading}

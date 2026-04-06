@@ -158,7 +158,7 @@ export default function PropertyVerificationsTable({
         setSelectedRow(null);
     };
 
-    const canVerify = [UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user?.role as UserRole);
+    const canVerify = [UserRole.AGENT, UserRole.AGENT_OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user?.role as UserRole);
     const selectedStatus = selectedRow !== null ? verifications?.[selectedRow]?.status : null;
     const showVerifyReject = canVerify && selectedStatus === PropertyVerificationStatus.PENDING;
 

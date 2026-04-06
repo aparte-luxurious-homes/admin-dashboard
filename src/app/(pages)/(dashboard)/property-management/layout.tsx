@@ -9,7 +9,7 @@ export default function PropertyManagementLayout({
     children: React.ReactNode;
 }) {
     return (
-        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN]}>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.AGENT_OWNER, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN]}>
             {children}
         </ProtectedRoute>
     );

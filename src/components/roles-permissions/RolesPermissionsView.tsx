@@ -16,6 +16,7 @@ const ROLES = [
     { value: UserRole.SUPPORT_ADMIN, label: "Support Admin", color: "bg-cyan-100 text-cyan-700" },
     { value: UserRole.ANALYST, label: "Analyst", color: "bg-indigo-100 text-indigo-700" },
     { value: UserRole.AGENT, label: "Agent", color: "bg-green-100 text-green-700" },
+    { value: UserRole.AGENT_OWNER, label: "Agent/Owner", color: "bg-emerald-100 text-emerald-700" },
     { value: UserRole.OWNER, label: "Owner", color: "bg-orange-100 text-orange-700" },
     { value: UserRole.GUEST, label: "Guest", color: "bg-gray-100 text-gray-700" },
 ];

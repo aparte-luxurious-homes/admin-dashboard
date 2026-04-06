@@ -9,7 +9,7 @@ export default function TransactionsLayout({
     children: React.ReactNode;
 }) {
     return (
-        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN]}>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.AGENT_OWNER, UserRole.OWNER, UserRole.OPERATIONS_ADMIN]}>
             {children}
         </ProtectedRoute>
     );

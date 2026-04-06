@@ -97,14 +97,14 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'booking-management',
         link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
         icon: <BookingIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.AGENT_OWNER, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
         secondary: true,
         children: [
             {
                 name: 'Bookings',
                 pathName: 'bookings',
                 link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
-                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.AGENT_OWNER, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
             {
                 name: 'Booking disputes',
@@ -149,7 +149,7 @@ export const NAV_LINKS: ILink[] = [
         name: 'Transactions',
         pathName: 'transactions',
         link: PAGE_ROUTES.dashboard.transactions.payments.base,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.AGENT_OWNER, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
         secondary: true,
         children: [
@@ -157,13 +157,13 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Payments',
                 pathName: 'payments',
                 link: PAGE_ROUTES.dashboard.transactions.payments.base,
-                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.AGENT_OWNER, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
             },
             {
                 name: 'Withdrawals',
                 pathName: 'withdrawals',
                 link: PAGE_ROUTES.dashboard.transactions.withdrawals.base,
-                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.AGENT_OWNER, UserRole.OWNER, UserRole.OPERATIONS_ADMIN],
             },
             {
                 name: 'Booking withdrawals',
@@ -184,7 +184,7 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'referrals',
         link: PAGE_ROUTES.dashboard.referrals.base,
         icon: <PriceTagIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.AGENT_OWNER],
         secondary: true,
         children: [
             {
@@ -197,13 +197,13 @@ export const NAV_LINKS: ILink[] = [
                 name: 'My Referrals',
                 pathName: 'list',
                 link: PAGE_ROUTES.dashboard.referrals.list,
-                allow: [UserRole.AGENT],
+                allow: [UserRole.AGENT, UserRole.AGENT_OWNER],
             },
             {
                 name: 'Stats',
                 pathName: 'stats',
                 link: PAGE_ROUTES.dashboard.referrals.agentStats,
-                allow: [UserRole.AGENT],
+                allow: [UserRole.AGENT, UserRole.AGENT_OWNER],
             },
         ]
     },
@@ -239,7 +239,7 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'wallet',
         link: PAGE_ROUTES.dashboard.wallet.base,
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.OWNER, UserRole.AGENT],
+        allow: [UserRole.OWNER, UserRole.AGENT, UserRole.AGENT_OWNER],
         secondary: false,
         children: undefined,
     },

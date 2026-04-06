@@ -132,6 +132,9 @@ const Home = () => {
   const [range, setRange] = useState<string>("year");
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const { user, isFetching } = useAuth();
+  const isOwnerRole = user?.role === "OWNER" || user?.role === "AGENT_OWNER";
+  const isAgentRole = user?.role === "AGENT" || user?.role === "AGENT_OWNER";
+  const isOwnerOrAgent = isOwnerRole || isAgentRole;
   const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances();
   const balances = gatewayData?.data?.data || {};
 
@@ -171,7 +174,7 @@ const Home = () => {
   }, []);
 
   const fetchWallet = useCallback(async () => {
-    if (user?.role === "OWNER" || user?.role === "AGENT") {
+    if (isOwnerOrAgent) {
       try {
         const response = await axiosRequest.get(API_ROUTES.wallet.base);
         const wallets = response?.data?.data?.items || [];
@@ -461,9 +464,9 @@ const Home = () => {
     <div className="full p-6">
       <div className="mb-6">
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
+          <Grid size={{ xs: 12, sm: 12, md: 12, lg: isOwnerRole || user?.role === "ADMIN" ? 9 : 12, }}>
             <Grid container spacing={2}>
-              {(user?.role === "OWNER" || user?.role === "AGENT") && (
+              {isOwnerOrAgent && (
                 <Grid size={{ xs: 12, sm: 6, md: 3, lg: 3 }}>
                   <StatsCard
                     title="Wallet Balance"
@@ -473,7 +476,7 @@ const Home = () => {
                   />
                 </Grid>
               )}
-              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: isOwnerOrAgent ? 3 : 4, lg: isOwnerOrAgent ? 3 : 4 }}>
                 <StatsCard
                   title="Total Revenue"
                   amount={`₦${(stats?.totalRevenue?.lastMonthAmount || 0).toLocaleString()}`}
@@ -481,7 +484,7 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalRevenue?.percentageChange) > 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: isOwnerOrAgent ? 3 : 4, lg: isOwnerOrAgent ? 3 : 4 }}>
                 <StatsCard
                   title="Total Payments Processed"
                   amount={`₦${stats?.totalPayments?.lastMonthAmount?.toLocaleString() || "0"}`}
@@ -489,7 +492,7 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalPayments?.percentageChange) > 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: isOwnerOrAgent ? 3 : 4, lg: isOwnerOrAgent ? 3 : 4 }}>
                 <StatsCard
                   title="Total Property Listed"
                   amount={`${stats?.totalProperties?.lastMonthTotal?.toLocaleString() || "0"}`}
@@ -581,7 +584,7 @@ const Home = () => {
               </Grid>
             </Grid>
           </Grid>
-          {user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" ? (
+          {isOwnerRole || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" ? (
             <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }}>
               <div className="h-full p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                 <h3>Top Performing Agents</h3>
@@ -608,9 +611,9 @@ const Home = () => {
             </div>
             {searchResult?.length > 0 ? (
               <Table
-                columns={user?.role === "OWNER" ? propertyColumns
+                columns={isOwnerRole ? propertyColumns
                   : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" || user?.role === "SUPPORT_ADMIN" || user?.role === "ANALYST") ? adminColumns
-                  : user?.role === "AGENT" ? anAgentColumns
+                  : isAgentRole ? anAgentColumns
                   : propertyColumns}
                 rows={searchResult}
                 getRowId={(row) => row?.id}

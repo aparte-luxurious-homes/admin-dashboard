@@ -164,6 +164,14 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 <h3 className="absolute right-0.5 font-tt-firs-neue-trl">
                   AGENT
                 </h3>
+              ) : user?.role === "AGENT_OWNER" ? (
+                <h3 className="absolute right-0.5 font-tt-firs-neue-trl text-[10px]">
+                  AGENT/OWNER
+                </h3>
+              ) : user?.role === "OWNER" ? (
+                <h3 className="absolute right-0.5 font-tt-firs-neue-trl">
+                  OWNER
+                </h3>
               ) : null}
             </div>
           </div>

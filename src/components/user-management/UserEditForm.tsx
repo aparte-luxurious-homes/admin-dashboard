@@ -32,7 +32,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     const { data: rolesData, isLoading: rolesLoading } = GetAssignableRoles();
     const assignableRoles: string[] = rolesData?.data?.data?.assignable_roles || rolesData?.data?.assignable_roles || [];
 
-    const FALLBACK_ROLES = ['GUEST', 'AGENT', 'OWNER', 'OPERATIONS_ADMIN', 'SUPPORT_ADMIN', 'ANALYST', 'ADMIN', 'SUPER_ADMIN'];
+    const FALLBACK_ROLES = ['GUEST', 'AGENT', 'AGENT_OWNER', 'OWNER', 'OPERATIONS_ADMIN', 'SUPPORT_ADMIN', 'ANALYST', 'ADMIN', 'SUPER_ADMIN'];
     const roleOptions = assignableRoles.length > 0 ? assignableRoles : FALLBACK_ROLES;
 
     const formatRoleLabel = (role: string) =>

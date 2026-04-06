@@ -443,7 +443,7 @@ export default function CreatePropertyView({ }) {
                                     options={Object.values(PropertyType)}
                                 />
                             </div>
-                            {(user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT) && (
+                            {(user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT || user?.role === UserRole.AGENT_OWNER) && (
                                 <div className="md:col-span-2 space-y-4 pt-4 border-t border-zinc-100 mt-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Owner Assignment</h4>

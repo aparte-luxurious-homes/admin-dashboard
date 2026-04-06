@@ -12,6 +12,7 @@ export enum UserRole {
     ANALYST = 'ANALYST',
     GUEST = 'GUEST',
     AGENT = 'AGENT',
+    AGENT_OWNER = 'AGENT_OWNER',
     OWNER = 'OWNER',
     MANAGER = 'MANAGER',
 }
