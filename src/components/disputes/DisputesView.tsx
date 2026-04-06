@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminDisputes, useUpdateDisputeStatus } from "@/src/hooks/useDisputes";
+import { useAdminDisputes, useMyDisputes, useUpdateDisputeStatus } from "@/src/hooks/useDisputes";
 import { useState } from "react";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { Icon } from "@iconify/react";
@@ -19,12 +19,21 @@ const DisputesView = () => {
     const [statusFilter, setStatusFilter] = useState<DisputeStatus | "">("");
     const pageSize = 10;
     const router = useRouter();
-    const { isAdmin } = usePermissions();
+    const { isAdmin, isOwner, isAgent } = usePermissions();
 
-    const { data, isLoading } = useAdminDisputes({
+    const adminQuery = useAdminDisputes({
         page,
         size: pageSize,
+        status: statusFilter || undefined,
     });
+
+    const myQuery = useMyDisputes({
+        page,
+        size: pageSize,
+        status: statusFilter || undefined,
+    });
+
+    const { data, isLoading } = isAdmin ? adminQuery : myQuery;
 
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
@@ -89,7 +98,10 @@ const DisputesView = () => {
                         </div>
                         <select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as DisputeStatus)}
+                            onChange={(e) => {
+                                setStatusFilter(e.target.value as DisputeStatus);
+                                setPage(1);
+                            }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white min-w-[150px]"
                         >
                             <option value="">All Statuses</option>
