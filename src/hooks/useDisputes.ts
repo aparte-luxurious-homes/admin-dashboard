@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import { IDispute, IBaseResponse, IAdminPaginatedResponse } from "@/src/lib/types";
+import { IDispute, IDisputeEvidence, IBaseResponse, IAdminPaginatedResponse } from "@/src/lib/types";
 import { toast } from "react-hot-toast";
 import { DisputeStatus, DisputeOutcome } from "@/src/lib/enums";
 

@@ -63,12 +63,9 @@ export default function BookingDetailView({
   const searchParams = useSearchParams();
   const router = useRouter();
   const targetRef = useRef<HTMLDivElement>(null);
-<<<<<<< HEAD
   const { isOwner } = usePermissions();
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
-=======
   const printContentRef = useRef<HTMLDivElement>(null);
->>>>>>> 332afbb4ddf29663e6dcd9e275c9c478c3da1f93
   const [editMode, setEditMode] = useState<boolean>(
     Boolean(searchParams.get("edit")),
   );
@@ -374,13 +371,12 @@ export default function BookingDetailView({
                       <span>Print</span>
                     </button>
 
-<<<<<<< HEAD
                     <RaiseDisputeModal 
                       isOpen={isDisputeModalOpen}
                       onClose={() => setIsDisputeModalOpen(false)}
                       bookingId={bookingId}
                     />
-=======
+
                     {showPrintPreview && (
                       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-auto relative">
@@ -432,7 +428,6 @@ export default function BookingDetailView({
                         </div>
                       </div>
                     )}
->>>>>>> 332afbb4ddf29663e6dcd9e275c9c478c3da1f93
                   </div>
                 )}
               </div>
