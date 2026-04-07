@@ -100,7 +100,7 @@ export default function StepMediaDocs({
                                             },
                                         } as React.MutableRefObject<{ url: string; file: File }[]>
                                     }
-                                    minFiles={1}
+                                    minFiles={0}
                                 />
                             </div>
                         );
