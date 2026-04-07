@@ -219,8 +219,8 @@ export interface ICreateProperty {
     city: string
     state: string
     country: string
-    latitude: number
-    longitude: number
+    latitude: number | null
+    longitude: number | null
     amenities: number[]
     // kyc_id: number
     is_pet_allowed: boolean
@@ -240,8 +240,8 @@ export interface IUpdateProperty {
     city: string,
     state: string,
     country: string,
-    latitude: number,
-    longitude: number,
+    latitude: number | null,
+    longitude: number | null,
     // kyc_id?: number,
     ownerId: number,
     amenities?: number[],

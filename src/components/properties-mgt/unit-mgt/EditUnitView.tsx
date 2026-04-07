@@ -439,12 +439,21 @@ export default function EditUnitView({
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                 {media?.map((el, index) => (
                                     <div key={index} className="relative aspect-video rounded-xl overflow-hidden group shadow-sm border border-zinc-100">
-                                        <Image
-                                            src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                            alt={`unit_img_${index}`}
-                                            fill
-                                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
+                                        {(el.media_type === 'VIDEO' || el.mediaType === 'VIDEO') ? (
+                                            <video
+                                                src={el.media_url || el.mediaUrl}
+                                                muted
+                                                preload="metadata"
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <Image
+                                                src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
+                                                alt={`unit_img_${index}`}
+                                                fill
+                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        )}
                                         <div
                                             onClick={() => handleDeleteImage(el.id)}
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
@@ -467,14 +476,20 @@ export default function EditUnitView({
                                     <button
                                         onClick={(e) => {
                                             e.preventDefault();
-                                            const formData = new FormData();
-                                            uploadedMedia.forEach(file => formData.append("media_file", file));
-                                            formData.append("media_type", MediaType.IMAGE);
-                                            formData.append("is_featured", "true");
-                                            uploadMedia({ propertyId: String(propertyId), unitId: String(unitId), payload: formData }, {
-                                                onSuccess: () => toast.success('Media uploaded successfully'),
-                                                onError: () => toast.error('Upload failed')
-                                            });
+                                            const imageFiles = uploadedMedia.filter((f) => !f.type.startsWith("video/"));
+                                            const videoFiles = uploadedMedia.filter((f) => f.type.startsWith("video/"));
+                                            const uploadBatch = (files: File[], mediaType: string) => {
+                                                const formData = new FormData();
+                                                files.forEach(file => formData.append("media_file", file));
+                                                formData.append("media_type", mediaType);
+                                                formData.append("is_featured", "true");
+                                                uploadMedia({ propertyId: String(propertyId), unitId: String(unitId), payload: formData }, {
+                                                    onSuccess: () => toast.success(`${mediaType === "VIDEO" ? "Video" : "Image"} media uploaded successfully`),
+                                                    onError: () => toast.error(`${mediaType === "VIDEO" ? "Video" : "Image"} upload failed`)
+                                                });
+                                            };
+                                            if (imageFiles.length > 0) uploadBatch(imageFiles, MediaType.IMAGE);
+                                            if (videoFiles.length > 0) uploadBatch(videoFiles, MediaType.VIDEO);
                                         }}
                                         disabled={uploadedMediaPending}
                                         className="mt-4 flex items-center gap-2 px-6 py-3 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50"

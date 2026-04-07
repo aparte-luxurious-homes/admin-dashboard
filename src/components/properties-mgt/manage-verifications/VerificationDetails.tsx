@@ -306,14 +306,23 @@ export default function VerificationDetails({
                                     property?.media?.map((el: any, index: any) => (
                                         <SwiperSlide key={index}>
                                             <div className="relative aspect-[16/9] w-full">
-                                                <Image
-                                                    alt={`${property?.name}_img_${index}`}
-                                                    src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                                    className="object-cover rounded-xl"
-                                                    fill
-                                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 60vw"
-                                                    priority={index === 0}
-                                                />
+                                                {(el.media_type === 'VIDEO' || el.mediaType === 'VIDEO') ? (
+                                                    <video
+                                                        src={el.media_url || el.mediaUrl}
+                                                        controls
+                                                        preload="metadata"
+                                                        className="w-full h-full object-cover rounded-xl"
+                                                    />
+                                                ) : (
+                                                    <Image
+                                                        alt={`${property?.name}_img_${index}`}
+                                                        src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
+                                                        className="object-cover rounded-xl"
+                                                        fill
+                                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 60vw"
+                                                        priority={index === 0}
+                                                    />
+                                                )}
                                             </div>
                                         </SwiperSlide>
                                     ))
