@@ -640,7 +640,7 @@ export default function CreatePropertyView({ }) {
                                         type="number"
                                         step="any"
                                         placeholder="0.0000"
-                                        value={formik.values.latitude}
+                                        value={formik.values.latitude ?? ''}
                                         onChange={formik.handleChange}
                                         className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
                                     />
@@ -652,7 +652,7 @@ export default function CreatePropertyView({ }) {
                                         type="number"
                                         step="any"
                                         placeholder="0.0000"
-                                        value={formik.values.longitude}
+                                        value={formik.values.longitude ?? ''}
                                         onChange={formik.handleChange}
                                         className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
                                     />
