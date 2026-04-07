@@ -327,23 +327,24 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
 
                         if (unitId) {
                             if (uploadedMedia.length > 0) {
-                                const imageFiles = uploadedMedia.filter((f) => !f.type.startsWith("video/"));
-                                const videoFiles = uploadedMedia.filter((f) => f.type.startsWith("video/"));
-                                const uploadBatch = (files: File[], mediaType: string) => {
-                                    const batchFormData = new FormData();
-                                    files.forEach(file => batchFormData.append("media_file", file));
-                                    batchFormData.append("media_type", mediaType);
-                                    batchFormData.append("is_featured", "true");
-                                    uploadMedia(
-                                        { propertyId: String(propertyId), unitId, payload: batchFormData },
-                                        {
-                                            onError: (error: any) =>
-                                                toast.error(error.status === 422 ? 'Media file(s) include invalid format' : 'Media upload failed'),
-                                        }
-                                    );
-                                };
-                                if (imageFiles.length > 0) uploadBatch(imageFiles, MediaType.IMAGE);
-                                if (videoFiles.length > 0) uploadBatch(videoFiles, MediaType.VIDEO);
+                                uploadedMedia?.forEach(file => {
+                                    formData.append("media_file", file);
+                                });
+
+                                formData.append("media_type", MediaType.IMAGE);
+                                formData.append("is_featured", "true");
+
+                                uploadMedia(
+                                    {
+                                        propertyId: String(propertyId),
+                                        unitId,
+                                        payload: formData,
+                                    },
+                                    {
+                                        onError: (error: any) =>
+                                            toast.error(error.status === 422 ? 'Media file(s) include Invalid format' : 'Media upload failed'),
+                                    }
+                                );
                             }
 
                             toast.success('Property unit created successfully');

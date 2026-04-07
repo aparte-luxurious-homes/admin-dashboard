@@ -12,10 +12,8 @@ export enum FinanceRequestKeys {
 }
 
 export interface UpdateWalletPayload {
-    action: "CREDIT" | "DEBIT";
-    amount: string;
-    reason: string;
-    comment?: string;
+    balance?: string;
+    pending_cash?: string;
 }
 
 export function UpdateWallet() {

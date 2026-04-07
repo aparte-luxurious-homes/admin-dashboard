@@ -134,22 +134,13 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                         propertyUnit?.media?.map((el: any, index: any) => (
                                             <SwiperSlide key={index}>
                                                 <div className="relative w-full aspect-[16/9] sm:aspect-[16/10] md:h-[450px] lg:h-[500px]">
-                                                    {(el.media_type === 'VIDEO' || el.mediaType === 'VIDEO') ? (
-                                                        <video
-                                                            src={el.media_url || el.mediaUrl}
-                                                            controls
-                                                            preload="metadata"
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <Image
-                                                            alt={`${propertyUnit?.name}_img_${index}`}
-                                                            src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                                            fill
-                                                            className="object-cover"
-                                                            priority={index === 0}
-                                                        />
-                                                    )}
+                                                    <Image
+                                                        alt={`${propertyUnit?.name}_img_${index}`}
+                                                        src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
+                                                        fill
+                                                        className="object-cover"
+                                                        priority={index === 0}
+                                                    />
                                                 </div>
                                             </SwiperSlide>
                                         ))
