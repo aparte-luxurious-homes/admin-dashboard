@@ -20,6 +20,17 @@ import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
 import { GetGatewayBalances } from "../lib/request-handlers/integrationsMgt";
 import { UserRole } from "../lib/enums";
+import { TourProvider } from "../lib/tour";
+
+const NAV_TOUR_TARGETS: Record<string, string> = {
+  "": "nav-dashboard",
+  "properties-management": "nav-properties",
+  "booking-management": "nav-bookings",
+  "transactions": "nav-transactions",
+  "wallet": "nav-wallet",
+  "settings": "nav-settings",
+  "referrals": "nav-referrals",
+};
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   const { user, isFetching } = useAuth();
@@ -120,6 +131,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   };
 
   return (
+    <TourProvider userId={user?.id} userRole={user?.role}>
     <div className="h-screen size-full relative">
       {/* Mobile Menu Toggle */}
       <button
@@ -133,9 +145,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
 
       {/* Sidemenu */}
       <div
+        data-tour="sidebar"
         className={`
-                fixed lg:absolute w-[85%] sm:w-[75%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%] 
-                bg-primary text-background h-full 
+                fixed lg:absolute w-[85%] sm:w-[75%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%]
+                bg-primary text-background h-full
                 transition-transform duration-300 ease-in-out z-40
                 ${isMobileMenuOpen
             ? "translate-x-0"
@@ -183,14 +196,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
           >
             {NAV_LINKS.map((el, index) =>
               el.allow.includes(user?.role) ? (
-                <SideNav
-                  key={index}
-                  index={index}
-                  link={el}
-                  role={user?.role}
-                  route={currentRoute}
-                  onNavigate={() => setIsMobileMenuOpen(false)}
-                />
+                <div key={index} data-tour={NAV_TOUR_TARGETS[el.pathName]}>
+                  <SideNav
+                    index={index}
+                    link={el}
+                    role={user?.role}
+                    route={currentRoute}
+                    onNavigate={() => setIsMobileMenuOpen(false)}
+                  />
+                </div>
               ) : null
             )}
           </div>
@@ -258,6 +272,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             )}
 
             <div
+              data-tour="profile-area"
               className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
               onClick={handleClick}
             >
@@ -293,5 +308,6 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         />
       )}
     </div>
+    </TourProvider>
   );
 }

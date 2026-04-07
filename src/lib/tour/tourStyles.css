@@ -1,0 +1,143 @@
+.shepherd-modal-overlay-container {
+  fill: rgba(0, 0, 0, 0.5);
+}
+
+.shepherd-element {
+  z-index: 10000;
+  max-width: 400px;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.shepherd-content {
+  background: #ffffff;
+  padding: 0;
+}
+
+.shepherd-header {
+  background: #124452;
+  padding: 16px 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shepherd-title {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.shepherd-cancel-icon {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 20px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.shepherd-cancel-icon:hover {
+  color: #ffffff;
+}
+
+.shepherd-text {
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 16px 20px;
+  margin: 0;
+}
+
+.shepherd-text p {
+  margin: 0;
+}
+
+.shepherd-footer {
+  padding: 0 20px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.shepherd-button {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.shepherd-button-primary {
+  background: #124452;
+  color: #ffffff;
+}
+
+.shepherd-button-primary:hover {
+  background: #0d333e;
+}
+
+.shepherd-button-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.shepherd-button-secondary:hover {
+  background: #e5e7eb;
+}
+
+.shepherd-button.shepherd-skip {
+  background: transparent;
+  color: #9ca3af;
+  padding: 8px 12px;
+  font-weight: 500;
+}
+
+.shepherd-button.shepherd-skip:hover {
+  color: #6b7280;
+}
+
+.shepherd-arrow,
+.shepherd-arrow::before {
+  background: #124452;
+}
+
+.shepherd-element[data-popper-placement^="bottom"] .shepherd-arrow::before {
+  background: #124452;
+}
+
+.shepherd-element[data-popper-placement^="top"] .shepherd-arrow::before {
+  background: #ffffff;
+}
+
+.shepherd-element[data-popper-placement^="left"] .shepherd-arrow::before {
+  background: #124452;
+}
+
+.shepherd-element[data-popper-placement^="right"] .shepherd-arrow::before {
+  background: #124452;
+}
+
+.shepherd-target-click-disabled {
+  pointer-events: none;
+}
+
+/* Step counter badge */
+.shepherd-step-counter {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+}

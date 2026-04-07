@@ -3,7 +3,10 @@
 import SettingCard from "@/src/components/settings-card/settingscard";
 import Grid from "@mui/material/Grid2";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
+import { useTourContext } from "@/src/lib/tour";
+import { UserRole } from "@/src/lib/enums";
 
 const settingsOptions = [
   {
@@ -28,6 +31,15 @@ const settingsOptions = [
 
 const SettingsPage = () => {
   const { user, isFetching } = useAuth();
+  const { restartTour } = useTourContext();
+  const router = useRouter();
+  const showTourCard = user?.role === UserRole.OWNER || user?.role === UserRole.AGENT;
+
+  const handleRestartTour = () => {
+    router.push("/");
+    restartTour();
+  };
+
   return (
     <>
       <div className="p-[20px] mr-5 ml-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
@@ -39,6 +51,20 @@ const SettingsPage = () => {
               <SettingCard {...option} />
             </Grid>
           ))}
+          {showTourCard && (
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              <div
+                onClick={handleRestartTour}
+                className="p-4 border rounded-lg cursor-pointer hover:bg-gray-100 transition"
+              >
+                <div className="text-3xl">
+                  <Icon icon="mdi:compass-outline" width="32" height="32" />
+                </div>
+                <h2 className="text-lg font-semibold mt-6">Take a Tour</h2>
+                <p className="text-sm text-gray-600">Restart the guided dashboard walkthrough</p>
+              </div>
+            </Grid>
+          )}
         </Grid>
       </div>
     </>

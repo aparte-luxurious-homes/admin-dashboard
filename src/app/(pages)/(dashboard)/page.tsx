@@ -467,7 +467,7 @@ const Home = () => {
           <Grid size={{ xs: 12, sm: 12, md: 12, lg: isOwnerRole || user?.role === "ADMIN" ? 9 : 12, }}>
             <Grid container spacing={2}>
               {isOwnerOrAgent && (
-                <Grid size={{ xs: 12, sm: 6, md: 3, lg: 3 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3, lg: 3 }} data-tour="wallet-card">
                   <StatsCard
                     title="Wallet Balance"
                     amount={`₦${wallet ? (parseFloat(wallet.balance as string) || 0).toLocaleString() : "0.00"}`}
@@ -476,7 +476,7 @@ const Home = () => {
                   />
                 </Grid>
               )}
-              <Grid size={{ xs: 12, sm: 6, md: isOwnerOrAgent ? 3 : 4, lg: isOwnerOrAgent ? 3 : 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: isOwnerOrAgent ? 3 : 4, lg: isOwnerOrAgent ? 3 : 4 }} data-tour="stats-revenue">
                 <StatsCard
                   title="Total Revenue"
                   amount={`₦${(stats?.totalRevenue?.lastMonthAmount || 0).toLocaleString()}`}
@@ -492,7 +492,7 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalPayments?.percentageChange) > 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: isOwnerOrAgent ? 3 : 4, lg: isOwnerOrAgent ? 3 : 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: isOwnerOrAgent ? 3 : 4, lg: isOwnerOrAgent ? 3 : 4 }} data-tour="stats-properties">
                 <StatsCard
                   title="Total Property Listed"
                   amount={`${stats?.totalProperties?.lastMonthTotal?.toLocaleString() || "0"}`}
@@ -596,7 +596,7 @@ const Home = () => {
           )}
         </Grid>
       </div>
-      <div className="p-[30px] mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+      <div data-tour="properties-table" className="p-[30px] mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
         {loading ? (
           <Skeleton className="h-[300px] w-full rounded-md" />
         ) : (
