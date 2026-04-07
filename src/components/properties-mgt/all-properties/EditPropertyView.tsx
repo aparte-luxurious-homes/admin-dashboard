@@ -74,15 +74,10 @@ function AddressAutocomplete({
     setValue,
     clearSuggestions,
   } = usePlacesAutocomplete({
+    requestOptions: { componentRestrictions: { country: "ng" } },
     debounce: 300,
     defaultValue: formik.values.address,
   });
-
-  useEffect(() => {
-    if (formik.values.address !== value) {
-      setValue(formik.values.address, false);
-    }
-  }, [formik.values.address]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
@@ -120,8 +115,8 @@ function AddressAutocomplete({
             <input
                 value={value}
                 onChange={handleInput}
-                disabled={!isLoaded || !ready}
-                placeholder={!isLoaded ? "Loading Map API..." : !ready ? "Initializing address search..." : "Search for an address..."}
+                disabled={!isLoaded}
+                placeholder={isLoaded ? "Search for an address..." : "Loading Map API..."}
                 className="w-full bg-zinc-50 border border-zinc-200 rounded-xl sm:rounded-2xl pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 text-sm sm:text-base focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
             />
             {status === "OK" && (
@@ -375,8 +370,8 @@ export default function EditPropertyView({
       state: propertyData?.state ?? "Lagos",
       city: propertyData?.city ?? "Ikeja",
       description: propertyData?.description ?? "",
-      latitude: propertyData?.latitude ?? null,
-      longitude: propertyData?.longitude ?? null,
+      latitude: propertyData?.latitude ?? 0,
+      longitude: propertyData?.longitude ?? 0,
       ownerId: propertyData?.ownerId ?? 0,
       units: String(propertyData?.units?.length) ?? "0",
       isVerified: propertyData?.isVerified ?? false,
@@ -462,27 +457,6 @@ export default function EditPropertyView({
       );
     },
   });
-
-  const reverseGeocode = async (lat: number, lng: number) => {
-    try {
-      const results = await getGeocode({ location: { lat, lng } });
-      if (results[0]) {
-        formik.setFieldValue("address", results[0].formatted_address);
-        results[0].address_components.forEach((component: any) => {
-          const types = component.types;
-          if (types.includes("locality")) {
-            formik.setFieldValue("city", component.long_name);
-          } else if (types.includes("administrative_area_level_1")) {
-            formik.setFieldValue("state", component.long_name);
-          } else if (types.includes("country")) {
-            formik.setFieldValue("country", component.long_name);
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Reverse geocoding failed:", error);
-    }
-  };
 
   const handleGeocode = async () => {
     const { address, city, state, country } = formik.values;
@@ -760,21 +734,18 @@ export default function EditPropertyView({
                   <GoogleMap
                     mapContainerStyle={{ height: "100%", width: "100%" }}
                     center={{
-                      lat: formik.values.latitude ?? 6.5244,
-                      lng: formik.values.longitude ?? 3.3792,
+                      lat: formik.values.latitude || 6.5244,
+                      lng: formik.values.longitude || 3.3792,
                     }}
-                    zoom={formik.values.latitude != null ? 15 : 12}
+                    zoom={formik.values.latitude ? 15 : 12}
                     onClick={(e: any) => {
                       if (e.latLng) {
-                        const lat = e.latLng.lat();
-                        const lng = e.latLng.lng();
-                        formik.setFieldValue("latitude", lat);
-                        formik.setFieldValue("longitude", lng);
-                        reverseGeocode(lat, lng);
+                        formik.setFieldValue("latitude", e.latLng.lat());
+                        formik.setFieldValue("longitude", e.latLng.lng());
                       }
                     }}
                   >
-                    {formik.values.latitude != null && formik.values.longitude != null && (
+                    {formik.values.latitude && formik.values.longitude && (
                       <Marker
                         position={{
                           lat: formik.values.latitude,
@@ -783,11 +754,8 @@ export default function EditPropertyView({
                         draggable={true}
                         onDragEnd={(e: any) => {
                           if (e.latLng) {
-                            const lat = e.latLng.lat();
-                            const lng = e.latLng.lng();
-                            formik.setFieldValue("latitude", lat);
-                            formik.setFieldValue("longitude", lng);
-                            reverseGeocode(lat, lng);
+                            formik.setFieldValue("latitude", e.latLng.lat());
+                            formik.setFieldValue("longitude", e.latLng.lng());
                           }
                         }}
                       />
@@ -1025,25 +993,16 @@ export default function EditPropertyView({
                       key={item.id}
                       className="relative group aspect-square rounded-xl overflow-hidden bg-zinc-100 border border-zinc-100"
                     >
-                      {(item.media_type === 'VIDEO' || item.mediaType === 'VIDEO') ? (
-                        <video
-                          src={item.media_url || item.mediaUrl}
-                          muted
-                          preload="metadata"
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <Image
-                          src={
-                            item.media_url ||
-                            item.mediaUrl ||
-                            "/png/placeholder.png"
-                          }
-                          alt="Property media"
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      )}
+                      <Image
+                        src={
+                          item.media_url ||
+                          item.mediaUrl ||
+                          "/png/placeholder.png"
+                        }
+                        alt="Property media"
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                       <button
                         type="button"
@@ -1075,36 +1034,35 @@ export default function EditPropertyView({
                 <button
                   onClick={(e) => {
                     e.preventDefault();
-                    const imageFiles = uploadedMedia.filter((f) => !f.type.startsWith("video/"));
-                    const videoFiles = uploadedMedia.filter((f) => f.type.startsWith("video/"));
-                    const uploadBatch = (files: File[], mediaType: string) => {
-                      const formData = new FormData();
-                      files.forEach((file) => formData.append("media_file", file));
-                      formData.append("media_type", mediaType);
-                      formData.append("is_featured", "true");
-                      uploadMedia(
-                        { propertyId: propertyData.id, payload: formData },
-                        {
-                          onSuccess: () =>
-                            toast.success(`${mediaType === "VIDEO" ? "Video" : "Image"} media uploaded successfully`, {
+                    const formData = new FormData();
+                    uploadedMedia.forEach((file) =>
+                      formData.append("media_file", file),
+                    );
+                    formData.append("media_type", MediaType.IMAGE);
+                    formData.append("is_featured", "true");
+                    uploadMedia(
+                      { propertyId: propertyData.id, payload: formData },
+                      {
+                        onSuccess: () =>
+                          toast.success("Media uploaded successfully", {
+                            duration: 6000,
+                            style: { maxWidth: "500px", width: "max-content" },
+                          }),
+                        onError: (error: any) =>
+                          toast.error(
+                            error.status === 422
+                              ? "Invalid format"
+                              : "Upload failed",
+                            {
                               duration: 6000,
-                              style: { maxWidth: "500px", width: "max-content" },
-                            }),
-                          onError: (error: any) =>
-                            toast.error(
-                              error.status === 422
-                                ? "Invalid format"
-                                : `${mediaType === "VIDEO" ? "Video" : "Image"} upload failed`,
-                              {
-                                duration: 6000,
-                                style: { maxWidth: "500px", width: "max-content" },
+                              style: {
+                                maxWidth: "500px",
+                                width: "max-content",
                               },
-                            ),
-                        },
-                      );
-                    };
-                    if (imageFiles.length > 0) uploadBatch(imageFiles, MediaType.IMAGE);
-                    if (videoFiles.length > 0) uploadBatch(videoFiles, MediaType.VIDEO);
+                            },
+                          ),
+                      },
+                    );
                   }}
                   disabled={uploadedMediaPending}
                   className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-60"

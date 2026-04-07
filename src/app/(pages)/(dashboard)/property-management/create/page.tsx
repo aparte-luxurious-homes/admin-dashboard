@@ -1,7 +1,7 @@
-import CreatePropertyWizard from "@/src/components/properties-mgt/create-wizard/CreatePropertyWizard";
+import CreatePropertyView from "@/src/components/properties-mgt/all-properties/CreatePropertyView";
 
 export default function CreateProperty(){
     return(
-        <CreatePropertyWizard />
+        <CreatePropertyView />
     );
 };

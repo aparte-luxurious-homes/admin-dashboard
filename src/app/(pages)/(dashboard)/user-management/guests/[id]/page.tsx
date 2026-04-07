@@ -391,7 +391,7 @@ const GuestInfo = () => {
           onClose={() => setShowEditWallet(false)}
           walletId={wallet.id}
           currentBalance={wallet.balance}
-
+          currentPendingCash={wallet.pending_cash}
           currency={wallet.currency}
           userName={
             userInfo?.profile?.first_name || userInfo?.profile?.firstName
