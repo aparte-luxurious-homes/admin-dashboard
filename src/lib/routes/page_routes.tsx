@@ -63,8 +63,13 @@ export const PAGE_ROUTES = {
                     bookings: (propertyId: number | string, unitId: number | string) => `/property-management/all-properties/${propertyId}/units/${unitId}/bookings`,
                 },
             },
+            assignAgents: {
+                base: '/property-management/assign-agents',
+                details: (id: number | string) => `/property-management/assign-agents/${id}`,
+            },
             manageVerifications: {
                 base: '/property-management/manage-verifications',
+                details: (verificationId: number | string) => `/property-management/manage-verifications/${verificationId}`,
             },
         },
         transactions: {

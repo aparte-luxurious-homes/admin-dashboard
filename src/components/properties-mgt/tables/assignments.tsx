@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
 import { useRouter } from "next/navigation";
-// import { IProperty, PropertyType } from "../types";
+import { IProperty, PropertyType } from "../types";
 import { GetAllProperties } from "@/src/lib/request-handlers/propertyMgt";
 import Loader from "../../loader";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
@@ -17,7 +17,7 @@ import { MdOutlineVerified } from "react-icons/md";
 import { ImCancelCircle } from "react-icons/im";
 
 
-export default function VerificationsTable() {
+export default function AssignmentsTable() {
     const router = useRouter();
     const modalRef = useRef(null);
     const [page, setPage] = useState<number>(1);
@@ -36,26 +36,6 @@ export default function VerificationsTable() {
                 router.push(
                     PAGE_ROUTES.dashboard.propertyManagement.manageVerifications.details(1)
                 )
-                setSelectedRow(0)
-            },
-        },
-        {
-            label: "Verify",
-            Icon: <MdOutlineVerified />,
-            onClick: () => {
-                // router.push(
-                //     `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow].id)}?edit=true`
-                // )
-                setSelectedRow(0)
-            },
-        },
-        {
-            label: "Reject",
-            Icon: <ImCancelCircle className="size-3.5" />,
-            onClick: () => {
-                // router.push(
-                //     `${PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyList[selectedRow].id)}?edit=true`
-                // )
                 setSelectedRow(0)
             },
         },
@@ -91,14 +71,14 @@ export default function VerificationsTable() {
                 
                 <div className="w-full flex justify-between items-center">
                     <div className="w-[80%] flex items-center gap-5">
-                        <p className="text-2xl font-medium mr-10">Booking Disputes</p>
+                        <p className="text-2xl font-medium mr-10">Property Assignments</p>
                         <div className="relative w-[40%]">
                             <input 
                                 type="text" 
                                 // value={searchTerm} 
                                 // onChange={(e) => setSearchTerm(e.target.value)} 
                                 className="border border-zinc-500/20 bg-background rounded-lg w-full h-10 p-3 pl-10" 
-                                placeholder="Search property "
+                                placeholder="Search properties "
                             />
                             <SearchIcon className="absolute top-[25%] left-3 w-5" color="black" />
                         </div>
@@ -128,12 +108,17 @@ export default function VerificationsTable() {
                                             `}
                                         /> */}
                                         <p>
-                                            Booking ID
+                                            Property ID
                                         </p>
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium text-left">
                                         <p>
-                                            Guest
+                                            Property Name
+                                        </p>
+                                    </th>
+                                    <th className="bg-[#0280901A] h-10 font-medium text-left">
+                                        <p>
+                                            Owner
                                         </p>
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium text-left">
@@ -143,21 +128,16 @@ export default function VerificationsTable() {
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium  text-left">
                                         <p className="pr-2">
-                                            Owner
+                                            Created on
                                         </p>
                                     </th>
                                     <th className="bg-[#0280901A] h-10 font-medium  text-left">
                                         <p className="pr-2">
-                                            Verified on
+                                            Assigned on
                                         </p>
                                     </th>
-                                    <th className="bg-[#0280901A] h-10 font-medium text-center">
-                                        <p>
-                                            Status
-                                        </p>
-                                    </th>
-                                    <th className="bg-[#0280901A] h-10">{' '}</th>
-                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl">{' '}</th>
+                                    <th className="bg-[#0280901A] h-10">{''}</th>
+                                    <th className="bg-[#0280901A] h-10 rounded-tr-xl rounded-br-xl  w-3">{''}</th>
                                 </tr>
                             </thead>
                             <tbody className="text-[13px]">
@@ -169,7 +149,7 @@ export default function VerificationsTable() {
                                             className="hover:bg-background/50 cursor-pointer"  
                                             // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
                                         >
-                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
+                                            <td className="border-b border-b-gray-200">
                                                 {/* <input 
                                                     type="checkbox"
                                                     className={`
@@ -178,7 +158,7 @@ export default function VerificationsTable() {
                                                     `}
                                                 /> */}
                                                 <p className="pt-1 pl-5">
-                                                    The Hut
+                                                    APRT-20356
                                                 </p>  
                                             </td>
                                             <td className="border-b border-b-gray-200">
@@ -192,18 +172,16 @@ export default function VerificationsTable() {
                                                 </p>
                                             </td>
                                             <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
                                                 {formatDate("02-03-2024")}
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
+                                            </td>                                      
                                             <td className="border-b border-b-gray-200">
                                                 <div 
                                                     className="flex justify-center items-center w-fit" 
@@ -213,6 +191,7 @@ export default function VerificationsTable() {
                                                 </div>
                                             </td>
                                         </tr>
+                                       
                                         <tr 
                                             // key={index} 
                                             className="hover:bg-background/50 cursor-pointer"  
@@ -227,7 +206,7 @@ export default function VerificationsTable() {
                                                     `}
                                                 /> */}
                                                 <p className="pt-1">
-                                                    The Hut
+                                                    APRT-20356
                                                 </p>  
                                             </td>
                                             <td className="border-b border-b-gray-200">
@@ -241,18 +220,16 @@ export default function VerificationsTable() {
                                                 </p>
                                             </td>
                                             <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
                                                 {formatDate("02-03-2024")}
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
+                                            </td>                                      
                                             <td className="border-b border-b-gray-200">
                                                 <div 
                                                     className="flex justify-center items-center w-fit" 
@@ -262,6 +239,7 @@ export default function VerificationsTable() {
                                                 </div>
                                             </td>
                                         </tr>
+                                       
                                         <tr 
                                             // key={index} 
                                             className="hover:bg-background/50 cursor-pointer"  
@@ -276,7 +254,7 @@ export default function VerificationsTable() {
                                                     `}
                                                 /> */}
                                                 <p className="pt-1">
-                                                    The Hut
+                                                    APRT-20356
                                                 </p>  
                                             </td>
                                             <td className="border-b border-b-gray-200">
@@ -290,18 +268,16 @@ export default function VerificationsTable() {
                                                 </p>
                                             </td>
                                             <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
                                                 {formatDate("02-03-2024")}
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
+                                            </td>                                      
                                             <td className="border-b border-b-gray-200">
                                                 <div 
                                                     className="flex justify-center items-center w-fit" 
@@ -311,6 +287,7 @@ export default function VerificationsTable() {
                                                 </div>
                                             </td>
                                         </tr>
+                                       
                                         <tr 
                                             // key={index} 
                                             className="hover:bg-background/50 cursor-pointer"  
@@ -325,7 +302,7 @@ export default function VerificationsTable() {
                                                     `}
                                                 /> */}
                                                 <p className="pt-1">
-                                                    The Hut
+                                                    APRT-20356
                                                 </p>  
                                             </td>
                                             <td className="border-b border-b-gray-200">
@@ -339,18 +316,16 @@ export default function VerificationsTable() {
                                                 </p>
                                             </td>
                                             <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
                                                 {formatDate("02-03-2024")}
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
+                                            </td>                                      
                                             <td className="border-b border-b-gray-200">
                                                 <div 
                                                     className="flex justify-center items-center w-fit" 
@@ -360,6 +335,7 @@ export default function VerificationsTable() {
                                                 </div>
                                             </td>
                                         </tr>
+                                       
                                         <tr 
                                             // key={index} 
                                             className="hover:bg-background/50 cursor-pointer"  
@@ -374,7 +350,7 @@ export default function VerificationsTable() {
                                                     `}
                                                 /> */}
                                                 <p className="pt-1">
-                                                    The Hut
+                                                    APRT-20356
                                                 </p>  
                                             </td>
                                             <td className="border-b border-b-gray-200">
@@ -388,18 +364,16 @@ export default function VerificationsTable() {
                                                 </p>
                                             </td>
                                             <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
                                                 {formatDate("02-03-2024")}
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 {formatDate("03-03-2024")}
-                                            </td>
-                                            <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
-                                                </div>
-                                            </td>                                          
+                                            </td>                                      
                                             <td className="border-b border-b-gray-200">
                                                 <div 
                                                     className="flex justify-center items-center w-fit" 
@@ -409,6 +383,7 @@ export default function VerificationsTable() {
                                                 </div>
                                             </td>
                                         </tr>
+                                       
                                         <tr 
                                             // key={index} 
                                             className="hover:bg-background/50 cursor-pointer"  
@@ -423,7 +398,7 @@ export default function VerificationsTable() {
                                                     `}
                                                 /> */}
                                                 <p className="pt-1">
-                                                    The Hut
+                                                    APRT-20356
                                                 </p>  
                                             </td>
                                             <td className="border-b border-b-gray-200">
@@ -437,18 +412,208 @@ export default function VerificationsTable() {
                                                 </p>
                                             </td>
                                             <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
                                                 {formatDate("02-03-2024")}
                                             </td>
                                             <td className="border-b border-b-gray-200">
                                                 {formatDate("03-03-2024")}
+                                            </td>                                      
+                                            <td className="border-b border-b-gray-200">
+                                                <div 
+                                                    className="flex justify-center items-center w-fit" 
+                                                    onClick={(event) => handleDotsClick(event, 1)}
+                                                >
+                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                       
+                                        <tr 
+                                            // key={index} 
+                                            className="hover:bg-background/50 cursor-pointer"  
+                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
+                                        >
+                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
+                                                {/* <input 
+                                                    type="checkbox"
+                                                    className={`
+                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
+                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
+                                                    `}
+                                                /> */}
+                                                <p className="pt-1">
+                                                    APRT-20356
+                                                </p>  
                                             </td>
                                             <td className="border-b border-b-gray-200">
-                                                <div className="w-2/3 m-auto text-center">
-                                                    <BookingBadge 
-                                                        status={BookingStatus.PENDING}
-                                                    />
+                                                <p className="pt-1 truncate max-w-[13rem]">
+                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
+                                                </p>   
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    Akindele Majid
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                {formatDate("02-03-2024")}
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                {formatDate("03-03-2024")}
+                                            </td>                                      
+                                            <td className="border-b border-b-gray-200">
+                                                <div 
+                                                    className="flex justify-center items-center w-fit" 
+                                                    onClick={(event) => handleDotsClick(event, 1)}
+                                                >
+                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
                                                 </div>
-                                            </td>                                          
+                                            </td>
+                                        </tr>
+                                       
+                                        <tr 
+                                            // key={index} 
+                                            className="hover:bg-background/50 cursor-pointer"  
+                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
+                                        >
+                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
+                                                {/* <input 
+                                                    type="checkbox"
+                                                    className={`
+                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
+                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
+                                                    `}
+                                                /> */}
+                                                <p className="pt-1">
+                                                    APRT-20356
+                                                </p>  
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 truncate max-w-[13rem]">
+                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
+                                                </p>   
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    Akindele Majid
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                {formatDate("02-03-2024")}
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                {formatDate("03-03-2024")}
+                                            </td>                                      
+                                            <td className="border-b border-b-gray-200">
+                                                <div 
+                                                    className="flex justify-center items-center w-fit" 
+                                                    onClick={(event) => handleDotsClick(event, 1)}
+                                                >
+                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                       
+                                        <tr 
+                                            // key={index} 
+                                            className="hover:bg-background/50 cursor-pointer"  
+                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
+                                        >
+                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
+                                                {/* <input 
+                                                    type="checkbox"
+                                                    className={`
+                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
+                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
+                                                    `}
+                                                /> */}
+                                                <p className="pt-1">
+                                                    APRT-20356
+                                                </p>  
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 truncate max-w-[13rem]">
+                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
+                                                </p>   
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    Akindele Majid
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                {formatDate("02-03-2024")}
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                {formatDate("03-03-2024")}
+                                            </td>                                      
+                                            <td className="border-b border-b-gray-200">
+                                                <div 
+                                                    className="flex justify-center items-center w-fit" 
+                                                    onClick={(event) => handleDotsClick(event, 1)}
+                                                >
+                                                    <DotsIcon className="w-5 ml-12 cursor-pointer " color="gray" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                       
+                                        <tr 
+                                            // key={index} 
+                                            className="hover:bg-background/50 cursor-pointer"  
+                                            // onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
+                                        >
+                                            <td className="flex items-center px-5 py-4 gap-3 border-b border-b-gray-200">
+                                                {/* <input 
+                                                    type="checkbox"
+                                                    className={`
+                                                        size-4 border-2 border-zinc-800 rounded-md bg-transparent appearance-none
+                                                        checked:bg-zinc-800 checked:border-zinc-800 checked:text-zinc-200
+                                                    `}
+                                                /> */}
+                                                <p className="pt-1">
+                                                    APRT-20356
+                                                </p>  
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 truncate max-w-[13rem]">
+                                                    Lorem ipsum dolor sit amet consectetur adipisicing elit. At sapiente corrupti dolorum rem. Optio, laboriosam nisi, ipsam deleniti fugit dolores eligendi dignissimos exercitationem, atque similique doloremque earum obcaecati esse at.
+                                                </p>   
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    Akindele Majid
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                <p className="pt-1 font-medium">
+                                                    John Travolta
+                                                </p>
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                {formatDate("02-03-2024")}
+                                            </td>
+                                            <td className="border-b border-b-gray-200">
+                                                {formatDate("03-03-2024")}
+                                            </td>                                      
                                             <td className="border-b border-b-gray-200">
                                                 <div 
                                                     className="flex justify-center items-center w-fit" 
