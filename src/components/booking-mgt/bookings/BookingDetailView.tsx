@@ -50,6 +50,10 @@ import { toast } from "react-hot-toast";
 import { CautionRefundModal } from "../modals/CautionRefundModal";
 import html2canvas from "html2canvas";
 
+import { usePermissions } from "@/src/hooks/usePermissions";
+import RaiseDisputeModal from "../../disputes/RaiseDisputeModal";
+import BookingExtensions from "./BookingExtensions";
+
 export default function BookingDetailView({
   bookingId,
 }: {
@@ -59,6 +63,8 @@ export default function BookingDetailView({
   const searchParams = useSearchParams();
   const router = useRouter();
   const targetRef = useRef<HTMLDivElement>(null);
+  const { isOwner } = usePermissions();
+  const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const printContentRef = useRef<HTMLDivElement>(null);
   const [editMode, setEditMode] = useState<boolean>(
     Boolean(searchParams.get("edit")),
@@ -337,6 +343,16 @@ export default function BookingDetailView({
 
                 {!editMode && (
                   <div className="flex gap-2 w-full sm:w-auto mt-2 md:mt-0">
+                    {/* Raise Dispute (For Owners) */}
+                    {isOwner && (
+                      <button
+                        onClick={() => setIsDisputeModalOpen(true)}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 border border-amber-300 text-amber-700 bg-amber-50 rounded-lg text-xs sm:text-sm hover:bg-amber-100 transition-colors font-medium"
+                      >
+                        <Icon icon="solar:danger-bold-duotone" className="text-sm sm:text-base text-amber-600" />
+                        <span>Raise Dispute</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setEditMode(true);
@@ -354,6 +370,12 @@ export default function BookingDetailView({
                       <LiaPrintSolid className="text-sm sm:text-base" />
                       <span>Print</span>
                     </button>
+
+                    <RaiseDisputeModal 
+                      isOpen={isDisputeModalOpen}
+                      onClose={() => setIsDisputeModalOpen(false)}
+                      bookingId={bookingId}
+                    />
 
                     {showPrintPreview && (
                       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -818,6 +840,13 @@ export default function BookingDetailView({
                       </div>
                     </div>
                   </div>
+
+                  {/* Stay Extensions Section */}
+                  <BookingExtensions 
+                    bookingId={bookingId} 
+                    currentEndDate={endDate || ""} 
+                    bookingStatus={status} 
+                  />
 
                   {/* Referral Information Card */}
                   {(bookingDetails as any).referral_code_used && (

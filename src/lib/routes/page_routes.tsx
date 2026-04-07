@@ -34,6 +34,9 @@ export const PAGE_ROUTES = {
                 create: '/booking-management/bookings/create',
                 details: (id: string) => `/booking-management/bookings/${id}`,
             },
+            stayExtensions: {
+                base: '/booking-management/stay-extensions',
+            }
         },
         reviews: {
             base: '/reviews',

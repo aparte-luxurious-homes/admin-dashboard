@@ -21,6 +21,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`antialiased w-full`}
+        suppressHydrationWarning
       >
         <Providers>
           <Suspense fallback={<Loader />}>
