@@ -450,12 +450,40 @@ export default function StepPropertyDetails({
                         selected={formik.values.amenities}
                         onChange={(val) => formik.setFieldValue('amenities', [...val])}
                     />
-                    <div className="pt-4 mt-4 border-t border-zinc-100">
+                    <div className="pt-4 mt-4 border-t border-zinc-100 space-y-3">
                         <CustomCheckbox
                             label="Pets are allowed in this property"
                             checked={formik.values.is_pet_allowed}
                             onChange={(val: boolean) => formik.setFieldValue('is_pet_allowed', val)}
                         />
+                        <CustomCheckbox
+                            label="Parties are allowed in this property"
+                            checked={formik.values.is_party_allowed}
+                            onChange={(val: boolean) => formik.setFieldValue('is_party_allowed', val)}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Property Rules */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-5 shadow-sm">
+                <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
+                    <Icon icon="solar:document-text-bold-duotone" className="text-lg text-primary" />
+                    Property Rules
+                </h3>
+                <p className="text-xs text-zinc-500">Optional. Add any rules or guidelines guests should follow during their stay.</p>
+                <div className="relative">
+                    <textarea
+                        id="rules"
+                        maxLength={1000}
+                        rows={4}
+                        placeholder="e.g., No loud music after 10pm. No smoking indoors. Check-out by 12pm..."
+                        value={formik.values.rules}
+                        onChange={formik.handleChange}
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-4 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none text-sm"
+                    />
+                    <div className="absolute bottom-2 right-3 text-[10px] font-bold text-zinc-400">
+                        {formik.values.rules.length}/1000
                     </div>
                 </div>
             </div>

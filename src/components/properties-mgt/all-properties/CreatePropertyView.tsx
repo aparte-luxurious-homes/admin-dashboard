@@ -253,6 +253,7 @@ export default function CreatePropertyView({ }) {
                 const payload: ICreateProperty = {
                     ...values,
                     amenities: sortedAmenities,
+                    is_party_allowed: false,
                 }
 
                 mutate({

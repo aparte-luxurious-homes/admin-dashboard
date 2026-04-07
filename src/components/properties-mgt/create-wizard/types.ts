@@ -42,6 +42,8 @@ export type PropertyFormValues = {
     owner_name: string;
     owner_email: string;
     is_pet_allowed: boolean;
+    is_party_allowed: boolean;
+    rules: string;
     amenities: string[];
     amenityIds: number[];
 };

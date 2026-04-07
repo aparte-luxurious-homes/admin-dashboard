@@ -377,6 +377,8 @@ export default function EditPropertyView({
       isVerified: propertyData?.isVerified ?? false,
       isFeatured: propertyData?.isFeatured ?? false,
       petsAllowed: propertyData?.isPetAllowed ?? false,
+      partyAllowed: propertyData?.isPartyAllowed ?? propertyData?.is_party_allowed ?? false,
+      rules: propertyData?.rules ?? '',
       bookingMode: (propertyData?.bookingMode ??
         propertyData?.booking_mode ??
         BookingMode.INSTANT) as BookingMode,
@@ -405,6 +407,8 @@ export default function EditPropertyView({
         amenities: sortedAmenities,
         property_type: values.type,
         is_pet_allowed: values.petsAllowed,
+        is_party_allowed: values.partyAllowed,
+        rules: values.rules || undefined,
       };
 
       mutate(
@@ -876,6 +880,11 @@ export default function EditPropertyView({
                     checked={formik.values.petsAllowed}
                     onChange={(val) => formik.setFieldValue("petsAllowed", val)}
                   />
+                  <CustomCheckbox
+                    label="Parties allowed"
+                    checked={formik.values.partyAllowed}
+                    onChange={(val) => formik.setFieldValue("partyAllowed", val)}
+                  />
                   {user?.role === UserRole.ADMIN && (
                     <CustomCheckbox
                       label="Featured"
@@ -896,6 +905,28 @@ export default function EditPropertyView({
                         }
                       />
                     )}
+                </div>
+              </div>
+
+              {/* Property Rules */}
+              <div className="pt-4 border-t border-zinc-50">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Icon icon="solar:document-text-bold-duotone" className="text-sm text-primary" />
+                  Property Rules
+                </p>
+                <div className="relative">
+                  <textarea
+                    id="rules"
+                    maxLength={1000}
+                    rows={3}
+                    placeholder="e.g., No loud music after 10pm. No smoking indoors..."
+                    value={formik.values.rules}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none text-sm"
+                  />
+                  <div className="absolute bottom-2 right-3 text-[10px] font-bold text-zinc-400">
+                    {formik.values.rules?.length || 0}/1000
+                  </div>
                 </div>
               </div>
 

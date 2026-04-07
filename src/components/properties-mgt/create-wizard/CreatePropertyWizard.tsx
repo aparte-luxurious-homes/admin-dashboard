@@ -122,6 +122,8 @@ export default function CreatePropertyWizard() {
             owner_name: '',
             owner_email: '',
             is_pet_allowed: false,
+            is_party_allowed: false,
+            rules: '',
             amenities: [],
             amenityIds: [],
         },
@@ -248,6 +250,8 @@ export default function CreatePropertyWizard() {
             longitude: values.longitude ?? 0,
             amenities: sortedAmenities,
             is_pet_allowed: values.is_pet_allowed,
+            is_party_allowed: values.is_party_allowed,
+            ...(values.rules && { rules: values.rules }),
             ...(values.owner_email && { owner_email: values.owner_email }),
             ...(values.owner_name && { owner_name: values.owner_name }),
         };
@@ -264,25 +268,29 @@ export default function CreatePropertyWizard() {
 
                     toast.success('Property created successfully');
 
-                    // Upload property media
+                    // Upload property media (split images and videos into separate batches)
                     if (uploadedMedia.length > 0) {
-                        const formData = new FormData();
-                        uploadedMedia.forEach((file) => {
-                            formData.append('media_file', file);
-                        });
-                        formData.append('media_type', MediaType.IMAGE);
-                        formData.append('is_featured', 'true');
+                        const imageFiles = uploadedMedia.filter(f => !f.type.startsWith('video/'));
+                        const videoFiles = uploadedMedia.filter(f => f.type.startsWith('video/'));
 
-                        uploadMedia(
-                            { propertyId, payload: formData },
-                            {
-                                onError: (error: any) =>
-                                    toast.error(
-                                        error.status === 422 ? 'Invalid media file format' : 'Media upload failed',
-                                        { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } }
-                                    ),
-                            }
-                        );
+                        const uploadBatch = (files: File[], mediaType: string) => {
+                            const batchFormData = new FormData();
+                            files.forEach(file => batchFormData.append('media_file', file));
+                            batchFormData.append('media_type', mediaType);
+                            batchFormData.append('is_featured', 'true');
+                            uploadMedia(
+                                { propertyId, payload: batchFormData },
+                                {
+                                    onError: (error: any) =>
+                                        toast.error(
+                                            error.status === 422 ? 'Invalid media file format' : 'Media upload failed',
+                                            { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } }
+                                        ),
+                                }
+                            );
+                        };
+                        if (imageFiles.length > 0) uploadBatch(imageFiles, MediaType.IMAGE);
+                        if (videoFiles.length > 0) uploadBatch(videoFiles, MediaType.VIDEO);
                     }
 
                     // Upload documents
