@@ -16,7 +16,7 @@ type DropzoneProps = {
 
 const CustomDropzone: React.FC<DropzoneProps> = ({
   onDrop,
-  accept = { "image/*": [] },
+  accept = { "image/*": [], "video/*": [] },
   multiple = false,
   previewsRef,
   minFiles = 3
@@ -42,7 +42,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
       );
   
       if (newFiles.length === 0) {
-        toast.error("These images have already been added");
+        toast.error("These files have already been added");
         return;
       }
   
@@ -60,7 +60,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
       // Pass updated file list to parent
       onDrop(previewsRef.current?.map((prev) => prev.file) || []);
       
-      toast.success(`${newFiles.length} image${newFiles.length > 1 ? 's' : ''} added successfully`);
+      toast.success(`${newFiles.length} file${newFiles.length > 1 ? 's' : ''} added successfully`);
     },
     [onDrop, previewsRef]
   );
@@ -100,7 +100,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
         <div className="flex flex-col items-center gap-2">
           <Icon icon="solar:gallery-add-bold-duotone" className="text-4xl text-gray-400" />
           <p className="text-gray-600 font-medium">
-            {isDragActive ? "Drop the files here..." : "Drag & drop images here"}
+            {isDragActive ? "Drop the files here..." : "Drag & drop images or videos here"}
           </p>
           <p className="text-sm text-gray-400">or</p>
           <button
@@ -111,7 +111,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
             Browse Files
           </button>
           <p className="text-xs text-gray-400 mt-2">
-            Supported formats: JPG, PNG, GIF, WEBP (Max 10MB each)
+            Supported: JPG, PNG, GIF, WEBP, MP4, MOV, WEBM (Max 10MB each)
           </p>
         </div>
       </div>
@@ -131,7 +131,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-zinc-700">
-              Uploaded Images ({previewsRef.current.length}/{minFiles} minimum)
+              Uploaded Files ({previewsRef.current.length}/{minFiles} minimum)
             </h4>
             <button
               type="button"
@@ -146,18 +146,34 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {previewsRef.current.map((preview, index) => (
               <div key={preview.file.name} className="relative group aspect-square">
-                <Image
-                  src={preview.url}
-                  alt={`preview-${index}`}
-                  className="w-full h-full object-cover rounded-xl border border-gray-200"
-                  width={200}
-                  height={200}
-                />
+                {preview.file.type.startsWith("video/") ? (
+                  <video
+                    src={preview.url}
+                    muted
+                    preload="metadata"
+                    className="w-full h-full object-cover rounded-xl border border-gray-200"
+                  />
+                ) : (
+                  <Image
+                    src={preview.url}
+                    alt={`preview-${index}`}
+                    className="w-full h-full object-cover rounded-xl border border-gray-200"
+                    width={200}
+                    height={200}
+                  />
+                )}
                 
-                {/* Image Number Badge */}
+                {/* Number Badge */}
                 <div className="absolute top-2 left-2 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white text-xs font-bold">
                   {index + 1}
                 </div>
+                {/* Video Badge */}
+                {preview.file.type.startsWith("video/") && (
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/50 backdrop-blur-sm rounded-md flex items-center gap-1">
+                    <Icon icon="solar:play-bold" className="text-white text-[10px]" />
+                    <span className="text-white text-[9px] font-bold">VIDEO</span>
+                  </div>
+                )}
                 
                 {/* Remove Overlay */}
                 <div
