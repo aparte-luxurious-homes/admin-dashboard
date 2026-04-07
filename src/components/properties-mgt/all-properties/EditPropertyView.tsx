@@ -33,6 +33,7 @@ import {
   UploadPropertyMedia,
   DeletePropertyMedia, UploadPropertyDocument, GetPropertyDocuments,
 } from "@/src/lib/request-handlers/propertyMgt";
+import { CreatePropertyUnit, UpdatePropertyUnit, DeletePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { BookingMode } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
@@ -44,6 +45,9 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
 import { usePathname } from "next/navigation";
 import { Icon } from "@iconify/react";
+import UnitDrawer from "../create-wizard/UnitDrawer";
+import { UnitFormValues, createEmptyUnit } from "../create-wizard/types";
+import UnitCard from "../create-wizard/UnitCard";
 import axios from "axios";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import usePlacesAutocomplete, {
@@ -209,6 +213,133 @@ export default function EditPropertyView({
     const { data: docsData, refetch: refetchDocs } = GetPropertyDocuments(propertyData.id);
     const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
     const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
+
+  // Unit management state
+  const { mutate: createUnit, isPending: isCreatingUnit } = CreatePropertyUnit();
+  const { mutate: updateUnit } = UpdatePropertyUnit();
+  const { mutate: deleteUnit } = DeletePropertyUnit();
+  const { mutate: uploadUnitMedia } = UploadPropertyUnitMedia();
+  const [unitDrawerOpen, setUnitDrawerOpen] = useState(false);
+  const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
+  const [existingUnits, setExistingUnits] = useState<UnitFormValues[]>(
+    (propertyData?.units ?? []).map((u) => ({
+      _key: String(u.id),
+      name: u.name ?? '',
+      description: u.description ?? '',
+      price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ''),
+      caution_fee: String(u.caution_fee ?? u.cautionFee ?? '0'),
+      max_guests: u.max_guests ?? u.maxGuests ?? 1,
+      count: u.count ?? 1,
+      is_whole_property: u.is_whole_property ?? u.isWholeProperty ?? false,
+      bedroom_count: u.bedroom_count ?? u.bedroomCount ?? 0,
+      living_room_count: u.living_room_count ?? u.livingRoomCount ?? 0,
+      kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
+      bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
+      amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
+    }))
+  );
+
+  useEffect(() => {
+    setExistingUnits(
+      (propertyData?.units ?? []).map((u) => ({
+        _key: String(u.id),
+        name: u.name ?? '',
+        description: u.description ?? '',
+        price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ''),
+        caution_fee: String(u.caution_fee ?? u.cautionFee ?? '0'),
+        max_guests: u.max_guests ?? u.maxGuests ?? 1,
+        count: u.count ?? 1,
+        is_whole_property: u.is_whole_property ?? u.isWholeProperty ?? false,
+        bedroom_count: u.bedroom_count ?? u.bedroomCount ?? 0,
+        living_room_count: u.living_room_count ?? u.livingRoomCount ?? 0,
+        kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
+        bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
+        amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
+      }))
+    );
+  }, [propertyData]);
+
+  const handleSaveUnit = (unit: UnitFormValues) => {
+    const unitAmenityIds = sortAmenities(availableAmenities ?? [], unit.amenityNames);
+    const unitPayload = {
+      name: unit.name,
+      description: unit.description,
+      price_per_night: String(unit.price_per_night),
+      caution_fee: String(unit.caution_fee),
+      max_guests: unit.max_guests,
+      count: unit.count,
+      is_whole_property: unit.is_whole_property,
+      bedroom_count: unit.bedroom_count,
+      living_room_count: unit.living_room_count,
+      kitchen_count: unit.kitchen_count,
+      bathroom_count: unit.bathroom_count,
+      amenities: unitAmenityIds,
+    };
+
+    if (editingUnitIndex !== null) {
+      const existingId = existingUnits[editingUnitIndex]._key;
+      const isExistingUnit = propertyData?.units?.some((u) => String(u.id) === existingId);
+
+      if (isExistingUnit) {
+        updateUnit(
+          { propertyId: propertyData.id, unitId: existingId, payload: unitPayload },
+          {
+            onSuccess: () => {
+              setExistingUnits(prev => prev.map((u, i) => i === editingUnitIndex ? { ...unit, _key: existingId } : u));
+              toast.success('Unit updated');
+            },
+            onError: () => toast.error('Failed to update unit'),
+          },
+        );
+      } else {
+        setExistingUnits(prev => prev.map((u, i) => i === editingUnitIndex ? { ...unit, _key: u._key } : u));
+      }
+    } else {
+      createUnit(
+        { propertyId: String(propertyData.id), payload: [unitPayload] },
+        {
+          onSuccess: (response) => {
+            const created = response?.data?.data?.[0];
+            if (created) {
+              setExistingUnits(prev => [...prev, { ...unit, _key: String(created.id) }]);
+            }
+            toast.success('Unit added');
+          },
+          onError: () => toast.error('Failed to create unit'),
+        },
+      );
+    }
+    setUnitDrawerOpen(false);
+    setEditingUnitIndex(null);
+  };
+
+  const handleDeleteUnit = (index: number) => {
+    const unit = existingUnits[index];
+    const isExistingUnit = propertyData?.units?.some((u) => String(u.id) === unit._key);
+
+    if (isExistingUnit) {
+      dispatch(
+        showAlert({
+          title: 'Delete Unit',
+          description: `Are you sure you want to delete "${unit.name || 'this unit'}"? This action cannot be undone.`,
+          onConfirm: () => {
+            deleteUnit(
+              { propertyId: propertyData.id, unitId: unit._key },
+              {
+                onSuccess: () => {
+                  setExistingUnits(prev => prev.filter((_, i) => i !== index));
+                  toast.success('Unit deleted');
+                },
+                onError: () => toast.error('Failed to delete unit'),
+              },
+            );
+          },
+        }),
+      );
+    } else {
+      setExistingUnits(prev => prev.filter((_, i) => i !== index));
+    }
+  };
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
@@ -442,6 +573,17 @@ export default function EditPropertyView({
 
   return (
     <div className="relative">
+      {/* Unit Drawer */}
+      <UnitDrawer
+        isOpen={unitDrawerOpen}
+        onClose={() => { setUnitDrawerOpen(false); setEditingUnitIndex(null); }}
+        onSave={handleSaveUnit}
+        editingUnit={editingUnitIndex !== null ? existingUnits[editingUnitIndex] : null}
+        availableAmenities={availableAmenities ?? []}
+        showAmenityForm={() => setShowAmenityForm(true)}
+        userRole={user?.role}
+      />
+
       {/* ── Page Header ── */}
       <div className="flex items-start justify-between gap-4 mb-6 md:mb-8">
         <div>
@@ -1017,6 +1159,50 @@ export default function EditPropertyView({
                             </div>
                         </div>
                     </div>
+
+          {/* Units Management Section */}
+          <FormCard icon="solar:home-2-bold-duotone" title="Units">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-zinc-500">
+                  Manage the rentable units for this property.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingUnitIndex(null);
+                    setUnitDrawerOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-xl hover:bg-primary hover:text-white transition-all"
+                >
+                  <FaPlus className="text-[9px]" />
+                  Add Unit
+                </button>
+              </div>
+
+              {existingUnits.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {existingUnits.map((unit, index) => (
+                    <UnitCard
+                      key={unit._key}
+                      unit={unit}
+                      index={index}
+                      onEdit={() => {
+                        setEditingUnitIndex(index);
+                        setUnitDrawerOpen(true);
+                      }}
+                      onDelete={() => handleDeleteUnit(index)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-zinc-200 rounded-xl py-8 flex flex-col items-center text-center">
+                  <Icon icon="solar:box-minimalistic-bold-duotone" className="text-3xl text-zinc-300 mb-2" />
+                  <p className="text-xs text-zinc-400">No units yet. Add units to make this property bookable.</p>
+                </div>
+              )}
+            </div>
+          </FormCard>
         </div>
 
         <div className="">
