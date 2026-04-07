@@ -310,7 +310,20 @@ export default function StepPropertyDetails({
                         <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
                             Physical Address <span className="text-primary">*</span>
                         </label>
-                        <AddressAutocomplete formik={formik} isLoaded={isLoaded} />
+                        {isLoaded ? (
+                            <AddressAutocomplete formik={formik} isLoaded={isLoaded} />
+                        ) : (
+                            <div className="relative group w-full">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-400 z-10">
+                                    <SlLocationPin className="text-lg" />
+                                </div>
+                                <input
+                                    disabled
+                                    placeholder="Loading Map API..."
+                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 outline-none font-medium text-zinc-400 cursor-not-allowed"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {isLoaded && (
