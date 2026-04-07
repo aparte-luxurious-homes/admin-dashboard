@@ -68,6 +68,10 @@ export const PAGE_ROUTES = {
             },
         },
         transactions: {
+            all: {
+                base: '/transactions/all',
+                details: (id: number | string) => `/transactions/all/${id}`,
+            },
             payments: {
                 base: '/transactions/payments',
                 details: (id: number | string) => `/transactions/payments/${id}`,
