@@ -65,6 +65,27 @@ export function VerifyPayoutAccount() {
     });
 }
 
+export function DeletePayoutAccount() {
+    return useMutation({
+        mutationFn: ({ walletId, accountId }: { walletId: string; accountId: string }) =>
+            axiosRequest.delete(API_ROUTES.wallet.payoutAccounts.details(walletId, accountId)),
+    });
+}
+
+export interface UpdatePayoutAccountPayload {
+    account_name?: string;
+    bank_name?: string;
+    bank_code?: string;
+    account_number?: string;
+}
+
+export function UpdatePayoutAccount() {
+    return useMutation({
+        mutationFn: ({ walletId, accountId, payload }: { walletId: string; accountId: string; payload: UpdatePayoutAccountPayload }) =>
+            axiosRequest.patch(API_ROUTES.wallet.payoutAccounts.details(walletId, accountId), payload),
+    });
+}
+
 export interface RejectWithdrawalPayload {
     transaction_id: string;
     reason?: string;
