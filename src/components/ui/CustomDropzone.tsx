@@ -16,7 +16,7 @@ type DropzoneProps = {
 
 const CustomDropzone: React.FC<DropzoneProps> = ({
   onDrop,
-  accept = { "image/*": [] },
+  accept = { "image/*": [], "video/*": [] },
   multiple = false,
   previewsRef,
   minFiles = 3
@@ -42,7 +42,19 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
       );
   
       if (newFiles.length === 0) {
-        toast.error("These images have already been added");
+        toast.error("These files have already been added");
+        return;
+      }
+
+      // Validate file sizes: images max 10MB, videos max 100MB
+      const oversizedFiles = newFiles.filter((file) => {
+        const isVideo = file.type.startsWith("video/");
+        const maxSize = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+        return file.size > maxSize;
+      });
+      if (oversizedFiles.length > 0) {
+        const names = oversizedFiles.map((f) => f.name).join(", ");
+        toast.error(`File(s) too large: ${names}. Images max 10MB, videos max 100MB.`);
         return;
       }
   
@@ -60,7 +72,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
       // Pass updated file list to parent
       onDrop(previewsRef.current?.map((prev) => prev.file) || []);
       
-      toast.success(`${newFiles.length} image${newFiles.length > 1 ? 's' : ''} added successfully`);
+      toast.success(`${newFiles.length} file${newFiles.length > 1 ? 's' : ''} added successfully`);
     },
     [onDrop, previewsRef]
   );
@@ -100,7 +112,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
         <div className="flex flex-col items-center gap-2">
           <Icon icon="solar:gallery-add-bold-duotone" className="text-4xl text-gray-400" />
           <p className="text-gray-600 font-medium">
-            {isDragActive ? "Drop the files here..." : "Drag & drop images here"}
+            {isDragActive ? "Drop the files here..." : "Drag & drop files here"}
           </p>
           <p className="text-sm text-gray-400">or</p>
           <button
@@ -111,7 +123,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
             Browse Files
           </button>
           <p className="text-xs text-gray-400 mt-2">
-            Supported formats: JPG, PNG, GIF, WEBP (Max 10MB each)
+            Supported: JPG, PNG, WEBP (Max 10MB) | MP4, MOV, WebM (Max 100MB)
           </p>
         </div>
       </div>
@@ -121,7 +133,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
           <Icon icon="solar:danger-triangle-bold-duotone" className="text-amber-500 text-xl" />
           <p className="text-sm text-amber-700">
-            Please add at least {minFiles - (previewsRef.current?.length || 0)} more image{minFiles - (previewsRef.current?.length || 0) > 1 ? 's' : ''} (minimum {minFiles} required)
+            Please add at least {minFiles - (previewsRef.current?.length || 0)} more file{minFiles - (previewsRef.current?.length || 0) > 1 ? 's' : ''} (minimum {minFiles} required)
           </p>
         </div>
       )}
@@ -131,7 +143,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-zinc-700">
-              Uploaded Images ({previewsRef.current.length}/{minFiles} minimum)
+              Uploaded Media ({previewsRef.current.length}/{minFiles} minimum)
             </h4>
             <button
               type="button"
@@ -146,15 +158,30 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {previewsRef.current.map((preview, index) => (
               <div key={preview.file.name} className="relative group aspect-square">
-                <Image
-                  src={preview.url}
-                  alt={`preview-${index}`}
-                  className="w-full h-full object-cover rounded-xl border border-gray-200"
-                  width={200}
-                  height={200}
-                />
-                
-                {/* Image Number Badge */}
+                {preview.file.type.startsWith("video/") ? (
+                  <>
+                    <video
+                      src={preview.url}
+                      muted
+                      preload="metadata"
+                      className="w-full h-full object-cover rounded-xl border border-gray-200"
+                    />
+                    {/* Video Play Icon Badge */}
+                    <div className="absolute bottom-2 right-2 w-7 h-7 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center pointer-events-none">
+                      <Icon icon="solar:play-bold" className="text-white text-sm ml-0.5" />
+                    </div>
+                  </>
+                ) : (
+                  <Image
+                    src={preview.url}
+                    alt={`preview-${index}`}
+                    className="w-full h-full object-cover rounded-xl border border-gray-200"
+                    width={200}
+                    height={200}
+                  />
+                )}
+
+                {/* Number Badge */}
                 <div className="absolute top-2 left-2 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white text-xs font-bold">
                   {index + 1}
                 </div>
