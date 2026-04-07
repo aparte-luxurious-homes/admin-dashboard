@@ -23,7 +23,7 @@ import CustomModal from "../../ui/CustomModal";
 import { UserRole } from "@/src/lib/enums";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import toast from "react-hot-toast";
+import toast from "react-hot-toast"; 
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import axios from "axios";
@@ -103,12 +103,15 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
         setValue,
         clearSuggestions,
     } = usePlacesAutocomplete({
-        requestOptions: {
-            componentRestrictions: { country: "ng" }
-        },
         debounce: 300,
         defaultValue: formik.values.address
     });
+
+    useEffect(() => {
+        if (formik.values.address !== value) {
+            setValue(formik.values.address, false);
+        }
+    }, [formik.values.address]);
 
     const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         setValue(e.target.value);
@@ -149,8 +152,8 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
             <input
                 value={value}
                 onChange={handleInput}
-                disabled={!isLoaded}
-                placeholder={isLoaded ? "Search for an address..." : "Loading Map API..."}
+                disabled={!isLoaded || !ready}
+                placeholder={!isLoaded ? "Loading Map API..." : !ready ? "Initializing address search..." : "Search for an address..."}
                 className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
             />
             {status === "OK" && (
@@ -236,8 +239,8 @@ export default function CreatePropertyView({ }) {
                 state: "Lagos",
                 city: "Ikeja",
                 description: "",
-                latitude: 0,
-                longitude: 0,
+                latitude: null as number | null,
+                longitude: null as number | null,
                 // kyc_id: 0,
                 ownerId: 0,
                 owner_name: "",
@@ -276,29 +279,26 @@ export default function CreatePropertyView({ }) {
                                 }
 
                                 if (uploadedMedia.length > 0) {
-                                    uploadedMedia?.forEach(file => {
-                                        formData.append("media_file", file);
-                                    });
-
-                                    formData.append("media_type", MediaType.IMAGE);
-                                    formData.append("is_featured", "true");
-
-                                    uploadMedia(
-                                        {
-                                            propertyId,
-                                            payload: formData,
-                                        },
-                                        {
-                                            onError: (error: any) =>
-                                                toast.error(error.status === 422 ? 'Invalid media file format' : 'Media upload failed', {
-                                                    duration: 6000,
-                                                    style: {
-                                                        maxWidth: '500px',
-                                                        width: 'max-content'
-                                                    }
-                                                }),
-                                        },
-                                    );
+                                    const imageFiles = uploadedMedia.filter((f) => !f.type.startsWith("video/"));
+                                    const videoFiles = uploadedMedia.filter((f) => f.type.startsWith("video/"));
+                                    const uploadBatch = (files: File[], mediaType: string) => {
+                                        const batchFormData = new FormData();
+                                        files.forEach(file => batchFormData.append("media_file", file));
+                                        batchFormData.append("media_type", mediaType);
+                                        batchFormData.append("is_featured", "true");
+                                        uploadMedia(
+                                            { propertyId, payload: batchFormData },
+                                            {
+                                                onError: (error: any) =>
+                                                    toast.error(error.status === 422 ? 'Invalid media file format' : 'Media upload failed', {
+                                                        duration: 6000,
+                                                        style: { maxWidth: '500px', width: 'max-content' }
+                                                    }),
+                                            },
+                                        );
+                                    };
+                                    if (imageFiles.length > 0) uploadBatch(imageFiles, MediaType.IMAGE);
+                                    if (videoFiles.length > 0) uploadBatch(videoFiles, MediaType.VIDEO);
                                 }
 
                                 // Upload documents
@@ -341,6 +341,27 @@ export default function CreatePropertyView({ }) {
                     })
             },
         });
+
+    const reverseGeocode = async (lat: number, lng: number) => {
+        try {
+            const results = await getGeocode({ location: { lat, lng } });
+            if (results[0]) {
+                formik.setFieldValue('address', results[0].formatted_address);
+                results[0].address_components.forEach((component: any) => {
+                    const types = component.types;
+                    if (types.includes('locality')) {
+                        formik.setFieldValue('city', component.long_name);
+                    } else if (types.includes('administrative_area_level_1')) {
+                        formik.setFieldValue('state', component.long_name);
+                    } else if (types.includes('country')) {
+                        formik.setFieldValue('country', component.long_name);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Reverse geocoding failed:", error);
+        }
+    };
 
     const handleGeocode = async () => {
         // This is kept for backward compatibility if needed, but the map/autocomplete should handle this now
@@ -579,23 +600,29 @@ export default function CreatePropertyView({ }) {
                                         <div className="w-full h-[300px] rounded-2xl overflow-hidden border border-zinc-200">
                                             <GoogleMap
                                                 mapContainerStyle={{ height: '100%', width: '100%' }}
-                                                center={{ lat: formik.values.latitude || 6.5244, lng: formik.values.longitude || 3.3792 }}
-                                                zoom={formik.values.latitude ? 15 : 12}
+                                                center={{ lat: formik.values.latitude ?? 6.5244, lng: formik.values.longitude ?? 3.3792 }}
+                                                zoom={formik.values.latitude != null ? 15 : 12}
                                                 onClick={(e: any) => {
                                                     if (e.latLng) {
-                                                        formik.setFieldValue('latitude', e.latLng.lat());
-                                                        formik.setFieldValue('longitude', e.latLng.lng());
+                                                        const lat = e.latLng.lat();
+                                                        const lng = e.latLng.lng();
+                                                        formik.setFieldValue('latitude', lat);
+                                                        formik.setFieldValue('longitude', lng);
+                                                        reverseGeocode(lat, lng);
                                                     }
                                                 }}
                                             >
-                                                {formik.values.latitude && formik.values.longitude && (
+                                                {formik.values.latitude != null && formik.values.longitude != null && (
                                                     <Marker
                                                         position={{ lat: formik.values.latitude, lng: formik.values.longitude }}
                                                         draggable={true}
                                                         onDragEnd={(e: any) => {
                                                             if (e.latLng) {
-                                                                formik.setFieldValue('latitude', e.latLng.lat());
-                                                                formik.setFieldValue('longitude', e.latLng.lng());
+                                                                const lat = e.latLng.lat();
+                                                                const lng = e.latLng.lng();
+                                                                formik.setFieldValue('latitude', lat);
+                                                                formik.setFieldValue('longitude', lng);
+                                                                reverseGeocode(lat, lng);
                                                             }
                                                         }}
                                                     />
@@ -613,7 +640,7 @@ export default function CreatePropertyView({ }) {
                                         type="number"
                                         step="any"
                                         placeholder="0.0000"
-                                        value={formik.values.latitude}
+                                        value={formik.values.latitude ?? ''}
                                         onChange={formik.handleChange}
                                         className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
                                     />
@@ -625,7 +652,7 @@ export default function CreatePropertyView({ }) {
                                         type="number"
                                         step="any"
                                         placeholder="0.0000"
-                                        value={formik.values.longitude}
+                                        value={formik.values.longitude ?? ''}
                                         onChange={formik.handleChange}
                                         className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
                                     />

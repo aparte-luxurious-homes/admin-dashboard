@@ -196,13 +196,22 @@ export default function PropertyDetailsView({
                                     property.media.map((el: any, index: any) => (
                                         <SwiperSlide key={index}>
                                             <div className="relative w-full h-56 sm:h-80 md:h-[26rem] lg:h-[30rem]">
-                                                <Image
-                                                    alt={`${property?.name}_img_${index}`}
-                                                    src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                                    fill
-                                                    className="object-cover"
-                                                    priority={index === 0}
-                                                />
+                                                {(el.media_type === 'VIDEO' || el.mediaType === 'VIDEO') ? (
+                                                    <video
+                                                        src={el.media_url || el.mediaUrl}
+                                                        controls
+                                                        preload="metadata"
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <Image
+                                                        alt={`${property?.name}_img_${index}`}
+                                                        src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
+                                                        fill
+                                                        className="object-cover"
+                                                        priority={index === 0}
+                                                    />
+                                                )}
                                                 {/* Gradient overlay */}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                                             </div>
@@ -395,12 +404,16 @@ export default function PropertyDetailsView({
                                                         >
                                                             <div className="relative h-36 sm:h-44 bg-zinc-100 overflow-hidden">
                                                                 {el.media && el.media.length > 0 ? (
-                                                                    <Image
-                                                                        src={el.media[0].media_url || el.media[0].mediaUrl || "/png/placeholder.png"}
-                                                                        alt={el.name}
-                                                                        fill
-                                                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                                    />
+                                                                    (() => {
+                                                                        const firstImage = el.media.find((m: any) => m.media_type !== 'VIDEO' && m.mediaType !== 'VIDEO') || el.media[0];
+                                                                        const mediaUrl = firstImage.media_url || firstImage.mediaUrl || "/png/placeholder.png";
+                                                                        const isVideo = firstImage.media_type === 'VIDEO' || firstImage.mediaType === 'VIDEO';
+                                                                        return isVideo ? (
+                                                                            <video src={mediaUrl} muted preload="metadata" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                                        ) : (
+                                                                            <Image src={mediaUrl} alt={el.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                                        );
+                                                                    })()
                                                                 ) : (
                                                                     <div className="w-full h-full flex flex-col items-center justify-center text-zinc-300 gap-2">
                                                                         <PiBuildingApartment className="text-3xl" />
