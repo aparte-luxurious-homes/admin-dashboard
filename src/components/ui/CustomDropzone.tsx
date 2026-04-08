@@ -6,12 +6,22 @@ import { Accept, useDropzone } from "react-dropzone";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 type DropzoneProps = {
   onDrop: (acceptedFiles: File[]) => void;
   accept?: Accept;
   multiple?: boolean;
   previewsRef: React.RefObject<{ url: string; file: File }[]>;
   minFiles?: number;
+  maxImageSize?: number;
+  maxVideoSize?: number;
 };
 
 const CustomDropzone: React.FC<DropzoneProps> = ({
@@ -19,7 +29,9 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
   accept = { "image/*": [], "video/*": [] },
   multiple = false,
   previewsRef,
-  minFiles = 3
+  minFiles = 3,
+  maxImageSize = MAX_IMAGE_SIZE,
+  maxVideoSize = MAX_VIDEO_SIZE,
 }) => {
   const [_, forceUpdate] = useState(0);
   const [showMinWarning, setShowMinWarning] = useState(false);
@@ -36,13 +48,32 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
 
   const handleDrop = useCallback(
     (acceptedFiles: File[]) => {
+      // Validate file sizes
+      const oversized: string[] = [];
+      const validFiles = acceptedFiles.filter((file) => {
+        const isVideo = file.type.startsWith("video/");
+        const limit = isVideo ? maxVideoSize : maxImageSize;
+        if (file.size > limit) {
+          oversized.push(`${file.name} (${formatFileSize(file.size)} — max ${formatFileSize(limit)})`);
+          return false;
+        }
+        return true;
+      });
+
+      if (oversized.length > 0) {
+        toast.error(
+          `${oversized.length} file${oversized.length > 1 ? "s" : ""} too large:\n${oversized.join(", ")}`,
+          { duration: 6000, style: { maxWidth: "500px" } }
+        );
+      }
+
       // Ensure only new files are added (prevent duplicates)
-      const newFiles = acceptedFiles.filter(
+      const newFiles = validFiles.filter(
         (file) => !previewsRef.current?.some((prev) => prev.file.name === file.name)
       );
-  
+
       if (newFiles.length === 0) {
-        toast.error("These files have already been added");
+        if (oversized.length === 0) toast.error("These files have already been added");
         return;
       }
   
@@ -116,7 +147,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
             Browse Files
           </button>
           <p className="text-xs text-gray-400 mt-2">
-            Supported: JPG, PNG, GIF, WEBP, MP4, MOV, WEBM (Max 10MB each)
+            Supported: JPG, PNG, GIF, WEBP, MP4, MOV, WEBM (Images max 10MB, Videos max 50MB)
           </p>
         </div>
       </div>
