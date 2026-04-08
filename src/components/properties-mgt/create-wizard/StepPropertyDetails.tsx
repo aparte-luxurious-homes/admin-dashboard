@@ -143,7 +143,7 @@ export default function StepPropertyDetails({
             )}
 
             {/* Basic Information */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-5 shadow-sm">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
                 <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
                     <Icon icon="solar:info-circle-bold-duotone" className="text-lg text-primary" />
                     Basic Information
@@ -199,7 +199,7 @@ export default function StepPropertyDetails({
 
             {/* Owner Assignment */}
             {showOwnerSection && (
-                <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-5 shadow-sm">
+                <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
                     <div className="flex items-center justify-between">
                         <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
                             <Icon icon="mdi:account-supervisor" className="text-lg text-primary" />
@@ -300,7 +300,7 @@ export default function StepPropertyDetails({
             )}
 
             {/* Location */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-5 shadow-sm">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
                 <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
                     <Icon icon="solar:map-point-bold-duotone" className="text-lg text-primary" />
                     Location & Address
@@ -388,7 +388,7 @@ export default function StepPropertyDetails({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
                                 Country <span className="text-primary">*</span>
@@ -427,7 +427,7 @@ export default function StepPropertyDetails({
             </div>
 
             {/* Amenities & Features */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-5 shadow-sm">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
                 <div className="flex items-center justify-between">
                     <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
                         <Icon icon="solar:star-bold-duotone" className="text-lg text-primary" />
@@ -466,7 +466,7 @@ export default function StepPropertyDetails({
             </div>
 
             {/* Property Rules */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-6 space-y-5 shadow-sm">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
                 <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
                     <Icon icon="solar:document-text-bold-duotone" className="text-lg text-primary" />
                     Property Rules

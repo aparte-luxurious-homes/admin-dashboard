@@ -100,13 +100,18 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
         <div className="flex flex-col items-center gap-2">
           <Icon icon="solar:gallery-add-bold-duotone" className="text-4xl text-gray-400" />
           <p className="text-gray-600 font-medium">
-            {isDragActive ? "Drop the files here..." : "Drag & drop images or videos here"}
+            {isDragActive ? "Drop the files here..." : (
+              <>
+                <span className="hidden sm:inline">Drag & drop images or videos here</span>
+                <span className="sm:hidden">Tap below to add photos or videos</span>
+              </>
+            )}
           </p>
           <p className="text-sm text-gray-400">or</p>
           <button
             type="button"
             onClick={open}
-            className="px-6 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors"
+            className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors"
           >
             Browse Files
           </button>

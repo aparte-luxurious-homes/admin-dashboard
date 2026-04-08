@@ -100,6 +100,25 @@ export function useUserDetail(userId: string | undefined) {
     if (user?.id) fetchWalletFallback(user.id);
   }, [user?.id, fetchWalletFallback]);
 
+  const [isCreatingWallet, setIsCreatingWallet] = useState(false);
+
+  const createWallet = useCallback(async () => {
+    if (!userId) return;
+    setIsCreatingWallet(true);
+    try {
+      await axiosRequest.post(API_ROUTES.wallet.base, {
+        user_id: userId,
+        currency: "NGN",
+      });
+      toast.success("Wallet created successfully");
+      await fetchUser();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to create wallet");
+    } finally {
+      setIsCreatingWallet(false);
+    }
+  }, [userId, fetchUser]);
+
   return {
     user,
     wallet,
@@ -108,5 +127,7 @@ export function useUserDetail(userId: string | undefined) {
     refetchWallet,
     updateUser,
     isUpdating,
+    createWallet,
+    isCreatingWallet,
   };
 }

@@ -13,6 +13,8 @@ interface UserProfileHeaderProps {
   roleConfig: RoleConfig;
   onEditProfile: () => void;
   onEditWallet: () => void;
+  onCreateWallet?: () => void;
+  isCreatingWallet?: boolean;
 }
 
 const KYC_COLORS: Record<string, string> = {
@@ -48,6 +50,8 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
   roleConfig,
   onEditProfile,
   onEditWallet,
+  onCreateWallet,
+  isCreatingWallet,
 }) => {
   const fullName =
     [user.profile.firstName, user.profile.lastName].filter(Boolean).join(" ") || "Unnamed User";
@@ -142,7 +146,14 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
               </button>
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No wallet</p>
+            <button
+              onClick={onCreateWallet}
+              disabled={isCreatingWallet}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Icon icon={isCreatingWallet ? "mdi:loading" : "mdi:wallet-plus-outline"} width="14" className={isCreatingWallet ? "animate-spin" : ""} />
+              {isCreatingWallet ? "Creating..." : "Create Wallet"}
+            </button>
           )}
         </div>
 

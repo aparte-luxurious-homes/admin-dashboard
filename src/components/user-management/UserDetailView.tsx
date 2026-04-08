@@ -56,7 +56,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
   const params = useParams();
   const id = params?.id as string | undefined;
 
-  const { user, wallet, isLoading, refetch, refetchWallet, updateUser, isUpdating } =
+  const { user, wallet, isLoading, refetch, refetchWallet, updateUser, isUpdating, createWallet, isCreatingWallet } =
     useUserDetail(id);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [showEditWallet, setShowEditWallet] = useState(false);
@@ -89,6 +89,8 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
               roleConfig={roleConfig}
               onEditProfile={() => setIsEditOpen(true)}
               onEditWallet={() => setShowEditWallet(true)}
+              onCreateWallet={createWallet}
+              isCreatingWallet={isCreatingWallet}
             />
             <UserDetailsPanel user={user} />
             <KycStatusEditor

@@ -53,6 +53,7 @@ import html2canvas from "html2canvas";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import RaiseDisputeModal from "../../disputes/RaiseDisputeModal";
 import BookingExtensions from "./BookingExtensions";
+import CollapsibleSection from "../../mobile/CollapsibleSection";
 
 export default function BookingDetailView({
   bookingId,
@@ -572,6 +573,7 @@ export default function BookingDetailView({
                   </div>
 
                   {/* Guest Information Card */}
+                  <CollapsibleSection title="Guest Information" icon="solar:user-bold" colorClass={colors.bg}>
                   <div className="border border-zinc-200 rounded-xl overflow-hidden">
                     <div
                       className={`px-4 sm:px-5 py-3 ${colors.bg} ${colors.border} border-b`}
@@ -652,6 +654,7 @@ export default function BookingDetailView({
                       )}
                     </div>
                   </div>
+                  </CollapsibleSection>
 
                   {/* Booking Details Card */}
                   <div className="border border-zinc-200 rounded-xl overflow-hidden">
@@ -727,6 +730,7 @@ export default function BookingDetailView({
                   </div>
 
                   {/* Payment Information Card */}
+                  <CollapsibleSection title="Payment Information" icon="solar:wallet-money-bold" colorClass={colors.bg}>
                   <div className="border border-zinc-200 rounded-xl overflow-hidden">
                     <div
                       className={`px-4 sm:px-5 py-3 ${colors.bg} ${colors.border} border-b`}
@@ -840,13 +844,16 @@ export default function BookingDetailView({
                       </div>
                     </div>
                   </div>
+                  </CollapsibleSection>
 
                   {/* Stay Extensions Section */}
-                  <BookingExtensions 
-                    bookingId={bookingId} 
-                    currentEndDate={endDate || ""} 
-                    bookingStatus={status} 
+                  <CollapsibleSection title="Stay Extensions" icon="solar:calendar-add-bold">
+                  <BookingExtensions
+                    bookingId={bookingId}
+                    currentEndDate={endDate || ""}
+                    bookingStatus={status}
                   />
+                  </CollapsibleSection>
 
                   {/* Referral Information Card */}
                   {(bookingDetails as any).referral_code_used && (
@@ -966,6 +973,7 @@ export default function BookingDetailView({
                   {/* Owner & Agent Info Card */}
                   {(bookingDetails.unit?.property?.owner ||
                     bookingDetails.unit?.property?.agent) && (
+                    <CollapsibleSection title="Owner & Agent" icon="solar:users-group-rounded-bold">
                     <div className="border border-zinc-200 rounded-xl overflow-hidden">
                       <div className="px-4 sm:px-5 py-3 bg-zinc-50 border-b border-zinc-200">
                         <h2 className="text-sm sm:text-base font-semibold text-zinc-800 flex items-center gap-2">
@@ -1039,6 +1047,7 @@ export default function BookingDetailView({
                         )}
                       </div>
                     </div>
+                    </CollapsibleSection>
                   )}
 
                   {/* Cancellation Info (if cancelled) */}
@@ -1078,8 +1087,8 @@ export default function BookingDetailView({
 
             {/* Action Buttons */}
             {!editMode && (
-              <div className="px-4 sm:px-5 md:px-8 lg:px-10 pb-6 sm:pb-8">
-                <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-zinc-200">
+              <div className="fixed bottom-16 left-0 right-0 z-30 bg-white border-t border-zinc-200 px-4 py-3 md:relative md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:border-t-0 md:px-5 lg:px-10 md:pb-8">
+                <div className="flex flex-row justify-end gap-2 overflow-x-auto md:flex-wrap md:overflow-visible md:pt-4 md:border-t md:border-zinc-200">
                   <button
                     onClick={() => router.back()}
                     className="px-4 py-2 border border-zinc-300 text-zinc-700 rounded-lg text-xs sm:text-sm hover:bg-zinc-50 transition-colors font-medium"

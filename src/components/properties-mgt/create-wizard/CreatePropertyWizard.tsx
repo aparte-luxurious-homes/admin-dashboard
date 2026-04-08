@@ -385,7 +385,7 @@ export default function CreatePropertyWizard() {
     };
 
     return (
-        <div className="relative m-5 pb-20">
+        <div className="relative m-3 sm:m-5 pb-28 sm:pb-20">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="space-y-1">
@@ -397,7 +397,7 @@ export default function CreatePropertyWizard() {
                             <FaArrowLeftLong className="text-[10px]" /> Back to Properties
                         </Link>
                     </div>
-                    <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">List New Property</h2>
+                    <h2 className="text-lg sm:text-2xl font-bold text-zinc-900 tracking-tight">List New Property</h2>
                     <p className="text-sm font-medium text-zinc-500">
                         Step {currentStep + 1} of {Object.keys(WizardStep).length / 2}
                     </p>
@@ -482,7 +482,7 @@ export default function CreatePropertyWizard() {
                 )}
 
                 {/* Navigation Buttons */}
-                <div className="max-w-3xl mx-auto mt-10 flex items-center justify-between">
+                <div className="fixed bottom-16 left-0 right-0 z-30 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between md:relative md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:border-0 md:px-0 md:py-0 md:max-w-3xl md:mx-auto md:mt-10">
                     <button
                         type="button"
                         onClick={handleBack}
