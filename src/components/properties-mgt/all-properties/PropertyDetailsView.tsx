@@ -222,21 +222,35 @@ export default function PropertyDetailsView({
                                 className="h-full w-full"
                             >
                                 {property?.media?.length > 0 ? (
-                                    property.media.map((el: any, index: any) => (
-                                        <SwiperSlide key={index}>
-                                            <div className="relative w-full h-56 sm:h-80 md:h-[26rem] lg:h-[30rem]">
-                                                <Image
-                                                    alt={`${property?.name}_img_${index}`}
-                                                    src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                                    fill
-                                                    className="object-cover"
-                                                    priority={index === 0}
-                                                />
-                                                {/* Gradient overlay */}
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-                                            </div>
-                                        </SwiperSlide>
-                                    ))
+                                    property.media.map((el: any, index: any) => {
+                                        const isVideo = (el.media_type || el.mediaType) === 'VIDEO';
+                                        const src = el.media_url || el.mediaUrl || "/png/placeholder.png";
+                                        return (
+                                            <SwiperSlide key={index}>
+                                                <div className="relative w-full h-56 sm:h-80 md:h-[26rem] lg:h-[30rem]">
+                                                    {isVideo ? (
+                                                        <video
+                                                            src={src}
+                                                            controls
+                                                            muted
+                                                            preload="metadata"
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <Image
+                                                            alt={`${property?.name}_img_${index}`}
+                                                            src={src}
+                                                            fill
+                                                            className="object-cover"
+                                                            priority={index === 0}
+                                                        />
+                                                    )}
+                                                    {/* Gradient overlay */}
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                                                </div>
+                                            </SwiperSlide>
+                                        );
+                                    })
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-56 sm:h-80 md:h-96 text-zinc-400 gap-3">
                                         <PiBuildingApartment className="text-5xl" />
@@ -424,12 +438,17 @@ export default function PropertyDetailsView({
                                                         >
                                                             <div className="relative h-36 sm:h-44 bg-zinc-100 overflow-hidden">
                                                                 {el.media && el.media.length > 0 ? (
-                                                                    <Image
-                                                                        src={el.media[0].media_url || el.media[0].mediaUrl || "/png/placeholder.png"}
-                                                                        alt={el.name}
-                                                                        fill
-                                                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                                    />
+                                                                    (() => {
+                                                                        const firstImage = el.media.find((m: any) => (m.media_type || m.mediaType) !== 'VIDEO');
+                                                                        const thumb = firstImage || el.media[0];
+                                                                        const thumbSrc = thumb.media_url || thumb.mediaUrl || "/png/placeholder.png";
+                                                                        const thumbIsVideo = (thumb.media_type || thumb.mediaType) === 'VIDEO';
+                                                                        return thumbIsVideo ? (
+                                                                            <video src={thumbSrc} muted preload="metadata" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                                        ) : (
+                                                                            <Image src={thumbSrc} alt={el.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                                        );
+                                                                    })()
                                                                 ) : (
                                                                     <div className="w-full h-full flex flex-col items-center justify-center text-zinc-300 gap-2">
                                                                         <PiBuildingApartment className="text-3xl" />
