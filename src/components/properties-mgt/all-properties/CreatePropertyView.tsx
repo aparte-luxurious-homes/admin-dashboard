@@ -71,7 +71,7 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
     return (
         <div className="py-3 px-1 w-full">
             <input
-                id="name"
+                id="amenity-name"
                 type="text"
                 placeholder="E.g GYM"
                 value={name}
