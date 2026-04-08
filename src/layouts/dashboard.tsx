@@ -93,6 +93,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, isFetching, router]);
 
+  const mobileMenuCtx = useMemo(
+    () => ({
+      isOpen: isMobileMenuOpen,
+      open: () => setIsMobileMenuOpen(true),
+      close: () => setIsMobileMenuOpen(false),
+    }),
+    [isMobileMenuOpen]
+  );
+
   // Show loader while checking authentication or fetching user
   if (isCheckingAuth || (isFetching && !user)) {
     return <Loader message="Loading dashboard..." />;
@@ -120,15 +129,6 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       })
     });
   };
-
-  const mobileMenuCtx = useMemo(
-    () => ({
-      isOpen: isMobileMenuOpen,
-      open: () => setIsMobileMenuOpen(true),
-      close: () => setIsMobileMenuOpen(false),
-    }),
-    [isMobileMenuOpen]
-  );
 
   return (
     <MobileMenuContext.Provider value={mobileMenuCtx}>

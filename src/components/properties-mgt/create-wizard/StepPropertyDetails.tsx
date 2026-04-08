@@ -37,6 +37,7 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any; isLoaded: bool
         if (formik.values.address !== value) {
             setValue(formik.values.address, false);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formik.values.address]);
 
     const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
