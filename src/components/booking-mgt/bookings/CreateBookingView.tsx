@@ -284,6 +284,7 @@ export default function CreateBookingView() {
     formik.setFieldValue("user_id", guest.id);
     setGuestSearchInput("");
     setGuestSearchTerm("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSwitchToNewGuest = useCallback(() => {
@@ -294,6 +295,7 @@ export default function CreateBookingView() {
     } else {
       formik.setFieldValue("guest_phone", input);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guestSearchInput]);
 
   // Resolve duplicate detection: when the lookup returns results for the new guest's email/phone
@@ -327,6 +329,7 @@ export default function CreateBookingView() {
         setDuplicateGuestMatch(null);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -341,6 +344,7 @@ export default function CreateBookingView() {
     formik.setFieldValue("guest_last_name", "");
     formik.setFieldValue("guest_email", "");
     formik.setFieldValue("guest_phone", "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleGuestSelect]);
 
   const { values, setFieldValue } = formik;

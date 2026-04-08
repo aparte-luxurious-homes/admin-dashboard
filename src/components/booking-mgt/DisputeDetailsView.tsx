@@ -440,6 +440,7 @@ const DisputeDetailsView = () => {
                             {uploadFiles.map((file, idx) => (
                                 <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-zinc-200 group">
                                     {file.type.startsWith('image') ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
                                         <img src={URL.createObjectURL(file)} alt="Evidence" className="w-full h-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full bg-zinc-100 flex items-center justify-center text-zinc-400">
