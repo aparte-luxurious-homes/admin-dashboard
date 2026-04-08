@@ -1024,16 +1024,21 @@ export default function EditPropertyView({
                       key={item.id}
                       className="relative group aspect-square rounded-xl overflow-hidden bg-zinc-100 border border-zinc-100"
                     >
-                      <Image
-                        src={
-                          item.media_url ||
-                          item.mediaUrl ||
-                          "/png/placeholder.png"
-                        }
-                        alt="Property media"
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
+                      {(item.media_type || item.mediaType) === 'VIDEO' ? (
+                        <video
+                          src={item.media_url || item.mediaUrl || ""}
+                          muted
+                          preload="metadata"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <Image
+                          src={item.media_url || item.mediaUrl || "/png/placeholder.png"}
+                          alt="Property media"
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      )}
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                       <button
                         type="button"
