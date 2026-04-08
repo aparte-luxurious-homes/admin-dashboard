@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { BookingMode, IProperty, IPropertyUnit } from "../types";
-import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty, UpdateBookingMode, UpdatePropertyDocumentStatus, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
+import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty, ReassignPropertyOwner, UpdateBookingMode, UpdatePropertyDocumentStatus, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
@@ -58,6 +58,7 @@ export default function PropertyDetailsView({
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const { mutate: assignAgent, isPending: assignmentLoading } = AssignToProperty(propertyId)
     const { mutate: updateBookingMode, isPending: bookingModeUpdating } = UpdateBookingMode();
+    const { mutate: reassignOwner, isPending: reassignOwnerLoading } = ReassignPropertyOwner(propertyId);
 
     const router = useRouter();
     const pathname = usePathname();
@@ -69,6 +70,11 @@ export default function PropertyDetailsView({
 
     const [showVerification, setShowVerification] = useState(false);
     const [showAgentSelection, setShowAgentSelection] = useState(false);
+    const [showOwnerSelection, setShowOwnerSelection] = useState(false);
+    const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
+    const { data: ownersList, isLoading: ownersLoading } = GetAllUsers(1, 12, ownerSearchTerm, UserRole.OWNER);
+    const [owners, setOwners] = useState<IUser[]>([]);
+    const [selectedOwner, setSelectedOwner] = useState<IUser | null>(null);
     const [editMode, setEditMode] = useState<boolean>(Boolean(searchParams.get('edit')));
     const [property, setProperty] = useState<IProperty>(data?.data?.data)
     const [availableUnits, setAvailableUnits] = useState<number>(0)
@@ -143,9 +149,32 @@ export default function PropertyDetailsView({
         setSelectedAgent(filteredUsers[0]);
     }
 
+    const handleOwnerReassignment = (ownerId: string) => {
+        reassignOwner(
+            { payload: { owner_id: ownerId } },
+            {
+                onSuccess: () => {
+                    toast.success('Owner reassigned successfully', { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } });
+                    setShowOwnerSelection(false);
+                    setSelectedOwner(null);
+                },
+                onError: (err: any) => toast.error(err?.response?.data?.detail || 'Something went wrong', { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } })
+            }
+        )
+    }
+
+    const handleOwnerSelection = (email: string) => {
+        const filteredUsers = owners?.filter(el => el?.email === email);
+        setSelectedOwner(filteredUsers[0]);
+    }
+
     useEffect(() => {
         setAgents(agentsList?.data?.data?.data)
     }, [agentsList])
+
+    useEffect(() => {
+        setOwners(ownersList?.data?.data?.data)
+    }, [ownersList])
 
     useEffect(() => {
         if (data) {
@@ -568,7 +597,18 @@ export default function PropertyDetailsView({
                                         {/* Owner */}
                                         {user?.role !== UserRole.OWNER && (
                                             <div>
-                                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-2.5">Owner</p>
+                                                <div className="flex items-center justify-between mb-2.5">
+                                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Owner</p>
+                                                    {user?.role === UserRole.ADMIN && !editMode && (
+                                                        <button
+                                                            onClick={() => setShowOwnerSelection(true)}
+                                                            className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"
+                                                            title="Change owner"
+                                                        >
+                                                            <HiOutlinePencilAlt className="text-xs text-zinc-400 hover:text-primary" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 <PersonRow
                                                     image={(property?.owner?.profile?.profileImage || property?.owner?.profile?.profile_image) ?? '/png/sample_profile.png'}
                                                     name={property?.owner?.profile?.firstName
@@ -779,6 +819,66 @@ export default function PropertyDetailsView({
                                                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-60 transition-all"
                                             >
                                                 {assignmentLoading ? <Spinner /> : 'Assign'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </CustomModal>
+
+                        <CustomModal
+                            isOpen={showOwnerSelection}
+                            onClose={() => { setShowOwnerSelection(false); setSelectedOwner(null); }}
+                            title="Reassign property owner"
+                        >
+                            <div className="w-full p-1">
+                                {!selectedOwner ? (
+                                    <div className="mt-2">
+                                        <label className="text-sm text-zinc-600 font-medium block mb-2">Search owners</label>
+                                        <AdjustableFilterDropdown
+                                            placeholder="Search by email..."
+                                            options={owners?.map(el => el?.email)}
+                                            handleSelection={(val) => handleOwnerSelection(val)}
+                                            searchTerm={ownerSearchTerm}
+                                            setSearchTerm={setOwnerSearchTerm}
+                                            isLoading={ownersLoading}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="mt-2 space-y-4">
+                                        <div className="flex gap-3 items-center p-3 bg-zinc-50 rounded-xl">
+                                            <Image
+                                                alt="owner-image"
+                                                src={(selectedOwner?.profile?.profileImage || selectedOwner?.profile?.profile_image) ?? '/png/sample_profile.png'}
+                                                height={44} width={44}
+                                                className="w-11 h-11 rounded-full object-cover ring-2 ring-zinc-100"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-semibold text-zinc-900">
+                                                    {selectedOwner?.firstName ? `${selectedOwner?.firstName} ${selectedOwner?.lastName}` : selectedOwner?.email || '--/--'}
+                                                </p>
+                                                <p className="text-xs text-zinc-500">{selectedOwner?.email}</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-zinc-700">
+                                            Reassign this property to <strong>{selectedOwner?.firstName ? `${selectedOwner?.firstName} ${selectedOwner?.lastName}` : (selectedOwner?.email || 'this owner')}</strong>?
+                                        </p>
+                                        <div className="flex gap-3 pt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedOwner(null)}
+                                                disabled={reassignOwnerLoading}
+                                                className="flex-1 py-2.5 font-semibold rounded-xl text-sm border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-60 transition-all"
+                                            >
+                                                Back
+                                            </button>
+                                            <button
+                                                onClick={() => handleOwnerReassignment(String(selectedOwner?.id))}
+                                                disabled={reassignOwnerLoading}
+                                                type="button"
+                                                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-60 transition-all"
+                                            >
+                                                {reassignOwnerLoading ? <Spinner /> : 'Reassign'}
                                             </button>
                                         </div>
                                     </div>

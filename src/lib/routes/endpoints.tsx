@@ -15,6 +15,7 @@ export const API_ROUTES = {
         },
         properties: {
             assign: (id: string | number) => `/admin/properties/${id}/assign`,
+            reassignOwner: (id: string | number) => `/admin/properties/${id}/reassign-owner`,
             verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
             feature: (id: string | number) => `/admin/properties/${id}/feature`,
         },
