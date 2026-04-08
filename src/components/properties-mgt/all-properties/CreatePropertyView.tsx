@@ -291,7 +291,7 @@ export default function CreatePropertyView({ }) {
                                         },
                                         {
                                             onError: (error: any) =>
-                                                toast.error(error.status === 422 ? 'Invalid media file format' : 'Media upload failed', {
+                                                toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Media upload failed', {
                                                     duration: 6000,
                                                     style: {
                                                         maxWidth: '500px',

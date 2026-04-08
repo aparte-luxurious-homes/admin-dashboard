@@ -342,7 +342,7 @@ export default function CreateUnitView({ propertyId }: { propertyId: string | nu
                                     },
                                     {
                                         onError: (error: any) =>
-                                            toast.error(error.status === 422 ? 'Media file(s) include Invalid format' : 'Media upload failed'),
+                                            toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Media upload failed'),
                                     }
                                 );
                             }

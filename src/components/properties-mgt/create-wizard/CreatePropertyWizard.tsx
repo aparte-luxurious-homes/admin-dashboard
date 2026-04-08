@@ -283,7 +283,7 @@ export default function CreatePropertyWizard() {
                                 {
                                     onError: (error: any) =>
                                         toast.error(
-                                            error.status === 422 ? 'Invalid media file format' : 'Media upload failed',
+                                            error?.response?.data?.detail || error?.response?.data?.message || 'Media upload failed',
                                             { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } }
                                         ),
                                 }

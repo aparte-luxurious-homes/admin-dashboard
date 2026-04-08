@@ -433,8 +433,8 @@ export default function EditPropertyView({
                     removeParam("edit");
                     handleEditMode(false);
                   },
-                  onError: () => {
-                    toast.error("Property updated but image upload failed", {
+                  onError: (error: any) => {
+                    toast.error(error?.response?.data?.detail || "Property updated but media upload failed", {
                       duration: 6000,
                       style: { maxWidth: "500px", width: "max-content" },
                     });
@@ -1081,9 +1081,7 @@ export default function EditPropertyView({
                           }),
                         onError: (error: any) =>
                           toast.error(
-                            error.status === 422
-                              ? "Invalid format"
-                              : "Upload failed",
+                            error?.response?.data?.detail || error?.response?.data?.message || "Upload failed",
                             {
                               duration: 6000,
                               style: {
