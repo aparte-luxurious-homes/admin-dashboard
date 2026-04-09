@@ -9,6 +9,8 @@ import {
   GetIntegrationConfigs,
   UpdateIntegrationConfig,
 } from "@/src/lib/request-handlers/integrationsMgt";
+import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
 
 const DISBURSEMENT_KEY = "DISBURSEMENT_PROVIDER";
 const REWARD_ENABLED_KEY = "PROPERTY_VERIFICATION_REWARD_ENABLED";
@@ -48,6 +50,10 @@ const toastStyle = {
 };
 
 const PaymentPayout = () => {
+  const { user } = useAuth();
+  const isAdmin =
+    user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
+
   const { data, isLoading, isError } = GetIntegrationConfigs();
   const mutation = UpdateIntegrationConfig();
   const rewardMutation = UpdateIntegrationConfig();
@@ -302,8 +308,10 @@ const PaymentPayout = () => {
         </p>
       </div>
 
-      {/* Disbursement Provider Card */}
-      <div className="mt-8 p-6 border border-[#E4E7EC] rounded-xl bg-white">
+      {/* Config cards — admin only */}
+      {isAdmin && (
+        <>
+        <div className="mt-8 p-6 border border-[#E4E7EC] rounded-xl bg-white">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h4 className="text-lg font-semibold text-gray-800">
@@ -511,6 +519,8 @@ const PaymentPayout = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };
