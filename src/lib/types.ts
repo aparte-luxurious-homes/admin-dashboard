@@ -47,6 +47,12 @@ export interface IDispute {
   status: DisputeStatus;
   outcome: DisputeOutcome | null;
   admin_notes: string | null;
+  guest_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
+  owner_name?: string;
+  owner_email?: string;
+  owner_phone?: string;
   evidence: IDisputeEvidence[];
   logs: IDisputeLog[];
   created_at: string;

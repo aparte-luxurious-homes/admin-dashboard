@@ -9,25 +9,93 @@ import { DisputeStatus, DisputeOutcome } from "@/src/lib/enums";
 
 // 🔹 Fetch Single Dispute Details (Admin)
 export const useDisputeDetails = (id: string) => {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: ["dispute-details", id],
     queryFn: async () => {
       const response = await axiosRequest.get<IBaseResponse<IDispute>>(API_ROUTES.admin.disputes.details(id));
-      return response.data.data;
+      
+      let cachedDispute: Partial<IDispute> | undefined;
+      const queries = queryClient.getQueriesData<IAdminPaginatedResponse<IDispute>>({ queryKey: ["admin-disputes"] });
+      for (const [_, data] of queries) {
+        if (data?.items) {
+          const found = data.items.find((d) => d.id === id || d.dispute_id === id);
+          if (found) {
+            cachedDispute = found;
+            break;
+          }
+        }
+      }
+
+      const fetchedData = response.data.data;
+      return {
+        ...cachedDispute,
+        ...fetchedData,
+        guest_name: fetchedData.guest_name || cachedDispute?.guest_name,
+        guest_email: fetchedData.guest_email || cachedDispute?.guest_email,
+        guest_phone: fetchedData.guest_phone || cachedDispute?.guest_phone,
+        owner_name: fetchedData.owner_name || cachedDispute?.owner_name,
+        owner_email: fetchedData.owner_email || cachedDispute?.owner_email,
+        owner_phone: fetchedData.owner_phone || cachedDispute?.owner_phone,
+      };
     },
     enabled: !!id,
+    initialData: () => {
+      const queries = queryClient.getQueriesData<IAdminPaginatedResponse<IDispute>>({ queryKey: ["admin-disputes"] });
+      for (const [_, data] of queries) {
+        if (data?.items) {
+          const found = data.items.find((d) => d.id === id || d.dispute_id === id);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    }
   });
 };
 
 // 🔹 Fetch Single My Dispute Details (Owner)
 export const useMyDisputeDetails = (id: string) => {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: ["my-dispute-details", id],
     queryFn: async () => {
       const response = await axiosRequest.get<IBaseResponse<IDispute>>(API_ROUTES.disputes.details(id));
-      return response.data.data;
+      
+      let cachedDispute: Partial<IDispute> | undefined;
+      const queries = queryClient.getQueriesData<IAdminPaginatedResponse<IDispute>>({ queryKey: ["my-disputes"] });
+      for (const [_, data] of queries) {
+        if (data?.items) {
+          const found = data.items.find((d) => d.id === id || d.dispute_id === id);
+          if (found) {
+            cachedDispute = found;
+            break;
+          }
+        }
+      }
+
+      const fetchedData = response.data.data;
+      return {
+        ...cachedDispute,
+        ...fetchedData,
+        guest_name: fetchedData.guest_name || cachedDispute?.guest_name,
+        guest_email: fetchedData.guest_email || cachedDispute?.guest_email,
+        guest_phone: fetchedData.guest_phone || cachedDispute?.guest_phone,
+        owner_name: fetchedData.owner_name || cachedDispute?.owner_name,
+        owner_email: fetchedData.owner_email || cachedDispute?.owner_email,
+        owner_phone: fetchedData.owner_phone || cachedDispute?.owner_phone,
+      };
     },
     enabled: !!id,
+    initialData: () => {
+      const queries = queryClient.getQueriesData<IAdminPaginatedResponse<IDispute>>({ queryKey: ["my-disputes"] });
+      for (const [_, data] of queries) {
+        if (data?.items) {
+          const found = data.items.find((d) => d.id === id || d.dispute_id === id);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    }
   });
 };
 
@@ -113,6 +181,27 @@ export const useUploadDisputeEvidence = () => {
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to upload evidence");
+    },
+  });
+};
+
+// 🔹 Delete Dispute Evidence
+export const useDeleteDisputeEvidence = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ disputeId, evidenceId }: { disputeId: string; evidenceId: string }) => {
+      const response = await axiosRequest.delete<IBaseResponse<null>>(
+        API_ROUTES.disputes.deleteEvidence(disputeId, evidenceId)
+      );
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["my-dispute-details", variables.disputeId] });
+      queryClient.invalidateQueries({ queryKey: ["dispute-details", variables.disputeId] });
+      toast.success("Evidence removed successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Failed to remove evidence");
     },
   });
 };
