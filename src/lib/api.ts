@@ -25,13 +25,13 @@ axiosRequest.interceptors.request.use((config) => {
   // 2. Ensure baseURL has NO trailing slash for consistent combination
   config.baseURL = config.baseURL?.replace(/\/+$/, "");
 
-  // 3. Ensure url has NO leading slash to prevent Axios's path replacement behavior
-  if (config.url?.startsWith("/")) {
-    config.url = config.url.substring(1);
+  // Ensure url always has a leading slash so Axios appends it correctly to baseURL
+  if (config.url && !config.url.startsWith("/")) {
+    config.url = `/${config.url}`;
   }
 
   if (process.env.NEXT_PUBLIC_NODE_ENV !== 'production') {
-    console.log(`[Axios] Final Request URL: ${config.baseURL}/${config.url}`);
+    console.log(`[Axios] Final Request URL: ${config.baseURL}${config.url}`);
   }
 
   const token = Cookies.get("token");

@@ -35,6 +35,11 @@ export enum PropertyType {
     OTHERS = 'OTHERS',
 }
 
+export enum BookingMode {
+    INSTANT = 'INSTANT',
+    REQUEST_TO_BOOK = 'REQUEST_TO_BOOK',
+}
+
 export interface IAmenity {
     id: number
     name: string
@@ -83,7 +88,7 @@ export interface IPropertyReview {
 }
 
 export interface IPropertyMedia {
-    id: number
+    id: string
     mediaUrl?: string
     media_url?: string
     mediaType: MediaType
@@ -138,6 +143,8 @@ export interface IProperty {
     id: number
     ownerId: number
     owner_id?: number
+    bookingMode?: BookingMode
+    booking_mode?: BookingMode
     assignedAgent?: number
     assigned_agent?: number
     name: string
@@ -156,6 +163,9 @@ export interface IProperty {
     is_verified?: boolean
     isPetAllowed: boolean
     is_pet_allowed?: boolean
+    isPartyAllowed: boolean
+    is_party_allowed?: boolean
+    rules?: string
     isFeatured: boolean
     is_featured?: boolean
     createdAt: string
@@ -168,11 +178,40 @@ export interface IProperty {
     verifications: IPropertyVerification[]
     media: IPropertyMedia[]
     amenities: IAmenity[]
+    documents: IPropertyDocument[]
+}
+
+export enum DocumentType {
+    INTERNATIONAL_PASSPORT = 'INTERNATIONAL_PASSPORT',
+    DRIVERS_LICENSE = 'DRIVERS_LICENSE',
+    UTILITY_BILL = 'UTILITY_BILL',
+    POWER_BILL = 'POWER_BILL',
+    TENANCY_AGREEMENT = 'TENANCY_AGREEMENT',
+    TITLE_DEED = 'TITLE_DEED',
+    CERTIFICATE_OF_OCCUPANCY = 'CERTIFICATE_OF_OCCUPANCY',
+}
+
+export interface IPropertyDocument {
+    id: string
+    property_id: string
+    document_type: DocumentType
+    document_url: string
+    status: PropertyVerificationStatus
+    rejection_reason?: string
+    created_at: string
+    updated_at: string
+}
+
+export interface IPropertyDocumentCreate {
+    document_type: DocumentType
+    document_url: string
 }
 
 export interface IUpdatePropertyVerification {
     status: PropertyVerificationStatus,
     feedback: string,
+    skip_kyc_check?: boolean,
+    skip_document_check?: boolean,
 }
 
 export interface ICreateProperty {
@@ -188,6 +227,10 @@ export interface ICreateProperty {
     amenities: number[]
     // kyc_id: number
     is_pet_allowed: boolean
+    is_party_allowed: boolean
+    rules?: string
+    owner_email?: string
+    owner_name?: string
 }
 
 export interface IAssignProperty {
@@ -208,7 +251,11 @@ export interface IUpdateProperty {
     ownerId: number,
     amenities?: number[],
     // assignedAgent?: IUser,
-    is_pet_allowed: boolean
+    is_pet_allowed: boolean,
+    is_party_allowed: boolean,
+    rules?: string,
+    owner_email?: string,
+    owner_name?: string
 }
 
 export interface IUpdatePropertyUnit {
@@ -236,7 +283,8 @@ export interface ICreatePropertyUnit {
     bedroom_count: number,
     living_room_count: number,
     kitchen_count: number,
-    bathroom_count: number
+    bathroom_count: number,
+    caution_fee: string,
     amenities: number[]
 }
 

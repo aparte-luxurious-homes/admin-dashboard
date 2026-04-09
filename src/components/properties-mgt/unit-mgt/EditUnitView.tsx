@@ -2,7 +2,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
-import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia, DeleteUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -43,6 +43,7 @@ export default function EditUnitView({
     const { mutate, isPending } = UpdatePropertyUnit();
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const { mutate: uploadMedia, data: uploadData, isPending: uploadedMediaPending } = UploadPropertyUnitMedia();
+    const { mutate: deleteMedia } = DeleteUnitMedia();
     const { user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -149,15 +150,26 @@ export default function EditUnitView({
         },
     });
 
-    const handleDeleteImage = (e: number) => {
+    const handleDeleteImage = (id: string) => {
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: `This action cannot be undone. This will permanently delete the image ${e}.`,
+                description: `This action cannot be undone. This will permanently delete the image.`,
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log(e);
+                    deleteMedia({
+                        propertyId,
+                        unitId,
+                        mediaId: id
+                    }, {
+                        onSuccess: () => {
+                            toast.success("Image deleted successfully");
+                        },
+                        onError: (error: any) => {
+                            toast.error(error?.response?.data?.detail || "Failed to delete image");
+                        }
+                    });
                 },
             })
         );
@@ -204,11 +216,14 @@ export default function EditUnitView({
 
     useEffect(() => {
         if (uploadData?.data) {
-            // Ensure uploadData.data is an array before spreading
-            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.media_url || el?.data?.mediaUrl) : [uploadData.data?.data])]);
+            // Response shape: { data: { message, data: [{id, media_url, ...}, ...] }, status }
+            const newMedia = uploadData.data?.data ?? uploadData.data;
+            const mediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
+            setMedia((prev) => [...prev, ...mediaArray]);
             if (uploadData.status === 201) {
-                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url)); // Revoke object URLs
-                uploadRef.current = []
+                setUploadedMedia([]);
+                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+                uploadRef.current = [];
             }
         }
     }, [uploadData]);
@@ -424,12 +439,21 @@ export default function EditUnitView({
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                 {media?.map((el, index) => (
                                     <div key={index} className="relative aspect-video rounded-xl overflow-hidden group shadow-sm border border-zinc-100">
-                                        <Image
-                                            src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                            alt={`unit_img_${index}`}
-                                            fill
-                                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
+                                        {(el.media_type || el.mediaType) === 'VIDEO' ? (
+                                            <video
+                                                src={el.media_url || el.mediaUrl || ""}
+                                                muted
+                                                preload="metadata"
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <Image
+                                                src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
+                                                alt={`unit_img_${index}`}
+                                                fill
+                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        )}
                                         <div
                                             onClick={() => handleDeleteImage(el.id)}
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
@@ -492,6 +516,8 @@ export default function EditUnitView({
                                         <input
                                             id="price-per-night"
                                             type="number"
+                                            min="0.01"
+                                            step="0.01"
                                             value={formik.values.pricePerNight}
                                             onChange={(e) => formik.setFieldValue('pricePerNight', e.target.value)}
                                             className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
@@ -509,6 +535,8 @@ export default function EditUnitView({
                                         <input
                                             id="caution-fee"
                                             type="number"
+                                            min="0"
+                                            step="0.01"
                                             value={formik.values.cautionFee}
                                             onChange={(e) => formik.setFieldValue('cautionFee', e.target.value)}
                                             className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"

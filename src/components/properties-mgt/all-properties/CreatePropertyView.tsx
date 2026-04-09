@@ -4,7 +4,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
-import { IAmenity, ICreateProperty, MediaType, PropertyType } from "../types";
+import { DocumentType, IAmenity, ICreateProperty, MediaType, PropertyType } from "../types";
 import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
@@ -12,19 +12,24 @@ import { ALL_COUNTRIES } from "@/src/data/countries";
 import { FaPlus, FaMapLocationDot, FaArrowLeftLong } from "react-icons/fa6";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
-import { CreateAmenity, CreateProperty, UploadPropertyMedia } from "@/src/lib/request-handlers/propertyMgt";
+import { CreateAmenity, CreateProperty, UploadPropertyMedia, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
 import { useAuth } from "@/src/hooks/useAuth";
 import Spinner from "../../ui/Spinner";
-import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
+import { GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
+import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
+import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
 import { fixedAmenities } from "@/src/data/amenities";
 import CustomModal from "../../ui/CustomModal";
 import { UserRole } from "@/src/lib/enums";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import toast from "react-hot-toast";
+import toast from "react-hot-toast"; 
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import axios from "axios";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import usePlacesAutocomplete, { getGeocode, getLatLng } from "use-places-autocomplete";
+const libraries: any = ["places"];
 
 
 export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<boolean>> }) {
@@ -66,7 +71,7 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
     return (
         <div className="py-3 px-1 w-full">
             <input
-                id="name"
+                id="amenity-name"
                 type="text"
                 placeholder="E.g GYM"
                 value={name}
@@ -90,6 +95,81 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
     );
 }
 
+function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: boolean }) {
+    const {
+        ready,
+        value,
+        suggestions: { status, data },
+        setValue,
+        clearSuggestions,
+    } = usePlacesAutocomplete({
+        requestOptions: {
+            componentRestrictions: { country: "ng" }
+        },
+        debounce: 300,
+        defaultValue: formik.values.address
+    });
+
+    const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setValue(e.target.value);
+        formik.setFieldValue('address', e.target.value);
+    };
+
+    const handleSelect = async (description: string) => {
+        setValue(description, false);
+        formik.setFieldValue('address', description);
+        clearSuggestions();
+
+        try {
+            const results = await getGeocode({ address: description });
+            const { lat, lng } = await getLatLng(results[0]);
+            formik.setFieldValue('latitude', lat);
+            formik.setFieldValue('longitude', lng);
+
+            results[0].address_components.forEach((component: any) => {
+                const types = component.types;
+                if (types.includes('locality')) {
+                    formik.setFieldValue('city', component.long_name);
+                } else if (types.includes('administrative_area_level_1')) {
+                    formik.setFieldValue('state', component.long_name);
+                } else if (types.includes('country')) {
+                    formik.setFieldValue('country', component.long_name);
+                }
+            });
+        } catch (error) {
+            console.error("Error geocoding selection:", error);
+        }
+    };
+
+    return (
+        <div className="relative group w-full">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400 z-10">
+                <SlLocationPin className="text-lg" />
+            </div>
+            <input
+                value={value}
+                onChange={handleInput}
+                disabled={!isLoaded}
+                placeholder={isLoaded ? "Search for an address..." : "Loading Map API..."}
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+            />
+            {status === "OK" && (
+                <ul className="absolute z-50 w-full bg-white border border-zinc-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-auto">
+                    {(data as any[]).map(({ place_id, description }: { place_id: string, description: string }) => (
+                        <li
+                            key={place_id}
+                            onClick={() => handleSelect(description)}
+                            className="px-4 py-3 hover:bg-zinc-50 cursor-pointer text-sm font-medium border-b border-zinc-100 last:border-0"
+                        >
+                            {description}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 
 export default function CreatePropertyView({ }) {
     const { user } = useAuth();
@@ -97,11 +177,35 @@ export default function CreatePropertyView({ }) {
     const { mutate, isPending } = CreateProperty();
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate: uploadMedia } = UploadPropertyMedia();
+    const { mutate: uploadDoc } = UploadPropertyDocument();
 
+    const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
+    const [isNewOwner, setIsNewOwner] = useState<boolean>(true);
+    const [selectedOwner, setSelectedOwner] = useState<any | null>(null);
+
+    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 100, ownerSearchTerm, UserRole.OWNER);
     const [availableAmenities, setAvailableAmenities] = useState<IAmenity[]>(fixedAmenities);
     const [uploadedMedia, setUploadedMedia] = useState<File[]>([]);
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false)
+
+    // Document upload state
+    const [docFiles, setDocFiles] = useState<{ file: File; type: DocumentType }[]>([]);
+    const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
+
+    const { isLoaded, loadError } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+        libraries
+    });
+
+    if (loadError) {
+        console.error("Google Maps load error:", loadError);
+    }
+
+    // if (typeof window !== 'undefined') {
+    //     console.log('[CreateProperty] Map loaded:', isLoaded, 'API Key exists:', !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
+    // }
 
     const sortAmenities = (amenities: IAmenity[] = [], newAmeities: string[] = []): number[] => {
         const sortedAmenities: number[] = []
@@ -136,6 +240,8 @@ export default function CreatePropertyView({ }) {
                 longitude: 0,
                 // kyc_id: 0,
                 ownerId: 0,
+                owner_name: "",
+                owner_email: "",
                 is_pet_allowed: false,
                 amenities: [],
                 amenityIds: [],
@@ -147,6 +253,7 @@ export default function CreatePropertyView({ }) {
                 const payload: ICreateProperty = {
                     ...values,
                     amenities: sortedAmenities,
+                    is_party_allowed: false,
                 }
 
                 mutate({
@@ -158,6 +265,16 @@ export default function CreatePropertyView({ }) {
                             const formData = new FormData();
 
                             if (propertyId) {
+                                if (uploadedMedia.length < 3) {
+                                    toast.error(`Please upload at least 3 images of the property`, {
+                                        duration: 6000,
+                                        style: {
+                                            maxWidth: '500px',
+                                            width: 'max-content'
+                                        }
+                                    });
+                                    return;
+                                }
 
                                 if (uploadedMedia.length > 0) {
                                     uploadedMedia?.forEach(file => {
@@ -174,7 +291,7 @@ export default function CreatePropertyView({ }) {
                                         },
                                         {
                                             onError: (error: any) =>
-                                                toast.error(error.status === 422 ? 'Invalid media file format' : 'Media upload failed', {
+                                                toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Media upload failed', {
                                                     duration: 6000,
                                                     style: {
                                                         maxWidth: '500px',
@@ -183,6 +300,24 @@ export default function CreatePropertyView({ }) {
                                                 }),
                                         },
                                     );
+                                }
+
+                                // Upload documents
+                                if (docFiles.length > 0) {
+                                    docFiles.forEach(({ file, type }) => {
+                                        const docFormData = new FormData();
+                                        docFormData.append('document_file', file);
+                                        docFormData.append('document_type', type);
+                                        uploadDoc({
+                                            propertyId,
+                                            payload: docFormData
+                                        }, {
+                                            onError: () => toast.error('Document upload failed', {
+                                                duration: 6000,
+                                                style: { maxWidth: '500px', width: 'max-content' }
+                                            }),
+                                        });
+                                    });
                                 }
 
                                 toast.success('Property created successfully', {
@@ -209,6 +344,7 @@ export default function CreatePropertyView({ }) {
         });
 
     const handleGeocode = async () => {
+        // This is kept for backward compatibility if needed, but the map/autocomplete should handle this now
         const { address, city, state, country } = formik.values;
         if (!address) {
             toast.error("Please enter a physical address first");
@@ -242,7 +378,7 @@ export default function CreatePropertyView({ }) {
 
 
     return (
-        <div className="relative">
+        <div className="relative m-5">
             {/* Header section refined */}
             <div className="flex items-center justify-between mb-8">
                 <div className="space-y-1">
@@ -308,6 +444,103 @@ export default function CreatePropertyView({ }) {
                                     options={Object.values(PropertyType)}
                                 />
                             </div>
+                            {(user?.role === UserRole.ADMIN || user?.role === UserRole.AGENT) && (
+                                <div className="md:col-span-2 space-y-4 pt-4 border-t border-zinc-100 mt-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Owner Assignment</h4>
+                                        <div className="flex items-center gap-2 p-1 bg-zinc-100 rounded-xl w-fit">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsNewOwner(false);
+                                                    formik.setFieldValue('owner_email', '');
+                                                    formik.setFieldValue('owner_name', '');
+                                                }}
+                                                className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${!isNewOwner ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                            >
+                                                EXISTING OWNER
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsNewOwner(true);
+                                                    setSelectedOwner(null);
+                                                    formik.setFieldValue('ownerId', 0);
+                                                }}
+                                                className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${isNewOwner ? 'bg-white shadow-sm text-primary' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                            >
+                                                ONBOARD NEW
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {!isNewOwner ? (
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Search Existing Owner</label>
+                                            <AdjustableFilterDropdown
+                                                placeholder="Search by name or email..."
+                                                options={(userList?.data?.data?.data ?? userList?.data?.data?.items ?? [])?.map((u: any) => u.email).filter(Boolean) ?? []}
+                                                handleSelection={(val) => {
+                                                    const users = (userList?.data?.data?.data ?? userList?.data?.data?.items ?? []);
+                                                    const selected = users.find((u: any) => u.email === val);
+                                                    setOwnerSearchTerm(selected?.email || val);
+                                                    setSelectedOwner(selected);
+                                                    formik.setFieldValue('ownerId', selected?.id);
+                                                }}
+                                                searchTerm={ownerSearchTerm}
+                                                setSearchTerm={setOwnerSearchTerm}
+                                                isLoading={usersLoading}
+                                            />
+                                            {selectedOwner && (
+                                                <div className="mt-3 p-3 bg-primary/5 rounded-2xl border border-primary/10 flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                                                        <Icon icon="mdi:account-check" className="text-xl" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-zinc-900">{selectedOwner.profile?.firstName ?? 'Owner'} {selectedOwner.profile?.lastName ?? ''}</p>
+                                                        <p className="text-[10px] font-medium text-zinc-500">{selectedOwner.email}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-2">
+                                                <label htmlFor="owner_name" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Full Name</label>
+                                                <div className="relative group">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                                        <Icon icon="mdi:account-box-outline" />
+                                                    </div>
+                                                    <input
+                                                        id="owner_name"
+                                                        type="text"
+                                                        placeholder="e.g. Jane Doe"
+                                                        value={formik.values.owner_name}
+                                                        onChange={formik.handleChange}
+                                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label htmlFor="owner_email" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Owner Email Address</label>
+                                                <div className="relative group">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                                        <Icon icon="mdi:email-outline" />
+                                                    </div>
+                                                    <input
+                                                        id="owner_email"
+                                                        type="email"
+                                                        placeholder="e.g. jane@example.com"
+                                                        value={formik.values.owner_email}
+                                                        onChange={formik.handleChange}
+                                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="md:col-span-2 space-y-2">
                                 <label htmlFor="description" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Description</label>
                                 <div className="relative">
@@ -337,28 +570,40 @@ export default function CreatePropertyView({ }) {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-3 space-y-2">
                                 <label htmlFor="address" className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Physical Address</label>
-                                <div className="flex gap-3">
-                                    <div className="relative group flex-1">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                            <SlLocationPin className="text-lg" />
+                                <div className="space-y-4">
+                                    <AddressAutocomplete
+                                        formik={formik}
+                                        isLoaded={isLoaded}
+                                    />
+
+                                    {isLoaded && (
+                                        <div className="w-full h-[300px] rounded-2xl overflow-hidden border border-zinc-200">
+                                            <GoogleMap
+                                                mapContainerStyle={{ height: '100%', width: '100%' }}
+                                                center={{ lat: formik.values.latitude || 6.5244, lng: formik.values.longitude || 3.3792 }}
+                                                zoom={formik.values.latitude ? 15 : 12}
+                                                onClick={(e: any) => {
+                                                    if (e.latLng) {
+                                                        formik.setFieldValue('latitude', e.latLng.lat());
+                                                        formik.setFieldValue('longitude', e.latLng.lng());
+                                                    }
+                                                }}
+                                            >
+                                                {formik.values.latitude && formik.values.longitude && (
+                                                    <Marker
+                                                        position={{ lat: formik.values.latitude, lng: formik.values.longitude }}
+                                                        draggable={true}
+                                                        onDragEnd={(e: any) => {
+                                                            if (e.latLng) {
+                                                                formik.setFieldValue('latitude', e.latLng.lat());
+                                                                formik.setFieldValue('longitude', e.latLng.lng());
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            </GoogleMap>
                                         </div>
-                                        <input
-                                            id="address"
-                                            type="text"
-                                            placeholder="Street Number, Building Name, Area"
-                                            value={formik.values.address}
-                                            onChange={formik.handleChange}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-                                        />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleGeocode}
-                                        className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                        title="Auto-detect coordinates from address"
-                                    >
-                                        <FaMapLocationDot className="text-xl" />
-                                    </button>
+                                    )}
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 md:col-span-3 gap-6">
@@ -400,18 +645,18 @@ export default function CreatePropertyView({ }) {
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">State</label>
                                 <CustomFilterDropdown
                                     placeholder={`E.g. Lagos`}
-                                    options={Object.keys(ALL_COUNTRIES[formik.values.country])}
+                                    options={ALL_COUNTRIES[formik.values.country] ? Object.keys(ALL_COUNTRIES[formik.values.country]) : []}
                                     handleSelection={(val) => formik.setFieldValue("state", val)}
-                                    selected={Object.keys(ALL_COUNTRIES[formik.values.country])?.includes(formik.values.state) ? formik.values.state : ''}
+                                    selected={ALL_COUNTRIES[formik.values.country] && Object.keys(ALL_COUNTRIES[formik.values.country])?.includes(formik.values.state) ? formik.values.state : ''}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">City</label>
                                 <CustomFilterDropdown
                                     placeholder={`E.g. Ikeja`}
-                                    options={ALL_COUNTRIES[formik.values.country][formik.values.state]}
+                                    options={(ALL_COUNTRIES[formik.values.country] && ALL_COUNTRIES[formik.values.country][formik.values.state]) ? ALL_COUNTRIES[formik.values.country][formik.values.state] : []}
                                     handleSelection={(val) => formik.setFieldValue("city", val)}
-                                    selected={ALL_COUNTRIES[formik.values.country][formik.values.state]?.includes(formik.values.city) ? formik.values.city : ''}
+                                    selected={(ALL_COUNTRIES[formik.values.country] && ALL_COUNTRIES[formik.values.country][formik.values.state])?.includes(formik.values.city) ? formik.values.city : ''}
                                 />
                             </div>
                         </div>
@@ -462,10 +707,70 @@ export default function CreatePropertyView({ }) {
                         </h3>
                         <div className="w-full mx-auto">
                             <CustomDropzone
-                                onDrop={setUploadedMedia}
+                                onDrop={(files: File[]) => setUploadedMedia(files)}
                                 multiple
                                 previewsRef={uploadRef}
+                                minFiles={3}
                             />
+                        </div>
+                    </div>
+
+                    {/* Documents Section */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                            <Icon icon="solar:file-text-bold-duotone" className="text-xl text-primary" />
+                            Ownership Documents
+                        </h3>
+                        <p className="text-xs text-zinc-500">Upload proof of ownership documents (PDF, JPG, PNG). These will be reviewed during verification.</p>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Document Type</label>
+                                <CustomDropdown
+                                    selected={selectedDocType}
+                                    options={Object.values(DocumentType)}
+                                    handleSelection={(val) => setSelectedDocType(val as DocumentType)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1 mb-2 block">Select File</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            setDocFiles(prev => [...prev, { file, type: selectedDocType }]);
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                    className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+                                />
+                            </div>
+
+                            {docFiles.length > 0 && (
+                                <div className="space-y-2">
+                                    {docFiles.map((doc, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <Icon icon="solar:file-text-bold-duotone" className="text-lg text-primary flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-zinc-800 truncate">{doc.file.name}</p>
+                                                    <p className="text-[10px] text-zinc-400">{doc.type.replace(/_/g, ' ')}</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDocFiles(prev => prev.filter((_, i) => i !== idx))}
+                                                className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                                            >
+                                                <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -514,7 +819,7 @@ export default function CreatePropertyView({ }) {
                         </Link>
                     </div>
                 </div>
-            </form>
-        </div>
+            </form >
+        </div >
     );
 }

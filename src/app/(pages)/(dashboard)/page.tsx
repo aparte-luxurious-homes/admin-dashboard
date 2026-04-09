@@ -19,6 +19,14 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link";
 import ItemCount from "@/src/components/item-count/itemcount";
+import GatewayBalancesCard from "@/src/components/finance-mgt/GatewayBalancesCard";
+import { GetGatewayBalances } from "@/src/lib/request-handlers/integrationsMgt";
+
+interface Wallet {
+  id: string;
+  balance: string | number;
+  currency: string;
+}
 
 interface Agent {
   id: number;
@@ -122,9 +130,10 @@ const Home = () => {
   const [statError, setStatError] = useState<string>("");
   const [searchValue, setSearchValue] = useState<string>("");
   const [range, setRange] = useState<string>("year");
+  const [wallet, setWallet] = useState<Wallet | null>(null);
   const { user, isFetching } = useAuth();
-
-  console.log(isFetching ? "Fetching User" : user);
+  const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances();
+  const balances = gatewayData?.data?.data || {};
 
   const fetchProperties = useCallback(async () => {
     setLoading(true);
@@ -161,15 +170,24 @@ const Home = () => {
     }
   }, []);
 
+  const fetchWallet = useCallback(async () => {
+    if (user?.role === "OWNER" || user?.role === "AGENT") {
+      try {
+        const response = await axiosRequest.get(API_ROUTES.wallet.base);
+        const wallets = response?.data?.data?.items || [];
+        const ngnWallet = wallets.find((w: any) => w.currency === "NGN") || wallets[0];
+        setWallet(ngnWallet);
+      } catch (err) {
+        console.error("Failed to fetch wallet:", err);
+      }
+    }
+  }, [user?.role]);
+
   useEffect(() => {
     fetchProperties();
     fetchStatistics();
-  }, [fetchProperties, fetchStatistics]);
-
-  console.log("stats", stats);
-  console.log(error)
-  console.log(statError)
-  console.log("properties", properties);
+    fetchWallet();
+  }, [fetchProperties, fetchStatistics, fetchWallet]);
 
   const dataByRange = {
     year: stats?.users?.map((item) => ({
@@ -440,12 +458,22 @@ const Home = () => {
   ];
 
   return (
-    <div className="full py-6">
+    <div className="full p-6">
       <div className="mb-6">
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              {(user?.role === "OWNER" || user?.role === "AGENT") && (
+                <Grid size={{ xs: 12, sm: 6, md: 3, lg: 3 }}>
+                  <StatsCard
+                    title="Wallet Balance"
+                    amount={`₦${wallet ? (parseFloat(wallet.balance as string) || 0).toLocaleString() : "0.00"}`}
+                    percentage={0}
+                    isIncrease={true}
+                  />
+                </Grid>
+              )}
+              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
                 <StatsCard
                   title="Total Revenue"
                   amount={`₦${(stats?.totalRevenue?.lastMonthAmount || 0).toLocaleString()}`}
@@ -453,7 +481,7 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalRevenue?.percentageChange) > 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
                 <StatsCard
                   title="Total Payments Processed"
                   amount={`₦${stats?.totalPayments?.lastMonthAmount?.toLocaleString() || "0"}`}
@@ -461,7 +489,7 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalPayments?.percentageChange) > 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+              <Grid size={{ xs: 12, sm: 6, md: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4, lg: (user?.role === "OWNER" || user?.role === "AGENT") ? 3 : 4 }}>
                 <StatsCard
                   title="Total Property Listed"
                   amount={`${stats?.totalProperties?.lastMonthTotal?.toLocaleString() || "0"}`}
@@ -469,11 +497,20 @@ const Home = () => {
                   isIncrease={parseFloat(stats?.totalProperties?.percentageChange) > 0}
                 />
               </Grid>
+              {(user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" || user?.role === "ANALYST") && (
+                <Grid size={{ xs: 12 }}>
+                  <GatewayBalancesCard
+                    paystack={balances.paystack || { isAvailable: false, error: "No data" }}
+                    monnify={balances.monnify || { isAvailable: false, error: "No data" }}
+                    isLoading={gatewayLoading}
+                  />
+                </Grid>
+              )}
               <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
                 <div className={`p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md ${stats?.properties?.length === 0 && "flex items-center justify-center"}`}>
                   {isStatLoading ? (
                     <Skeleton className="h-[200px] w-full rounded-md" />
-                  ) : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") ? (
+                  ) : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" || user?.role === "ANALYST") ? (
                     stats?.properties?.length > 0 ? (
                       <div>
                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-1 mb-1">
@@ -544,7 +581,7 @@ const Home = () => {
               </Grid>
             </Grid>
           </Grid>
-          {user?.role === "OWNER" || user?.role === "ADMIN" ? (
+          {user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" ? (
             <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }}>
               <div className="h-full p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                 <h3>Top Performing Agents</h3>
@@ -571,7 +608,10 @@ const Home = () => {
             </div>
             {searchResult?.length > 0 ? (
               <Table
-                columns={user?.role === "OWNER" ? propertyColumns : user?.role === "ADMIN" ? adminColumns : anAgentColumns}
+                columns={user?.role === "OWNER" ? propertyColumns
+                  : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OPERATIONS_ADMIN" || user?.role === "SUPPORT_ADMIN" || user?.role === "ANALYST") ? adminColumns
+                  : user?.role === "AGENT" ? anAgentColumns
+                  : propertyColumns}
                 rows={searchResult}
                 getRowId={(row) => row?.id}
                 pagination={false}

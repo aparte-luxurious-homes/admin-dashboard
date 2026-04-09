@@ -27,13 +27,25 @@ export const PAGE_ROUTES = {
         bookingManagement: {
             bookingDisputes: {
                 base: '/booking-management/booking-disputes',
-                details: (id: number) => `/booking-management/booking-disputes/${id}`,
+                details: (id: string | number) => `/booking-management/booking-disputes/${id}`,
             },
             bookings: {
                 base: '/booking-management/bookings',
                 create: '/booking-management/bookings/create',
                 details: (id: string) => `/booking-management/bookings/${id}`,
             },
+            stayExtensions: {
+                base: '/booking-management/stay-extensions',
+            }
+        },
+        reviews: {
+            base: '/reviews',
+            details: (id: string | number) => `/reviews/${id}`,
+        },
+        referrals: {
+            base: '/referrals',
+            agentStats: '/referrals/stats',
+            list: '/referrals/list',
         },
         propertyManagement: {
             allProperties: {
@@ -51,31 +63,30 @@ export const PAGE_ROUTES = {
                     bookings: (propertyId: number | string, unitId: number | string) => `/property-management/all-properties/${propertyId}/units/${unitId}/bookings`,
                 },
             },
-            assignAgents: {
-                base: '/property-management/assign-agents',
-                details: (id: number | string) => `/property-management/assign-agents/${id}`,
-            },
             manageVerifications: {
                 base: '/property-management/manage-verifications',
-                details: (verificationId: number | string) => `/property-management/manage-verifications/${verificationId}`,
             },
         },
         transactions: {
+            all: {
+                base: '/transactions/all',
+                details: (id: number | string) => `/transactions/all/${id}`,
+            },
             payments: {
                 base: '/transactions/payments',
-                details: (id: number) => `/transactions/payments/${id}`,
+                details: (id: number | string) => `/transactions/payments/${id}`,
             },
             refunds: {
                 base: '/transactions/refunds',
-                details: (id: number) => `/transactions/refunds/${id}`,
+                details: (id: number | string) => `/transactions/refunds/${id}`,
             },
             withdrawals: {
                 base: '/transactions/withdrawals',
-                details: (id: number) => `/transactions/withdrawals/${id}`,
+                details: (id: number | string) => `/transactions/withdrawals/${id}`,
             },
             bookingWithdrawals: {
                 base: '/transactions/booking-withdrawals',
-                details: (id: number) => `/transactions/booking-withdrawals/${id}`,
+                details: (id: number | string) => `/transactions/booking-withdrawals/${id}`,
             },
         },
         notifications: {
@@ -84,7 +95,7 @@ export const PAGE_ROUTES = {
             },
             manageNotifications: {
                 base: '/notifications/manage-notifications',
-                details: (id: number) => `/notifications/manage-notifications/${id}`,
+                details: (id: number | string) => `/notifications/manage-notifications/${id}`,
             },
         },
         settings: {
@@ -92,6 +103,9 @@ export const PAGE_ROUTES = {
         },
         rolesPermissions: {
             base: '/roles-permissions',
+        },
+        wallet: {
+            base: '/wallet',
         }
     }
 }
