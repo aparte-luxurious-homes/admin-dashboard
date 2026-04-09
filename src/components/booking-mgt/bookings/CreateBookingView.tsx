@@ -38,6 +38,7 @@ import {
 } from "@/src/lib/request-handlers/bookingMgt";
 import Spinner from "../../ui/Spinner";
 import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
 import toast from "react-hot-toast";
 import { useMediaQuery } from "@mui/material";
 import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
@@ -116,6 +117,7 @@ export default function CreateBookingView() {
       payment_proof_url: "",
       payment_notes: "",
       mark_as_paid: false,
+      referral_code: "",
       // Onboarding fields
       guest_first_name: "",
       guest_last_name: "",
@@ -180,6 +182,9 @@ export default function CreateBookingView() {
         // Ensure user_id is null if we are creating a new guest
         user_id: isNewGuest ? null : values.user_id,
       };
+
+      // Don't send empty referral_code — omit the key entirely
+      if (!payload.referral_code) delete (payload as any).referral_code;
 
       mutate(
         {
@@ -388,6 +393,19 @@ export default function CreateBookingView() {
     setFieldValue,
     values.total_price, // Add this to compare
   ]);
+
+  // Auto-populate referral code with agent's own code when a guest is selected
+  useEffect(() => {
+    const isAgent = user?.role === UserRole.AGENT;
+    const guestSelected =
+      (values.user_id && Number(values.user_id) > 0) || !!values.guest_email;
+    if (isAgent && guestSelected && !values.referral_code) {
+      const agentCode = user?.profile?.referral_code;
+      if (agentCode) {
+        setFieldValue("referral_code", agentCode.toUpperCase());
+      }
+    }
+  }, [user, values.user_id, values.guest_email, values.referral_code, setFieldValue]);
 
   // Memoize blocked dates from live availability (accounts for active bookings occupancy)
   const blockedDates = useMemo(() => {
@@ -1050,6 +1068,55 @@ export default function CreateBookingView() {
                     {formatMoney(formik.values.total_price)}
                   </span>
                 </div>
+              </div>
+
+              {/* Referral Code */}
+              <div className="mb-6">
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-1.5">
+                  Referral Code
+                  <span className="ml-1 text-zinc-400 font-normal normal-case">(optional)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    className="w-full h-10 px-3 pr-8 border border-zinc-300 rounded-lg text-sm font-mono bg-white
+                               focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all
+                               uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:font-sans"
+                    placeholder="e.g. ABC12345"
+                    value={formik.values.referral_code}
+                    maxLength={12}
+                    onChange={(e) =>
+                      formik.setFieldValue(
+                        "referral_code",
+                        e.target.value.toUpperCase().trim(),
+                      )
+                    }
+                  />
+                  {formik.values.referral_code && (
+                    <button
+                      type="button"
+                      onClick={() => formik.setFieldValue("referral_code", "")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                      aria-label="Clear referral code"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-400 mt-1 leading-snug">
+                  Applying this code will attribute this booking to the referrer.
+                </p>
               </div>
 
               {/* Payment Handling Section */}
