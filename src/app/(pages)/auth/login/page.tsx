@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import Button from "@/src/components/button";
 import InputGroup from "../../../../components/formcomponent/InputGroup";
 import Image from "next/image";
+import Link from "next/link";
 import AparteeText from "../../../../../public/svg/logo_text_white.svg";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from "react-hot-toast";
@@ -192,21 +193,30 @@ export default function Login() {
             />
             {validator.message("email", email, "required|email")}
           </div>
-          <div>
+          <div className="relative">
             <InputGroup
               label="Password"
               required
               onChange={(e) => setPassword(e.target.value)}
               inputType={passwordType}
               inputName="password"
+              inputClassName="pr-10"
             />
-            <div className="w-[26px] relative top-[-32px] ml-auto">
+            <button
+              type="button"
+              className="absolute right-3 top-10 flex h-9 w-9 items-center justify-center rounded-full text-[#101928] hover:text-[#124452]"
+              onClick={togglePassword}
+              aria-label={passwordType === "password" ? "Show password" : "Hide password"}
+            >
               {passwordType === "password" ? (
-                <Icon icon="mdi:eye-outline" className="text-black" onClick={togglePassword} />
+                <Icon icon="mdi:eye-outline" />
               ) : (
-                <Icon icon="f7:eye-slash" className="text-black" onClick={togglePassword} />
+                <Icon icon="f7:eye-slash" />
               )}
-            </div>
+            </button>
+            <Link href={PAGE_ROUTES.auth.passwordReset} className="text-xs text-[#124452] hover:underline mt-2 inline-block">
+              Forgot Password?
+            </Link>
             {validator.message("password", password, "required|min:6")}
           </div>
           <div className="mt-2 flex justify-center">
