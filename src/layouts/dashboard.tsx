@@ -15,6 +15,8 @@ import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearUser } from "../lib/slices/authSlice";
+import axiosRequest from "../lib/api";
+import { persistor } from "../lib/store";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
@@ -112,22 +114,17 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  const handleLogOut = () => {
-    Promise.all([
-      Promise.resolve(Cookies.remove("token")),
-      Promise.resolve(dispatch(clearUser())),
-      queryClient.removeQueries({ queryKey: ["authUser"] }),
-    ]).then(() => {
-      // Redirect to the login page after all actions complete
-      window.location.href = "/auth/login";
-      toast.success("You have been logged out", {
-        duration: 3000,
-        style: {
-          maxWidth: "500px",
-          width: "max-content",
-        },
-      })
-    });
+  const handleLogOut = async () => {
+    try {
+      await axiosRequest.post("/auth/logout");
+    } catch {
+      // Proceed with client-side logout even if API call fails
+    }
+    Cookies.remove("token");
+    dispatch(clearUser());
+    queryClient.removeQueries({ queryKey: ["authUser"] });
+    await persistor.purge();
+    window.location.href = "/auth/login";
   };
 
   return (
@@ -198,8 +195,8 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               ) : null
             )}
           </div>
-          {/* Footer: Logout only */}
-          <div className="absolute bottom-0 w-full flex items-center border-t-2 border-teal-700/70 bg-primary">
+          {/* Footer: Logout only — extra bottom padding on mobile to clear the bottom nav */}
+          <div className="absolute bottom-0 w-full flex flex-col items-center border-t-2 border-teal-700/70 bg-primary pb-16 md:pb-0">
             <button
               onClick={handleLogOut}
               className="text-left flex gap-4 pl-7 py-4 hover:bg-teal-600/60 w-full text-white min-h-[56px] items-center"
