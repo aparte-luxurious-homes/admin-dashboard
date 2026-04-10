@@ -176,6 +176,7 @@ export default function StepPropertyDetails({
                             selected={formik.values.property_type}
                             handleSelection={(val) => formik.setFieldValue('property_type', val)}
                             options={Object.values(PropertyType)}
+                            formatLabel={(val) => val || 'Select property type'}
                         />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
