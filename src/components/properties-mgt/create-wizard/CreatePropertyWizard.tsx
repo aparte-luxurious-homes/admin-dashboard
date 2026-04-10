@@ -111,7 +111,7 @@ export default function CreatePropertyWizard() {
         initialValues: {
             name: '',
             address: '',
-            property_type: PropertyType.DUPLEX,
+            property_type: '',
             country: 'Nigeria',
             state: 'Lagos',
             city: 'Ikeja',
@@ -242,7 +242,7 @@ export default function CreatePropertyWizard() {
             name: values.name,
             description: values.description,
             address: values.address,
-            property_type: values.property_type,
+            property_type: values.property_type as PropertyType,
             city: values.city,
             state: values.state,
             country: values.country,

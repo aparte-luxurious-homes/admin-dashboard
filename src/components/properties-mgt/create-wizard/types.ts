@@ -31,7 +31,7 @@ export type UnitFormValues = {
 export type PropertyFormValues = {
     name: string;
     address: string;
-    property_type: PropertyType;
+    property_type: PropertyType | '';
     country: string;
     state: string;
     city: string;

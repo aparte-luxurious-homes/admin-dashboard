@@ -365,7 +365,7 @@ export default function EditPropertyView({
     initialValues: {
       name: propertyData?.name ?? "",
       address: propertyData?.address ?? "",
-      type: propertyData?.propertyType ?? PropertyType.DUPLEX,
+      type: propertyData?.propertyType ?? propertyData?.property_type ?? PropertyType.DUPLEX,
       country: propertyData?.country ?? "Nigeria",
       state: propertyData?.state ?? "Lagos",
       city: propertyData?.city ?? "Ikeja",
