@@ -12,11 +12,7 @@ import { useState, useEffect, useMemo } from "react";
 import { IoMenu, IoClose } from "react-icons/io5";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
-import { useDispatch } from "react-redux";
-import { useQueryClient } from "@tanstack/react-query";
-import { clearUser } from "../lib/slices/authSlice";
 import axiosRequest from "../lib/api";
-import { persistor } from "../lib/store";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
@@ -30,8 +26,6 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const currentRoute = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const dispatch = useDispatch();
-  const queryClient = useQueryClient();
   const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "?";
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN
     || user?.role === UserRole.OPERATIONS_ADMIN || user?.role === UserRole.ANALYST;
@@ -120,11 +114,25 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     } catch {
       // Proceed with client-side logout even if API call fails
     }
-    Cookies.remove("token");
-    dispatch(clearUser());
-    queryClient.removeQueries({ queryKey: ["authUser"] });
-    await persistor.purge();
-    window.location.href = "/auth/login";
+
+    // Clear cookie first so any in-flight check sees no token
+    Cookies.remove("token", { path: "/" });
+
+    // Synchronously clear redux-persist storage. persistor.purge() is async
+    // and races the navigation; clearing localStorage directly is reliable.
+    try {
+      localStorage.removeItem("persist:auth");
+    } catch {
+      /* ignore (SSR / privacy mode) */
+    }
+
+    // Hard navigation with replace() — does NOT add a history entry, which
+    // prevents the back-forward refresh loop. We deliberately skip dispatch
+    // (clearUser) and queryClient.removeQueries here: those trigger a
+    // Dashboard re-render whose auth-check effect fires a competing
+    // router.replace() before window.location takes over. After
+    // window.location.replace the JS context tears down anyway.
+    window.location.replace("/auth/login");
   };
 
   return (
