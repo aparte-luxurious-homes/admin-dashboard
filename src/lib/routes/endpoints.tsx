@@ -15,6 +15,7 @@ export const API_ROUTES = {
         },
         properties: {
             assign: (id: string | number) => `/admin/properties/${id}/assign`,
+            reassignOwner: (id: string | number) => `/admin/properties/${id}/reassign-owner`,
             verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
             feature: (id: string | number) => `/admin/properties/${id}/feature`,
         },
@@ -103,6 +104,14 @@ export const API_ROUTES = {
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
         approveRequest: (id: string | number) => `/bookings/${id}/approve-request`,
         rejectRequest: (id: string | number) => `/bookings/${id}/reject-request`,
+        extensions: {
+            base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
+            listAll: '/bookings/extensions/all',
+            details: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}`,
+            approve: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/approve`,
+            reject: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/reject`,
+            cancel: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/cancel`,
+        }
     },
     wallet: {
         base: '/wallets',
@@ -155,6 +164,7 @@ export const API_ROUTES = {
     disputes: {
         base: '/disputes',
         myDisputes: '/disputes/my',
+        details: (id: string | number) => `/disputes/${id}`,
         evidence: (disputeId: string | number) => `/disputes/${disputeId}/evidence`,
     },
     referrals: {
@@ -170,7 +180,8 @@ const rawUrl = process.env.NEXT_PUBLIC_BASE_API_URL ||
     process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
     "";
 
-export const BASE_API_URL = rawUrl.trim().replace(/\/+$/, "");
+export const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_STAGING_API_URL
+// rawUrl.trim().replace(/\/+$/, "");
 
 if (typeof window !== 'undefined') {
     console.log('[Endpoints] Initialized BASE_API_URL:', BASE_API_URL);

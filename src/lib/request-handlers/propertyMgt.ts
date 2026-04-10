@@ -168,6 +168,20 @@ export function AssignToProperty(propertyId: string | number) {
 }
 
 
+export function ReassignPropertyOwner(propertyId: string | number) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ payload }: { payload: { owner_id: string } }) =>
+            axiosRequest.patch(API_ROUTES.admin.properties.reassignOwner(propertyId), payload),
+
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
+        },
+    });
+}
+
+
 export function UpdateProperty() {
     const queryClient = useQueryClient();
     return useMutation({

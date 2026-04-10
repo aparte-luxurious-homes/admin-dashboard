@@ -131,19 +131,33 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                     className="h-full w-full"
                                 >
                                     {propertyUnit?.media?.length > 0 ? (
-                                        propertyUnit?.media?.map((el: any, index: any) => (
-                                            <SwiperSlide key={index}>
-                                                <div className="relative w-full aspect-[16/9] sm:aspect-[16/10] md:h-[450px] lg:h-[500px]">
-                                                    <Image
-                                                        alt={`${propertyUnit?.name}_img_${index}`}
-                                                        src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                                        fill
-                                                        className="object-cover"
-                                                        priority={index === 0}
-                                                    />
-                                                </div>
-                                            </SwiperSlide>
-                                        ))
+                                        propertyUnit?.media?.map((el: any, index: any) => {
+                                            const isVideo = (el.media_type || el.mediaType) === 'VIDEO';
+                                            const src = el.media_url || el.mediaUrl || "/png/placeholder.png";
+                                            return (
+                                                <SwiperSlide key={index}>
+                                                    <div className="relative w-full aspect-[16/9] sm:aspect-[16/10] md:h-[450px] lg:h-[500px]">
+                                                        {isVideo ? (
+                                                            <video
+                                                                src={src}
+                                                                controls
+                                                                muted
+                                                                preload="metadata"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <Image
+                                                                alt={`${propertyUnit?.name}_img_${index}`}
+                                                                src={src}
+                                                                fill
+                                                                className="object-cover"
+                                                                priority={index === 0}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </SwiperSlide>
+                                            );
+                                        })
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-[250px] sm:h-[350px] md:h-[450px] text-zinc-300">
                                             <PiBuildingApartment className="text-5xl sm:text-6xl md:text-8xl mb-2 sm:mb-3 md:mb-4 opacity-20" />

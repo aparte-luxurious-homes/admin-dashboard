@@ -439,12 +439,21 @@ export default function EditUnitView({
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                 {media?.map((el, index) => (
                                     <div key={index} className="relative aspect-video rounded-xl overflow-hidden group shadow-sm border border-zinc-100">
-                                        <Image
-                                            src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                            alt={`unit_img_${index}`}
-                                            fill
-                                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
+                                        {(el.media_type || el.mediaType) === 'VIDEO' ? (
+                                            <video
+                                                src={el.media_url || el.mediaUrl || ""}
+                                                muted
+                                                preload="metadata"
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <Image
+                                                src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
+                                                alt={`unit_img_${index}`}
+                                                fill
+                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        )}
                                         <div
                                             onClick={() => handleDeleteImage(el.id)}
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"

@@ -60,7 +60,7 @@ export default function SideNav({ index, link, route, role, onNavigate }: {
                             />
                         }
                     </div>
-                    <div className={`flex flex-col w-full transition-all ease-in-out duration-150 ${open ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className={`flex flex-col w-full transition-all ease-in-out duration-150 overflow-hidden ${open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                         {
                             link.secondary &&
                             link.children?.map((child, index) =>

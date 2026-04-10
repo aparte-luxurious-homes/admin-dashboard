@@ -23,7 +23,7 @@ import CustomModal from "../../ui/CustomModal";
 import { UserRole } from "@/src/lib/enums";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import toast from "react-hot-toast";
+import toast from "react-hot-toast"; 
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import axios from "axios";
@@ -71,7 +71,7 @@ export function CreateAmenityForm({ show }: { show: Dispatch<SetStateAction<bool
     return (
         <div className="py-3 px-1 w-full">
             <input
-                id="name"
+                id="amenity-name"
                 type="text"
                 placeholder="E.g GYM"
                 value={name}
@@ -253,6 +253,7 @@ export default function CreatePropertyView({ }) {
                 const payload: ICreateProperty = {
                     ...values,
                     amenities: sortedAmenities,
+                    is_party_allowed: false,
                 }
 
                 mutate({
@@ -290,7 +291,7 @@ export default function CreatePropertyView({ }) {
                                         },
                                         {
                                             onError: (error: any) =>
-                                                toast.error(error.status === 422 ? 'Invalid media file format' : 'Media upload failed', {
+                                                toast.error(error?.response?.data?.detail || error?.response?.data?.message || 'Media upload failed', {
                                                     duration: 6000,
                                                     style: {
                                                         maxWidth: '500px',

@@ -21,42 +21,53 @@ export function EditWalletModal({
     onClose,
     walletId,
     currentBalance,
-    currentPendingCash,
     currency = "NGN",
     userName,
     onSuccess,
 }: EditWalletModalProps) {
     const { mutate: updateWallet, isPending } = UpdateWallet();
-    const [balance, setBalance] = useState(String(currentBalance ?? ""));
-    const [pendingCash, setPendingCash] = useState(String(currentPendingCash ?? ""));
+    const [action, setAction] = useState<"CREDIT" | "DEBIT">("CREDIT");
+    const [amount, setAmount] = useState("");
+    const [reason, setReason] = useState("");
+    const [comment, setComment] = useState("");
 
     useEffect(() => {
         if (isOpen) {
-            setBalance(String(currentBalance ?? ""));
-            setPendingCash(String(currentPendingCash ?? ""));
+            setAction("CREDIT");
+            setAmount("");
+            setReason("");
+            setComment("");
         }
-    }, [isOpen, currentBalance, currentPendingCash]);
+    }, [isOpen]);
 
     const handleSave = () => {
-        const payload: Record<string, string> = {};
-        if (balance !== String(currentBalance)) payload.balance = balance;
-        if (pendingCash !== String(currentPendingCash)) payload.pending_cash = pendingCash;
-
-        if (Object.keys(payload).length === 0) {
-            toast.error("No changes to save");
+        if (!amount || parseFloat(amount) <= 0) {
+            toast.error("Enter a valid amount");
+            return;
+        }
+        if (!reason.trim()) {
+            toast.error("Reason is required");
             return;
         }
 
         updateWallet(
-            { walletId, payload },
+            {
+                walletId,
+                payload: {
+                    action,
+                    amount,
+                    reason: reason.trim(),
+                    ...(comment.trim() ? { comment: comment.trim() } : {}),
+                },
+            },
             {
                 onSuccess: () => {
-                    toast.success("Wallet updated successfully");
+                    toast.success(`Wallet ${action.toLowerCase()}ed successfully`);
                     onSuccess?.();
                     onClose();
                 },
                 onError: (err: any) => {
-                    toast.error(err?.response?.data?.detail || "Failed to update wallet");
+                    toast.error(err?.response?.data?.detail || "Failed to adjust wallet");
                 },
             }
         );
@@ -66,41 +77,66 @@ export function EditWalletModal({
         <div className="space-y-5">
             {userName && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                    <strong>Admin override</strong> — directly modifying wallet for{" "}
-                    <span className="font-medium">{userName}</span>. This action is audit-logged.
+                    Adjusting wallet for <span className="font-medium">{userName}</span>.
+                    A transaction record will be created for audit.
                 </div>
             )}
 
+            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+                Current balance: <span className="font-semibold">{currency} {Number(currentBalance).toLocaleString()}</span>
+            </div>
+
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Balance ({currency})
-                </label>
-                <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={balance}
-                    onChange={(e) => setBalance(e.target.value)}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                <select
+                    value={action}
+                    onChange={(e) => setAction(e.target.value as "CREDIT" | "DEBIT")}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    placeholder="e.g. 50000.00"
-                />
-                <p className="text-xs text-gray-500 mt-1">Current: {currency} {Number(currentBalance).toLocaleString()}</p>
+                >
+                    <option value="CREDIT">Credit (Add funds)</option>
+                    <option value="DEBIT">Debit (Remove funds)</option>
+                </select>
             </div>
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Pending Cash ({currency})
+                    Amount ({currency})
                 </label>
                 <input
                     type="number"
                     step="0.01"
                     min="0"
-                    value={pendingCash}
-                    onChange={(e) => setPendingCash(e.target.value)}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    placeholder="e.g. 0.00"
+                    placeholder="e.g. 5000.00"
                 />
-                <p className="text-xs text-gray-500 mt-1">Current: {currency} {Number(currentPendingCash ?? 0).toLocaleString()}</p>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+                    placeholder="Why is this adjustment being made?"
+                />
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Additional Note (optional)
+                </label>
+                <input
+                    type="text"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    placeholder="Internal note"
+                />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -113,10 +149,14 @@ export function EditWalletModal({
                 </button>
                 <button
                     onClick={handleSave}
-                    disabled={isPending}
-                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    disabled={isPending || !amount || !reason.trim()}
+                    className={`px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                        action === "DEBIT"
+                            ? "bg-red-600 hover:bg-red-700"
+                            : "bg-primary hover:bg-primary/90"
+                    }`}
                 >
-                    {isPending ? "Saving..." : "Save Changes"}
+                    {isPending ? "Processing..." : `${action === "CREDIT" ? "Credit" : "Debit"} Wallet`}
                 </button>
             </div>
         </div>
@@ -126,7 +166,7 @@ export function EditWalletModal({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Edit Wallet Balance"
+            title="Adjust Wallet"
             content={content}
         />
     );

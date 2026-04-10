@@ -163,6 +163,9 @@ export interface IProperty {
     is_verified?: boolean
     isPetAllowed: boolean
     is_pet_allowed?: boolean
+    isPartyAllowed: boolean
+    is_party_allowed?: boolean
+    rules?: string
     isFeatured: boolean
     is_featured?: boolean
     createdAt: string
@@ -224,6 +227,8 @@ export interface ICreateProperty {
     amenities: number[]
     // kyc_id: number
     is_pet_allowed: boolean
+    is_party_allowed: boolean
+    rules?: string
     owner_email?: string
     owner_name?: string
 }
@@ -247,6 +252,8 @@ export interface IUpdateProperty {
     amenities?: number[],
     // assignedAgent?: IUser,
     is_pet_allowed: boolean,
+    is_party_allowed: boolean,
+    rules?: string,
     owner_email?: string,
     owner_name?: string
 }
