@@ -6,20 +6,32 @@ import { Accept, useDropzone } from "react-dropzone";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 type DropzoneProps = {
   onDrop: (acceptedFiles: File[]) => void;
   accept?: Accept;
   multiple?: boolean;
   previewsRef: React.RefObject<{ url: string; file: File }[]>;
   minFiles?: number;
+  maxImageSize?: number;
+  maxVideoSize?: number;
 };
 
 const CustomDropzone: React.FC<DropzoneProps> = ({
   onDrop,
-  accept = { "image/*": [] },
+  accept = { "image/*": [], "video/*": [] },
   multiple = false,
   previewsRef,
-  minFiles = 3
+  minFiles = 3,
+  maxImageSize = MAX_IMAGE_SIZE,
+  maxVideoSize = MAX_VIDEO_SIZE,
 }) => {
   const [_, forceUpdate] = useState(0);
   const [showMinWarning, setShowMinWarning] = useState(false);
@@ -36,13 +48,32 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
 
   const handleDrop = useCallback(
     (acceptedFiles: File[]) => {
+      // Validate file sizes
+      const oversized: string[] = [];
+      const validFiles = acceptedFiles.filter((file) => {
+        const isVideo = file.type.startsWith("video/");
+        const limit = isVideo ? maxVideoSize : maxImageSize;
+        if (file.size > limit) {
+          oversized.push(`${file.name} (${formatFileSize(file.size)} — max ${formatFileSize(limit)})`);
+          return false;
+        }
+        return true;
+      });
+
+      if (oversized.length > 0) {
+        toast.error(
+          `${oversized.length} file${oversized.length > 1 ? "s" : ""} too large:\n${oversized.join(", ")}`,
+          { duration: 6000, style: { maxWidth: "500px" } }
+        );
+      }
+
       // Ensure only new files are added (prevent duplicates)
-      const newFiles = acceptedFiles.filter(
+      const newFiles = validFiles.filter(
         (file) => !previewsRef.current?.some((prev) => prev.file.name === file.name)
       );
-  
+
       if (newFiles.length === 0) {
-        toast.error("These images have already been added");
+        if (oversized.length === 0) toast.error("These files have already been added");
         return;
       }
   
@@ -60,7 +91,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
       // Pass updated file list to parent
       onDrop(previewsRef.current?.map((prev) => prev.file) || []);
       
-      toast.success(`${newFiles.length} image${newFiles.length > 1 ? 's' : ''} added successfully`);
+      toast.success(`${newFiles.length} file${newFiles.length > 1 ? 's' : ''} added successfully`);
     },
     [onDrop, previewsRef]
   );
@@ -100,18 +131,23 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
         <div className="flex flex-col items-center gap-2">
           <Icon icon="solar:gallery-add-bold-duotone" className="text-4xl text-gray-400" />
           <p className="text-gray-600 font-medium">
-            {isDragActive ? "Drop the files here..." : "Drag & drop images here"}
+            {isDragActive ? "Drop the files here..." : (
+              <>
+                <span className="hidden sm:inline">Drag & drop images or videos here</span>
+                <span className="sm:hidden">Tap below to add photos or videos</span>
+              </>
+            )}
           </p>
           <p className="text-sm text-gray-400">or</p>
           <button
             type="button"
             onClick={open}
-            className="px-6 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors"
+            className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors"
           >
             Browse Files
           </button>
           <p className="text-xs text-gray-400 mt-2">
-            Supported formats: JPG, PNG, GIF, WEBP (Max 10MB each)
+            Supported: JPG, PNG, GIF, WEBP, MP4, MOV, WEBM (Images max 10MB, Videos max 50MB)
           </p>
         </div>
       </div>
@@ -131,7 +167,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-zinc-700">
-              Uploaded Images ({previewsRef.current.length}/{minFiles} minimum)
+              Uploaded Files ({previewsRef.current.length}/{minFiles} minimum)
             </h4>
             <button
               type="button"
@@ -146,18 +182,34 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {previewsRef.current.map((preview, index) => (
               <div key={preview.file.name} className="relative group aspect-square">
-                <Image
-                  src={preview.url}
-                  alt={`preview-${index}`}
-                  className="w-full h-full object-cover rounded-xl border border-gray-200"
-                  width={200}
-                  height={200}
-                />
+                {preview.file.type.startsWith("video/") ? (
+                  <video
+                    src={preview.url}
+                    muted
+                    preload="metadata"
+                    className="w-full h-full object-cover rounded-xl border border-gray-200"
+                  />
+                ) : (
+                  <Image
+                    src={preview.url}
+                    alt={`preview-${index}`}
+                    className="w-full h-full object-cover rounded-xl border border-gray-200"
+                    width={200}
+                    height={200}
+                  />
+                )}
                 
-                {/* Image Number Badge */}
+                {/* Number Badge */}
                 <div className="absolute top-2 left-2 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white text-xs font-bold">
                   {index + 1}
                 </div>
+                {/* Video Badge */}
+                {preview.file.type.startsWith("video/") && (
+                  <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/50 backdrop-blur-sm rounded-md flex items-center gap-1">
+                    <Icon icon="solar:play-bold" className="text-white text-[10px]" />
+                    <span className="text-white text-[9px] font-bold">VIDEO</span>
+                  </div>
+                )}
                 
                 {/* Remove Overlay */}
                 <div

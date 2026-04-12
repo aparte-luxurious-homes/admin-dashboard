@@ -18,6 +18,9 @@ import { FiPlus } from "react-icons/fi";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { toast } from "react-hot-toast";
 import DeleteBookingDialog from "../dialogs/DeleteBookingDialog";
+import { useIsMobile } from "@/src/hooks/useIsMobile";
+import BookingCard from "../BookingCard";
+import PullToRefresh from "../../mobile/PullToRefresh";
 
 export default function BookingsTable({
     unitId
@@ -33,7 +36,7 @@ export default function BookingsTable({
     const [startDateFrom, setStartDateFrom] = useState<string>("");
     const [startDateTo, setStartDateTo] = useState<string>("");
 
-    const { data: bookings, isLoading } = GetAllBookings(
+    const { data: bookings, isLoading, refetch: refetchBookings } = GetAllBookings(
         page,
         10,
         searchTerm,
@@ -54,6 +57,7 @@ export default function BookingsTable({
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef(null);
     const { mutate: deleteBooking, isPending: isDeleting } = DeleteBooking();
+    const isMobile = useIsMobile();
 
     // Delete dialog state
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -86,6 +90,11 @@ export default function BookingsTable({
         }
     ];
 
+    const handleDeleteBookingCard = (booking: IBooking) => {
+        setBookingToDelete(booking);
+        setIsDeleteDialogOpen(true);
+    };
+
     // Handle click outside modal
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -112,10 +121,10 @@ export default function BookingsTable({
 
 
     return (
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                <div className="p-6 border-b border-gray-200">
-                    <div className="flex justify-between items-center gap-4 flex-wrap mb-4">
+                <div className="p-4 sm:p-6 border-b border-gray-200">
+                    <div className="flex justify-between items-center gap-3 sm:gap-4 flex-wrap mb-4">
                         <div>
                             <div className="flex items-center gap-3">
                                 {unitId && (
@@ -127,11 +136,11 @@ export default function BookingsTable({
                                         <Icon icon="lucide:arrow-left" width="20" height="20" className="text-gray-600" />
                                     </button>
                                 )}
-                                <h1 className="text-xl font-semibold text-gray-900">
+                                <h1 className="text-lg sm:text-xl font-semibold text-gray-900">
                                     {unitId ? "Unit Bookings" : "All Bookings"}
                                 </h1>
                             </div>
-                            <p className="text-sm text-gray-500 mt-1">
+                            <p className="text-xs sm:text-sm text-gray-500 mt-1">
                                 {unitId ? "View and manage bookings for this specific unit" : "Manage and track all property bookings"}
                             </p>
                         </div>
@@ -157,15 +166,15 @@ export default function BookingsTable({
                     </div>
 
                     {/* Filters Row */}
-                    <div className="flex items-center gap-3 mt-4 flex-wrap">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-4 flex-wrap">
                         {/* Property Filter */}
                         {!unitId && (
-                            <div className="min-w-[200px]">
+                            <div className="w-full sm:w-auto sm:min-w-[200px]">
                                 <select
                                     value={propertyFilter}
                                     onChange={(e) => {
                                         setPropertyFilter(e.target.value);
-                                        setPage(1); // Reset to first page when filter changes
+                                        setPage(1);
                                     }}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                                 >
@@ -180,7 +189,7 @@ export default function BookingsTable({
                         )}
 
                         {/* Status Filter */}
-                        <div className="min-w-[180px]">
+                        <div className="w-full sm:w-auto sm:min-w-[180px]">
                             <select
                                 value={statusFilter}
                                 onChange={(e) => {
@@ -198,7 +207,7 @@ export default function BookingsTable({
                         </div>
 
                         {/* Date Range Filters */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
                             <input
                                 type="date"
                                 value={startDateFrom}
@@ -206,7 +215,7 @@ export default function BookingsTable({
                                     setStartDateFrom(e.target.value);
                                     setPage(1);
                                 }}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                                 placeholder="From date"
                             />
                             <span className="text-gray-500 text-sm">to</span>
@@ -217,7 +226,7 @@ export default function BookingsTable({
                                     setStartDateTo(e.target.value);
                                     setPage(1);
                                 }}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                                 placeholder="To date"
                             />
                         </div>
@@ -246,6 +255,19 @@ export default function BookingsTable({
                         <Loader />
                     </div>
                 ) : bookingList && bookingList.length > 0 ? (
+                    isMobile ? (
+                        <PullToRefresh onRefresh={() => { refetchBookings(); }}>
+                        <div className="space-y-3 p-4">
+                            {bookingList.map((booking, index) => (
+                                <BookingCard
+                                    key={index}
+                                    booking={booking}
+                                    onDelete={handleDeleteBookingCard}
+                                />
+                            ))}
+                        </div>
+                        </PullToRefresh>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
@@ -297,6 +319,7 @@ export default function BookingsTable({
                             </tbody>
                         </table>
                     </div>
+                    )
                 ) : bookingList && bookingList.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">

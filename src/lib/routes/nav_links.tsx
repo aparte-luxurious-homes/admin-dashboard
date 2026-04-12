@@ -78,12 +78,6 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.base,
                 allow: Object.values(UserRole),
             },
-            // {
-            //     name: 'Create property',
-            //     pathName: 'create',
-            //     link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.create,
-            //     allow: [UserRole.ADMIN, UserRole.OWNER],
-            // },
             {
                 name: 'Manage verifications',
                 pathName: 'manage-verifications',
@@ -159,6 +153,12 @@ export const NAV_LINKS: ILink[] = [
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
         secondary: true,
         children: [
+            {
+                name: 'All Transactions',
+                pathName: 'all',
+                link: PAGE_ROUTES.dashboard.transactions.all.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
             {
                 name: 'Payments',
                 pathName: 'payments',

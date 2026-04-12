@@ -12,8 +12,10 @@ export enum FinanceRequestKeys {
 }
 
 export interface UpdateWalletPayload {
-    balance?: string;
-    pending_cash?: string;
+    action: "CREDIT" | "DEBIT";
+    amount: string;
+    reason: string;
+    comment?: string;
 }
 
 export function UpdateWallet() {
@@ -60,6 +62,27 @@ export function VerifyPayoutAccount() {
     return useMutation({
         mutationFn: ({ walletId, accountId }: { walletId: string; accountId: string }) =>
             axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(walletId, accountId)),
+    });
+}
+
+export function DeletePayoutAccount() {
+    return useMutation({
+        mutationFn: ({ walletId, accountId }: { walletId: string; accountId: string }) =>
+            axiosRequest.delete(API_ROUTES.wallet.payoutAccounts.details(walletId, accountId)),
+    });
+}
+
+export interface UpdatePayoutAccountPayload {
+    account_name?: string;
+    bank_name?: string;
+    bank_code?: string;
+    account_number?: string;
+}
+
+export function UpdatePayoutAccount() {
+    return useMutation({
+        mutationFn: ({ walletId, accountId, payload }: { walletId: string; accountId: string; payload: UpdatePayoutAccountPayload }) =>
+            axiosRequest.patch(API_ROUTES.wallet.payoutAccounts.details(walletId, accountId), payload),
     });
 }
 

@@ -303,20 +303,34 @@ export default function VerificationDetails({
                         >
                             {
                                 property?.media && property?.media.length > 0 ?
-                                    property?.media?.map((el: any, index: any) => (
-                                        <SwiperSlide key={index}>
-                                            <div className="relative aspect-[16/9] w-full">
-                                                <Image
-                                                    alt={`${property?.name}_img_${index}`}
-                                                    src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                                    className="object-cover rounded-xl"
-                                                    fill
-                                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 60vw"
-                                                    priority={index === 0}
-                                                />
-                                            </div>
-                                        </SwiperSlide>
-                                    ))
+                                    property?.media?.map((el: any, index: any) => {
+                                        const isVideo = (el.media_type || el.mediaType) === 'VIDEO';
+                                        const src = el.media_url || el.mediaUrl || "/png/placeholder.png";
+                                        return (
+                                            <SwiperSlide key={index}>
+                                                <div className="relative aspect-[16/9] w-full">
+                                                    {isVideo ? (
+                                                        <video
+                                                            src={src}
+                                                            controls
+                                                            muted
+                                                            preload="metadata"
+                                                            className="w-full h-full object-cover rounded-xl"
+                                                        />
+                                                    ) : (
+                                                        <Image
+                                                            alt={`${property?.name}_img_${index}`}
+                                                            src={src}
+                                                            className="object-cover rounded-xl"
+                                                            fill
+                                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 60vw"
+                                                            priority={index === 0}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </SwiperSlide>
+                                        );
+                                    })
                                     :
                                     <SwiperSlide>
                                         <div className="relative aspect-[16/9] w-full">

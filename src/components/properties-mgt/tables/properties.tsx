@@ -20,6 +20,9 @@ import { UserRole } from "@/src/lib/enums";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { toast } from "react-hot-toast";
+import { useIsMobile } from "@/src/hooks/useIsMobile";
+import PropertyCard from "../PropertyCard";
+import PullToRefresh from "../../mobile/PullToRefresh";
 
 type StatusFilter = 'all' | 'verified' | 'unverified';
 
@@ -29,7 +32,7 @@ export default function PropertiesTable() {
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const isVerifiedParam = statusFilter === 'all' ? null : statusFilter === 'verified';
-    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id, isVerifiedParam);
+    const { data: properties, isLoading, refetch: refetchProperties } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id, isVerifiedParam);
     const [propertyList, setPropertyList] = useState<IProperty[]>([]);
     const router = useRouter();
 
@@ -38,6 +41,7 @@ export default function PropertiesTable() {
     const modalRef = useRef(null);
     const dispatch = useDispatch();
     const { mutate: deleteProperty } = DeleteProperty();
+    const isMobile = useIsMobile();
 
     const detailButtons = [
         {
@@ -87,6 +91,26 @@ export default function PropertiesTable() {
         }
     ]
 
+    const handleDeleteProperty = (property: IProperty) => {
+        dispatch(
+            showAlert({
+                title: "Delete Property?",
+                description: `Are you sure you want to delete ${property?.name || 'this property'}? This action cannot be undone.`,
+                confirmText: "Delete",
+                cancelText: "Cancel",
+                onConfirm: () => {
+                    deleteProperty(
+                        { propertyId: property.id },
+                        {
+                            onSuccess: () => toast.success('Property deleted successfully'),
+                            onError: () => toast.error('Failed to delete property')
+                        }
+                    );
+                },
+            })
+        );
+    };
+
     // Handle click outside modal
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -115,13 +139,13 @@ export default function PropertiesTable() {
     }, [searchTerm, statusFilter])
 
     return (
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                <div className="p-6 border-b border-gray-200">
-                    <div className="flex justify-between items-center gap-4 flex-wrap mb-4">
+                <div className="p-4 sm:p-6 border-b border-gray-200">
+                    <div className="flex justify-between items-center gap-3 sm:gap-4 flex-wrap mb-4">
                         <div>
-                            <h1 className="text-xl font-semibold text-gray-900">Property Listings</h1>
-                            <p className="text-sm text-gray-500 mt-1">Manage all properties and their verification status</p>
+                            <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Property Listings</h1>
+                            <p className="text-xs sm:text-sm text-gray-500 mt-1">Manage all properties and their verification status</p>
                         </div>
                         <Link
                             href={`${PAGE_ROUTES.dashboard.propertyManagement.allProperties.create}`}
@@ -131,7 +155,7 @@ export default function PropertiesTable() {
                             <span>New Property</span>
                         </Link>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <div className="flex-1 max-w-md relative">
                             <input
                                 type="text"
@@ -146,7 +170,7 @@ export default function PropertiesTable() {
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                                className="px-4 py-2 pr-8 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-700 appearance-none cursor-pointer bg-white"
+                                className="w-full sm:w-auto px-4 py-2 pr-8 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-700 appearance-none cursor-pointer bg-white"
                             >
                                 <option value="all">All Status</option>
                                 <option value="verified">Verified</option>
@@ -162,6 +186,19 @@ export default function PropertiesTable() {
                         <Loader />
                     </div>
                 ) : propertyList && propertyList.length > 0 ? (
+                    isMobile ? (
+                        <PullToRefresh onRefresh={() => { refetchProperties(); }}>
+                        <div className="space-y-3 p-4">
+                            {propertyList.map((property, index) => (
+                                <PropertyCard
+                                    key={index}
+                                    property={property}
+                                    onDelete={handleDeleteProperty}
+                                />
+                            ))}
+                        </div>
+                        </PullToRefresh>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
@@ -236,6 +273,7 @@ export default function PropertiesTable() {
                             </tbody>
                         </table>
                     </div>
+                    )
                 ) : propertyList && propertyList.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
