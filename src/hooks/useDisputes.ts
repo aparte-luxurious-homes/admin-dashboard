@@ -14,6 +14,7 @@ export const useDisputeDetails = (id: string) => {
     queryKey: ["dispute-details", id],
     queryFn: async () => {
       const response = await axiosRequest.get<IBaseResponse<IDispute>>(API_ROUTES.admin.disputes.details(id));
+      const fetchedData = response.data.data;
       
       let cachedDispute: Partial<IDispute> | undefined;
       const queries = queryClient.getQueriesData<IAdminPaginatedResponse<IDispute>>({ queryKey: ["admin-disputes"] });
@@ -27,7 +28,57 @@ export const useDisputeDetails = (id: string) => {
         }
       }
 
-      const fetchedData = response.data.data;
+      // 🔹 Fallback: Fetch booking details if guest/owner names are missing (common on refresh)
+      const bId = fetchedData.booking_id || (fetchedData as any).bookingId;
+      if (bId && (!fetchedData.guest_name || !fetchedData.owner_name)) {
+        try {
+          const bRes = await axiosRequest.get<IBaseResponse<any>>(API_ROUTES.bookings.details(bId));
+          const bData = bRes.data?.data;
+          
+          if (bData) {
+            // Guest Mapping
+            if (!fetchedData.guest_name) {
+              const guest = bData.user || bData.guest || bData.customer;
+              const fName = guest?.profile?.firstName || guest?.profile?.first_name || guest?.firstName || guest?.first_name;
+              const lName = guest?.profile?.lastName || guest?.profile?.last_name || guest?.lastName || guest?.last_name;
+              
+              if (fName) {
+                fetchedData.guest_name = `${fName} ${lName || ""}`.trim();
+              } else if (guest?.email) {
+                fetchedData.guest_name = guest.email;
+              }
+              
+              fetchedData.guest_email = fetchedData.guest_email || guest?.email;
+              fetchedData.guest_phone = fetchedData.guest_phone || guest?.phone;
+            }
+            
+            // Owner Mapping
+            if (!fetchedData.owner_name) {
+              const owner = bData.property?.owner || 
+                            bData.unit?.property?.owner || 
+                            bData.owner || 
+                            bData.unit?.owner ||
+                            (bData as any).property_owner ||
+                            (bData as any).property?.user;
+                            
+              const fName = owner?.profile?.firstName || owner?.profile?.first_name || owner?.firstName || owner?.first_name;
+              const lName = owner?.profile?.lastName || owner?.profile?.last_name || owner?.lastName || owner?.last_name;
+              
+              if (fName) {
+                fetchedData.owner_name = `${fName} ${lName || ""}`.trim();
+              } else if (owner?.email) {
+                fetchedData.owner_name = owner.email;
+              }
+              
+              fetchedData.owner_email = fetchedData.owner_email || owner?.email;
+              fetchedData.owner_phone = fetchedData.owner_phone || owner?.phone;
+            }
+          }
+        } catch (err) {
+          console.error("[useDisputes] Failed to fetch fallback booking:", err);
+        }
+      }
+
       return {
         ...cachedDispute,
         ...fetchedData,
@@ -60,6 +111,7 @@ export const useMyDisputeDetails = (id: string) => {
     queryKey: ["my-dispute-details", id],
     queryFn: async () => {
       const response = await axiosRequest.get<IBaseResponse<IDispute>>(API_ROUTES.disputes.details(id));
+      const fetchedData = response.data.data;
       
       let cachedDispute: Partial<IDispute> | undefined;
       const queries = queryClient.getQueriesData<IAdminPaginatedResponse<IDispute>>({ queryKey: ["my-disputes"] });
@@ -73,7 +125,56 @@ export const useMyDisputeDetails = (id: string) => {
         }
       }
 
-      const fetchedData = response.data.data;
+      // 🔹 Fallback: Fetch booking details if guest/owner names are missing (common on refresh)
+      const bId = fetchedData.booking_id || (fetchedData as any).bookingId;
+      if (bId && (!fetchedData.guest_name || !fetchedData.owner_name)) {
+        try {
+          const bRes = await axiosRequest.get<IBaseResponse<any>>(API_ROUTES.bookings.details(bId));
+          const bData = bRes.data?.data;
+          
+          if (bData) {
+            // Guest Mapping
+            if (!fetchedData.guest_name) {
+              const guest = bData.user || bData.guest || bData.customer;
+              const fName = guest?.profile?.firstName || guest?.profile?.first_name || guest?.firstName || guest?.first_name;
+              const lName = guest?.profile?.lastName || guest?.profile?.last_name || guest?.lastName || guest?.last_name;
+              
+              if (fName) {
+                fetchedData.guest_name = `${fName} ${lName || ""}`.trim();
+              } else if (guest?.email) {
+                fetchedData.guest_name = guest.email;
+              }
+              
+              fetchedData.guest_email = fetchedData.guest_email || guest?.email;
+              fetchedData.guest_phone = fetchedData.guest_phone || guest?.phone;
+            }
+            // Owner Mapping
+            if (!fetchedData.owner_name) {
+              const owner = bData.property?.owner || 
+                            bData.unit?.property?.owner || 
+                            bData.owner || 
+                            bData.unit?.owner ||
+                            (bData as any).property_owner ||
+                            (bData as any).property?.user;
+
+              const fName = owner?.profile?.firstName || owner?.profile?.first_name || owner?.firstName || owner?.first_name;
+              const lName = owner?.profile?.lastName || owner?.profile?.last_name || owner?.lastName || owner?.last_name;
+              
+              if (fName) {
+                fetchedData.owner_name = `${fName} ${lName || ""}`.trim();
+              } else if (owner?.email) {
+                fetchedData.owner_name = owner.email;
+              }
+              
+              fetchedData.owner_email = fetchedData.owner_email || owner?.email;
+              fetchedData.owner_phone = fetchedData.owner_phone || owner?.phone;
+            }
+          }
+        } catch (err) {
+          console.error("[useDisputes] Failed to fetch fallback booking:", err);
+        }
+      }
+
       return {
         ...cachedDispute,
         ...fetchedData,
