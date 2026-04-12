@@ -57,9 +57,19 @@ interface TransactionListViewProps {
         tx_type?: string;
         action?: string;
     };
+    /**
+     * Optional override for the row's detail-view href.
+     * Used by the "All Transactions" view to route each row to the appropriate
+     * existing category detail page (payments / withdrawals / refunds / etc.)
+     * instead of an `/all/{id}` route that doesn't exist.
+     * Defaults to `${basePath}/{tx.id}` when omitted.
+     */
+    resolveRowHref?: (tx: Transaction) => string;
 }
 
-const TransactionListView = ({ title, description, basePath, apiUrl, filters }: TransactionListViewProps) => {
+const TransactionListView = ({ title, description, basePath, apiUrl, filters, resolveRowHref }: TransactionListViewProps) => {
+    const getRowHref = (tx: Transaction) =>
+        resolveRowHref ? resolveRowHref(tx) : `${basePath}/${tx.id}`;
     const router = useRouter();
     const [data, setData] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
@@ -245,7 +255,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
             Icon: <LuEye />,
             onClick: () => {
                 if (selectedRow !== null) {
-                    router.push(`${basePath}/${data[selectedRow].id}`);
+                    router.push(getRowHref(data[selectedRow]));
                 }
                 setSelectedRow(null);
             },
@@ -494,7 +504,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                     <tr
                                         key={tx.id}
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => router.push(`${basePath}/${tx.id}`)}
+                                        onClick={() => router.push(getRowHref(tx))}
                                     >
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                             {tx.reference?.substring(0, 18) || String(tx.id).substring(0, 8)}...
