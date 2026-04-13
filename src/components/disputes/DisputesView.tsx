@@ -126,11 +126,11 @@ const DisputesView = () => {
                         <table className="w-full text-left border-collapse text-sm">
                             <thead className="bg-gray-50 border-b border-gray-200 uppercase tracking-wider text-xs font-semibold text-gray-700">
                                 <tr>
-                                    <th className="px-6 py-4">Dispute ID</th>
-                                    <th className="px-6 py-4">Booking ID</th>
+                                    <th className="px-6 py-4">Dispute & Booking</th>
                                     <th className="px-6 py-4">Category</th>
+                                    <th className="px-6 py-4">Guest Info</th>
+                                    <th className="px-6 py-4">Owner Info</th>
                                     <th className="px-6 py-4 text-center">Status</th>
-                                    <th className="px-6 py-4">Raised On</th>
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -141,22 +141,32 @@ const DisputesView = () => {
                                         className="hover:bg-gray-50 transition-colors cursor-pointer"
                                         onClick={() => router.push(PAGE_ROUTES.dashboard.bookingManagement.bookingDisputes.details(dispute.id))}
                                     >
-                                        <td className="px-6 py-4 font-bold text-primary truncate max-w-[120px]">
-                                            {dispute.dispute_id || dispute.id.substring(0, 8)}
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-primary truncate max-w-[120px]">
+                                                {dispute.dispute_id || dispute.id.substring(0, 8)}
+                                            </div>
+                                            <div className="text-gray-500 text-xs truncate max-w-[120px] mt-0.5">
+                                                {dispute.booking_id.substring(0,8).toUpperCase()}
+                                            </div>
+                                            <div className="text-gray-400 text-[10px] mt-1">
+                                                {new Date(dispute.created_at).toLocaleDateString()}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-600 truncate max-w-[120px]">
-                                            {dispute.booking_id}
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-gray-800">
+                                        <td className="px-6 py-4 font-medium text-gray-800 text-xs">
                                             {dispute.category.replace(/_/g, " ")}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-semibold text-gray-900">{dispute.guest_name || 'N/A'}</div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Icon icon="solar:letter-bold" /> {dispute.guest_email || 'N/A'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-semibold text-gray-900">{dispute.owner_name || 'N/A'}</div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Icon icon="solar:letter-bold" /> {dispute.owner_email || 'N/A'}</div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(dispute.status)}`}>
                                                 {dispute.status}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500 text-xs">
-                                            {new Date(dispute.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end items-center" onClick={(e) => handleDotsClick(e, index)}>

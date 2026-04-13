@@ -166,6 +166,7 @@ export const API_ROUTES = {
         myDisputes: '/disputes/my',
         details: (id: string | number) => `/disputes/${id}`,
         evidence: (disputeId: string | number) => `/disputes/${disputeId}/evidence`,
+        deleteEvidence: (disputeId: string | number, evidenceId: string | number) => `/disputes/${disputeId}/evidence/${evidenceId}`,
     },
     referrals: {
         myCode: '/referrals/my-code',
