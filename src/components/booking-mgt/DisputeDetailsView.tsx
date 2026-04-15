@@ -66,12 +66,8 @@ const DisputeDetailsView = () => {
 
     useEffect(() => {
         if (isResolveModalOpen && dispute) {
-            const role = (dispute.raised_by_role as string)?.toUpperCase();
-            if (role === 'GUEST') {
-                setOutcome(DisputeOutcome.NO_ACTION);
-            } else {
-                setOutcome(DisputeOutcome.PARTIAL_COMPENSATION);
-            }
+            // Default to NO_ACTION for all roles as it's a common option now
+            setOutcome(DisputeOutcome.NO_ACTION);
         }
     }, [isResolveModalOpen, dispute]);
 
@@ -241,7 +237,7 @@ const DisputeDetailsView = () => {
                                                     <Icon icon="solar:eye-bold" />
                                                 </a>
                                                 {!isAdmin && (
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleDeleteEvidence(item.id)}
                                                         disabled={deletingEvidenceId === item.id}
                                                         className="p-2 bg-red-500 rounded-full text-white shadow-xl transform scale-75 group-hover:scale-100 transition-transform hover:bg-red-600 disabled:opacity-50"
@@ -421,8 +417,8 @@ const DisputeDetailsView = () => {
                         <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Final Outcome</label>
                         <div className="grid grid-cols-2 gap-3">
                             {(dispute.raised_by_role?.toString()?.toUpperCase() === 'GUEST'
-                                ? [DisputeOutcome.NO_ACTION, DisputeOutcome.PARTIAL_REFUND, DisputeOutcome.FULL_REFUND]
-                                : [DisputeOutcome.PARTIAL_COMPENSATION, DisputeOutcome.FULL_COMPENSATION]
+                                ? [DisputeOutcome.PARTIAL_REFUND, DisputeOutcome.FULL_REFUND, DisputeOutcome.NO_ACTION]
+                                : [DisputeOutcome.PARTIAL_COMPENSATION, DisputeOutcome.FULL_REFUND, DisputeOutcome.NO_ACTION]
                             ).map(o => (
                                 <button
                                     key={o}
@@ -435,7 +431,7 @@ const DisputeDetailsView = () => {
                             ))}
                         </div>
                     </div>
-                    {([DisputeOutcome.PARTIAL_REFUND, DisputeOutcome.PARTIAL_COMPENSATION, DisputeOutcome.FULL_COMPENSATION].includes(outcome)) && (
+                    {([DisputeOutcome.PARTIAL_REFUND, DisputeOutcome.PARTIAL_COMPENSATION].includes(outcome)) && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
                             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
                                 {outcome === DisputeOutcome.PARTIAL_REFUND ? "Refund Amount (NGN)" : "Compensation Amount (NGN)"}
