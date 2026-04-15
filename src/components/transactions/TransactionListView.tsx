@@ -317,8 +317,8 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1 max-w-md relative">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                            <div className="flex-1 max-w-full sm:max-w-md relative">
                                 <input
                                     type="text"
                                     value={searchValue}
@@ -328,23 +328,25 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                 />
                                 <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                             </div>
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={`px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-white text-gray-700'}`}
-                            >
-                                <FilterIcon className="w-4 h-4" color={showFilters ? "#028090" : "#6B7280"} />
-                                <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
-                            </button>
-                            {(statusFilter || (typeFilter !== (filters?.tx_type || "")) || (actionFilter !== (filters?.action || "")) || gatewayFilter || startDate || endDate) && (
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <button
-                                    onClick={resetFilters}
-                                    className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-4"
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={`px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-white text-gray-700'}`}
                                 >
-                                    Reset Filters
+                                    <FilterIcon className="w-4 h-4" color={showFilters ? "#028090" : "#6B7280"} />
+                                    <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
                                 </button>
-                            )}
-                            <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
-                                Total Records: <span className="text-primary">{rowCount}</span>
+                                {(statusFilter || (typeFilter !== (filters?.tx_type || "")) || (actionFilter !== (filters?.action || "")) || gatewayFilter || startDate || endDate) && (
+                                    <button
+                                        onClick={resetFilters}
+                                        className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-4"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                )}
+                                <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                                    Total Records: <span className="text-primary">{rowCount}</span>
+                                </div>
                             </div>
                         </div>
 

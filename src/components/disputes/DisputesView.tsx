@@ -87,8 +87,8 @@ const DisputesView = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 max-w-md relative">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1 max-w-full sm:max-w-md relative">
                             <input
                                 type="text"
                                 className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
@@ -96,21 +96,23 @@ const DisputesView = () => {
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                         </div>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => {
-                                setStatusFilter(e.target.value as DisputeStatus);
-                                setPage(1);
-                            }}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white min-w-[150px]"
-                        >
-                            <option value="">All Statuses</option>
-                            {Object.values(DisputeStatus).map((status) => (
-                                <option key={status} value={status}>{status}</option>
-                            ))}
-                        </select>
-                        <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
-                            Total Disputes: <span className="text-primary">{totalCount}</span>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value as DisputeStatus);
+                                    setPage(1);
+                                }}
+                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white min-w-[150px]"
+                            >
+                                <option value="">All Statuses</option>
+                                {Object.values(DisputeStatus).map((status) => (
+                                    <option key={status} value={status}>{status}</option>
+                                ))}
+                            </select>
+                            <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                                Total Disputes: <span className="text-primary">{totalCount}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
