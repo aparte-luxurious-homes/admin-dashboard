@@ -146,7 +146,7 @@ export default function ResetPassword() {
             <input
               type={passwordVisible ? 'text' : 'password'}
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(e) => setNewPassword(e.target.value.replace(/\s/g, ''))}
               className="w-full h-[46px] border border-[#d1d5db] rounded-lg px-2.5 bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#124452]"
               placeholder="Enter new password"
             />
@@ -174,7 +174,7 @@ export default function ResetPassword() {
             <input
               type={confirmPasswordVisible ? 'text' : 'password'}
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => setConfirmPassword(e.target.value.replace(/\s/g, ''))}
               className="w-full h-[46px] border border-[#d1d5db] rounded-lg px-2.5 bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#124452]"
               placeholder="Confirm new password"
             />

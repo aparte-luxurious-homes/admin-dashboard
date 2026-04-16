@@ -185,7 +185,10 @@ const LoginandSecurity = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setResetInfo((prev) => ({ ...prev, [name]: value }));
+    const sanitized = (name === "password" || name === "password_confirmation")
+      ? value.replace(/\s/g, '')
+      : value;
+    setResetInfo((prev) => ({ ...prev, [name]: sanitized }));
     
     // Validate password match when either password field changes
     if (name === "password" || name === "password_confirmation") {

@@ -30,8 +30,8 @@ const SettingsPage = () => {
   const { user, isFetching } = useAuth();
   return (
     <>
-      <div className="p-[20px] mr-5 ml-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
-        <h1 className="text-3xl font-bold">Account</h1>
+      <div className="p-4 sm:p-[20px] mx-2 sm:mx-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
+        <h1 className="text-2xl sm:text-3xl font-bold">Account</h1>
         <p className="mb-10">Hi {user?.profile?.firstName}, <strong>{user?.email}</strong></p>
         <Grid container spacing={3}>
           {settingsOptions.map((option) => (
