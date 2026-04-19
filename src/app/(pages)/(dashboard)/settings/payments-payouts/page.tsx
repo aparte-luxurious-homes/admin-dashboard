@@ -15,6 +15,7 @@ import { UserRole } from "@/src/lib/enums";
 const DISBURSEMENT_KEY = "DISBURSEMENT_PROVIDER";
 const REWARD_ENABLED_KEY = "PROPERTY_VERIFICATION_REWARD_ENABLED";
 const REWARD_AMOUNT_KEY = "PROPERTY_VERIFICATION_REWARD_AMOUNT";
+const SMS_PROVIDER_KEY = "SMS_PROVIDER";
 
 interface ProviderOption {
   value: string;
@@ -44,6 +45,21 @@ const providerOptions: ProviderOption[] = [
   },
 ];
 
+const smsProviderOptions: ProviderOption[] = [
+  {
+    value: "termii",
+    label: "Termii",
+    description: "Default OTP & SMS delivery",
+    icon: "mdi:message-text-outline",
+  },
+  {
+    value: "kudisms",
+    label: "KudiSMS",
+    description: "Alternative SMS gateway",
+    icon: "mdi:message-processing-outline",
+  },
+];
+
 const toastStyle = {
   duration: 3000,
   style: { maxWidth: "500px", width: "max-content" as const },
@@ -57,6 +73,7 @@ const PaymentPayout = () => {
   const { data, isLoading, isError } = GetIntegrationConfigs();
   const mutation = UpdateIntegrationConfig();
   const rewardMutation = UpdateIntegrationConfig();
+  const smsMutation = UpdateIntegrationConfig();
 
   const configs = data?.data?.data ?? data?.data ?? [];
 
@@ -76,6 +93,23 @@ const PaymentPayout = () => {
       setUserSelected(null);
     }
   }, [currentProvider, userSelected]);
+
+  // --- SMS provider state ---
+  const smsConfig = configs.find((c: { key: string }) => c.key === SMS_PROVIDER_KEY);
+  // Default to "termii" when no record exists yet (matches backend SMS_PROVIDER_DEFAULT).
+  const currentSmsProvider: string = (smsConfig?.value ?? "termii").toLowerCase();
+  const smsUpdatedAt: string | undefined = smsConfig?.updated_at;
+
+  const [smsUserSelected, setSmsUserSelected] = useState<string | null>(null);
+  const selectedSmsProvider = smsUserSelected ?? currentSmsProvider;
+  const hasSmsChanges =
+    smsUserSelected !== null && smsUserSelected !== currentSmsProvider;
+
+  useEffect(() => {
+    if (smsUserSelected && smsUserSelected === currentSmsProvider) {
+      setSmsUserSelected(null);
+    }
+  }, [currentSmsProvider, smsUserSelected]);
 
   // --- Reward feature state ---
   const rewardEnabledConfig = configs.find(
@@ -222,6 +256,37 @@ const PaymentPayout = () => {
     } else if (amountChanged) {
       saveAmount();
     }
+  };
+
+  const handleSaveSms = () => {
+    if (!hasSmsChanges) return;
+
+    const providerLabel =
+      smsProviderOptions.find((p) => p.value === selectedSmsProvider)?.label ??
+      selectedSmsProvider;
+
+    const confirmed = window.confirm(
+      `Switch the SMS provider to ${providerLabel}? All future OTPs and transactional SMS will route through this provider.`
+    );
+    if (!confirmed) return;
+
+    smsMutation.mutate(
+      { key: SMS_PROVIDER_KEY, payload: { value: selectedSmsProvider } },
+      {
+        onSuccess: (res) => {
+          toast.success(
+            res?.data?.message ?? "SMS provider updated successfully.",
+            toastStyle
+          );
+        },
+        onError: (error: any) => {
+          toast.error(
+            error?.response?.data?.message ?? "Failed to update SMS provider.",
+            toastStyle
+          );
+        },
+      }
+    );
   };
 
   const formatDate = (iso: string) => {
@@ -414,6 +479,109 @@ const PaymentPayout = () => {
               disabled={!hasChanges || mutation.isPending}
               isLoading={mutation.isPending}
               onClick={handleSave}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* SMS Provider Card */}
+      <div className="mt-6 p-6 border border-[#E4E7EC] rounded-xl bg-white">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h4 className="text-lg font-semibold text-gray-800">SMS Provider</h4>
+            <p className="text-sm text-gray-500 mt-1">
+              Gateway used for signup/login OTPs and transactional SMS.
+            </p>
+          </div>
+          {currentSmsProvider && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              Active: {currentSmsProvider}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+          {smsProviderOptions.map((provider) => {
+            const isSelected = selectedSmsProvider === provider.value;
+            const isCurrent = currentSmsProvider === provider.value;
+
+            return (
+              <button
+                key={provider.value}
+                type="button"
+                onClick={() => setSmsUserSelected(provider.value)}
+                className={`
+                  relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all cursor-pointer text-center
+                  ${
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-[#E4E7EC] bg-white hover:border-gray-300 hover:bg-gray-50"
+                  }
+                `}
+              >
+                <div
+                  className={`
+                    absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
+                    ${
+                      isSelected
+                        ? "border-primary bg-primary"
+                        : "border-gray-300 bg-white"
+                    }
+                  `}
+                >
+                  {isSelected && (
+                    <Icon
+                      icon="mdi:check"
+                      width="14"
+                      height="14"
+                      className="text-white"
+                    />
+                  )}
+                </div>
+
+                <div
+                  className={`
+                    w-12 h-12 rounded-full flex items-center justify-center transition-colors
+                    ${isSelected ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-500"}
+                  `}
+                >
+                  <Icon icon={provider.icon} width="28" height="28" />
+                </div>
+
+                <div>
+                  <p className="font-semibold text-gray-800">{provider.label}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {provider.description}
+                  </p>
+                </div>
+
+                {isCurrent && (
+                  <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                    Current
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {smsUpdatedAt && (
+          <p className="text-xs text-gray-400 mt-4">
+            Last updated: {formatDate(smsUpdatedAt)}
+          </p>
+        )}
+
+        <div className="mt-6 flex justify-end">
+          <div className="w-full sm:w-auto">
+            <Button
+              variant="primaryoutline"
+              buttonSize="medium"
+              color="btnfontprimary"
+              buttonName="Save Changes"
+              disabled={!hasSmsChanges || smsMutation.isPending}
+              isLoading={smsMutation.isPending}
+              onClick={handleSaveSms}
             />
           </div>
         </div>
