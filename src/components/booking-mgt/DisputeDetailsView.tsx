@@ -239,7 +239,7 @@ const DisputeDetailsView = () => {
                                                 <a href={item.media_url} target="_blank" className="p-2 bg-white rounded-full text-gray-900 shadow-xl transform scale-75 group-hover:scale-100 transition-transform">
                                                     <Icon icon="solar:eye-bold" />
                                                 </a>
-                                                {(isSuperAdmin || item.uploaded_by === currentUserId) && (
+                                                {(isSuperAdmin || (currentUserId != null && String(item.uploaded_by) === String(currentUserId))) && (
                                                     <button
                                                         onClick={() => handleDeleteEvidence(item.id)}
                                                         disabled={deletingEvidenceId === item.id}
