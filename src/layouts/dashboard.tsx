@@ -98,6 +98,35 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     [isMobileMenuOpen]
   );
 
+  // Route-level RBAC: if the current path matches a NAV_LINK entry whose `allow`
+  // list excludes the current user's role, kick them back to the dashboard root.
+  // Covers direct URL access (sidebar filtering alone doesn't stop /transactions/withdrawals
+  // from rendering for an OWNER who types the URL).
+  useEffect(() => {
+    if (!user || !currentRoute) return;
+
+    const role = user.role as UserRole;
+    for (const link of NAV_LINKS) {
+      if (link.children && link.children.length > 0) {
+        for (const child of link.children) {
+          if (child.link !== "#" && currentRoute.startsWith(child.link)) {
+            if (child.allow.length > 0 && !child.allow.includes(role)) {
+              toast.error("You don't have access to that page");
+              router.replace(PAGE_ROUTES.dashboard.base);
+              return;
+            }
+          }
+        }
+      } else if (link.link !== "#" && currentRoute.startsWith(link.link) && link.link !== PAGE_ROUTES.dashboard.base) {
+        if (link.allow.length > 0 && !link.allow.includes(role)) {
+          toast.error("You don't have access to that page");
+          router.replace(PAGE_ROUTES.dashboard.base);
+          return;
+        }
+      }
+    }
+  }, [user, currentRoute, router]);
+
   // Show loader while checking authentication or fetching user
   if (isCheckingAuth || (isFetching && !user)) {
     return <Loader message="Loading dashboard..." />;

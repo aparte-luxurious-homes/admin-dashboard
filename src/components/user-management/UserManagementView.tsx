@@ -9,6 +9,7 @@ import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
 import { CreateUser, OnboardUser, DeleteUser, UpdateUser, GetAssignableRoles } from "@/src/lib/request-handlers/userMgt";
+import { usePermissions } from "@/src/hooks/usePermissions";
 import { toast } from "react-hot-toast";
 import { DotsIcon, FilterIcon, SearchIcon, TrashIcon } from "@/src/components/icons";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
@@ -84,6 +85,7 @@ interface UserManagementViewProps {
 
 const UserManagementView = ({ role, title, description, basePath }: UserManagementViewProps) => {
     const router = useRouter();
+    const { canDeleteUser } = usePermissions();
     const [data, setData] = useState<User[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchValue, setSearchValue] = useState<string>("");
@@ -288,7 +290,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                 setSelectedRow(null);
             },
         },
-        {
+        ...(canDeleteUser ? [{
             label: "Delete",
             Icon: <TrashIcon className="w-4 h-4" color="#EF4444" />,
             onClick: () => {
@@ -319,7 +321,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                 }
                 setSelectedRow(null);
             },
-        }
+        }] : [])
     ];
 
     return (

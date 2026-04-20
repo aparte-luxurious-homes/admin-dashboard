@@ -19,6 +19,7 @@ import {
   ApproveBookingRequest,
   RejectBookingRequest,
 } from "@/src/lib/request-handlers/bookingMgt";
+import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface BookingActionBarProps {
   booking: NormalizedBooking;
@@ -28,6 +29,14 @@ interface BookingActionBarProps {
 export default function BookingActionBar({ booking, onStatusChange }: BookingActionBarProps) {
   const router = useRouter();
   const status = booking.status;
+  const {
+    isSuperAdmin,
+    isAdmin,
+    isOwner,
+    isStaff,
+    canManageFinances,
+    canCancelBooking,
+  } = usePermissions();
 
   // Mutations
   const { mutate: checkIn, isPending: isCheckingIn } = CheckInBooking();
@@ -141,6 +150,7 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
   function getPrimaryAction() {
     switch (status) {
       case BookingStatus.CONFIRMED:
+        if (!isStaff) return null;
         return (
           <button
             onClick={handleCheckIn}
@@ -151,6 +161,7 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
           </button>
         );
       case BookingStatus.CHECKED_IN:
+        if (!isStaff) return null;
         return (
           <button
             onClick={handleCheckOut}
@@ -161,7 +172,7 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
           </button>
         );
       case BookingStatus.CHECKED_OUT:
-        if (!booking.isCautionRefunded) {
+        if (!booking.isCautionRefunded && canManageFinances) {
           return (
             <button
               onClick={() => setShowRefundModal(true)}
@@ -174,6 +185,7 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
         }
         return null;
       case BookingStatus.APPROVAL_PENDING:
+        if (!(isAdmin || isOwner)) return null;
         return (
           <button
             onClick={handleApproveRequest}
@@ -184,6 +196,7 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
           </button>
         );
       case BookingStatus.CANCEL_REQUESTED:
+        if (!canManageFinances) return null;
         return (
           <div className="flex flex-col items-end gap-1">
             <p className="text-[10px] text-amber-700 text-right max-w-xs">
@@ -209,8 +222,8 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
   function getSecondaryActions() {
     const actions: React.ReactNode[] = [];
 
-    // Reject button for approval pending
-    if (status === BookingStatus.APPROVAL_PENDING) {
+    // Reject button for approval pending — owner or admin
+    if (status === BookingStatus.APPROVAL_PENDING && (isAdmin || isOwner)) {
       actions.push(
         <button
           key="reject"
@@ -229,14 +242,14 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
   function getDestructiveActions() {
     const actions: React.ReactNode[] = [];
 
-    // Cancel button (not for already cancelled/completed/cancel-requested/approval-pending)
+    // Cancel button — admin/owner/agent, and not for terminal/pre-pay statuses
     const hideCancelFor = [
       BookingStatus.CANCELLED,
       BookingStatus.COMPLETED,
       BookingStatus.CANCEL_REQUESTED,
       BookingStatus.APPROVAL_PENDING,
     ];
-    if (!hideCancelFor.includes(status)) {
+    if (canCancelBooking && !hideCancelFor.includes(status)) {
       actions.push(
         <button
           key="cancel"
@@ -248,16 +261,18 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
       );
     }
 
-    // Delete is always available
-    actions.push(
-      <button
-        key="delete"
-        onClick={() => setShowDeleteConfirm(true)}
-        className="px-4 py-2 bg-zinc-800 text-white rounded-lg text-xs sm:text-sm hover:bg-zinc-950 transition-colors font-medium"
-      >
-        Delete
-      </button>,
-    );
+    // Delete — SUPER_ADMIN only
+    if (isSuperAdmin) {
+      actions.push(
+        <button
+          key="delete"
+          onClick={() => setShowDeleteConfirm(true)}
+          className="px-4 py-2 bg-zinc-800 text-white rounded-lg text-xs sm:text-sm hover:bg-zinc-950 transition-colors font-medium"
+        >
+          Delete
+        </button>,
+      );
+    }
 
     return actions;
   }

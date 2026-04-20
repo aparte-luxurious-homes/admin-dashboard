@@ -18,6 +18,7 @@ import { formatDate, formatMoney } from "@/src/lib/utils";
 import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
 import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
+import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface Transaction {
     id: string;
@@ -89,6 +90,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
 
     const [isOpen, setIsOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
+    const { canManageFinances } = usePermissions();
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -262,7 +264,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
         }
     ];
 
-    if (selectedRow !== null && data[selectedRow]?.status === "PENDING_APPROVAL") {
+    if (canManageFinances && selectedRow !== null && data[selectedRow]?.status === "PENDING_APPROVAL") {
         const tx = data[selectedRow];
         detailButtons.push({
             label: tx.transaction_type === "WITHDRAWAL" ? "Approve Withdrawal" : "Approve Refund",
@@ -282,7 +284,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
         }
     }
 
-    if (selectedRow !== null && data[selectedRow]?.status === "AWAITING_AUTHORIZATION") {
+    if (canManageFinances && selectedRow !== null && data[selectedRow]?.status === "AWAITING_AUTHORIZATION") {
         const tx = data[selectedRow];
         if (tx.transaction_type === "WITHDRAWAL") {
             detailButtons.push({

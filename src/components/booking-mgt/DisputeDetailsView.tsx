@@ -19,13 +19,16 @@ import { format } from "date-fns";
 import CustomModal from "@/src/components/ui/CustomModal";
 import toast from "react-hot-toast";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import { useAuth } from "@/src/hooks/useAuth";
 import Image from "next/image";
 
 const DisputeDetailsView = () => {
     const { id } = useParams();
     const disputeId = id as string;
     const router = useRouter();
-    const { isAdmin, isOwner, isAgent } = usePermissions();
+    const { isAdmin, isOwner, isAgent, isSuperAdmin } = usePermissions();
+    const { user } = useAuth();
+    const currentUserId = user?.id;
 
     const adminQuery = useDisputeDetails(disputeId);
     const ownerQuery = useMyDisputeDetails(disputeId);
@@ -236,7 +239,7 @@ const DisputeDetailsView = () => {
                                                 <a href={item.media_url} target="_blank" className="p-2 bg-white rounded-full text-gray-900 shadow-xl transform scale-75 group-hover:scale-100 transition-transform">
                                                     <Icon icon="solar:eye-bold" />
                                                 </a>
-                                                {!isAdmin && (
+                                                {(isSuperAdmin || item.uploaded_by === currentUserId) && (
                                                     <button
                                                         onClick={() => handleDeleteEvidence(item.id)}
                                                         disabled={deletingEvidenceId === item.id}

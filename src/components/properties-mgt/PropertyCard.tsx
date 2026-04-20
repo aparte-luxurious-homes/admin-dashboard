@@ -3,16 +3,26 @@
 import { IProperty } from "./types";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { LuEye, LuTrash2 } from "react-icons/lu";
+import { LuEye, LuTrash2, LuBed, LuBath, LuUsers } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
+import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface PropertyCardProps {
   property: IProperty;
   onDelete: (property: IProperty) => void;
 }
 
+function formatRange(values: number[]): string {
+  const nonZero = values.filter((v) => v > 0);
+  if (nonZero.length === 0) return "";
+  const min = Math.min(...nonZero);
+  const max = Math.max(...nonZero);
+  return min === max ? `${min}` : `${min}–${max}`;
+}
+
 export default function PropertyCard({ property, onDelete }: PropertyCardProps) {
   const router = useRouter();
+  const { canDeleteProperty } = usePermissions();
 
   const prices = property?.units?.map((u: any) =>
     parseFloat(String(u.price_per_night || u.pricePerNight || 0))
@@ -25,6 +35,21 @@ export default function PropertyCard({ property, onDelete }: PropertyCardProps) 
     : minPrice === maxPrice
       ? `₦${minPrice.toLocaleString()}/night`
       : `₦${minPrice.toLocaleString()} – ₦${maxPrice.toLocaleString()}/night`;
+
+  const bedroomLabel = formatRange(
+    (property?.units ?? []).map((u: any) => Number(u.bedroom_count ?? u.bedroomCount) || 0)
+  );
+  const bathroomLabel = formatRange(
+    (property?.units ?? []).map((u: any) => Number(u.bathroom_count ?? u.bathroomCount) || 0)
+  );
+  const guestValues = (property?.units ?? [])
+    .map((u: any) => Number(u.max_guests ?? u.maxGuests) || 0)
+    .filter((n: number) => n > 0);
+  const maxGuests = guestValues.length ? Math.max(...guestValues) : 0;
+  const hasSpecs = !!(bedroomLabel || bathroomLabel || maxGuests);
+
+  const totalReviews = (property as any)?.meta?.total_reviews ?? (property as any)?.total_reviews ?? 0;
+  const averageRating = (property as any)?.meta?.average_rating ?? (property as any)?.average_rating ?? 0;
 
   return (
     <div
@@ -63,6 +88,30 @@ export default function PropertyCard({ property, onDelete }: PropertyCardProps) 
           </span>
           <span className="font-medium text-gray-900">{priceLabel}</span>
         </div>
+        {hasSpecs && (
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-gray-600">
+            {bedroomLabel && (
+              <span className="inline-flex items-center gap-1">
+                <LuBed size={12} /> {bedroomLabel} bed
+              </span>
+            )}
+            {bathroomLabel && (
+              <span className="inline-flex items-center gap-1">
+                <LuBath size={12} /> {bathroomLabel} bath
+              </span>
+            )}
+            {maxGuests > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <LuUsers size={12} /> up to {maxGuests} guests
+              </span>
+            )}
+          </div>
+        )}
+        {totalReviews > 0 && (
+          <p className="text-[11px] text-gray-500">
+            ★ {Number(averageRating).toFixed(1)} ({totalReviews} review{totalReviews !== 1 ? "s" : ""})
+          </p>
+        )}
         {(property?.owner?.email || property?.owner?.profile?.firstName) && (
           <p className="text-[11px] text-gray-400 truncate">
             Owner: {property.owner.profile?.firstName ?? property.owner.email}
@@ -92,15 +141,17 @@ export default function PropertyCard({ property, onDelete }: PropertyCardProps) 
         >
           <HiOutlinePencilAlt size={14} /> Edit
         </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(property);
-          }}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-red-500 hover:bg-red-50 rounded-lg"
-        >
-          <LuTrash2 size={14} /> Delete
-        </button>
+        {canDeleteProperty && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(property);
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-red-500 hover:bg-red-50 rounded-lg"
+          >
+            <LuTrash2 size={14} /> Delete
+          </button>
+        )}
       </div>
     </div>
   );
