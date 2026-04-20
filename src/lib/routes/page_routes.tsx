@@ -100,6 +100,7 @@ export const PAGE_ROUTES = {
         },
         settings: {
             base: '/settings',
+            kyc: '/settings/kyc',
         },
         rolesPermissions: {
             base: '/roles-permissions',

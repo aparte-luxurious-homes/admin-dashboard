@@ -63,6 +63,7 @@ export const API_ROUTES = {
         updatePassword: '/profile/password',
         kycStatus: '/profile/kyc-status',
         verifyGovId: '/profile/verify-gov-id',
+        kycDocuments: '/profile/kyc/documents',
         kyc: {
             upload: '/kyc/upload',
             details: (docId: string | number) => `/kyc/${docId}/details`,
