@@ -75,6 +75,7 @@ export const API_ROUTES = {
             amenities: (propertyId: string | number) => `/properties/${propertyId}/amenities`,
             media: (propertyId: string | number) => `/properties/${propertyId}/media`,
             verify: (id: string | number) => `/properties/${id}/verify`,
+            verificationMedia: (id: string | number) => `/properties/${id}/verifications/media`,
             units: {
                 base: (propertyId: string | number) => `/properties/${propertyId}/units`,
                 details: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}`,

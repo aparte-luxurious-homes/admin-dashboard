@@ -12,7 +12,8 @@ import { VerificationBadge } from '../../badge';
 import { CalendarIcon } from '../../icons';
 import { IProperty, IPropertyVerification, PropertyVerificationStatus } from '../types';
 import { useAuth } from '@/src/hooks/useAuth';
-import { AssignToProperty, GetPropertyVerification, UpdatePropertyVerification } from '@/src/lib/request-handlers/propertyMgt';
+import { AssignToProperty, GetPropertyVerification, UpdatePropertyVerification, UploadVerificationMedia } from '@/src/lib/request-handlers/propertyMgt';
+import { HiOutlineCloudUpload } from 'react-icons/hi';
 import { UserRole } from '@/src/lib/enums';
 import { useFormik } from 'formik';
 import { useDispatch } from 'react-redux';
@@ -41,11 +42,16 @@ export default function VerificationDetails({
     const { user } = useAuth();
     const { mutate: assignAgent, isPending: assignmentLoading } = AssignToProperty(propertyId)
     const { mutate: updateVerification, isPending: verificationUdateLoading } = UpdatePropertyVerification()
+    const { mutate: uploadEvidence, isPending: evidenceUploading } = UploadVerificationMedia()
     const { data: verificationData, isLoading: verificationLoading } = GetPropertyVerification(verificationId)
     const [verification, setVerification] = useState<IPropertyVerification | null>(null);
     const [property, setProperty] = useState<IProperty | null>(null);
     const [editMode, setEditMode] = useState<boolean>(false)
     const [agentSearchTerm, setAgentSearchTerm] = useState<string>('')
+    // Verification evidence — URLs the agent has already uploaded for this
+    // verification. Seeded from the server on load and appended-to as the
+    // agent uploads more. The Verify button is gated on length >= 2.
+    const [evidenceUrls, setEvidenceUrls] = useState<string[]>([])
 
 
     const { data: agentsList, isLoading: agentsLoading } = GetAllUsers(1, 12, agentSearchTerm, UserRole.AGENT);
@@ -69,6 +75,7 @@ export default function VerificationDetails({
                         payload: {
                             feedback: formik.values.feedback,
                             status: verification?.status ?? PropertyVerificationStatus.PENDING,
+                            evidence_urls: evidenceUrls,
                         }
                     },
                     {
@@ -148,7 +155,8 @@ export default function VerificationDetails({
                             feedback: formik.values.feedback,
                             status: PropertyVerificationStatus.VERIFIED,
                             skip_kyc_check: skipKycCheck,
-                            skip_document_check: skipDocumentCheck
+                            skip_document_check: skipDocumentCheck,
+                            evidence_urls: evidenceUrls,
                         }
                     },
                     {
@@ -261,6 +269,11 @@ export default function VerificationDetails({
         setVerification(verificationData?.data?.data)
         setProperty(verificationData?.data?.data?.property)
         setSelectedAgent(verificationData?.data?.data?.property?.agent)
+        setEvidenceUrls(
+            Array.isArray(verificationData?.data?.data?.evidence_urls)
+                ? verificationData.data.data.evidence_urls
+                : []
+        )
 
         // Handle ?edit=true from URL (only once, only for agents)
         if (verificationData?.data?.data && !editFromUrlRef.current && searchParams?.get('edit') === 'true') {
@@ -270,6 +283,42 @@ export default function VerificationDetails({
             }
         }
     }, [verificationData, verificationId, searchParams, user?.role])
+
+    const handleEvidenceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files || []);
+        if (files.length === 0) return;
+        if (evidenceUrls.length + files.length > 10) {
+            toast.error("Maximum 10 evidence files per verification");
+            return;
+        }
+        uploadEvidence(
+            { propertyId, files },
+            {
+                onSuccess: (resp: any) => {
+                    const urls: string[] = resp?.data?.data?.urls || [];
+                    if (urls.length === 0) {
+                        toast.error("Upload succeeded but no URLs returned");
+                        return;
+                    }
+                    setEvidenceUrls((prev) => [...prev, ...urls]);
+                    toast.success(`${urls.length} file(s) uploaded`);
+                    // reset the input so the same filename can be re-selected
+                    event.target.value = "";
+                },
+                onError: (err: any) => {
+                    toast.error(err?.response?.data?.detail || "Failed to upload evidence");
+                    event.target.value = "";
+                },
+            },
+        );
+    };
+
+    const removeEvidenceUrl = (url: string) => {
+        setEvidenceUrls((prev) => prev.filter((u) => u !== url));
+    };
+
+    const isAgent = user?.role === UserRole.AGENT;
+    const agentVerifyBlocked = isAgent && evidenceUrls.length < 2;
 
     if (verificationLoading) {
         return (
@@ -673,6 +722,97 @@ export default function VerificationDetails({
                     </section>
                 )}
 
+                {/* On-site Verification Evidence — agents upload >=2 photos/videos */}
+                {verification?.status !== PropertyVerificationStatus.REJECTED && (
+                    <section className='mt-4 sm:mt-6 w-full px-4 sm:px-6 md:px-8 lg:px-10'>
+                        <div className='rounded-xl border border-zinc-200 bg-white p-4 sm:p-6'>
+                            <div className='flex items-start justify-between gap-4 mb-4'>
+                                <div>
+                                    <h3 className='text-sm sm:text-base font-semibold text-zinc-900'>
+                                        On-site Verification Evidence
+                                    </h3>
+                                    <p className='text-xs text-zinc-500 mt-1 max-w-xl'>
+                                        {isAgent
+                                            ? "Upload at least 2 photos or videos taken on-site (images up to 10MB, videos up to 50MB). The Verify button unlocks once 2 are attached."
+                                            : "Photos and videos the agent uploaded during their on-site visit."}
+                                    </p>
+                                </div>
+                                <span className={`flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${
+                                    evidenceUrls.length >= 2
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                }`}>
+                                    {evidenceUrls.length} / 2 min
+                                </span>
+                            </div>
+
+                            {evidenceUrls.length > 0 && (
+                                <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4'>
+                                    {evidenceUrls.map((url) => {
+                                        const isVideo = /\.(mp4|mov|webm|quicktime)(\?|$)/i.test(url);
+                                        return (
+                                            <div key={url} className='relative group aspect-square rounded-lg overflow-hidden border border-zinc-100 bg-zinc-50'>
+                                                {isVideo ? (
+                                                    <video src={url} className='w-full h-full object-cover' controls preload='metadata' />
+                                                ) : (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img src={url} alt='Evidence' className='w-full h-full object-cover' />
+                                                )}
+                                                {isAgent && verification?.status === PropertyVerificationStatus.PENDING && (
+                                                    <button
+                                                        type='button'
+                                                        onClick={() => removeEvidenceUrl(url)}
+                                                        className='absolute top-1.5 right-1.5 bg-red-600/90 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'
+                                                        title='Remove'
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                                <a
+                                                    href={url}
+                                                    target='_blank'
+                                                    rel='noreferrer'
+                                                    className='absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity'
+                                                >
+                                                    View
+                                                </a>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {isAgent && verification?.status === PropertyVerificationStatus.PENDING && (
+                                <div className='flex items-center gap-3'>
+                                    <input
+                                        id='verification-evidence-upload'
+                                        type='file'
+                                        multiple
+                                        accept='image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm'
+                                        className='hidden'
+                                        onChange={handleEvidenceUpload}
+                                        disabled={evidenceUploading || evidenceUrls.length >= 10}
+                                    />
+                                    <label
+                                        htmlFor='verification-evidence-upload'
+                                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
+                                            evidenceUploading || evidenceUrls.length >= 10
+                                                ? 'border-zinc-200 text-zinc-400 bg-zinc-50 cursor-not-allowed'
+                                                : 'border-primary text-primary hover:bg-primary hover:text-white'
+                                        }`}
+                                    >
+                                        {evidenceUploading ? <Spinner /> : <HiOutlineCloudUpload className='text-lg' />}
+                                        {evidenceUploading ? 'Uploading...' : (evidenceUrls.length === 0 ? 'Upload photos / videos' : 'Add more')}
+                                    </label>
+                                    {evidenceUrls.length >= 10 && (
+                                        <span className='text-xs text-zinc-500'>Max 10 files reached</span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                )}
+
                 {/* Action Buttons */}
                 <section className='my-6 sm:my-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6'>
                     <div className='w-full flex justify-between items-center'>
@@ -737,8 +877,9 @@ export default function VerificationDetails({
                                             verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
                                             <button
                                                 type='button'
-                                                disabled={verificationLoading || verificationUdateLoading}
+                                                disabled={verificationLoading || verificationUdateLoading || agentVerifyBlocked}
                                                 onClick={() => handleVerification()}
+                                                title={agentVerifyBlocked ? 'Upload at least 2 evidence files before verifying' : undefined}
                                                 className="w-full sm:w-auto border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90 disabled:opacity-75 disabled:cursor-not-allowed transition-colors"
                                             >
                                                 Verify

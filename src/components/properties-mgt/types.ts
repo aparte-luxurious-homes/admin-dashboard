@@ -57,6 +57,7 @@ export interface IPropertyVerification {
     agent_id?: number
     status: PropertyVerificationStatus
     feedback: string
+    evidence_urls?: string[]
     verificationDate?: string
     verification_date?: string
     createdAt: string
@@ -212,6 +213,7 @@ export interface IUpdatePropertyVerification {
     feedback: string,
     skip_kyc_check?: boolean,
     skip_document_check?: boolean,
+    evidence_urls?: string[],
 }
 
 export interface ICreateProperty {

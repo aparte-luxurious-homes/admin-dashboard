@@ -94,6 +94,30 @@ export function GetPropertyVerifications(page: number = 1, limit: number = 10, s
 }
 
 
+export function UploadVerificationMedia() {
+    // Uploads one or more on-site verification photos/videos for a property.
+    // Returns { urls: string[] } — the caller is responsible for passing those
+    // URLs into UpdatePropertyVerification's `evidence_urls` field.
+    return useMutation({
+        mutationFn: ({ propertyId, files }: { propertyId: string | number; files: File[] }) => {
+            const form = new FormData();
+            files.forEach((f) => form.append("files", f));
+            return axiosRequest.post(
+                API_ROUTES.propertyManagement.properties.verificationMedia(propertyId),
+                form,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                    transformRequest: (data, headers) => {
+                        if (headers) delete headers["Content-Type"];
+                        return data;
+                    },
+                },
+            );
+        },
+    });
+}
+
+
 export function UpdatePropertyVerification() {
     const queryClient = useQueryClient();
     return useMutation({
