@@ -33,10 +33,23 @@ export function UploadPaymentProof() {
 }
 
 export function GuestLookup(search?: string) {
+    // Uses the /bookings/guests/directory endpoint — broader scope than the
+    // referrer-restricted /bookings/guest-lookup. Returns {id, first_name,
+    // email, phone} only so agents can book on behalf of any guest, not just
+    // their own referrals. Response shape nests {meta, data} inside `data`.
     return useQuery({
-        queryKey: ['guestLookup', search],
-        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.guestLookup}?search=${encodeURIComponent(search!)}`),
+        queryKey: ['guestDirectory', search],
+        queryFn: () =>
+            axiosRequest.get(
+                `${API_ROUTES.bookings.guestsDirectory}?search=${encodeURIComponent(search!)}&size=10`
+            ),
         enabled: !!search && search.length >= 2,
+        select: (resp: any) => {
+            // Normalize to the shape CreateBookingView expects: { data: { data: Guest[] } }
+            const inner = resp?.data?.data;
+            const guests = Array.isArray(inner?.data) ? inner.data : Array.isArray(inner) ? inner : [];
+            return { data: { data: guests } };
+        },
     });
 }
 

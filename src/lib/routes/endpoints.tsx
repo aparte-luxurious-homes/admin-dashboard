@@ -99,6 +99,7 @@ export const API_ROUTES = {
     bookings: {
         base: '/bookings',
         guestLookup: '/bookings/guest-lookup',
+        guestsDirectory: '/bookings/guests/directory',
         details: (id: string) => `/bookings/${id}`,
         status: (id: string | number) => `/bookings/${id}/status`,
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
