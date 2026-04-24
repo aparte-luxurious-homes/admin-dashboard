@@ -220,6 +220,12 @@ export interface ICreateProperty {
     name: string
     description: string
     address: string
+    street_number?: string
+    street_name?: string
+    postal_code?: string
+    landmark?: string
+    google_place_id: string
+    geocode_raw?: Record<string, unknown>
     property_type: PropertyType
     city: string
     state: string
@@ -227,7 +233,6 @@ export interface ICreateProperty {
     latitude: number
     longitude: number
     amenities: number[]
-    // kyc_id: number
     is_pet_allowed: boolean
     is_party_allowed: boolean
     rules?: string

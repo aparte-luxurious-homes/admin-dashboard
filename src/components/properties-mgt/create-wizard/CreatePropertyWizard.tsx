@@ -39,6 +39,7 @@ import {
     UnitFormValues,
     createEmptyUnit,
 } from './types';
+import { validatePropertyName } from './nameValidator';
 
 const libraries: any = ['places'];
 
@@ -111,6 +112,13 @@ export default function CreatePropertyWizard() {
         initialValues: {
             name: '',
             address: '',
+            street_number: '',
+            street_name: '',
+            postal_code: '',
+            landmark: '',
+            google_place_id: '',
+            geocode_raw: null,
+            pin_confirmed: false,
             property_type: '',
             country: 'Nigeria',
             state: 'Lagos',
@@ -136,13 +144,38 @@ export default function CreatePropertyWizard() {
     const validateStep = (step: WizardStep): boolean => {
         switch (step) {
             case WizardStep.PROPERTY_DETAILS: {
-                const { name, address, property_type, city, state, country } = formik.values;
-                if (!name.trim()) {
-                    toast.error('Property name is required');
+                const {
+                    name,
+                    address,
+                    property_type,
+                    city,
+                    state,
+                    country,
+                    google_place_id,
+                    latitude,
+                    longitude,
+                    pin_confirmed,
+                } = formik.values;
+
+                const nameError = validatePropertyName(name);
+                if (nameError) {
+                    toast.error(nameError);
                     return false;
                 }
                 if (!address.trim()) {
                     toast.error('Address is required');
+                    return false;
+                }
+                if (!google_place_id) {
+                    toast.error('Please select the address from the suggestions so we can pin it on the map');
+                    return false;
+                }
+                if (latitude == null || longitude == null) {
+                    toast.error('Coordinates missing \u2014 pick the address from the suggestions again');
+                    return false;
+                }
+                if (!pin_confirmed) {
+                    toast.error('Please confirm the map pin matches the actual property location');
                     return false;
                 }
                 if (!property_type) {
@@ -238,6 +271,11 @@ export default function CreatePropertyWizard() {
 
         const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
 
+        if (values.latitude == null || values.longitude == null || !values.google_place_id) {
+            toast.error('Address details are incomplete. Go back to step 1 and re-select the address.');
+            return;
+        }
+
         const payload: ICreateProperty = {
             name: values.name,
             description: values.description,
@@ -246,11 +284,17 @@ export default function CreatePropertyWizard() {
             city: values.city,
             state: values.state,
             country: values.country,
-            latitude: values.latitude ?? 0,
-            longitude: values.longitude ?? 0,
+            latitude: values.latitude,
+            longitude: values.longitude,
+            google_place_id: values.google_place_id,
             amenities: sortedAmenities,
             is_pet_allowed: values.is_pet_allowed,
             is_party_allowed: values.is_party_allowed,
+            ...(values.street_number && { street_number: values.street_number }),
+            ...(values.street_name && { street_name: values.street_name }),
+            ...(values.postal_code && { postal_code: values.postal_code }),
+            ...(values.landmark && { landmark: values.landmark }),
+            ...(values.geocode_raw && { geocode_raw: values.geocode_raw }),
             ...(values.rules && { rules: values.rules }),
             ...(values.owner_email && { owner_email: values.owner_email }),
             ...(values.owner_name && { owner_name: values.owner_name }),

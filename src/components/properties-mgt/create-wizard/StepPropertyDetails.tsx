@@ -20,6 +20,46 @@ import { CreateAmenityForm } from '../all-properties/CreatePropertyView';
 import { GetAllUsers } from '@/src/lib/request-handlers/userMgt';
 import { UserRole } from '@/src/lib/enums';
 import { PropertyFormValues } from './types';
+import { validatePropertyName } from './nameValidator';
+
+type AddressComponent = { long_name: string; short_name: string; types: string[] };
+
+function extractAddressComponents(components: AddressComponent[] = []) {
+    let street_number = '';
+    let street_name = '';
+    let postal_code = '';
+    let city = '';
+    let state = '';
+    let country = '';
+    for (const c of components) {
+        if (c.types.includes('street_number')) street_number = c.long_name;
+        else if (c.types.includes('route')) street_name = c.long_name;
+        else if (c.types.includes('postal_code')) postal_code = c.long_name;
+        else if (c.types.includes('locality')) city = c.long_name;
+        else if (c.types.includes('administrative_area_level_1')) state = c.long_name;
+        else if (c.types.includes('country')) country = c.long_name;
+    }
+    return { street_number, street_name, postal_code, city, state, country };
+}
+
+function applyGeocodeResultToForm(formik: any, result: any, description?: string) {
+    const parts = extractAddressComponents(result?.address_components || []);
+    if (description) {
+        formik.setFieldValue('address', description);
+    } else if (result?.formatted_address) {
+        formik.setFieldValue('address', result.formatted_address);
+    }
+    formik.setFieldValue('google_place_id', result?.place_id ?? '');
+    formik.setFieldValue('geocode_raw', result ?? null);
+    formik.setFieldValue('street_number', parts.street_number);
+    formik.setFieldValue('street_name', parts.street_name);
+    formik.setFieldValue('postal_code', parts.postal_code);
+    if (parts.city) formik.setFieldValue('city', parts.city);
+    if (parts.state) formik.setFieldValue('state', parts.state);
+    if (parts.country) formik.setFieldValue('country', parts.country);
+    // A fresh geocode means the user must re-confirm the pin.
+    formik.setFieldValue('pin_confirmed', false);
+}
 
 function AddressAutocomplete({ formik, isLoaded }: { formik: any; isLoaded: boolean }) {
     const {
@@ -47,19 +87,13 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any; isLoaded: bool
 
     const handleSelect = async (description: string) => {
         setValue(description, false);
-        formik.setFieldValue('address', description);
         clearSuggestions();
         try {
             const results = await getGeocode({ address: description });
             const { lat, lng } = await getLatLng(results[0]);
             formik.setFieldValue('latitude', lat);
             formik.setFieldValue('longitude', lng);
-            results[0].address_components.forEach((component: any) => {
-                const types = component.types;
-                if (types.includes('locality')) formik.setFieldValue('city', component.long_name);
-                else if (types.includes('administrative_area_level_1')) formik.setFieldValue('state', component.long_name);
-                else if (types.includes('country')) formik.setFieldValue('country', component.long_name);
-            });
+            applyGeocodeResultToForm(formik, results[0], description);
         } catch (error) {
             console.error('Error geocoding selection:', error);
         }
@@ -122,18 +156,14 @@ export default function StepPropertyDetails({
         try {
             const results = await getGeocode({ location: { lat, lng } });
             if (results[0]) {
-                formik.setFieldValue('address', results[0].formatted_address);
-                results[0].address_components.forEach((component: any) => {
-                    const types = component.types;
-                    if (types.includes('locality')) formik.setFieldValue('city', component.long_name);
-                    else if (types.includes('administrative_area_level_1')) formik.setFieldValue('state', component.long_name);
-                    else if (types.includes('country')) formik.setFieldValue('country', component.long_name);
-                });
+                applyGeocodeResultToForm(formik, results[0]);
             }
         } catch (error) {
             console.error('Reverse geocoding failed:', error);
         }
     };
+
+    const nameError = formik.values.name ? validatePropertyName(formik.values.name) : null;
 
     return (
         <div className="space-y-6 max-w-3xl mx-auto">
@@ -164,9 +194,12 @@ export default function StepPropertyDetails({
                                 placeholder="e.g. Aparte Luxury Suites"
                                 value={formik.values.name}
                                 onChange={formik.handleChange}
-                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                                className={`w-full bg-zinc-50 border rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium ${nameError ? 'border-red-300' : 'border-zinc-200'}`}
                             />
                         </div>
+                        {nameError && (
+                            <p className="text-[11px] font-semibold text-red-500 ml-1">{nameError}</p>
+                        )}
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
@@ -354,12 +387,41 @@ export default function StepPropertyDetails({
                                                 const lng = e.latLng.lng();
                                                 formik.setFieldValue('latitude', lat);
                                                 formik.setFieldValue('longitude', lng);
+                                                formik.setFieldValue('pin_confirmed', false);
                                                 reverseGeocode(lat, lng);
                                             }
                                         }}
                                     />
                                 )}
                             </GoogleMap>
+                        </div>
+                    )}
+
+                    {isLoaded && formik.values.latitude != null && formik.values.longitude != null && (
+                        <div
+                            className={`flex items-start gap-3 p-3 rounded-xl border ${formik.values.pin_confirmed ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}
+                        >
+                            <Icon
+                                icon={formik.values.pin_confirmed ? 'solar:check-circle-bold' : 'solar:map-point-bold-duotone'}
+                                className={`text-xl shrink-0 ${formik.values.pin_confirmed ? 'text-emerald-500' : 'text-amber-500'}`}
+                            />
+                            <div className="flex-1 space-y-2">
+                                <p className="text-xs font-semibold text-zinc-700">
+                                    {formik.values.pin_confirmed
+                                        ? 'Pin location confirmed.'
+                                        : 'Drag the map pin to the exact property entrance, then confirm.'}
+                                </p>
+                                {!formik.values.pin_confirmed && (
+                                    <button
+                                        type="button"
+                                        onClick={() => formik.setFieldValue('pin_confirmed', true)}
+                                        disabled={!formik.values.google_place_id}
+                                        className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Confirm pin location
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -388,6 +450,21 @@ export default function StepPropertyDetails({
                                 className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
                             />
                         </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                            Landmark / Nearest Bus Stop (optional)
+                        </label>
+                        <input
+                            id="landmark"
+                            type="text"
+                            maxLength={255}
+                            placeholder="e.g. Opposite Shoprite, next to First Bank"
+                            value={formik.values.landmark}
+                            onChange={formik.handleChange}
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
+                        />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

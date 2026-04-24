@@ -231,6 +231,7 @@ export default function CreatePropertyView({ }) {
             initialValues: {
                 name: "",
                 address: "",
+                google_place_id: "",
                 property_type: PropertyType.DUPLEX,
                 country: "Nigeria",
                 state: "Lagos",

@@ -31,6 +31,13 @@ export type UnitFormValues = {
 export type PropertyFormValues = {
     name: string;
     address: string;
+    street_number: string;
+    street_name: string;
+    postal_code: string;
+    landmark: string;
+    google_place_id: string;
+    geocode_raw: Record<string, unknown> | null;
+    pin_confirmed: boolean;
     property_type: PropertyType | '';
     country: string;
     state: string;
