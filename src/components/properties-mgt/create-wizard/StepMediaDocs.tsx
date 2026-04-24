@@ -1,110 +1,282 @@
 'use client';
 
-import { Dispatch, SetStateAction, useRef, useState } from 'react';
+import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { Icon } from '@iconify/react';
 import CustomDropzone from '@/components/ui/CustomDropzone';
 import CustomDropdown from '@/components/ui/customDropdown';
 import { DocumentType } from '../types';
-import { UnitFormValues } from './types';
+import {
+    CATEGORY_LABELS,
+    CategorizedMedia,
+    OPTIONAL_PROPERTY_CATEGORIES,
+    OPTIONAL_UNIT_CATEGORIES,
+    PropertyMediaCategory,
+    REQUIRED_PROPERTY_CATEGORIES,
+    REQUIRED_UNIT_CATEGORIES,
+    UnitFormValues,
+} from './types';
 
 interface StepMediaDocsProps {
-    uploadedMedia: File[];
-    setUploadedMedia: Dispatch<SetStateAction<File[]>>;
-    uploadRef: React.MutableRefObject<{ url: string; file: File }[]>;
+    propertyMedia: CategorizedMedia;
+    setPropertyMedia: Dispatch<SetStateAction<CategorizedMedia>>;
     docFiles: { file: File; type: DocumentType }[];
     setDocFiles: Dispatch<SetStateAction<{ file: File; type: DocumentType }[]>>;
     units: UnitFormValues[];
-    unitMediaMap: Record<string, File[]>;
-    setUnitMediaMap: Dispatch<SetStateAction<Record<string, File[]>>>;
-    unitUploadRefs: React.MutableRefObject<Record<string, { url: string; file: File }[]>>;
+    unitMediaByCategory: Record<string, CategorizedMedia>;
+    setUnitMediaByCategory: Dispatch<SetStateAction<Record<string, CategorizedMedia>>>;
 }
 
-export default function StepMediaDocs({
-    uploadedMedia,
-    setUploadedMedia,
-    uploadRef,
-    docFiles,
-    setDocFiles,
-    units,
-    unitMediaMap,
-    setUnitMediaMap,
-    unitUploadRefs,
-}: StepMediaDocsProps) {
-    const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
+function CategorySlot({
+    category,
+    label,
+    files,
+    onChange,
+    accept,
+    isVideo,
+    required,
+}: {
+    category: PropertyMediaCategory;
+    label: string;
+    files: File[];
+    onChange: (files: File[]) => void;
+    accept?: string;
+    isVideo?: boolean;
+    required?: boolean;
+}) {
+    const covered = files.length > 0;
+    return (
+        <div
+            className={`border rounded-xl p-3 space-y-2 transition-colors ${covered ? 'border-emerald-300 bg-emerald-50/40' : required ? 'border-zinc-200 bg-white' : 'border-dashed border-zinc-200 bg-zinc-50/50'}`}
+        >
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Icon
+                        icon={covered ? 'solar:check-circle-bold' : isVideo ? 'solar:videocamera-record-bold-duotone' : 'solar:gallery-add-bold-duotone'}
+                        className={`text-base ${covered ? 'text-emerald-500' : 'text-zinc-400'}`}
+                    />
+                    <span className="text-xs font-bold text-zinc-800">{label}</span>
+                </div>
+                {required && !covered && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600">Required</span>
+                )}
+                {covered && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600">
+                        {files.length} file{files.length > 1 ? 's' : ''}
+                    </span>
+                )}
+            </div>
+            <input
+                type="file"
+                multiple
+                accept={accept || 'image/*'}
+                onChange={(e) => {
+                    const picked = Array.from(e.target.files || []);
+                    if (picked.length === 0) return;
+                    onChange([...files, ...picked]);
+                    e.target.value = '';
+                }}
+                className="w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+                aria-label={`Upload ${label}`}
+            />
+            {files.length > 0 && (
+                <ul className="space-y-1">
+                    {files.map((f, i) => (
+                        <li
+                            key={`${f.name}-${i}`}
+                            className="flex items-center justify-between bg-white border border-zinc-100 rounded-lg px-2 py-1"
+                        >
+                            <span className="text-[10px] text-zinc-600 truncate mr-2" title={f.name}>
+                                {f.name}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => onChange(files.filter((_, idx) => idx !== i))}
+                                className="text-red-500 text-xs hover:text-red-600"
+                                aria-label={`Remove ${f.name}`}
+                            >
+                                <Icon icon="solar:trash-bin-trash-bold" className="text-xs" />
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
+function CategoryGrid({
+    title,
+    icon,
+    values,
+    onChange,
+    requiredCats,
+    optionalCats,
+    hasWalkthrough,
+}: {
+    title: string;
+    icon: string;
+    values: CategorizedMedia;
+    onChange: (next: CategorizedMedia) => void;
+    requiredCats: PropertyMediaCategory[];
+    optionalCats: PropertyMediaCategory[];
+    hasWalkthrough?: boolean;
+}) {
+    const [showOptional, setShowOptional] = useState(false);
+    const setCategory = (cat: PropertyMediaCategory, files: File[]) => {
+        onChange({ ...values, [cat]: files });
+    };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-8">
-            {/* Property Gallery */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-6 md:p-8 space-y-6 shadow-sm">
-                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                    <Icon icon="solar:camera-bold-duotone" className="text-xl text-primary" />
-                    Property Gallery
+        <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                    <Icon icon={icon} className="text-lg text-primary" />
+                    {title}
                 </h3>
-                <p className="text-xs text-zinc-500">
-                    Upload at least 3 high-quality images of the property. These will be the first thing potential guests see.
-                </p>
-                <div className="w-full">
-                    <CustomDropzone
-                        onDrop={(files: File[]) => setUploadedMedia(files)}
-                        multiple
-                        previewsRef={uploadRef}
-                        minFiles={3}
-                    />
-                </div>
-                {uploadedMedia.length > 0 && uploadedMedia.length < 3 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
-                        <Icon icon="solar:danger-triangle-bold-duotone" className="text-amber-500 text-xl flex-shrink-0" />
-                        <p className="text-sm text-amber-700">
-                            Please add at least {3 - uploadedMedia.length} more image{3 - uploadedMedia.length > 1 ? 's' : ''} (minimum 3 required)
-                        </p>
-                    </div>
+                {optionalCats.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => setShowOptional((v) => !v)}
+                        className="text-[10px] font-bold text-primary hover:underline"
+                    >
+                        {showOptional ? 'Hide' : 'Show'} optional slots
+                    </button>
                 )}
             </div>
 
-            {/* Unit Media Sections */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {requiredCats.map((cat) => (
+                    <CategorySlot
+                        key={cat}
+                        category={cat}
+                        label={CATEGORY_LABELS[cat]}
+                        files={values[cat] ?? []}
+                        onChange={(files) => setCategory(cat, files)}
+                        required
+                    />
+                ))}
+            </div>
+
+            {hasWalkthrough && (
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <Icon icon="solar:videocamera-record-bold-duotone" className="text-base text-primary" />
+                        <span>
+                            <span className="font-bold text-zinc-700">Walkthrough video</span> (strongly encouraged — listings with videos get approved faster and convert better)
+                        </span>
+                    </div>
+                    <CategorySlot
+                        category={PropertyMediaCategory.WALKTHROUGH_VIDEO}
+                        label="Walkthrough video"
+                        files={values[PropertyMediaCategory.WALKTHROUGH_VIDEO] ?? []}
+                        onChange={(files) => setCategory(PropertyMediaCategory.WALKTHROUGH_VIDEO, files)}
+                        accept="video/*"
+                        isVideo
+                    />
+                </div>
+            )}
+
+            {showOptional && optionalCats.length > 0 && (
+                <div className="pt-3 border-t border-zinc-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2 ml-1">Optional</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {optionalCats.map((cat) => (
+                            <CategorySlot
+                                key={cat}
+                                category={cat}
+                                label={CATEGORY_LABELS[cat]}
+                                files={values[cat] ?? []}
+                                onChange={(files) => setCategory(cat, files)}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function StepMediaDocs({
+    propertyMedia,
+    setPropertyMedia,
+    docFiles,
+    setDocFiles,
+    units,
+    unitMediaByCategory,
+    setUnitMediaByCategory,
+}: StepMediaDocsProps) {
+    const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
+
+    // Aggregate coverage across the property + every unit.
+    const coverage = useMemo(() => {
+        const total = REQUIRED_PROPERTY_CATEGORIES.length + units.length * REQUIRED_UNIT_CATEGORIES.length;
+        let covered = 0;
+        for (const cat of REQUIRED_PROPERTY_CATEGORIES) {
+            if ((propertyMedia[cat] ?? []).length > 0) covered += 1;
+        }
+        for (const u of units) {
+            const bucket = unitMediaByCategory[u._key] ?? {};
+            for (const cat of REQUIRED_UNIT_CATEGORIES) {
+                if ((bucket[cat] ?? []).length > 0) covered += 1;
+            }
+        }
+        return { covered, total, percent: total === 0 ? 0 : Math.round((covered / total) * 100) };
+    }, [propertyMedia, units, unitMediaByCategory]);
+
+    return (
+        <div className="max-w-3xl mx-auto space-y-6">
+            {/* Coverage checklist */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                        <Icon icon="solar:checklist-minimalistic-bold-duotone" className="text-lg text-primary" />
+                        Coverage checklist
+                    </h3>
+                    <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg ${coverage.covered === coverage.total ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
+                    >
+                        {coverage.covered} / {coverage.total} covered
+                    </span>
+                </div>
+                <div className="w-full bg-zinc-100 rounded-full h-2 overflow-hidden">
+                    <div
+                        className={`h-full rounded-full transition-all ${coverage.covered === coverage.total ? 'bg-emerald-500' : 'bg-primary'}`}
+                        style={{ width: `${coverage.percent}%` }}
+                    />
+                </div>
+                <p className="text-[11px] text-zinc-500">
+                    Guests trust listings that show every room. Missing slots are flagged for admin review \u2014 listings can still be created, but coverage gaps slow down verification.
+                </p>
+            </div>
+
+            {/* Property-level media */}
+            <CategoryGrid
+                title="Property gallery"
+                icon="solar:home-2-bold-duotone"
+                values={propertyMedia}
+                onChange={setPropertyMedia}
+                requiredCats={REQUIRED_PROPERTY_CATEGORIES}
+                optionalCats={OPTIONAL_PROPERTY_CATEGORIES}
+                hasWalkthrough
+            />
+
+            {/* Per-unit media */}
             {units.length > 0 && (
                 <div className="space-y-6">
-                    {units.map((unit) => {
-                        // Ensure a ref array exists for this unit
-                        if (!unitUploadRefs.current[unit._key]) {
-                            unitUploadRefs.current[unit._key] = [];
-                        }
-
-                        return (
-                            <div
-                                key={unit._key}
-                                className="bg-white border border-zinc-200 rounded-2xl p-6 md:p-8 space-y-4 shadow-sm"
-                            >
-                                <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                                    <Icon icon="solar:buildings-bold-duotone" className="text-lg text-primary" />
-                                    {unit.name || 'Unnamed Unit'} - Photos
-                                </h3>
-                                <p className="text-xs text-zinc-500">
-                                    Add images specific to this unit to help guests see what they are booking.
-                                </p>
-                                <CustomDropzone
-                                    onDrop={(files: File[]) => {
-                                        setUnitMediaMap((prev) => ({
-                                            ...prev,
-                                            [unit._key]: files,
-                                        }));
-                                    }}
-                                    multiple
-                                    previewsRef={
-                                        {
-                                            get current() {
-                                                return unitUploadRefs.current[unit._key] ?? [];
-                                            },
-                                            set current(val) {
-                                                unitUploadRefs.current[unit._key] = val;
-                                            },
-                                        } as React.MutableRefObject<{ url: string; file: File }[]>
-                                    }
-                                    minFiles={0}
-                                />
-                            </div>
-                        );
-                    })}
+                    {units.map((unit) => (
+                        <CategoryGrid
+                            key={unit._key}
+                            title={`${unit.name || 'Unnamed unit'} \u2014 photos`}
+                            icon="solar:buildings-bold-duotone"
+                            values={unitMediaByCategory[unit._key] ?? {}}
+                            onChange={(next) =>
+                                setUnitMediaByCategory((prev) => ({ ...prev, [unit._key]: next }))
+                            }
+                            requiredCats={REQUIRED_UNIT_CATEGORIES}
+                            optionalCats={OPTIONAL_UNIT_CATEGORIES}
+                            hasWalkthrough
+                        />
+                    ))}
                 </div>
             )}
 
@@ -112,7 +284,7 @@ export default function StepMediaDocs({
             <div className="bg-white border border-zinc-200 rounded-2xl p-6 md:p-8 space-y-6 shadow-sm">
                 <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
                     <Icon icon="solar:file-text-bold-duotone" className="text-xl text-primary" />
-                    Ownership Documents
+                    Ownership documents
                 </h3>
                 <p className="text-xs text-zinc-500">
                     Upload proof of ownership documents (PDF, JPG, PNG). These will be reviewed during verification.
@@ -130,7 +302,7 @@ export default function StepMediaDocs({
 
                     <div>
                         <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1 mb-2 block">
-                            Select File
+                            Select file
                         </label>
                         <input
                             type="file"
@@ -172,33 +344,6 @@ export default function StepMediaDocs({
                         </div>
                     )}
                 </div>
-            </div>
-
-            {/* Ready to Submit Info */}
-            <div className="bg-zinc-900 rounded-2xl p-6 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-[60px] -mr-24 -mt-24" />
-                <h4 className="text-sm font-bold mb-3 flex items-center gap-2 relative z-10">
-                    <Icon icon="solar:shield-check-bold-duotone" className="text-lg text-primary" />
-                    Ready to submit?
-                </h4>
-                <ul className="space-y-2 relative z-10">
-                    <li className="text-xs text-zinc-400 flex items-start gap-2">
-                        <Icon icon="solar:check-circle-bold" className="text-primary text-sm mt-0.5 flex-shrink-0" />
-                        Ensure you have uploaded at least 3 property images
-                    </li>
-                    <li className="text-xs text-zinc-400 flex items-start gap-2">
-                        <Icon icon="solar:check-circle-bold" className="text-primary text-sm mt-0.5 flex-shrink-0" />
-                        Ownership documents help speed up the verification process
-                    </li>
-                    <li className="text-xs text-zinc-400 flex items-start gap-2">
-                        <Icon icon="solar:check-circle-bold" className="text-primary text-sm mt-0.5 flex-shrink-0" />
-                        Unit-specific photos help guests see exactly what they are booking
-                    </li>
-                    <li className="text-xs text-zinc-400 flex items-start gap-2">
-                        <Icon icon="solar:check-circle-bold" className="text-primary text-sm mt-0.5 flex-shrink-0" />
-                        You can always add more media and documents after creation
-                    </li>
-                </ul>
             </div>
         </div>
     );

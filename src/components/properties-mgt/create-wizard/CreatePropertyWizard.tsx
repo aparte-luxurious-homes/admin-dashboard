@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormik } from 'formik';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
@@ -38,6 +38,8 @@ import {
     PropertyFormValues,
     UnitFormValues,
     createEmptyUnit,
+    CategorizedMedia,
+    PropertyMediaCategory,
 } from './types';
 import { validatePropertyName } from './nameValidator';
 
@@ -53,17 +55,16 @@ export default function CreatePropertyWizard() {
 
     // Unit state
     const [units, setUnits] = useState<UnitFormValues[]>([]);
-    const [unitMediaMap, setUnitMediaMap] = useState<Record<string, File[]>>({});
-    const unitUploadRefs = useRef<Record<string, { url: string; file: File }[]>>({});
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
 
     // Amenity state
     const [showAmenityForm, setShowAmenityForm] = useState(false);
 
-    // Media state
-    const [uploadedMedia, setUploadedMedia] = useState<File[]>([]);
-    const uploadRef = useRef<{ url: string; file: File }[]>([]);
+    // Media state — files grouped by PropertyMediaCategory. Each non-empty
+    // category is uploaded in its own POST so the server can persist the tag.
+    const [propertyMedia, setPropertyMedia] = useState<CategorizedMedia>({});
+    const [unitMediaByCategory, setUnitMediaByCategory] = useState<Record<string, CategorizedMedia>>({});
     const [docFiles, setDocFiles] = useState<{ file: File; type: DocumentType }[]>([]);
 
     // Amenities
@@ -199,8 +200,9 @@ export default function CreatePropertyWizard() {
             case WizardStep.UNITS:
                 return true; // Units are optional
             case WizardStep.MEDIA_DOCS: {
-                if (uploadedMedia.length < 3) {
-                    toast.error('Please upload at least 3 property images');
+                const anyPropertyMedia = Object.values(propertyMedia).some((files) => (files?.length ?? 0) > 0);
+                if (!anyPropertyMedia) {
+                    toast.error('Please upload photos for at least one property category before creating');
                     return false;
                 }
                 return true;
@@ -248,12 +250,11 @@ export default function CreatePropertyWizard() {
         const unit = units[index];
         setUnits((prev) => prev.filter((_, i) => i !== index));
         // Clean up media for deleted unit
-        setUnitMediaMap((prev) => {
+        setUnitMediaByCategory((prev) => {
             const next = { ...prev };
             delete next[unit._key];
             return next;
         });
-        delete unitUploadRefs.current[unit._key];
     };
 
     const handleSaveUnit = (unit: UnitFormValues) => {
@@ -312,30 +313,35 @@ export default function CreatePropertyWizard() {
 
                     toast.success('Property created successfully');
 
-                    // Upload property media (split images and videos into separate batches)
-                    if (uploadedMedia.length > 0) {
-                        const imageFiles = uploadedMedia.filter(f => !f.type.startsWith('video/'));
-                        const videoFiles = uploadedMedia.filter(f => f.type.startsWith('video/'));
-
-                        const uploadBatch = (files: File[], mediaType: string) => {
-                            const batchFormData = new FormData();
-                            files.forEach(file => batchFormData.append('media_file', file));
-                            batchFormData.append('media_type', mediaType);
-                            batchFormData.append('is_featured', 'true');
+                    // Upload property media — one request per non-empty category, so
+                    // the server persists the `category` tag on each PropertyMedia row.
+                    const propertyMediaEntries = Object.entries(propertyMedia).filter(
+                        ([, files]) => (files?.length ?? 0) > 0,
+                    ) as [PropertyMediaCategory, File[]][];
+                    propertyMediaEntries.forEach(([category, files]) => {
+                        const imageFiles = files.filter((f) => !f.type.startsWith('video/'));
+                        const videoFiles = files.filter((f) => f.type.startsWith('video/'));
+                        const uploadCategoryBatch = (batch: File[], mediaType: string) => {
+                            if (batch.length === 0) return;
+                            const formData = new FormData();
+                            batch.forEach((file) => formData.append('media_file', file));
+                            formData.append('media_type', mediaType);
+                            formData.append('is_featured', category === PropertyMediaCategory.EXTERIOR_FRONT ? 'true' : 'false');
+                            formData.append('category', category);
                             uploadMedia(
-                                { propertyId, payload: batchFormData },
+                                { propertyId, payload: formData },
                                 {
                                     onError: (error: any) =>
                                         toast.error(
-                                            error?.response?.data?.detail || error?.response?.data?.message || 'Media upload failed',
-                                            { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } }
+                                            error?.response?.data?.detail || error?.response?.data?.message || `Media upload failed for ${category}`,
+                                            { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } },
                                         ),
-                                }
+                                },
                             );
                         };
-                        if (imageFiles.length > 0) uploadBatch(imageFiles, MediaType.IMAGE);
-                        if (videoFiles.length > 0) uploadBatch(videoFiles, MediaType.VIDEO);
-                    }
+                        uploadCategoryBatch(imageFiles, MediaType.IMAGE);
+                        uploadCategoryBatch(videoFiles, MediaType.VIDEO);
+                    });
 
                     // Upload documents
                     if (docFiles.length > 0) {
@@ -377,34 +383,47 @@ export default function CreatePropertyWizard() {
                             { propertyId: String(propertyId), payload: unitPayloads },
                             {
                                 onSuccess: (unitResponse) => {
-                                    // Upload unit media
+                                    // Upload unit media — one request per non-empty category.
                                     const createdUnits = unitResponse?.data?.data?.units ?? unitResponse?.data?.data ?? [];
                                     units.forEach((localUnit, index) => {
                                         const createdUnit = createdUnits[index];
-                                        const unitFiles = unitMediaMap[localUnit._key];
-                                        if (createdUnit?.id && unitFiles && unitFiles.length > 0) {
-                                            const unitFormData = new FormData();
-                                            unitFiles.forEach((file) => {
-                                                unitFormData.append('media_file', file);
-                                            });
-                                            unitFormData.append('media_type', MediaType.IMAGE);
-                                            unitFormData.append('is_featured', 'false');
+                                        const bucket = unitMediaByCategory[localUnit._key] ?? {};
+                                        if (!createdUnit?.id) return;
 
-                                            uploadUnitMedia(
-                                                {
-                                                    propertyId,
-                                                    unitId: createdUnit.id,
-                                                    payload: unitFormData,
-                                                },
-                                                {
-                                                    onError: () =>
-                                                        toast.error(`Failed to upload media for unit: ${localUnit.name}`, {
-                                                            duration: 6000,
-                                                            style: { maxWidth: '500px', width: 'max-content' },
-                                                        }),
-                                                }
-                                            );
-                                        }
+                                        (Object.entries(bucket) as [PropertyMediaCategory, File[]][]).forEach(
+                                            ([category, files]) => {
+                                                if (!files || files.length === 0) return;
+                                                const imageFiles = files.filter((f) => !f.type.startsWith('video/'));
+                                                const videoFiles = files.filter((f) => f.type.startsWith('video/'));
+                                                const uploadCategoryBatch = (batch: File[], mediaType: string) => {
+                                                    if (batch.length === 0) return;
+                                                    const formData = new FormData();
+                                                    batch.forEach((file) => formData.append('media_file', file));
+                                                    formData.append('media_type', mediaType);
+                                                    formData.append('is_featured', 'false');
+                                                    formData.append('category', category);
+                                                    uploadUnitMedia(
+                                                        {
+                                                            propertyId,
+                                                            unitId: createdUnit.id,
+                                                            payload: formData,
+                                                        },
+                                                        {
+                                                            onError: () =>
+                                                                toast.error(
+                                                                    `Failed to upload ${category} for unit: ${localUnit.name}`,
+                                                                    {
+                                                                        duration: 6000,
+                                                                        style: { maxWidth: '500px', width: 'max-content' },
+                                                                    },
+                                                                ),
+                                                        },
+                                                    );
+                                                };
+                                                uploadCategoryBatch(imageFiles, MediaType.IMAGE);
+                                                uploadCategoryBatch(videoFiles, MediaType.VIDEO);
+                                            },
+                                        );
                                     });
                                 },
                                 onError: () =>
@@ -513,15 +532,13 @@ export default function CreatePropertyWizard() {
 
                 {currentStep === WizardStep.MEDIA_DOCS && (
                     <StepMediaDocs
-                        uploadedMedia={uploadedMedia}
-                        setUploadedMedia={setUploadedMedia}
-                        uploadRef={uploadRef}
+                        propertyMedia={propertyMedia}
+                        setPropertyMedia={setPropertyMedia}
                         docFiles={docFiles}
                         setDocFiles={setDocFiles}
                         units={units}
-                        unitMediaMap={unitMediaMap}
-                        setUnitMediaMap={setUnitMediaMap}
-                        unitUploadRefs={unitUploadRefs}
+                        unitMediaByCategory={unitMediaByCategory}
+                        setUnitMediaByCategory={setUnitMediaByCategory}
                     />
                 )}
 
