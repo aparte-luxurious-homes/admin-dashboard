@@ -1209,7 +1209,7 @@ export default function CreateBookingView() {
                     className="w-full h-10 px-3 pr-8 border border-zinc-300 rounded-lg text-sm font-mono bg-white
                                focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all
                                uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:font-sans"
-                    placeholder="e.g. ABC12345"
+                    placeholder="e.g. YOURCODE123"
                     value={formik.values.referral_code}
                     maxLength={12}
                     onChange={(e) =>
