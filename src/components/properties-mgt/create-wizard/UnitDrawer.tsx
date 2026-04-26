@@ -7,7 +7,6 @@ import { IoBedOutline } from 'react-icons/io5';
 import { TbCurrencyNaira, TbToolsKitchen } from 'react-icons/tb';
 import { PiBathtub } from 'react-icons/pi';
 import { LuSofa, LuUsers } from 'react-icons/lu';
-import CustomCheckbox from '@/components/ui/customCheckbox';
 import MultipleChoice from '@/components/ui/MultipleChoice';
 import { IAmenity } from '../types';
 import { UnitFormValues, createEmptyUnit } from './types';
@@ -150,6 +149,31 @@ export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, avail
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                    {/* Whole-property toggle — placed first because it changes how the
+                        rest of the form (and the media step) behaves. */}
+                    <label
+                        htmlFor="unit-is-whole-property"
+                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                            unit.is_whole_property
+                                ? 'border-primary bg-primary/5'
+                                : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300'
+                        }`}
+                    >
+                        <input
+                            id="unit-is-whole-property"
+                            type="checkbox"
+                            checked={unit.is_whole_property}
+                            onChange={(e) => updateField('is_whole_property', e.target.checked)}
+                            className="mt-0.5 h-4 w-4 accent-primary cursor-pointer"
+                        />
+                        <span className="flex-1">
+                            <span className="text-xs font-bold text-zinc-900 block">This unit is the whole property</span>
+                            <span className="text-[11px] text-zinc-500 block leading-snug">
+                                Use this when guests book the entire property exclusively. Photos go in the property gallery and only one unit is allowed.
+                            </span>
+                        </span>
+                    </label>
+
                     {/* Basic Info */}
                     <div className="space-y-3">
                         <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Basic Information</h4>
@@ -204,8 +228,7 @@ export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, avail
                                 </div>
                             ))}
                         </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-                            <CustomCheckbox label="Whole property" checked={unit.is_whole_property} onChange={(val: boolean) => updateField('is_whole_property', val)} />
+                        <div className="flex items-center justify-end pt-2 border-t border-zinc-100">
                             <div className="w-24">
                                 <label className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1">Units</label>
                                 <CountInput
@@ -217,11 +240,6 @@ export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, avail
                                 />
                             </div>
                         </div>
-                        {unit.is_whole_property && (
-                            <p className="text-[10px] text-zinc-500 leading-snug">
-                                Whole-property units always have a count of 1 and use the property gallery as their photos.
-                            </p>
-                        )}
                     </div>
 
                     {/* Amenities */}

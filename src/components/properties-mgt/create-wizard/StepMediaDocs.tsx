@@ -216,16 +216,44 @@ export default function StepMediaDocs({
 }: StepMediaDocsProps) {
     const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
 
+    // First whole-property unit (if any) drives the expanded property gallery.
+    // Wizard already prevents multiple whole-property units, so taking the first is safe.
+    const wholePropertyUnit = units.find((u) => u.is_whole_property);
+
+    // Property gallery categories. When a whole-property unit exists, its interior
+    // categories fold into the property's gallery (so the user has somewhere to put
+    // bedroom/living-room/etc. photos). Deduped against the existing property cats.
+    const propertyGalleryRequired = useMemo<PropertyMediaCategory[]>(() => {
+        const base = [...REQUIRED_PROPERTY_CATEGORIES];
+        if (wholePropertyUnit) {
+            for (const cat of getRequiredCategoriesForUnit(wholePropertyUnit)) {
+                if (!base.includes(cat)) base.push(cat);
+            }
+        }
+        return base;
+    }, [wholePropertyUnit]);
+
+    const propertyGalleryOptional = useMemo<PropertyMediaCategory[]>(() => {
+        const base = [...OPTIONAL_PROPERTY_CATEGORIES];
+        if (wholePropertyUnit) {
+            for (const cat of getOptionalCategoriesForUnit(wholePropertyUnit)) {
+                if (!base.includes(cat)) base.push(cat);
+            }
+        }
+        return base;
+    }, [wholePropertyUnit]);
+
     // Aggregate coverage across the property + every unit.
     // Per-unit required categories are derived from each unit's room counts.
-    // Whole-property units don't carry their own media — coverage comes entirely from the property gallery.
+    // Whole-property units don't carry their own media — coverage comes entirely from the
+    // (now-expanded) property gallery.
     const coverage = useMemo(() => {
         const unitRequirements = units.map((u) => (u.is_whole_property ? [] : getRequiredCategoriesForUnit(u)));
         const total =
-            REQUIRED_PROPERTY_CATEGORIES.length +
+            propertyGalleryRequired.length +
             unitRequirements.reduce((sum, cats) => sum + cats.length, 0);
         let covered = 0;
-        for (const cat of REQUIRED_PROPERTY_CATEGORIES) {
+        for (const cat of propertyGalleryRequired) {
             if ((propertyMedia[cat] ?? []).length > 0) covered += 1;
         }
         units.forEach((u, idx) => {
@@ -235,7 +263,7 @@ export default function StepMediaDocs({
             }
         });
         return { covered, total, percent: total === 0 ? 0 : Math.round((covered / total) * 100) };
-    }, [propertyMedia, units, unitMediaByCategory]);
+    }, [propertyMedia, units, unitMediaByCategory, propertyGalleryRequired]);
 
     return (
         <div className="max-w-3xl mx-auto space-y-6">
@@ -263,14 +291,21 @@ export default function StepMediaDocs({
                 </p>
             </div>
 
-            {/* Property-level media */}
+            {/* Property-level media.
+                When any unit is marked whole-property, the property gallery doubles as
+                that unit's media. Fold its required interior categories (Living Room,
+                Kitchen, Bedroom, Bathroom — driven by the unit's room counts) into the
+                property gallery's required slots, and its optionals (Dining, Toilet,
+                Balcony) into the property optionals. Otherwise the property gallery
+                stays exterior-only. */}
             <CategoryGrid
                 title="Property gallery"
                 icon="solar:home-2-bold-duotone"
                 values={propertyMedia}
                 onChange={setPropertyMedia}
-                requiredCats={REQUIRED_PROPERTY_CATEGORIES}
-                optionalCats={OPTIONAL_PROPERTY_CATEGORIES}
+                requiredCats={propertyGalleryRequired}
+                optionalCats={propertyGalleryOptional}
+                countSuffix={(cat) => wholePropertyUnit ? getCategoryCountSuffix(wholePropertyUnit, cat) : 0}
                 hasWalkthrough
             />
 
@@ -286,7 +321,7 @@ export default function StepMediaDocs({
                                 className="bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl p-4 text-xs text-zinc-500 leading-relaxed"
                             >
                                 <span className="font-bold text-zinc-700">{unit.name || 'Unnamed unit'}</span>{' '}
-                                is set as the whole property \u2014 its photos come from the property gallery above. No separate unit media required.
+                                is the whole property \u2014 upload its bedroom, living room, kitchen, and bathroom photos in the <span className="font-bold text-zinc-700">Property gallery</span> above (interior slots have been added based on this unit&apos;s room counts).
                             </div>
                         ) : (
                             <CategoryGrid
