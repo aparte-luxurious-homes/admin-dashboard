@@ -387,6 +387,8 @@ export default function CreatePropertyWizard() {
                                     const createdUnits = unitResponse?.data?.data?.units ?? unitResponse?.data?.data ?? [];
                                     units.forEach((localUnit, index) => {
                                         const createdUnit = createdUnits[index];
+                                        // Whole-property units use the property gallery — never had per-unit media collected.
+                                        if (localUnit.is_whole_property) return;
                                         const bucket = unitMediaByCategory[localUnit._key] ?? {};
                                         if (!createdUnit?.id) return;
 
@@ -503,6 +505,7 @@ export default function CreatePropertyWizard() {
                 availableAmenities={availableAmenities}
                 showAmenityForm={() => setShowAmenityForm(true)}
                 userRole={user?.role}
+                propertyName={formik.values.name}
             />
 
             {/* Step Content */}

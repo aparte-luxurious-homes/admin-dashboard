@@ -67,7 +67,7 @@ function NumberInput({ field, value, onChange, min = 0, max = 100 }: {
     );
 }
 
-function CountInput({ value, onChange, min = 0, max = 100 }: { value: number; onChange: (v: number) => void; min?: number; max?: number; }) {
+function CountInput({ value, onChange, min = 0, max = 100, disabled = false }: { value: number; onChange: (v: number) => void; min?: number; max?: number; disabled?: boolean; }) {
     const [isFocused, setIsFocused] = useState(false);
     const [dv, setDv] = useState(value.toString());
     useEffect(() => { setDv(value.toString()); }, [value]);
@@ -82,8 +82,9 @@ function CountInput({ value, onChange, min = 0, max = 100 }: { value: number; on
     const handleBlur = () => { setIsFocused(false); const v = clamp(parseInt(dv, 10) || 0); setDv(v.toString()); onChange(v); };
     return (
         <input type="text" inputMode="numeric" pattern="\d*" value={dv} onChange={handleChange}
+            disabled={disabled} readOnly={disabled}
             onFocus={() => setIsFocused(true)} onBlur={handleBlur}
-            className={`w-full bg-zinc-50 border rounded-lg px-3 py-2.5 outline-none transition-all font-semibold text-zinc-900 text-center text-sm ${isFocused ? 'border-primary ring-1 ring-primary/20' : 'border-zinc-200 hover:border-zinc-300'}`} />
+            className={`w-full bg-zinc-50 border rounded-lg px-3 py-2.5 outline-none transition-all font-semibold text-zinc-900 text-center text-sm ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${isFocused ? 'border-primary ring-1 ring-primary/20' : 'border-zinc-200 hover:border-zinc-300'}`} />
     );
 }
 
@@ -95,16 +96,32 @@ interface UnitDrawerProps {
     availableAmenities: IAmenity[];
     showAmenityForm: () => void;
     userRole?: string;
+    /** Property name — used to auto-fill the unit name when "Whole property" is toggled on. */
+    propertyName?: string;
 }
 
-export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, availableAmenities, showAmenityForm, userRole }: UnitDrawerProps) {
+export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, availableAmenities, showAmenityForm, userRole, propertyName }: UnitDrawerProps) {
     const [unit, setUnit] = useState<UnitFormValues>(editingUnit ?? createEmptyUnit());
 
     useEffect(() => {
         if (isOpen) setUnit(editingUnit ?? createEmptyUnit());
     }, [isOpen, editingUnit]);
 
-    const updateField = (field: string, value: any) => setUnit(prev => ({ ...prev, [field]: value }));
+    const updateField = (field: string, value: any) => {
+        // Toggling "Whole property" ON: lock count to 1 and auto-fill name if blank.
+        // Toggling OFF: leave count where the user puts it next.
+        if (field === 'is_whole_property') {
+            const isOn = Boolean(value);
+            setUnit(prev => ({
+                ...prev,
+                is_whole_property: isOn,
+                count: isOn ? 1 : prev.count,
+                name: isOn && !prev.name.trim() ? (propertyName?.trim() || 'Whole Property') : prev.name,
+            }));
+            return;
+        }
+        setUnit(prev => ({ ...prev, [field]: value }));
+    };
 
     const handleSave = () => {
         if (!unit.name.trim()) return;
@@ -191,9 +208,20 @@ export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, avail
                             <CustomCheckbox label="Whole property" checked={unit.is_whole_property} onChange={(val: boolean) => updateField('is_whole_property', val)} />
                             <div className="w-24">
                                 <label className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1">Units</label>
-                                <CountInput value={unit.count} onChange={(val) => updateField('count', val)} min={1} max={MAX_VALUES.count} />
+                                <CountInput
+                                    value={unit.count}
+                                    onChange={(val) => updateField('count', val)}
+                                    min={1}
+                                    max={unit.is_whole_property ? 1 : MAX_VALUES.count}
+                                    disabled={unit.is_whole_property}
+                                />
                             </div>
                         </div>
+                        {unit.is_whole_property && (
+                            <p className="text-[10px] text-zinc-500 leading-snug">
+                                Whole-property units always have a count of 1 and use the property gallery as their photos.
+                            </p>
+                        )}
                     </div>
 
                     {/* Amenities */}

@@ -9,11 +9,12 @@ import {
     CATEGORY_LABELS,
     CategorizedMedia,
     OPTIONAL_PROPERTY_CATEGORIES,
-    OPTIONAL_UNIT_CATEGORIES,
     PropertyMediaCategory,
     REQUIRED_PROPERTY_CATEGORIES,
-    REQUIRED_UNIT_CATEGORIES,
     UnitFormValues,
+    getRequiredCategoriesForUnit,
+    getOptionalCategoriesForUnit,
+    getCategoryCountSuffix,
 } from './types';
 
 interface StepMediaDocsProps {
@@ -112,6 +113,7 @@ function CategoryGrid({
     requiredCats,
     optionalCats,
     hasWalkthrough,
+    countSuffix,
 }: {
     title: string;
     icon: string;
@@ -120,10 +122,17 @@ function CategoryGrid({
     requiredCats: PropertyMediaCategory[];
     optionalCats: PropertyMediaCategory[];
     hasWalkthrough?: boolean;
+    /** Optional per-category multiplier for the label, e.g. 3 → "Bedroom × 3". */
+    countSuffix?: (cat: PropertyMediaCategory) => number;
 }) {
     const [showOptional, setShowOptional] = useState(false);
     const setCategory = (cat: PropertyMediaCategory, files: File[]) => {
         onChange({ ...values, [cat]: files });
+    };
+    const labelFor = (cat: PropertyMediaCategory) => {
+        const base = CATEGORY_LABELS[cat];
+        const n = countSuffix?.(cat) ?? 0;
+        return n > 1 ? `${base} × ${n}` : base;
     };
 
     return (
@@ -149,7 +158,7 @@ function CategoryGrid({
                     <CategorySlot
                         key={cat}
                         category={cat}
-                        label={CATEGORY_LABELS[cat]}
+                        label={labelFor(cat)}
                         files={values[cat] ?? []}
                         onChange={(files) => setCategory(cat, files)}
                         required
@@ -184,7 +193,7 @@ function CategoryGrid({
                             <CategorySlot
                                 key={cat}
                                 category={cat}
-                                label={CATEGORY_LABELS[cat]}
+                                label={labelFor(cat)}
                                 files={values[cat] ?? []}
                                 onChange={(files) => setCategory(cat, files)}
                             />
@@ -208,18 +217,23 @@ export default function StepMediaDocs({
     const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
 
     // Aggregate coverage across the property + every unit.
+    // Per-unit required categories are derived from each unit's room counts.
+    // Whole-property units don't carry their own media — coverage comes entirely from the property gallery.
     const coverage = useMemo(() => {
-        const total = REQUIRED_PROPERTY_CATEGORIES.length + units.length * REQUIRED_UNIT_CATEGORIES.length;
+        const unitRequirements = units.map((u) => (u.is_whole_property ? [] : getRequiredCategoriesForUnit(u)));
+        const total =
+            REQUIRED_PROPERTY_CATEGORIES.length +
+            unitRequirements.reduce((sum, cats) => sum + cats.length, 0);
         let covered = 0;
         for (const cat of REQUIRED_PROPERTY_CATEGORIES) {
             if ((propertyMedia[cat] ?? []).length > 0) covered += 1;
         }
-        for (const u of units) {
+        units.forEach((u, idx) => {
             const bucket = unitMediaByCategory[u._key] ?? {};
-            for (const cat of REQUIRED_UNIT_CATEGORIES) {
+            for (const cat of unitRequirements[idx]) {
                 if ((bucket[cat] ?? []).length > 0) covered += 1;
             }
-        }
+        });
         return { covered, total, percent: total === 0 ? 0 : Math.round((covered / total) * 100) };
     }, [propertyMedia, units, unitMediaByCategory]);
 
@@ -260,23 +274,36 @@ export default function StepMediaDocs({
                 hasWalkthrough
             />
 
-            {/* Per-unit media */}
+            {/* Per-unit media \u2014 required categories are derived from the unit's room counts.
+                A unit with 0 living rooms doesn't get asked for a Living Room photo, etc.
+                Whole-property units skip this entirely; the property gallery above doubles as their media. */}
             {units.length > 0 && (
                 <div className="space-y-6">
-                    {units.map((unit) => (
-                        <CategoryGrid
-                            key={unit._key}
-                            title={`${unit.name || 'Unnamed unit'} \u2014 photos`}
-                            icon="solar:buildings-bold-duotone"
-                            values={unitMediaByCategory[unit._key] ?? {}}
-                            onChange={(next) =>
-                                setUnitMediaByCategory((prev) => ({ ...prev, [unit._key]: next }))
-                            }
-                            requiredCats={REQUIRED_UNIT_CATEGORIES}
-                            optionalCats={OPTIONAL_UNIT_CATEGORIES}
-                            hasWalkthrough
-                        />
-                    ))}
+                    {units.map((unit) =>
+                        unit.is_whole_property ? (
+                            <div
+                                key={unit._key}
+                                className="bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl p-4 text-xs text-zinc-500 leading-relaxed"
+                            >
+                                <span className="font-bold text-zinc-700">{unit.name || 'Unnamed unit'}</span>{' '}
+                                is set as the whole property \u2014 its photos come from the property gallery above. No separate unit media required.
+                            </div>
+                        ) : (
+                            <CategoryGrid
+                                key={unit._key}
+                                title={`${unit.name || 'Unnamed unit'} \u2014 photos`}
+                                icon="solar:buildings-bold-duotone"
+                                values={unitMediaByCategory[unit._key] ?? {}}
+                                onChange={(next) =>
+                                    setUnitMediaByCategory((prev) => ({ ...prev, [unit._key]: next }))
+                                }
+                                requiredCats={getRequiredCategoriesForUnit(unit)}
+                                optionalCats={getOptionalCategoriesForUnit(unit)}
+                                countSuffix={(cat) => getCategoryCountSuffix(unit, cat)}
+                                hasWalkthrough
+                            />
+                        )
+                    )}
                 </div>
             )}
 

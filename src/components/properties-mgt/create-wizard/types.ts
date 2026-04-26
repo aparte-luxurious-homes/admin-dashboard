@@ -39,18 +39,57 @@ export const OPTIONAL_PROPERTY_CATEGORIES: PropertyMediaCategory[] = [
     PropertyMediaCategory.STAIRCASE,
 ];
 
+// Static fallback when the unit's room counts are unavailable.
+// Per-unit lookups should use getRequiredCategoriesForUnit / getOptionalCategoriesForUnit.
 export const REQUIRED_UNIT_CATEGORIES: PropertyMediaCategory[] = [
     PropertyMediaCategory.LIVING_ROOM,
-    PropertyMediaCategory.DINING,
     PropertyMediaCategory.KITCHEN,
     PropertyMediaCategory.BEDROOM,
     PropertyMediaCategory.BATHROOM,
-    PropertyMediaCategory.TOILET,
 ];
 
 export const OPTIONAL_UNIT_CATEGORIES: PropertyMediaCategory[] = [
+    PropertyMediaCategory.DINING,
+    PropertyMediaCategory.TOILET,
     PropertyMediaCategory.BALCONY,
 ];
+
+/**
+ * Required photo categories derived from the unit's room counts.
+ * If a unit has 0 living rooms, no LIVING_ROOM bucket is asked for, etc.
+ * BEDROOM is always required (a unit with 0 bedrooms is a degenerate listing,
+ * but if the user has explicitly set 0 we still skip the bucket).
+ */
+export function getRequiredCategoriesForUnit(unit: Pick<UnitFormValues,
+    'bedroom_count' | 'living_room_count' | 'kitchen_count' | 'bathroom_count'>): PropertyMediaCategory[] {
+    const cats: PropertyMediaCategory[] = [];
+    if ((unit.living_room_count ?? 0) > 0) cats.push(PropertyMediaCategory.LIVING_ROOM);
+    if ((unit.kitchen_count ?? 0) > 0) cats.push(PropertyMediaCategory.KITCHEN);
+    if ((unit.bedroom_count ?? 0) > 0) cats.push(PropertyMediaCategory.BEDROOM);
+    if ((unit.bathroom_count ?? 0) > 0) cats.push(PropertyMediaCategory.BATHROOM);
+    return cats;
+}
+
+/** Optional categories aren't tied to room counts. */
+export function getOptionalCategoriesForUnit(_unit?: Pick<UnitFormValues,
+    'bedroom_count' | 'living_room_count' | 'kitchen_count' | 'bathroom_count'>): PropertyMediaCategory[] {
+    return [
+        PropertyMediaCategory.DINING,
+        PropertyMediaCategory.TOILET,
+        PropertyMediaCategory.BALCONY,
+    ];
+}
+
+/** Hint label suffix showing the unit's room count, e.g. "Bedroom × 3". */
+export function getCategoryCountSuffix(unit: Pick<UnitFormValues,
+    'bedroom_count' | 'living_room_count' | 'kitchen_count' | 'bathroom_count'>,
+    cat: PropertyMediaCategory): number {
+    if (cat === PropertyMediaCategory.BEDROOM) return unit.bedroom_count ?? 0;
+    if (cat === PropertyMediaCategory.LIVING_ROOM) return unit.living_room_count ?? 0;
+    if (cat === PropertyMediaCategory.KITCHEN) return unit.kitchen_count ?? 0;
+    if (cat === PropertyMediaCategory.BATHROOM) return unit.bathroom_count ?? 0;
+    return 0;
+}
 
 export const CATEGORY_LABELS: Record<PropertyMediaCategory, string> = {
     EXTERIOR_FRONT: 'Exterior (front)',
