@@ -3,11 +3,14 @@ import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, Users
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
 
+export type NavBadgeKey = 'approvalPending';
+
 export interface ILinkChild {
     name: string,
     pathName: string,
     link: string,
     allow: UserRole[],
+    badgeKey?: NavBadgeKey,
 }
 
 export interface ILink {
@@ -99,6 +102,13 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'bookings',
                 link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
+            {
+                name: 'Booking requests',
+                pathName: 'requests',
+                link: PAGE_ROUTES.dashboard.bookingManagement.bookingRequests.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+                badgeKey: 'approvalPending',
             },
             {
                 name: 'Booking disputes',

@@ -11,6 +11,20 @@ enum BookingRequestKeys {
     deleteBooking = "deleteBooking",
     retryBookingPayment = "retryBookingPayment",
     uploadPaymentProof = "uploadPaymentProof",
+    approvalPendingCount = "approvalPendingCount",
+}
+
+export function GetApprovalPendingCount() {
+    return useQuery({
+        queryKey: [BookingRequestKeys.approvalPendingCount],
+        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.base}?status=APPROVAL_PENDING&page=1&size=1`),
+        select: (resp: any): number => {
+            const total = resp?.data?.data?.total ?? resp?.data?.total ?? 0;
+            return typeof total === 'number' ? total : Number(total) || 0;
+        },
+        staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: true,
+    });
 }
 
 export function UploadPaymentProof() {
