@@ -61,6 +61,10 @@ export default function VerificationDetails({
     const [showAgentSelection, setShowAgentSelecteion] = useState(false);
     const [skipKycCheck, setSkipKycCheck] = useState(false);
     const [skipDocumentCheck, setSkipDocumentCheck] = useState(false);
+    // Reject flow uses its own modal so admins (who can't enter editMode) can
+    // still capture a rejection reason. The reason is required server-side.
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
 
 
     const formik =
@@ -104,42 +108,48 @@ export default function VerificationDetails({
             },
         });
 
-    const handleRejection = () => {
-        dispatch(
-            showAlert({
-                title: "Are you sure?",
-                description: "This will permanently reject the verification of this property.",
-                confirmText: "Reject",
-                cancelText: "Cancel",
-                onConfirm: () => updateVerification(
-                    {
-                        propertyId,
-                        payload: {
-                            feedback: formik.values.feedback,
-                            status: PropertyVerificationStatus.REJECTED
-                        }
-                    },
-                    {
-                        onSuccess: () =>
-                            toast.success('Property verification updated successfuly', {
-                                duration: 6000,
-                                style: {
-                                    maxWidth: '500px',
-                                    width: 'max-content'
-                                }
-                            }),
-                        onError: (error) =>
-                            toast.error('Something went wrong', {
-                                duration: 6000,
-                                style: {
-                                    maxWidth: '500px',
-                                    width: 'max-content'
-                                }
-                            }),
-                    }
-                ),
-            })
+    const submitRejection = () => {
+        const reason = rejectReason.trim();
+        if (!reason) return;
+        updateVerification(
+            {
+                propertyId,
+                payload: {
+                    feedback: reason,
+                    status: PropertyVerificationStatus.REJECTED,
+                },
+            },
+            {
+                onSuccess: () => {
+                    setShowRejectModal(false);
+                    setRejectReason('');
+                    formik.setFieldValue('feedback', reason);
+                    toast.success('Property verification rejected', {
+                        duration: 6000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
+                onError: (err: any) => {
+                    const detail = err?.response?.data?.detail;
+                    const msg = Array.isArray(detail)
+                        ? (detail[0]?.msg || 'Failed to reject verification')
+                        : (typeof detail === 'string' ? detail : 'Failed to reject verification');
+                    toast.error(msg, {
+                        duration: 6000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
+            }
         );
+    };
+
+    const handleRejection = () => {
+        // Open the dedicated reject modal — captures the required reason
+        // inline so admins (who can't enter editMode) still have a path to
+        // reject. The textarea seeds with whatever's already in the feedback
+        // field so partially-typed feedback isn't lost.
+        setRejectReason(formik.values.feedback || '');
+        setShowRejectModal(true);
     };
 
     const handleVerification = () => {
@@ -666,34 +676,48 @@ export default function VerificationDetails({
                     )}
                 </section>
 
-                {/* Feedback Section */}
+                {/* Feedback Section. Admins/agents on a PENDING verification get a
+                    live textarea so they can leave a note that's saved alongside
+                    Approve. Reject still uses its own modal so the reason is
+                    captured even if this field is empty. */}
                 <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-5'>
                     <p className="text-sm sm:text-base font-medium text-zinc-900 mb-2">
-                        {user?.id === property?.agent?.id ? 'Your' : 'Agent'} feedback
+                        {user?.id === property?.agent?.id ? 'Your' : 'Reviewer'} feedback
+                        {verification?.status === PropertyVerificationStatus.PENDING && (
+                            <span className="ml-2 text-xs font-normal text-zinc-500">(optional for approval, required for rejection)</span>
+                        )}
                     </p>
-                    {
-                        !editMode ?
-                            <div className='p-4 sm:p-5 md:p-6 bg-background/70 min-h-[10rem] sm:min-h-[12rem] w-full rounded-xl'>
-                                <p className="text-sm sm:text-base">
-                                    {verification?.feedback ??
-                                        <em className='text-zinc-400'>No comments yet</em>
-                                    }
-                                </p>
-                            </div>
-                            :
+                    {(() => {
+                        const canEditFeedback =
+                            verification?.status === PropertyVerificationStatus.PENDING &&
+                            (user?.role === UserRole.ADMIN ||
+                                user?.role === UserRole.SUPER_ADMIN ||
+                                user?.role === UserRole.OPERATIONS_ADMIN ||
+                                editMode);
+                        if (!canEditFeedback) {
+                            return (
+                                <div className='p-4 sm:p-5 md:p-6 bg-background/70 min-h-[10rem] sm:min-h-[12rem] w-full rounded-xl'>
+                                    <p className="text-sm sm:text-base">
+                                        {verification?.feedback ?? <em className='text-zinc-400'>No comments yet</em>}
+                                    </p>
+                                </div>
+                            );
+                        }
+                        return (
                             <div className="relative mt-2">
                                 <span className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 text-xs sm:text-sm text-zinc-400">{`${formik.values.feedback.length}/500`}</span>
                                 <textarea
                                     id="description"
                                     maxLength={500}
                                     rows={6}
-                                    placeholder={'Enter your feedback about this property...'}
+                                    placeholder={'Add a note for the owner — what looked good, what needs work...'}
                                     value={formik.values.feedback}
                                     onChange={e => formik.setFieldValue('feedback', e.target.value)}
                                     className="w-full border border-zinc-300 bg-background/70 rounded-xl p-3 sm:p-4 text-sm sm:text-base focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                 />
                             </div>
-                    }
+                        );
+                    })()}
                 </section>
 
                 {/* Override Checks */}
@@ -830,20 +854,14 @@ export default function VerificationDetails({
                         <div className='flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 items-center w-full'>
                             {
                                 !editMode && verification?.status !== PropertyVerificationStatus.REJECTED &&
-                                <div className='w-full sm:w-auto flex flex-col items-end gap-1'>
-                                    <button
-                                        type='button'
-                                        disabled={verificationLoading || verificationUdateLoading || !formik.values.feedback.trim()}
-                                        onClick={() => handleRejection()}
-                                        title={!formik.values.feedback.trim() ? 'Add feedback above so the owner knows what to fix' : ''}
-                                        className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:opacity-50 disabled:hover:bg-red-600 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        Reject
-                                    </button>
-                                    {!formik.values.feedback.trim() && (
-                                        <p className='text-xs text-red-600'>Feedback is required to reject.</p>
-                                    )}
-                                </div>
+                                <button
+                                    type='button'
+                                    disabled={verificationLoading || verificationUdateLoading}
+                                    onClick={() => handleRejection()}
+                                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:opacity-75 disabled:hover:bg-red-600 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Reject
+                                </button>
                             }
                             {
                                 editMode ?
@@ -978,6 +996,66 @@ export default function VerificationDetails({
                                     </div>
                                 </div>
                         }
+                    </div>
+                </CustomModal>
+
+                <CustomModal
+                    isOpen={showRejectModal}
+                    onClose={() => setShowRejectModal(false)}
+                    title="Reject verification"
+                >
+                    <div className="space-y-4 p-1">
+                        <p className="text-sm text-gray-600">
+                            The owner will see this reason in their dashboard and email so they
+                            know what to fix before resubmitting.
+                        </p>
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Reason for rejection <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="e.g. Proof of ownership document is unclear — please re-upload a higher-resolution scan."
+                                rows={5}
+                                maxLength={500}
+                                autoFocus
+                                className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm resize-none ${
+                                    rejectReason.trim()
+                                        ? 'border-gray-300 bg-white'
+                                        : 'border-red-200 bg-red-50/40'
+                                }`}
+                            />
+                            <div className="flex justify-between text-xs">
+                                {rejectReason.trim() ? (
+                                    <span className="text-gray-500">Be specific — vague reasons cause back-and-forth.</span>
+                                ) : (
+                                    <span className="text-red-600">A reason is required.</span>
+                                )}
+                                <span className="text-gray-400">{rejectReason.length}/500</span>
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowRejectModal(false);
+                                    setRejectReason('');
+                                }}
+                                disabled={verificationUdateLoading}
+                                className="w-full sm:flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={submitRejection}
+                                disabled={verificationUdateLoading || !rejectReason.trim()}
+                                className="w-full sm:flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {verificationUdateLoading ? <Spinner /> : 'Confirm rejection'}
+                            </button>
+                        </div>
                     </div>
                 </CustomModal>
             </div>
