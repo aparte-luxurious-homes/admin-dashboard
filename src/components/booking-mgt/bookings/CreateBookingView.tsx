@@ -51,6 +51,11 @@ export default function CreateBookingView() {
   const searchParams = useSearchParams();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  // Agents must use the payment-link flow — they cannot self-attest to
+  // payment or pick offline methods. Backend rejects regardless; we hide the
+  // controls so the UI doesn't offer choices that 403.
+  const isAgent = user?.role === UserRole.AGENT;
+
   // State
   const [guestSearchInput, setGuestSearchInput] = useState<string>("");
   const [guestSearchTerm, setGuestSearchTerm] = useState<string>("");
@@ -125,7 +130,8 @@ export default function CreateBookingView() {
       guests_count: 1,
       unit_count: 1,
       total_price: 0,
-      payment_method: "cash",
+      // Agents can only use the online/gateway flow.
+      payment_method: isAgent ? "online" : "cash",
       payment_proof_url: "",
       payment_notes: "",
       mark_as_paid: false,
@@ -1256,24 +1262,26 @@ export default function CreateBookingView() {
                 </div>
 
                 <div className="space-y-3">
-                  <div
-                    className="flex items-center gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200 cursor-pointer hover:bg-zinc-100 transition-colors"
-                    onClick={() => {
-                      const next = !formik.values.mark_as_paid;
-                      formik.setFieldValue("mark_as_paid", next);
-                      if (next) formik.setFieldValue("send_payment_link", false);
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
-                      checked={formik.values.mark_as_paid}
-                      onChange={() => {}} // Handled by div click
-                    />
-                    <span className="text-sm font-medium text-zinc-700">
-                      Mark as Paid
-                    </span>
-                  </div>
+                  {!isAgent && (
+                    <div
+                      className="flex items-center gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200 cursor-pointer hover:bg-zinc-100 transition-colors"
+                      onClick={() => {
+                        const next = !formik.values.mark_as_paid;
+                        formik.setFieldValue("mark_as_paid", next);
+                        if (next) formik.setFieldValue("send_payment_link", false);
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
+                        checked={formik.values.mark_as_paid}
+                        onChange={() => {}} // Handled by div click
+                      />
+                      <span className="text-sm font-medium text-zinc-700">
+                        Mark as Paid
+                      </span>
+                    </div>
+                  )}
 
                   {/* Send payment link — mutually exclusive with Mark as Paid */}
                   <div
@@ -1307,7 +1315,7 @@ export default function CreateBookingView() {
                     </div>
                   </div>
 
-                  {formik.values.mark_as_paid && (
+                  {formik.values.mark_as_paid && !isAgent && (
                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-zinc-500 uppercase">
