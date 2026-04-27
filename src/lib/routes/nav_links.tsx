@@ -65,6 +65,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.userManagement.admins.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
+            {
+                name: 'KYC Queue',
+                pathName: 'kyc-queue',
+                link: PAGE_ROUTES.dashboard.userManagement.kycQueue.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
         ]
     },
     {
@@ -85,7 +91,13 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Manage verifications',
                 pathName: 'manage-verifications',
                 link: PAGE_ROUTES.dashboard.propertyManagement.manageVerifications.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
+            {
+                name: 'My verifications',
+                pathName: 'my-verifications',
+                link: PAGE_ROUTES.dashboard.propertyManagement.myVerifications.base,
+                allow: [UserRole.AGENT],
             },
         ]
     },

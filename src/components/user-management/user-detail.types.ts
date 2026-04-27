@@ -9,11 +9,24 @@ export interface UserProfile {
   state: string | null;
   country: string | null;
   kycStatus: string;
+  /** Set when the user verified via NIN/BVN auto-verify (e.g. "MONNIFY"). */
+  kycProvider: string | null;
   profileImage: string | null;
   averageRating: number | null;
   nin: string | null;
   bvn: string | null;
   referralCode: string | null;
+}
+
+export interface KycDocument {
+  id: string;
+  documentType: string;
+  documentUrl: string;
+  status: string;
+  rejectionReason: string | null;
+  lastResubmittedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 export interface Wallet {
@@ -35,6 +48,8 @@ export interface UserDetail {
   createdAt: string | null;
   profile: UserProfile;
   wallets: Wallet[];
+  /** Documents the user has uploaded for KYC review. Newest first. */
+  kycDocuments: KycDocument[];
 }
 
 export interface RoleConfig {
@@ -81,6 +96,7 @@ export function normalizeUser(raw: any): UserDetail {
       state: str(p.state),
       country: str(p.country),
       kycStatus: p.kycStatus ?? p.kyc_status ?? "PENDING",
+      kycProvider: str(p.kycProvider ?? p.kyc_provider),
       profileImage: str(p.profileImage ?? p.profile_image ?? raw.profileImage ?? raw.profile_image),
       averageRating: p.averageRating != null ? Number(p.averageRating) : p.average_rating != null ? Number(p.average_rating) : null,
       nin: str(p.nin),
@@ -88,5 +104,17 @@ export function normalizeUser(raw: any): UserDetail {
       referralCode: str(p.referral_code ?? p.referralCode),
     },
     wallets: Array.isArray(raw.wallets) ? raw.wallets.map(normalizeWallet) : [],
+    kycDocuments: Array.isArray(raw.kycDocuments ?? raw.kyc_documents)
+      ? (raw.kycDocuments ?? raw.kyc_documents).map((d: any): KycDocument => ({
+          id: String(d.id ?? ""),
+          documentType: String(d.documentType ?? d.document_type ?? ""),
+          documentUrl: String(d.documentUrl ?? d.document_url ?? ""),
+          status: String(d.status ?? "PENDING"),
+          rejectionReason: str(d.rejectionReason ?? d.rejection_reason),
+          lastResubmittedAt: str(d.lastResubmittedAt ?? d.last_resubmitted_at),
+          createdAt: str(d.createdAt ?? d.created_at),
+          updatedAt: str(d.updatedAt ?? d.updated_at),
+        }))
+      : [],
   };
 }

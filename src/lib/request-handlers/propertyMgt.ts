@@ -22,6 +22,9 @@ enum PropertyRequestKeys {
     propertyDocuments = "propertyDocuments",
     verifyPropertyDocument = "verifyPropertyDocument",
     updateBookingMode = "updateBookingMode",
+    verificationHistory = "verificationHistory",
+    agentMyQueue = "agentMyQueue",
+    ownerResubmit = "ownerResubmit",
 }
 
 export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: UserRole, id?: string | number, isVerified?: boolean | null) {
@@ -370,6 +373,64 @@ export function UpdatePropertyDocumentStatus() {
         onSuccess: (_, { propertyId }) => {
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyDocuments, propertyId] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+        },
+    });
+}
+
+// ----------------------------------------------------------------------------
+// Verification history + agent queue + owner resubmit
+// ----------------------------------------------------------------------------
+
+export function GetVerificationHistory(
+    propertyId: string | number,
+    verificationId: string | number,
+    enabled = true,
+) {
+    return useQuery({
+        queryKey: [PropertyRequestKeys.verificationHistory, propertyId, verificationId],
+        queryFn: () =>
+            axiosRequest.get(
+                API_ROUTES.admin.properties.verificationHistory(propertyId, verificationId),
+            ),
+        enabled: enabled && !!propertyId && !!verificationId,
+    });
+}
+
+export function GetAgentVerificationQueue(params: {
+    page?: number;
+    size?: number;
+    status?: 'PENDING' | 'VERIFIED' | 'REJECTED';
+}) {
+    const { page = 1, size = 20, status = 'PENDING' } = params || {};
+    return useQuery({
+        queryKey: [PropertyRequestKeys.agentMyQueue, page, size, status],
+        queryFn: () =>
+            axiosRequest.get(API_ROUTES.verifications.myQueue, {
+                params: { page, size, status },
+            }),
+        refetchOnWindowFocus: true,
+    });
+}
+
+export function ResubmitOwnerVerification() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            propertyId,
+            note,
+        }: {
+            propertyId: string | number;
+            note?: string;
+        }) =>
+            axiosRequest.post(
+                API_ROUTES.verifications.ownerResubmit(propertyId),
+                { note },
+            ),
+        onSuccess: (_, { propertyId }) => {
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.getPropertiesVerifications] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.getAllVerifications] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.verificationHistory] });
         },
     });
 }

@@ -13,6 +13,7 @@ import { CalendarIcon } from '../../icons';
 import { IProperty, IPropertyVerification, PropertyVerificationStatus } from '../types';
 import { useAuth } from '@/src/hooks/useAuth';
 import { AssignToProperty, GetPropertyVerification, UpdatePropertyVerification, UploadVerificationMedia } from '@/src/lib/request-handlers/propertyMgt';
+import VerificationHistoryTimeline from './VerificationHistoryTimeline';
 import { HiOutlineCloudUpload } from 'react-icons/hi';
 import { UserRole } from '@/src/lib/enums';
 import { useFormik } from 'formik';
@@ -435,7 +436,7 @@ export default function VerificationDetails({
                                     View Agent
                                 </button>
                                 {
-                                    verification?.status !== PropertyVerificationStatus.PENDING && user?.role !== UserRole.OWNER &&
+                                    user?.role !== UserRole.OWNER &&
                                     <button
                                         type='button'
                                         onClick={() => {
@@ -813,20 +814,36 @@ export default function VerificationDetails({
                     </section>
                 )}
 
+                {/* Verification activity timeline */}
+                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-2'>
+                    {verification?.id && (
+                        <VerificationHistoryTimeline
+                            propertyId={String(propertyId)}
+                            verificationId={String(verification.id)}
+                        />
+                    )}
+                </section>
+
                 {/* Action Buttons */}
                 <section className='my-6 sm:my-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6'>
                     <div className='w-full flex justify-between items-center'>
                         <div className='flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 items-center w-full'>
                             {
                                 !editMode && verification?.status !== PropertyVerificationStatus.REJECTED &&
-                                <button
-                                    type='button'
-                                    disabled={verificationLoading || verificationUdateLoading}
-                                    onClick={() => handleRejection()}
-                                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:opacity-75 disabled:hover:bg-red-600 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    Reject
-                                </button>
+                                <div className='w-full sm:w-auto flex flex-col items-end gap-1'>
+                                    <button
+                                        type='button'
+                                        disabled={verificationLoading || verificationUdateLoading || !formik.values.feedback.trim()}
+                                        onClick={() => handleRejection()}
+                                        title={!formik.values.feedback.trim() ? 'Add feedback above so the owner knows what to fix' : ''}
+                                        className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:opacity-50 disabled:hover:bg-red-600 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Reject
+                                    </button>
+                                    {!formik.values.feedback.trim() && (
+                                        <p className='text-xs text-red-600'>Feedback is required to reject.</p>
+                                    )}
+                                </div>
                             }
                             {
                                 editMode ?

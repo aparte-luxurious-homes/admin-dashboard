@@ -23,6 +23,9 @@ export const PAGE_ROUTES = {
                 base: '/user-management/admins',
                 details: (id: number) => `/user-management/admins/${id}`,
             },
+            kycQueue: {
+                base: '/user-management/kyc-queue',
+            },
         },
         bookingManagement: {
             bookingDisputes: {
@@ -68,6 +71,9 @@ export const PAGE_ROUTES = {
             },
             manageVerifications: {
                 base: '/property-management/manage-verifications',
+            },
+            myVerifications: {
+                base: '/property-management/my-verifications',
             },
         },
         transactions: {

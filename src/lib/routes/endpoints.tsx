@@ -18,6 +18,8 @@ export const API_ROUTES = {
             reassignOwner: (id: string | number) => `/admin/properties/${id}/reassign-owner`,
             verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
             feature: (id: string | number) => `/admin/properties/${id}/feature`,
+            verificationHistory: (propertyId: string | number, verificationId: string | number) =>
+                `/admin/properties/${propertyId}/verifications/${verificationId}/history`,
         },
         bookings: {
             base: '/bookings',
@@ -32,8 +34,10 @@ export const API_ROUTES = {
             userById: (id: string | number) => `/admin/users/${id}`,
             userByUuid: (id: string | number) => `/admin/users/${id}`,
             updateKyc: (id: string | number) => `/admin/users/${id}/kyc`,
+            kycHistory: (id: string | number) => `/admin/users/${id}/kyc/history`,
             roles: '/admin/users/roles',
         },
+        kycQueue: '/admin/kyc/queue',
         integrations: {
             configs: '/admin/integrations/configs',
             configByKey: (key: string) => `/admin/integrations/configs/${key}`,
@@ -96,7 +100,10 @@ export const API_ROUTES = {
     },
     verifications: {
         base: '/verifications',
-        details: (verificationId: string | number) => `/verifications/${verificationId}`
+        details: (verificationId: string | number) => `/verifications/${verificationId}`,
+        myQueue: '/properties/verifications/my-queue',
+        ownerResubmit: (propertyId: string | number) =>
+            `/properties/${propertyId}/verifications/resubmit`,
     },
     bookings: {
         base: '/bookings',
