@@ -170,6 +170,18 @@ export function RetryBookingPayment() {
     });
 }
 
+export function ResendPaymentLink() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/payment-link/resend`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
 export function CheckInBooking() {
     const queryClient = useQueryClient();
     return useMutation({

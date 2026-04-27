@@ -44,6 +44,7 @@ import { useMediaQuery } from "@mui/material";
 import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
 import { HiOutlineCloudUpload } from "react-icons/hi";
 import { MdOutlinePayments } from "react-icons/md";
+import { Icon } from "@iconify/react";
 
 export default function CreateBookingView() {
   const router = useRouter();
@@ -135,7 +136,11 @@ export default function CreateBookingView() {
       payment_proof_url: "",
       payment_notes: "",
       mark_as_paid: false,
-      send_payment_link: false,
+      // Default the payment-link dispatch ON for agents — they're booking on
+      // behalf of a guest who can't otherwise discover the checkout URL. Backend
+      // also generates the link regardless; this just controls email + SMS
+      // notification.
+      send_payment_link: isAgent,
       referral_code: "",
       // Onboarding fields
       guest_first_name: "",
@@ -1283,37 +1288,52 @@ export default function CreateBookingView() {
                     </div>
                   )}
 
-                  {/* Send payment link — mutually exclusive with Mark as Paid */}
-                  <div
-                    className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-                      formik.values.mark_as_paid
-                        ? "bg-zinc-50 border-zinc-200 opacity-50 cursor-not-allowed"
-                        : "bg-zinc-50 border-zinc-200 cursor-pointer hover:bg-zinc-100"
-                    }`}
-                    onClick={() => {
-                      if (formik.values.mark_as_paid) return;
-                      formik.setFieldValue(
-                        "send_payment_link",
-                        !formik.values.send_payment_link,
-                      );
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
-                      checked={formik.values.send_payment_link}
-                      disabled={formik.values.mark_as_paid}
-                      onChange={() => {}}
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-zinc-700 block">
-                        Send payment link to guest
-                      </span>
-                      <span className="text-xs text-zinc-500 block mt-0.5">
-                        Emails and SMSes the guest a checkout URL. You also get a copyable link to share on WhatsApp.
-                      </span>
+                  {/* Send payment link — for agents this is locked ON because
+                      they have no other way to collect payment from the guest. */}
+                  {isAgent ? (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border bg-teal-50 border-teal-200">
+                      <Icon icon="mdi:email-send-outline" className="mt-0.5 text-teal-700 text-lg" />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-teal-900 block">
+                          Payment link will be sent to guest
+                        </span>
+                        <span className="text-xs text-teal-700 block mt-0.5">
+                          We'll email + SMS the guest a checkout URL when you confirm. You also get a copyable link to share on WhatsApp.
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div
+                      className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                        formik.values.mark_as_paid
+                          ? "bg-zinc-50 border-zinc-200 opacity-50 cursor-not-allowed"
+                          : "bg-zinc-50 border-zinc-200 cursor-pointer hover:bg-zinc-100"
+                      }`}
+                      onClick={() => {
+                        if (formik.values.mark_as_paid) return;
+                        formik.setFieldValue(
+                          "send_payment_link",
+                          !formik.values.send_payment_link,
+                        );
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
+                        checked={formik.values.send_payment_link}
+                        disabled={formik.values.mark_as_paid}
+                        onChange={() => {}}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-zinc-700 block">
+                          Send payment link to guest
+                        </span>
+                        <span className="text-xs text-zinc-500 block mt-0.5">
+                          Emails and SMSes the guest a checkout URL. You also get a copyable link to share on WhatsApp.
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {formik.values.mark_as_paid && !isAgent && (
                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">

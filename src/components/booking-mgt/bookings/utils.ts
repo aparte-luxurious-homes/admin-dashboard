@@ -37,6 +37,10 @@ export interface NormalizedBooking {
   user: IBooking["user"];
   unit: IBooking["unit"];
   revenueSplit: IBooking["revenueSplit"] | null;
+  // Fee breakdown — gateway_fee is added on top of total_price; total_payable
+  // is what the guest actually pays at checkout.
+  gatewayFee: number;
+  totalPayable: number;
   // Computed fields
   nights: number;
   pricePerNight: number;
@@ -67,6 +71,8 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     unitCount,
     totalPrice: Number(raw.totalPrice || r.total_price || 0),
     cautionFee: Number(raw.cautionFee || r.caution_fee || 0),
+    gatewayFee: Number((raw as any).gatewayFee ?? r.gateway_fee ?? 0),
+    totalPayable: Number((raw as any).totalPayable ?? r.total_payable ?? (Number(raw.totalPrice || r.total_price || 0) + Number((raw as any).gatewayFee ?? r.gateway_fee ?? 0))),
     isCautionRefunded: raw.isCautionRefunded ?? r.is_caution_refunded ?? false,
     cautionRefundNotes: raw.cautionRefundNotes || r.caution_refund_notes || "",
     cautionRefundActionBy: raw.cautionRefundActionBy || r.caution_refund_action_by || "",

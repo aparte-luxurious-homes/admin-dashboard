@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 import { formatMoney } from "@/src/lib/utils";
 import { BookingStatus } from "../types";
 import CollapsibleSection from "../../mobile/CollapsibleSection";
-import { RetryBookingPayment } from "@/src/lib/request-handlers/bookingMgt";
+import { RetryBookingPayment, ResendPaymentLink } from "@/src/lib/request-handlers/bookingMgt";
 import { NormalizedBooking, getStatusColors } from "./utils";
 
 interface BookingPaymentCardProps {
@@ -15,11 +15,18 @@ interface BookingPaymentCardProps {
 export default function BookingPaymentCard({ booking }: BookingPaymentCardProps) {
   const colors = getStatusColors(booking.status);
   const { mutate: retryPayment, isPending: isRetrying } = RetryBookingPayment();
+  const { mutate: resendLink, isPending: isResending } = ResendPaymentLink();
 
   const canRetry =
     (booking.status === BookingStatus.PENDING ||
       booking.status === BookingStatus.PENDING_PAYMENT) &&
     booking.transactionRef;
+
+  // Resend link is available for any unpaid booking — useful when the agent
+  // forgot to dispatch the link at create time, or the original send failed.
+  const canResend =
+    booking.status === BookingStatus.PENDING ||
+    booking.status === BookingStatus.PENDING_PAYMENT;
 
   const handleRetry = () => {
     retryPayment(
@@ -35,6 +42,24 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
         },
         onError: (error: any) => {
           toast.error(error?.response?.data?.detail || "Failed to verify payment");
+        },
+      },
+    );
+  };
+
+  const handleResend = () => {
+    resendLink(
+      { bookingId: booking.id },
+      {
+        onSuccess: (response) => {
+          const url = response?.data?.data?.payment_link;
+          if (url) {
+            toast.success("Payment link re-sent to guest");
+            navigator.clipboard?.writeText(url).catch(() => {});
+          }
+        },
+        onError: (error: any) => {
+          toast.error(error?.response?.data?.detail || "Failed to resend payment link");
         },
       },
     );
@@ -71,10 +96,23 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
               <span className="text-zinc-600">Caution fee</span>
               <span className="font-medium text-zinc-800">{formatMoney(booking.cautionFee)}</span>
             </div>
+            <div className="flex justify-between items-center py-1 border-t border-zinc-200 mt-1 pt-2 text-xs sm:text-sm">
+              <span className="text-zinc-600">Booking total</span>
+              <span className="font-medium text-zinc-800">{formatMoney(booking.totalPrice)}</span>
+            </div>
+            {booking.gatewayFee > 0 && (
+              <div className="flex justify-between items-center py-1 text-xs sm:text-sm">
+                <span className="text-zinc-600">
+                  Payment processing fee
+                  <span className="ml-1 text-[10px] text-zinc-400">(charged by gateway)</span>
+                </span>
+                <span className="font-medium text-zinc-800">{formatMoney(booking.gatewayFee)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center py-2 border-t-2 border-zinc-300 mt-2 text-sm sm:text-base">
-              <span className="font-semibold text-zinc-800">Total</span>
+              <span className="font-semibold text-zinc-800">Total payable</span>
               <span className="text-lg sm:text-xl font-bold text-primary">
-                {formatMoney(booking.totalPrice)}
+                {formatMoney(booking.totalPayable)}
               </span>
             </div>
 
@@ -134,6 +172,25 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
                 </button>
                 <p className="text-[10px] sm:text-xs text-zinc-500 mt-1.5 text-center">
                   Click to manually verify payment status
+                </p>
+              </div>
+            )}
+
+            {/* Resend payment link — for stuck PENDING bookings where the
+                guest never received a link or lost it. Re-issues a fresh
+                gateway URL and emails + SMSes the guest. */}
+            {canResend && (
+              <div className={`${canRetry ? "mt-2" : "mt-4 pt-4 border-t border-zinc-200"}`}>
+                <button
+                  onClick={handleResend}
+                  disabled={isResending}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white border border-primary text-primary rounded-lg text-xs sm:text-sm hover:bg-primary/5 transition-colors disabled:opacity-50"
+                >
+                  <Icon icon="mdi:email-send-outline" className={`text-base ${isResending ? "animate-pulse" : ""}`} />
+                  <span>{isResending ? "Sending..." : "Send Payment Link"}</span>
+                </button>
+                <p className="text-[10px] sm:text-xs text-zinc-500 mt-1.5 text-center">
+                  Re-issue and email + SMS the guest a fresh checkout link
                 </p>
               </div>
             )}
