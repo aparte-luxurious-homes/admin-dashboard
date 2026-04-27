@@ -12,7 +12,7 @@ import { VerificationBadge } from '../../badge';
 import { CalendarIcon } from '../../icons';
 import { IProperty, IPropertyVerification, PropertyVerificationStatus } from '../types';
 import { useAuth } from '@/src/hooks/useAuth';
-import { AssignToProperty, GetPropertyVerification, UpdatePropertyVerification, UploadVerificationMedia } from '@/src/lib/request-handlers/propertyMgt';
+import { AssignToProperty, GetPropertyVerification, UpdatePropertyDocumentStatus, UpdatePropertyVerification, UploadVerificationMedia } from '@/src/lib/request-handlers/propertyMgt';
 import VerificationHistoryTimeline from './VerificationHistoryTimeline';
 import { HiOutlineCloudUpload } from 'react-icons/hi';
 import { UserRole } from '@/src/lib/enums';
@@ -65,6 +65,20 @@ export default function VerificationDetails({
     // still capture a rejection reason. The reason is required server-side.
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
+    // Approve flow gets its own modal too, so override-check toggles are an
+    // explicit confirm step rather than a hidden sticky setting.
+    const [showApproveModal, setShowApproveModal] = useState(false);
+    // Tabbed layout — each tab is a focused review surface so admins can
+    // jump straight to what they need rather than scroll the whole page.
+    type TabId = 'overview' | 'owner' | 'documents' | 'evidence' | 'activity';
+    const [activeTab, setActiveTab] = useState<TabId>('overview');
+    // Per-document inline actions in the Documents tab. Approve fires
+    // immediately; Reject opens a small modal so the admin can capture the
+    // required reason before the request goes out.
+    const { mutate: updateDoc, isPending: docUpdating } = UpdatePropertyDocumentStatus();
+    const [docMutatingId, setDocMutatingId] = useState<string | null>(null);
+    const [docRejectingId, setDocRejectingId] = useState<string | null>(null);
+    const [docRejectReason, setDocRejectReason] = useState<string>('');
 
 
     const formik =
@@ -152,6 +166,77 @@ export default function VerificationDetails({
         setShowRejectModal(true);
     };
 
+    const handleDocApprove = (docId: string) => {
+        setDocMutatingId(docId);
+        updateDoc(
+            {
+                propertyId,
+                documentId: docId,
+                payload: {
+                    status: PropertyVerificationStatus.VERIFIED,
+                    feedback: '',
+                } as any,
+            },
+            {
+                onSuccess: () => {
+                    toast.success('Document marked verified', {
+                        duration: 4000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
+                onError: (err: any) => {
+                    const detail = err?.response?.data?.detail;
+                    const msg = Array.isArray(detail)
+                        ? (detail[0]?.msg || 'Failed to update document')
+                        : (typeof detail === 'string' ? detail : 'Failed to update document');
+                    toast.error(msg, {
+                        duration: 6000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
+                onSettled: () => setDocMutatingId(null),
+            },
+        );
+    };
+
+    const submitDocRejection = () => {
+        if (!docRejectingId) return;
+        const reason = docRejectReason.trim();
+        if (!reason) return;
+        setDocMutatingId(docRejectingId);
+        updateDoc(
+            {
+                propertyId,
+                documentId: docRejectingId,
+                payload: {
+                    status: PropertyVerificationStatus.REJECTED,
+                    feedback: reason,
+                } as any,
+            },
+            {
+                onSuccess: () => {
+                    setDocRejectingId(null);
+                    setDocRejectReason('');
+                    toast.success('Document rejected', {
+                        duration: 4000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
+                onError: (err: any) => {
+                    const detail = err?.response?.data?.detail;
+                    const msg = Array.isArray(detail)
+                        ? (detail[0]?.msg || 'Failed to reject document')
+                        : (typeof detail === 'string' ? detail : 'Failed to reject document');
+                    toast.error(msg, {
+                        duration: 6000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
+                onSettled: () => setDocMutatingId(null),
+            },
+        );
+    };
+
     const handleVerification = () => {
         dispatch(
             showAlert({
@@ -193,44 +278,44 @@ export default function VerificationDetails({
         );
     };
 
-    const handleApproval = (name: string) => {
-        dispatch(
-            showAlert({
-                title: "Are you sure?",
-                description: `This will approve ${name}'s verification of the property.`,
-                confirmText: "Approve",
-                cancelText: "Cancel",
-                onConfirm: () => updateVerification(
-                    {
-                        propertyId,
-                        payload: {
-                            feedback: formik.values.feedback,
-                            status: PropertyVerificationStatus.VERIFIED,
-                            skip_kyc_check: skipKycCheck,
-                            skip_document_check: skipDocumentCheck
-                        }
-                    },
-                    {
-                        onSuccess: () =>
-                            toast.success('Property verification approved successfuly', {
-                                duration: 6000,
-                                style: {
-                                    maxWidth: '500px',
-                                    width: 'max-content'
-                                }
-                            }),
-                        onError: (error: any) =>
-                            toast.error(error?.response?.data?.detail || 'Failed to verify property', {
-                                duration: 6000,
-                                style: {
-                                    maxWidth: '500px',
-                                    width: 'max-content'
-                                }
-                            })
-                    }
-                ),
-            })
+    const submitApproval = () => {
+        updateVerification(
+            {
+                propertyId,
+                payload: {
+                    feedback: formik.values.feedback,
+                    status: PropertyVerificationStatus.VERIFIED,
+                    skip_kyc_check: skipKycCheck,
+                    skip_document_check: skipDocumentCheck,
+                },
+            },
+            {
+                onSuccess: () => {
+                    setShowApproveModal(false);
+                    toast.success('Property verification approved', {
+                        duration: 6000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
+                onError: (err: any) => {
+                    const detail = err?.response?.data?.detail;
+                    const msg = Array.isArray(detail)
+                        ? (detail[0]?.msg || 'Failed to approve verification')
+                        : (typeof detail === 'string' ? detail : 'Failed to approve verification');
+                    toast.error(msg, {
+                        duration: 6000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
+            }
         );
+    };
+
+    const handleApproval = (_name?: string) => {
+        // Open the approve confirmation modal — override checks live there now,
+        // so admins make an explicit acknowledgement before approving with a
+        // bypass instead of leaving a sticky toggle on by accident.
+        setShowApproveModal(true);
     };
 
     const handleAgentSelection = (email: string) => {
@@ -339,15 +424,174 @@ export default function VerificationDetails({
         );
     }
 
+    // ── At-a-glance summary computations ──────────────────────────────────
+    // Single panel that answers "is this safe to approve?" without scrolling.
+    const ownerKycStatus = property?.owner?.profile?.kycStatus || 'PENDING';
+    const ownerKycVerified = ownerKycStatus === 'VERIFIED';
+    const propertyDocs = property?.documents || [];
+    const docsVerified = propertyDocs.filter((d: any) => d.status === 'VERIFIED').length;
+    const docsRejected = propertyDocs.filter((d: any) => d.status === 'REJECTED').length;
+    const hasAdminApproval = !!property?.isVerified;
+    const showAwaitingAdmin =
+        verification?.status === PropertyVerificationStatus.VERIFIED && !hasAdminApproval;
+
+    // Tab visibility: agents on PENDING get a focused experience but admins
+    // see everything across all tabs.
+    const tabs: Array<{ id: TabId; label: string; icon: string; count?: number | string }> = [
+        { id: 'overview',  label: 'Overview',  icon: 'mdi:home-outline' },
+        { id: 'owner',     label: 'Owner & KYC', icon: 'mdi:account-tie-outline' },
+        { id: 'documents', label: 'Documents', icon: 'mdi:file-document-outline', count: propertyDocs.length || undefined },
+        { id: 'evidence',  label: 'On-site Evidence', icon: 'mdi:camera-outline', count: evidenceUrls.length || undefined },
+        { id: 'activity',  label: 'Activity', icon: 'mdi:history' },
+    ];
+
+    const canApprove =
+        verification?.status === PropertyVerificationStatus.PENDING &&
+        (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN);
+    const canReject =
+        verification?.status !== PropertyVerificationStatus.REJECTED &&
+        (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.AGENT);
+    const canReassign = user?.role !== UserRole.OWNER && user?.role !== UserRole.AGENT;
+    const canVerifyAsAgent =
+        verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT;
+
     return (
         <div className="p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 w-full max-w-[1600px] mx-auto">
             <div className="w-full border border-zinc-500/20 bg-white rounded-xl sm:rounded-2xl min-h-[50vh] overflow-hidden">
-                <div className='p-4 sm:p-6 md:p-8 lg:p-10 w-full border-b border-zinc-200'>
-                    <h4 className='text-zinc-800 text-xl sm:text-2xl md:text-3xl font-medium'>
-                        Verification Details
-                    </h4>
+                {/* ── Sticky decision bar ────────────────────────────────── */}
+                <div className='sticky top-0 z-30 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-zinc-200'>
+                    <div className='px-4 sm:px-6 md:px-8 lg:px-10 py-3 sm:py-4'>
+                        <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-6'>
+                            <div className='min-w-0'>
+                                <div className='flex items-center gap-2 flex-wrap'>
+                                    <VerificationBadge status={verification?.status ?? PropertyVerificationStatus.PENDING} />
+                                    {showAwaitingAdmin && (
+                                        <span className='inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200'>
+                                            <span className='w-1.5 h-1.5 rounded-full bg-yellow-500'></span>
+                                            Awaiting admin approval
+                                        </span>
+                                    )}
+                                    {verification?.rewardReversedAt && (
+                                        <span className='inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200'>
+                                            Reward reversed
+                                        </span>
+                                    )}
+                                </div>
+                                <h2 className='text-lg sm:text-xl lg:text-2xl font-semibold text-zinc-900 mt-1 truncate' title={property?.name}>
+                                    {property?.name || 'Verification Details'}
+                                </h2>
+                                <p className='text-xs sm:text-sm text-zinc-500 mt-0.5 flex items-center gap-1.5'>
+                                    <IoLocationOutline className='flex-shrink-0' />
+                                    <span className='truncate'>{property?.address || '—'}</span>
+                                </p>
+                            </div>
+                            <div className='flex flex-wrap gap-2 sm:gap-3 lg:flex-shrink-0'>
+                                {canReassign && (
+                                    <button
+                                        type='button'
+                                        onClick={() => setShowAgentSelecteion(true)}
+                                        className='px-3 sm:px-4 py-2 text-sm font-medium rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-700'
+                                    >
+                                        {property?.agent ? 'Re-assign agent' : 'Assign agent'}
+                                    </button>
+                                )}
+                                {canReject && (
+                                    <button
+                                        type='button'
+                                        disabled={verificationLoading || verificationUdateLoading}
+                                        onClick={() => handleRejection()}
+                                        className='px-3 sm:px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60'
+                                    >
+                                        Reject
+                                    </button>
+                                )}
+                                {canApprove && (
+                                    <button
+                                        type='button'
+                                        disabled={verificationLoading || verificationUdateLoading}
+                                        onClick={() => handleApproval()}
+                                        className='px-3 sm:px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-60'
+                                    >
+                                        Approve
+                                    </button>
+                                )}
+                                {canVerifyAsAgent && (
+                                    <button
+                                        type='button'
+                                        disabled={verificationLoading || verificationUdateLoading || agentVerifyBlocked}
+                                        onClick={() => handleVerification()}
+                                        title={agentVerifyBlocked ? 'Upload at least 2 evidence files first' : undefined}
+                                        className='px-3 sm:px-4 py-2 text-sm font-medium rounded-lg border border-primary text-primary hover:bg-primary hover:text-white disabled:opacity-60 disabled:cursor-not-allowed'
+                                    >
+                                        Verify (on-site)
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* At-a-glance summary */}
+                        <div className='mt-3 sm:mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3'>
+                            <div className='px-3 py-2 rounded-lg border border-zinc-100 bg-zinc-50/50'>
+                                <p className='text-[10px] sm:text-xs font-semibold text-zinc-500 uppercase tracking-wider'>Owner KYC</p>
+                                <div className='mt-0.5'>
+                                    <span className={`text-xs sm:text-sm font-semibold ${ownerKycVerified ? 'text-green-700' : 'text-yellow-700'}`}>
+                                        {ownerKycStatus}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className='px-3 py-2 rounded-lg border border-zinc-100 bg-zinc-50/50'>
+                                <p className='text-[10px] sm:text-xs font-semibold text-zinc-500 uppercase tracking-wider'>Documents</p>
+                                <p className='text-xs sm:text-sm font-semibold text-zinc-800 mt-0.5'>
+                                    {docsVerified} verified <span className='text-zinc-400 font-normal'>/ {propertyDocs.length || 0}</span>
+                                    {docsRejected > 0 && <span className='text-red-600 ml-1.5'>({docsRejected} rejected)</span>}
+                                </p>
+                            </div>
+                            <div className='px-3 py-2 rounded-lg border border-zinc-100 bg-zinc-50/50'>
+                                <p className='text-[10px] sm:text-xs font-semibold text-zinc-500 uppercase tracking-wider'>On-site evidence</p>
+                                <p className={`text-xs sm:text-sm font-semibold mt-0.5 ${evidenceUrls.length >= 2 ? 'text-green-700' : 'text-yellow-700'}`}>
+                                    {evidenceUrls.length} item{evidenceUrls.length === 1 ? '' : 's'}
+                                </p>
+                            </div>
+                            <div className='px-3 py-2 rounded-lg border border-zinc-100 bg-zinc-50/50'>
+                                <p className='text-[10px] sm:text-xs font-semibold text-zinc-500 uppercase tracking-wider'>Last updated</p>
+                                <p className='text-xs sm:text-sm font-semibold text-zinc-800 mt-0.5'>
+                                    {verification?.verificationDate ? formatDate(verification.verificationDate) : '—'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tab nav */}
+                    <div className='px-2 sm:px-4 md:px-6 lg:px-8 overflow-x-auto'>
+                        <nav className='flex gap-1 min-w-max'>
+                            {tabs.map((tab) => {
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        type='button'
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                                            isActive
+                                                ? 'border-primary text-primary'
+                                                : 'border-transparent text-zinc-600 hover:text-zinc-900 hover:border-zinc-300'
+                                        }`}
+                                    >
+                                        <span>{tab.label}</span>
+                                        {typeof tab.count === 'number' && tab.count > 0 && (
+                                            <span className='px-1.5 py-0.5 rounded-full text-xs bg-zinc-100 text-zinc-700'>
+                                                {tab.count}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
                 </div>
 
+                {/* ── Tab content begins ────────────────────────────────── */}
+                {activeTab === 'overview' && (<>
                 {/* Main Content Section */}
                 <section className="flex flex-col lg:flex-row justify-between gap-4 sm:gap-6 w-full p-4 sm:p-6 md:p-8 lg:p-10">
                     {/* Image Slider */}
@@ -600,8 +844,11 @@ export default function VerificationDetails({
                     )}
                 </section>
 
-                {/* KYC Details */}
-                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-5'>
+                </>)}
+
+                {activeTab === 'owner' && (
+                /* KYC Details */
+                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pt-6 pb-4 sm:pb-5'>
                     <p className="text-sm sm:text-base font-medium text-zinc-900 mb-2">Owner KYC Details</p>
                     {property?.owner?.profile ? (
                         <div className="p-4 sm:p-5 bg-background/70 rounded-xl space-y-3">
@@ -649,25 +896,72 @@ export default function VerificationDetails({
                     )}
                 </section>
 
-                {/* Property Documents */}
-                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-5'>
-                    <p className="text-sm sm:text-base font-medium text-zinc-900 mb-2">Property Documents</p>
+                )}
+
+                {activeTab === 'documents' && (
+                /* Property Documents — admins can approve / reject each doc
+                   inline. Rejection captures a required reason in a small
+                   modal; backend validates and writes a per-doc history row. */
+                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pt-6 pb-4 sm:pb-5'>
+                    <div className='flex items-baseline justify-between mb-2'>
+                        <p className="text-sm sm:text-base font-medium text-zinc-900">Property Documents</p>
+                        {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && (
+                            <p className='text-xs text-zinc-500'>Click the buttons on each card to approve or reject.</p>
+                        )}
+                    </div>
                     {property?.documents && property.documents.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {property.documents.map((doc: any, index: number) => (
-                                <div key={index} className="p-4 bg-background/70 rounded-xl border border-zinc-100 flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-zinc-800 capitalize">{doc.documentType?.replace(/_/g, ' ')?.toLowerCase()}</p>
-                                        <div className="mt-1">
-                                            <VerificationBadge status={doc.status} />
+                            {property.documents.map((doc: any, index: number) => {
+                                const docId = String(doc.id);
+                                const docStatus = String(doc.status || 'PENDING');
+                                const isMutatingThis = docUpdating && docMutatingId === docId;
+                                const canActOnDoc =
+                                    (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) &&
+                                    verification?.status !== PropertyVerificationStatus.REJECTED;
+                                return (
+                                    <div key={index} className="p-4 bg-background/70 rounded-xl border border-zinc-100">
+                                        <div className='flex items-start justify-between gap-3'>
+                                            <div className='min-w-0'>
+                                                <p className="text-sm font-medium text-zinc-800 capitalize">{doc.documentType?.replace(/_/g, ' ')?.toLowerCase()}</p>
+                                                <div className="mt-1">
+                                                    <VerificationBadge status={doc.status} />
+                                                </div>
+                                                {doc.rejectionReason && (
+                                                    <p className="text-xs text-red-500 mt-1">{doc.rejectionReason}</p>
+                                                )}
+                                            </div>
+                                            <a href={doc.documentUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline shrink-0">View</a>
                                         </div>
-                                        {doc.rejectionReason && (
-                                            <p className="text-xs text-red-500 mt-1">{doc.rejectionReason}</p>
+                                        {canActOnDoc && (
+                                            <div className='flex items-center gap-2 mt-3 pt-3 border-t border-zinc-100'>
+                                                {docStatus !== 'VERIFIED' && (
+                                                    <button
+                                                        type='button'
+                                                        disabled={isMutatingThis}
+                                                        onClick={() => handleDocApprove(docId)}
+                                                        className='flex-1 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5'
+                                                    >
+                                                        {isMutatingThis ? <Spinner /> : 'Approve'}
+                                                    </button>
+                                                )}
+                                                {docStatus !== 'REJECTED' && (
+                                                    <button
+                                                        type='button'
+                                                        disabled={isMutatingThis}
+                                                        onClick={() => {
+                                                            setDocRejectingId(docId);
+                                                            setDocRejectReason(doc.rejectionReason || '');
+                                                        }}
+                                                        className='flex-1 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed'
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                    <a href={doc.documentUrl} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline shrink-0 ml-3">View</a>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="p-4 sm:p-5 bg-background/70 rounded-xl">
@@ -676,11 +970,11 @@ export default function VerificationDetails({
                     )}
                 </section>
 
-                {/* Feedback Section. Admins/agents on a PENDING verification get a
-                    live textarea so they can leave a note that's saved alongside
-                    Approve. Reject still uses its own modal so the reason is
-                    captured even if this field is empty. */}
-                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-5'>
+                )}
+
+                {activeTab === 'activity' && (<>
+                {/* Feedback Section — saved comments + editable on PENDING. */}
+                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pt-6 pb-4 sm:pb-5'>
                     <p className="text-sm sm:text-base font-medium text-zinc-900 mb-2">
                         {user?.id === property?.agent?.id ? 'Your' : 'Reviewer'} feedback
                         {verification?.status === PropertyVerificationStatus.PENDING && (
@@ -720,35 +1014,14 @@ export default function VerificationDetails({
                     })()}
                 </section>
 
-                {/* Override Checks */}
-                {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && verification?.status === PropertyVerificationStatus.PENDING && !editMode && (
-                    <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10'>
-                        <div className='p-3 bg-amber-50 rounded-lg border border-amber-100'>
-                            <p className='text-sm font-medium text-amber-800 mb-2'>Override Checks</p>
-                            <label className='flex items-center gap-2 mb-2 cursor-pointer'>
-                                <input
-                                    type='checkbox'
-                                    checked={skipKycCheck}
-                                    onChange={(e) => setSkipKycCheck(e.target.checked)}
-                                    className='w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500'
-                                />
-                                <span className='text-sm text-amber-700'>Skip owner KYC verification check</span>
-                            </label>
-                            <label className='flex items-center gap-2 cursor-pointer'>
-                                <input
-                                    type='checkbox'
-                                    checked={skipDocumentCheck}
-                                    onChange={(e) => setSkipDocumentCheck(e.target.checked)}
-                                    className='w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500'
-                                />
-                                <span className='text-sm text-amber-700'>Skip document verification check</span>
-                            </label>
-                        </div>
-                    </section>
-                )}
+                {/* Override Checks moved into the Approve modal — admins now
+                    confirm any bypass at decision time rather than via a sticky
+                    sidebar toggle that's easy to leave on by accident. */}
+
+                </>)}
 
                 {/* On-site Verification Evidence — agents upload >=2 photos/videos */}
-                {verification?.status !== PropertyVerificationStatus.REJECTED && (
+                {activeTab === 'evidence' && verification?.status !== PropertyVerificationStatus.REJECTED && (
                     <section className='mt-4 sm:mt-6 w-full px-4 sm:px-6 md:px-8 lg:px-10'>
                         <div className='rounded-xl border border-zinc-200 bg-white p-4 sm:p-6'>
                             <div className='flex items-start justify-between gap-4 mb-4'>
@@ -838,93 +1111,42 @@ export default function VerificationDetails({
                     </section>
                 )}
 
-                {/* Verification activity timeline */}
-                <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-2'>
-                    {verification?.id && (
-                        <VerificationHistoryTimeline
-                            propertyId={String(propertyId)}
-                            verificationId={String(verification.id)}
-                        />
-                    )}
-                </section>
+                {/* Verification activity timeline — lives in the Activity tab. */}
+                {activeTab === 'activity' && (
+                    <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-2'>
+                        {verification?.id && (
+                            <VerificationHistoryTimeline
+                                propertyId={String(propertyId)}
+                                verificationId={String(verification.id)}
+                            />
+                        )}
+                    </section>
+                )}
 
-                {/* Action Buttons */}
-                <section className='my-6 sm:my-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6'>
-                    <div className='w-full flex justify-between items-center'>
-                        <div className='flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 items-center w-full'>
-                            {
-                                !editMode && verification?.status !== PropertyVerificationStatus.REJECTED &&
-                                <button
-                                    type='button'
-                                    disabled={verificationLoading || verificationUdateLoading}
-                                    onClick={() => handleRejection()}
-                                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:opacity-75 disabled:hover:bg-red-600 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    Reject
-                                </button>
-                            }
-                            {
-                                editMode ?
-                                    <div className='w-full flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 items-center'>
-                                        <button
-                                            type='button'
-                                            onClick={() => setEditMode(false)}
-                                            className="w-full sm:w-auto text-center cursor-pointer rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type='button'
-                                            onClick={() => formik.handleSubmit()}
-                                            disabled={verificationLoading || verificationUdateLoading}
-                                            className="w-full sm:w-auto border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90 disabled:opacity-75 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            Save
-                                        </button>
-                                    </div>
-                                    : !property?.isVerified &&
-                                    <div className='w-full flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 items-center'>
-                                        {
-                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
-                                            <button
-                                                type='button'
-                                                disabled={verificationLoading || verificationUdateLoading}
-                                                onClick={() => setEditMode(true)}
-                                                className="w-full sm:w-auto text-center cursor-pointer rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium text-white bg-zinc-500 hover:bg-zinc-600 disabled:hover:bg-zinc-500 disabled:opacity-75 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                Edit
-                                            </button>
-                                        }
-
-                                        {
-                                            verification?.status === PropertyVerificationStatus.PENDING && (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) &&
-                                            <button
-                                                type='button'
-                                                disabled={verificationLoading || verificationUdateLoading}
-                                                onClick={() => handleApproval(`${selectedAgent?.profile?.firstName ?? selectedAgent?.firstName ?? ''} ${selectedAgent?.profile?.lastName ?? selectedAgent?.lastName ?? ''}`)}
-                                                className="w-full sm:w-auto border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90 disabled:opacity-75 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                Approve
-                                            </button>
-                                        }
-
-                                        {
-                                            verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT &&
-                                            <button
-                                                type='button'
-                                                disabled={verificationLoading || verificationUdateLoading || agentVerifyBlocked}
-                                                onClick={() => handleVerification()}
-                                                title={agentVerifyBlocked ? 'Upload at least 2 evidence files before verifying' : undefined}
-                                                className="w-full sm:w-auto border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:hover:bg-transparent disabled:hover:text-primary/90 disabled:opacity-75 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                Verify
-                                            </button>
-                                        }
-                                    </div>
-                            }
+                {/* Action buttons moved to the sticky decision bar at the top.
+                    Agent Save action stays here when editMode is on so the agent
+                    flow is unchanged for them. */}
+                {editMode && (
+                    <section className='my-6 sm:my-8 w-full px-4 sm:px-6 md:px-8 lg:px-10 pb-4 sm:pb-6'>
+                        <div className='w-full flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 items-center'>
+                            <button
+                                type='button'
+                                onClick={() => setEditMode(false)}
+                                className="w-full sm:w-auto rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium text-white bg-zinc-500 hover:bg-zinc-600"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type='button'
+                                onClick={() => formik.handleSubmit()}
+                                disabled={verificationLoading || verificationUdateLoading}
+                                className="w-full sm:w-auto border border-primary bg-transparent text-primary/90 hover:text-white hover:bg-primary/90 rounded-lg px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium disabled:opacity-75"
+                            >
+                                Save
+                            </button>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                )}
 
                 {/* Agent Assignment Modal */}
                 <CustomModal
@@ -1054,6 +1276,182 @@ export default function VerificationDetails({
                                 className="w-full sm:flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {verificationUdateLoading ? <Spinner /> : 'Confirm rejection'}
+                            </button>
+                        </div>
+                    </div>
+                </CustomModal>
+
+                {/* Approve confirmation modal — collects override-check
+                    acknowledgements explicitly so admins can't accidentally
+                    leave a bypass on. */}
+                <CustomModal
+                    isOpen={showApproveModal}
+                    onClose={() => setShowApproveModal(false)}
+                    title="Approve this verification?"
+                >
+                    <div className="space-y-4 p-1">
+                        <div className='space-y-2 text-sm'>
+                            <p className='text-zinc-700'>
+                                Approving will mark the property as verified, make it visible
+                                to guests, and credit the agent who performed the on-site check
+                                (if a verification reward is configured).
+                            </p>
+                        </div>
+
+                        {/* Pre-check summary */}
+                        <div className='rounded-lg border border-zinc-100 bg-zinc-50/50 p-3 space-y-1.5'>
+                            <p className='text-xs font-semibold text-zinc-500 uppercase tracking-wider'>Pre-check</p>
+                            <div className='flex items-center justify-between text-sm'>
+                                <span className='text-zinc-700'>Owner KYC</span>
+                                <span className={`font-semibold ${ownerKycVerified ? 'text-green-700' : 'text-yellow-700'}`}>
+                                    {ownerKycStatus}
+                                </span>
+                            </div>
+                            <div className='flex items-center justify-between text-sm'>
+                                <span className='text-zinc-700'>Verified ownership documents</span>
+                                <span className={`font-semibold ${docsVerified > 0 ? 'text-green-700' : 'text-yellow-700'}`}>
+                                    {docsVerified} / {propertyDocs.length || 0}
+                                </span>
+                            </div>
+                            <div className='flex items-center justify-between text-sm'>
+                                <span className='text-zinc-700'>On-site evidence</span>
+                                <span className={`font-semibold ${evidenceUrls.length >= 2 ? 'text-green-700' : 'text-yellow-700'}`}>
+                                    {evidenceUrls.length} item{evidenceUrls.length === 1 ? '' : 's'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Override toggles — visible only to admins, with a clear
+                            warning when toggled on. */}
+                        {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && (
+                            <div className='rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2'>
+                                <p className='text-sm font-semibold text-amber-900 flex items-center gap-1.5'>
+                                    Bypass requirements (use with care)
+                                </p>
+                                <label className='flex items-start gap-2 cursor-pointer text-sm text-amber-900'>
+                                    <input
+                                        type='checkbox'
+                                        checked={skipKycCheck}
+                                        onChange={(e) => setSkipKycCheck(e.target.checked)}
+                                        className='mt-1 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500'
+                                    />
+                                    <span>Skip owner KYC check (the owner is not yet KYC-verified).</span>
+                                </label>
+                                <label className='flex items-start gap-2 cursor-pointer text-sm text-amber-900'>
+                                    <input
+                                        type='checkbox'
+                                        checked={skipDocumentCheck}
+                                        onChange={(e) => setSkipDocumentCheck(e.target.checked)}
+                                        className='mt-1 w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500'
+                                    />
+                                    <span>Skip ownership-document check (no verified docs uploaded).</span>
+                                </label>
+                                {(skipKycCheck || skipDocumentCheck) && (
+                                    <p className='text-xs text-amber-800 bg-amber-100 border border-amber-200 rounded px-2 py-1.5 mt-1'>
+                                        This bypass will be recorded on the verification log and
+                                        visible in the audit trail.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Optional approval note */}
+                        <div className='space-y-1.5'>
+                            <label className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
+                                Note (optional)
+                            </label>
+                            <textarea
+                                value={formik.values.feedback}
+                                onChange={(e) => formik.setFieldValue('feedback', e.target.value)}
+                                placeholder='Anything the owner should know? (saved on the verification record)'
+                                rows={3}
+                                maxLength={500}
+                                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm resize-none bg-white'
+                            />
+                            <p className='text-xs text-gray-400 text-right'>{formik.values.feedback.length}/500</p>
+                        </div>
+
+                        <div className='flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2'>
+                            <button
+                                type='button'
+                                onClick={() => setShowApproveModal(false)}
+                                disabled={verificationUdateLoading}
+                                className='w-full sm:flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50'
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type='button'
+                                onClick={submitApproval}
+                                disabled={verificationUdateLoading}
+                                className='w-full sm:flex-1 px-4 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'
+                            >
+                                {verificationUdateLoading ? <Spinner /> : 'Confirm approval'}
+                            </button>
+                        </div>
+                    </div>
+                </CustomModal>
+
+                {/* Per-document reject modal — captures the required reason
+                    before the PATCH fires. Backend validator double-protects. */}
+                <CustomModal
+                    isOpen={!!docRejectingId}
+                    onClose={() => {
+                        setDocRejectingId(null);
+                        setDocRejectReason('');
+                    }}
+                    title="Reject this document"
+                >
+                    <div className='space-y-4 p-1'>
+                        <p className='text-sm text-gray-600'>
+                            The owner will see this reason next to the document so they
+                            know what to fix before re-uploading.
+                        </p>
+                        <div className='space-y-2'>
+                            <label className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
+                                Reason <span className='text-red-500'>*</span>
+                            </label>
+                            <textarea
+                                value={docRejectReason}
+                                onChange={(e) => setDocRejectReason(e.target.value)}
+                                placeholder='e.g. Document is blurry — please re-upload at higher resolution.'
+                                rows={4}
+                                maxLength={500}
+                                autoFocus
+                                className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm resize-none ${
+                                    docRejectReason.trim()
+                                        ? 'border-gray-300 bg-white'
+                                        : 'border-red-200 bg-red-50/40'
+                                }`}
+                            />
+                            <div className='flex justify-between text-xs'>
+                                {docRejectReason.trim() ? (
+                                    <span className='text-gray-500'>Specific reasons help the owner fix it on the first try.</span>
+                                ) : (
+                                    <span className='text-red-600'>A reason is required.</span>
+                                )}
+                                <span className='text-gray-400'>{docRejectReason.length}/500</span>
+                            </div>
+                        </div>
+                        <div className='flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2'>
+                            <button
+                                type='button'
+                                onClick={() => {
+                                    setDocRejectingId(null);
+                                    setDocRejectReason('');
+                                }}
+                                disabled={docUpdating}
+                                className='w-full sm:flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50'
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type='button'
+                                onClick={submitDocRejection}
+                                disabled={docUpdating || !docRejectReason.trim()}
+                                className='w-full sm:flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'
+                            >
+                                {docUpdating ? <Spinner /> : 'Confirm rejection'}
                             </button>
                         </div>
                     </div>

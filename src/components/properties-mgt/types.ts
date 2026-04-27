@@ -64,6 +64,13 @@ export interface IPropertyVerification {
     created_at?: string
     agent: IUser
     property: IProperty
+    /** Set when the previous VERIFIED decision was overturned and the
+        agent's reward was debited. Drives the "Reward reversed" pill in
+        the sticky decision bar. */
+    rewardReversedAt?: string | null
+    reward_reversed_at?: string | null
+    rewardTxId?: string | null
+    reward_tx_id?: string | null
 }
 
 export interface IAmenityAssignment {

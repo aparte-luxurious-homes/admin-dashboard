@@ -373,6 +373,13 @@ export function UpdatePropertyDocumentStatus() {
         onSuccess: (_, { propertyId }) => {
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.propertyDocuments, propertyId] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty, propertyId] });
+            // Refresh the verification record so the embedded `documents` list
+            // and the at-a-glance summary on the verification page reflect the
+            // new status without a manual reload.
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.getPropertyVerification] });
+            // The activity timeline also gains a row for the per-doc decision
+            // (backend writes property_verification_logs with property_doc_id).
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.verificationHistory] });
         },
     });
 }
