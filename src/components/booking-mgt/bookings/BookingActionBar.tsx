@@ -15,6 +15,7 @@ import {
   CheckOutBooking,
   RefundCautionFee,
   DeleteBooking,
+  RequestCancellation,
   ApproveCancellation,
   ApproveBookingRequest,
   RejectBookingRequest,
@@ -43,6 +44,7 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
   const { mutate: checkOut, isPending: isCheckingOut } = CheckOutBooking();
   const { mutate: refundCaution, isPending: isRefunding } = RefundCautionFee();
   const { mutate: deleteBooking, isPending: isDeleting } = DeleteBooking();
+  const { mutate: requestCancellation, isPending: isCancelling } = RequestCancellation();
   const { mutate: approveCancellation, isPending: isApproving } = ApproveCancellation();
   const { mutate: approveRequest, isPending: isApprovingRequest } = ApproveBookingRequest();
   const { mutate: rejectRequest, isPending: isRejectingRequest } = RejectBookingRequest();
@@ -351,21 +353,28 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
         }
       />
 
-      {/* Cancel booking dialog */}
+      {/* Cancel booking dialog — calls request-cancellation, which the
+          backend short-circuits to CANCELLED for unpaid bookings and routes
+          to CANCEL_REQUESTED (admin approval + refund) for paid ones. */}
       <DeleteBookingDialog
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
         bookingId={booking.id}
         propertyName={propertyName}
-        isPending={isDeleting}
+        isPending={isCancelling}
         onConfirm={(reason) => {
-          deleteBooking(
+          requestCancellation(
             { bookingId: booking.id, cancellationReason: reason },
             {
-              onSuccess: () => {
-                toast.success("Booking cancelled successfully");
+              onSuccess: (resp: any) => {
+                const newStatus = resp?.data?.data?.status as BookingStatus | undefined;
                 setShowCancelConfirm(false);
-                onStatusChange(BookingStatus.CANCELLED);
+                if (newStatus === BookingStatus.CANCEL_REQUESTED) {
+                  toast.success("Cancellation requested — awaiting admin approval");
+                } else {
+                  toast.success("Booking cancelled");
+                }
+                onStatusChange(newStatus ?? BookingStatus.CANCELLED);
               },
               onError: (err: any) => {
                 toast.error(err?.response?.data?.detail || "Failed to cancel booking");
