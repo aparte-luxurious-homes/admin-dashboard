@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import BreadCrumb from "@/src/components/breadcrumb";
 import { EditWalletModal } from "@/src/components/finance-mgt/modals/EditWalletModal";
 import KycStatusEditor from "./KycStatusEditor";
+import AllowMagicOtpToggle from "./AllowMagicOtpToggle";
 import UserProfileHeader from "./UserProfileHeader";
 import UserDetailsPanel from "./UserDetailsPanel";
 import UserEditDrawer from "./UserEditDrawer";
@@ -96,6 +97,11 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
             <KycStatusEditor
               userId={String(id)}
               currentStatus={user.profile.kycStatus || "PENDING"}
+              onUpdate={refetch}
+            />
+            <AllowMagicOtpToggle
+              userId={String(id)}
+              currentValue={user.allowMagicOtp}
               onUpdate={refetch}
             />
           </>

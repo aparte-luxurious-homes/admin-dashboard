@@ -30,6 +30,8 @@ export interface UserDetail {
   role: string;
   isActive: boolean;
   isVerified: boolean;
+  /** Support escape-hatch — when true, this user can verify with the global TEST_OTP_CODE. */
+  allowMagicOtp: boolean;
   createdAt: string | null;
   profile: UserProfile;
   wallets: Wallet[];
@@ -66,6 +68,7 @@ export function normalizeUser(raw: any): UserDetail {
     role: typeof raw.role === "string" ? raw.role : raw.role?.value ?? "",
     isActive: raw.isActive ?? raw.is_active ?? false,
     isVerified: raw.isVerified ?? raw.is_verified ?? false,
+    allowMagicOtp: raw.allowMagicOtp ?? raw.allow_magic_otp ?? false,
     createdAt: str(raw.createdAt ?? raw.created_at),
     profile: {
       firstName: str(p.firstName ?? p.first_name ?? raw.firstName ?? raw.first_name),
