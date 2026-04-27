@@ -110,18 +110,6 @@ export default function CreateBookingView() {
       !!selectedProperty?.id && !!selectedUnit?.id,
     );
 
-  // Payment link dispatch result shown after successful submission
-  const [paymentLinkResult, setPaymentLinkResult] = useState<{
-    url: string;
-    emailSent: boolean;
-    smsSent: boolean;
-    bookingId: string;
-    detailsHref: string;
-    guestEmail?: string | null;
-    guestPhone?: string | null;
-    whatsappHref?: string | null;
-  } | null>(null);
-
   const formik = useFormik({
     initialValues: {
       user_id: 0,
@@ -224,10 +212,13 @@ export default function CreateBookingView() {
               },
             });
             const data = values?.data?.data;
-            // When a payment link was requested and the backend generated one,
-            // stay on this page and show a success card with the link + share
-            // controls instead of immediately navigating away.
-            if (data?.payment_link) {
+            if (!data) return;
+            // If a payment link was generated, hand it off to the booking
+            // details page via sessionStorage so the detail view can render
+            // the share/WhatsApp card on first load. Keyed by booking UUID
+            // so it's only shown for *this* booking and clears after first
+            // read (so a refresh doesn't show stale prompts).
+            if (data.payment_link) {
               const guestEmail = isNewGuest
                 ? (formik.values.guest_email || null)
                 : (selectedUser?.email || null);
@@ -239,25 +230,30 @@ export default function CreateBookingView() {
                 `Hi! Your Aparté booking ${data.booking_id} at ${propName} is ready. Pay here: ${data.payment_link}`,
               );
               const waNumber = (guestPhone || "").replace(/\D/g, "");
-              setPaymentLinkResult({
-                url: data.payment_link,
-                emailSent: !!data.payment_link_email_sent,
-                smsSent: !!data.payment_link_sms_sent,
-                bookingId: data.booking_id,
-                detailsHref: PAGE_ROUTES.dashboard.bookingManagement.bookings.details(data.id),
-                guestEmail,
-                guestPhone,
-                whatsappHref: waNumber
-                  ? `https://wa.me/${waNumber}?text=${waMessage}`
-                  : `https://wa.me/?text=${waMessage}`,
-              });
-              return;
+              try {
+                sessionStorage.setItem(
+                  `aparte:freshPaymentLink:${data.id}`,
+                  JSON.stringify({
+                    url: data.payment_link,
+                    emailSent: !!data.payment_link_email_sent,
+                    smsSent: !!data.payment_link_sms_sent,
+                    bookingId: data.booking_id,
+                    guestEmail,
+                    guestPhone,
+                    whatsappHref: waNumber
+                      ? `https://wa.me/${waNumber}?text=${waMessage}`
+                      : `https://wa.me/?text=${waMessage}`,
+                  }),
+                );
+              } catch {
+                // sessionStorage unavailable (private mode etc.) — falling
+                // through still navigates to the detail page. The agent can
+                // resend the link from there.
+              }
             }
-            if (data) {
-              router.push(
-                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(data.id),
-              );
-            }
+            router.push(
+              PAGE_ROUTES.dashboard.bookingManagement.bookings.details(data.id),
+            );
           },
           onError: (error: any) => {
             toast.error(
@@ -521,95 +517,9 @@ export default function CreateBookingView() {
     );
   };
 
-  const handleCopyPaymentLink = async () => {
-    if (!paymentLinkResult?.url) return;
-    try {
-      await navigator.clipboard.writeText(paymentLinkResult.url);
-      toast.success("Payment link copied to clipboard");
-    } catch {
-      toast.error("Could not copy automatically — select and copy manually");
-    }
-  };
-
   return (
     <section className="bg-zinc-50 min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        {paymentLinkResult && (
-          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
-                ✓
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-emerald-900">
-                  Booking {paymentLinkResult.bookingId} created — payment link ready
-                </p>
-                <p className="text-xs text-emerald-700 mt-0.5">
-                  {paymentLinkResult.emailSent && paymentLinkResult.guestEmail && (
-                    <span>Emailed to {paymentLinkResult.guestEmail}</span>
-                  )}
-                  {paymentLinkResult.emailSent && paymentLinkResult.smsSent && paymentLinkResult.guestPhone && " · "}
-                  {paymentLinkResult.smsSent && paymentLinkResult.guestPhone && (
-                    <span>SMS sent to {paymentLinkResult.guestPhone}</span>
-                  )}
-                  {!paymentLinkResult.emailSent && !paymentLinkResult.smsSent && (
-                    <span>Share the link manually below.</span>
-                  )}
-                </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={paymentLinkResult.url}
-                    className="flex-1 h-9 px-3 text-xs font-mono bg-white border border-emerald-200 rounded-md text-zinc-700 truncate"
-                    onFocus={(e) => e.currentTarget.select()}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyPaymentLink}
-                    className="h-9 px-3 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors flex-shrink-0"
-                  >
-                    Copy
-                  </button>
-                  {paymentLinkResult.whatsappHref && (
-                    <a
-                      href={paymentLinkResult.whatsappHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="h-9 px-3 text-xs font-semibold text-white bg-[#25D366] rounded-md hover:bg-[#1ebe5a] transition-colors flex-shrink-0 flex items-center gap-1"
-                    >
-                      WhatsApp
-                    </a>
-                  )}
-                </div>
-                <div className="mt-3 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => router.push(paymentLinkResult.detailsHref)}
-                    className="text-xs font-semibold text-emerald-800 hover:underline"
-                  >
-                    View booking details →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentLinkResult(null);
-                      setSeletedProperty(null);
-                      setSeletedUnit(null);
-                      setSeletedUser(null);
-                      formik.resetForm();
-                      setSelectionMode(true);
-                      setIsNewGuest(false);
-                    }}
-                    className="text-xs font-semibold text-zinc-600 hover:underline"
-                  >
-                    Create another booking
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-semibold text-zinc-900">
             Create New Booking
