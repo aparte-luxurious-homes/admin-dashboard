@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { BookingMode, IProperty, IPropertyUnit } from "../types";
-import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty, UpdateBookingMode, UpdatePropertyDocumentStatus, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
+import { AssignToProperty, DeleteProperty, FeatureProperty, GetAmenities, GetSingleProperty, ReassignPropertyOwner, UpdateBookingMode, UpdatePropertyDocumentStatus, UploadPropertyDocument } from "@/src/lib/request-handlers/propertyMgt";
 import { Skeleton } from "@/components/ui/skeleton"
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
@@ -35,6 +35,7 @@ import { toast } from "react-hot-toast";
 import { DocumentType, IPropertyDocument, PropertyVerificationStatus } from "../types";
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from "@/src/hooks/useAuth";
+import { usePermissions } from "@/src/hooks/usePermissions";
 import { UserRole } from "@/src/lib/enums";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
@@ -52,12 +53,14 @@ export default function PropertyDetailsView({
 }) {
     const dispatch = useDispatch();
     const { user } = useAuth();
+    const { canDeleteProperty } = usePermissions();
 
     const { data, isLoading } = GetSingleProperty(propertyId)
     const { data: fetchedAmenites } = GetAmenities();
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeleteProperty()
     const { mutate: assignAgent, isPending: assignmentLoading } = AssignToProperty(propertyId)
     const { mutate: updateBookingMode, isPending: bookingModeUpdating } = UpdateBookingMode();
+    const { mutate: reassignOwner, isPending: reassignOwnerLoading } = ReassignPropertyOwner(propertyId);
 
     const router = useRouter();
     const pathname = usePathname();
@@ -69,6 +72,11 @@ export default function PropertyDetailsView({
 
     const [showVerification, setShowVerification] = useState(false);
     const [showAgentSelection, setShowAgentSelection] = useState(false);
+    const [showOwnerSelection, setShowOwnerSelection] = useState(false);
+    const [ownerSearchTerm, setOwnerSearchTerm] = useState<string>('');
+    const { data: ownersList, isLoading: ownersLoading } = GetAllUsers(1, 12, ownerSearchTerm, UserRole.OWNER);
+    const [owners, setOwners] = useState<IUser[]>([]);
+    const [selectedOwner, setSelectedOwner] = useState<IUser | null>(null);
     const [editMode, setEditMode] = useState<boolean>(Boolean(searchParams.get('edit')));
     const [property, setProperty] = useState<IProperty>(data?.data?.data)
     const [availableUnits, setAvailableUnits] = useState<number>(0)
@@ -143,9 +151,32 @@ export default function PropertyDetailsView({
         setSelectedAgent(filteredUsers[0]);
     }
 
+    const handleOwnerReassignment = (ownerId: string) => {
+        reassignOwner(
+            { payload: { owner_id: ownerId } },
+            {
+                onSuccess: () => {
+                    toast.success('Owner reassigned successfully', { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } });
+                    setShowOwnerSelection(false);
+                    setSelectedOwner(null);
+                },
+                onError: (err: any) => toast.error(err?.response?.data?.detail || 'Something went wrong', { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } })
+            }
+        )
+    }
+
+    const handleOwnerSelection = (email: string) => {
+        const filteredUsers = owners?.filter(el => el?.email === email);
+        setSelectedOwner(filteredUsers[0]);
+    }
+
     useEffect(() => {
         setAgents(agentsList?.data?.data?.data)
     }, [agentsList])
+
+    useEffect(() => {
+        setOwners(ownersList?.data?.data?.data)
+    }, [ownersList])
 
     useEffect(() => {
         if (data) {
@@ -193,21 +224,35 @@ export default function PropertyDetailsView({
                                 className="h-full w-full"
                             >
                                 {property?.media?.length > 0 ? (
-                                    property.media.map((el: any, index: any) => (
-                                        <SwiperSlide key={index}>
-                                            <div className="relative w-full h-56 sm:h-80 md:h-[26rem] lg:h-[30rem]">
-                                                <Image
-                                                    alt={`${property?.name}_img_${index}`}
-                                                    src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                                    fill
-                                                    className="object-cover"
-                                                    priority={index === 0}
-                                                />
-                                                {/* Gradient overlay */}
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-                                            </div>
-                                        </SwiperSlide>
-                                    ))
+                                    property.media.map((el: any, index: any) => {
+                                        const isVideo = (el.media_type || el.mediaType) === 'VIDEO';
+                                        const src = el.media_url || el.mediaUrl || "/png/placeholder.png";
+                                        return (
+                                            <SwiperSlide key={index}>
+                                                <div className="relative w-full h-56 sm:h-80 md:h-[26rem] lg:h-[30rem]">
+                                                    {isVideo ? (
+                                                        <video
+                                                            src={src}
+                                                            controls
+                                                            muted
+                                                            preload="metadata"
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <Image
+                                                            alt={`${property?.name}_img_${index}`}
+                                                            src={src}
+                                                            fill
+                                                            className="object-cover"
+                                                            priority={index === 0}
+                                                        />
+                                                    )}
+                                                    {/* Gradient overlay */}
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                                                </div>
+                                            </SwiperSlide>
+                                        );
+                                    })
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-56 sm:h-80 md:h-96 text-zinc-400 gap-3">
                                         <PiBuildingApartment className="text-5xl" />
@@ -245,18 +290,20 @@ export default function PropertyDetailsView({
                                                     <p className="text-sm md:text-base break-words">{property?.address || "Address not available"}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 bg-zinc-50 border border-zinc-100 px-3 py-2 rounded-xl self-start flex-shrink-0">
-                                                <span className="text-xl font-bold text-primary">{averageRating.toFixed(1)}</span>
-                                                <div className="flex gap-0.5">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <IoStarSharp
-                                                            key={i}
-                                                            className={`text-sm ${i < Math.round(averageRating) ? 'text-primary' : 'text-zinc-200'}`}
-                                                        />
-                                                    ))}
+                                            {(property?.meta?.total_reviews ?? 0) > 0 && (
+                                                <div className="flex items-center gap-2 bg-zinc-50 border border-zinc-100 px-3 py-2 rounded-xl self-start flex-shrink-0">
+                                                    <span className="text-xl font-bold text-primary">{averageRating.toFixed(1)}</span>
+                                                    <div className="flex gap-0.5">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <IoStarSharp
+                                                                key={i}
+                                                                className={`text-sm ${i < Math.round(averageRating) ? 'text-primary' : 'text-zinc-200'}`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-zinc-400 text-xs ml-0.5">({property?.meta?.total_reviews ?? 0})</span>
                                                 </div>
-                                                <span className="text-zinc-400 text-xs ml-0.5">({property?.meta?.total_reviews ?? 0})</span>
-                                            </div>
+                                            )}
                                         </div>
 
                                         {/* Description */}
@@ -395,12 +442,17 @@ export default function PropertyDetailsView({
                                                         >
                                                             <div className="relative h-36 sm:h-44 bg-zinc-100 overflow-hidden">
                                                                 {el.media && el.media.length > 0 ? (
-                                                                    <Image
-                                                                        src={el.media[0].media_url || el.media[0].mediaUrl || "/png/placeholder.png"}
-                                                                        alt={el.name}
-                                                                        fill
-                                                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                                    />
+                                                                    (() => {
+                                                                        const firstImage = el.media.find((m: any) => (m.media_type || m.mediaType) !== 'VIDEO');
+                                                                        const thumb = firstImage || el.media[0];
+                                                                        const thumbSrc = thumb.media_url || thumb.mediaUrl || "/png/placeholder.png";
+                                                                        const thumbIsVideo = (thumb.media_type || thumb.mediaType) === 'VIDEO';
+                                                                        return thumbIsVideo ? (
+                                                                            <video src={thumbSrc} muted preload="metadata" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                                        ) : (
+                                                                            <Image src={thumbSrc} alt={el.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                                        );
+                                                                    })()
                                                                 ) : (
                                                                     <div className="w-full h-full flex flex-col items-center justify-center text-zinc-300 gap-2">
                                                                         <PiBuildingApartment className="text-3xl" />
@@ -539,13 +591,15 @@ export default function PropertyDetailsView({
                                                     <HiOutlinePencilAlt className="text-sm" />
                                                     Edit
                                                 </button>
-                                                <button
-                                                    onClick={handleDelete}
-                                                    className="flex-1 h-9 bg-red-50 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-1.5 border border-red-100 uppercase tracking-wider"
-                                                >
-                                                    <TrashIcon className="w-2.5" color="#dc2626" />
-                                                    Delete
-                                                </button>
+                                                {canDeleteProperty && (
+                                                    <button
+                                                        onClick={handleDelete}
+                                                        className="flex-1 h-9 bg-red-50 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-1.5 border border-red-100 uppercase tracking-wider"
+                                                    >
+                                                        <TrashIcon className="w-2.5" color="#dc2626" />
+                                                        Delete
+                                                    </button>
+                                                )}
                                             </div>
                                             <Link
                                                 href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.base(propertyId)}
@@ -568,7 +622,18 @@ export default function PropertyDetailsView({
                                         {/* Owner */}
                                         {user?.role !== UserRole.OWNER && (
                                             <div>
-                                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-2.5">Owner</p>
+                                                <div className="flex items-center justify-between mb-2.5">
+                                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Owner</p>
+                                                    {user?.role === UserRole.ADMIN && !editMode && (
+                                                        <button
+                                                            onClick={() => setShowOwnerSelection(true)}
+                                                            className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"
+                                                            title="Change owner"
+                                                        >
+                                                            <HiOutlinePencilAlt className="text-xs text-zinc-400 hover:text-primary" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 <PersonRow
                                                     image={(property?.owner?.profile?.profileImage || property?.owner?.profile?.profile_image) ?? '/png/sample_profile.png'}
                                                     name={property?.owner?.profile?.firstName
@@ -779,6 +844,66 @@ export default function PropertyDetailsView({
                                                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-60 transition-all"
                                             >
                                                 {assignmentLoading ? <Spinner /> : 'Assign'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </CustomModal>
+
+                        <CustomModal
+                            isOpen={showOwnerSelection}
+                            onClose={() => { setShowOwnerSelection(false); setSelectedOwner(null); }}
+                            title="Reassign property owner"
+                        >
+                            <div className="w-full p-1">
+                                {!selectedOwner ? (
+                                    <div className="mt-2">
+                                        <label className="text-sm text-zinc-600 font-medium block mb-2">Search owners</label>
+                                        <AdjustableFilterDropdown
+                                            placeholder="Search by email..."
+                                            options={owners?.map(el => el?.email)}
+                                            handleSelection={(val) => handleOwnerSelection(val)}
+                                            searchTerm={ownerSearchTerm}
+                                            setSearchTerm={setOwnerSearchTerm}
+                                            isLoading={ownersLoading}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="mt-2 space-y-4">
+                                        <div className="flex gap-3 items-center p-3 bg-zinc-50 rounded-xl">
+                                            <Image
+                                                alt="owner-image"
+                                                src={(selectedOwner?.profile?.profileImage || selectedOwner?.profile?.profile_image) ?? '/png/sample_profile.png'}
+                                                height={44} width={44}
+                                                className="w-11 h-11 rounded-full object-cover ring-2 ring-zinc-100"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-semibold text-zinc-900">
+                                                    {selectedOwner?.firstName ? `${selectedOwner?.firstName} ${selectedOwner?.lastName}` : selectedOwner?.email || '--/--'}
+                                                </p>
+                                                <p className="text-xs text-zinc-500">{selectedOwner?.email}</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-zinc-700">
+                                            Reassign this property to <strong>{selectedOwner?.firstName ? `${selectedOwner?.firstName} ${selectedOwner?.lastName}` : (selectedOwner?.email || 'this owner')}</strong>?
+                                        </p>
+                                        <div className="flex gap-3 pt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedOwner(null)}
+                                                disabled={reassignOwnerLoading}
+                                                className="flex-1 py-2.5 font-semibold rounded-xl text-sm border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-60 transition-all"
+                                            >
+                                                Back
+                                            </button>
+                                            <button
+                                                onClick={() => handleOwnerReassignment(String(selectedOwner?.id))}
+                                                disabled={reassignOwnerLoading}
+                                                type="button"
+                                                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-60 transition-all"
+                                            >
+                                                {reassignOwnerLoading ? <Spinner /> : 'Reassign'}
                                             </button>
                                         </div>
                                     </div>

@@ -4,8 +4,26 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowIcon } from "../components/icons";
-import { ILink } from "../lib/routes/nav_links";
+import { ILink, ILinkChild, NavBadgeKey } from "../lib/routes/nav_links";
 import { UserRole } from "../lib/enums";
+import { GetApprovalPendingCount } from "../lib/request-handlers/bookingMgt";
+
+function NavChildBadge({ badgeKey }: { badgeKey: NavBadgeKey }) {
+    if (badgeKey === 'approvalPending') {
+        return <ApprovalPendingBadge />;
+    }
+    return null;
+}
+
+function ApprovalPendingBadge() {
+    const { data: count } = GetApprovalPendingCount();
+    if (!count || count <= 0) return null;
+    return (
+        <span className="ml-auto mr-2 inline-flex items-center justify-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-semibold text-white min-w-[22px]">
+            {count > 99 ? '99+' : count}
+        </span>
+    );
+}
 
 function getPathName(route: string, targetPath: string) {
     const path = route.split("/");
@@ -60,10 +78,10 @@ export default function SideNav({ index, link, route, role, onNavigate }: {
                             />
                         }
                     </div>
-                    <div className={`flex flex-col w-full transition-all ease-in-out duration-150 ${open ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className={`flex flex-col w-full transition-all ease-in-out duration-150 overflow-hidden ${open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                         {
                             link.secondary &&
-                            link.children?.map((child, index) =>
+                            link.children?.map((child: ILinkChild, index) =>
                                 child.allow.includes(role) ?
                                     <Link
                                         key={index}
@@ -71,9 +89,10 @@ export default function SideNav({ index, link, route, role, onNavigate }: {
                                         onClick={() => onNavigate?.()}
                                         className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] py-2 rounded-md transition-colors
                                      hover:bg-white/10 active:bg-white/20 min-h-[44px] ${getPathName(route, child.pathName) && 'bg-white/10'}`}>
-                                        <p className="text-[14px] text-white/90">
+                                        <p className="text-[14px] text-white/90 flex-1">
                                             {child.name}
                                         </p>
+                                        {child.badgeKey && <NavChildBadge badgeKey={child.badgeKey} />}
                                     </Link>
                                     :
                                     null

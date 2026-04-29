@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminDisputes, useUpdateDisputeStatus } from "@/src/hooks/useDisputes";
+import { useAdminDisputes, useMyDisputes, useUpdateDisputeStatus } from "@/src/hooks/useDisputes";
 import { useState } from "react";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { Icon } from "@iconify/react";
@@ -19,12 +19,21 @@ const DisputesView = () => {
     const [statusFilter, setStatusFilter] = useState<DisputeStatus | "">("");
     const pageSize = 10;
     const router = useRouter();
-    const { isAdmin } = usePermissions();
+    const { isAdmin, isOwner, isAgent } = usePermissions();
 
-    const { data, isLoading } = useAdminDisputes({
+    const adminQuery = useAdminDisputes({
         page,
         size: pageSize,
+        status: statusFilter || undefined,
     });
+
+    const myQuery = useMyDisputes({
+        page,
+        size: pageSize,
+        status: statusFilter || undefined,
+    });
+
+    const { data, isLoading } = isAdmin ? adminQuery : myQuery;
 
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
@@ -78,8 +87,8 @@ const DisputesView = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 max-w-md relative">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1 max-w-full sm:max-w-md relative">
                             <input
                                 type="text"
                                 className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
@@ -87,18 +96,23 @@ const DisputesView = () => {
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                         </div>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as DisputeStatus)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white min-w-[150px]"
-                        >
-                            <option value="">All Statuses</option>
-                            {Object.values(DisputeStatus).map((status) => (
-                                <option key={status} value={status}>{status}</option>
-                            ))}
-                        </select>
-                        <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
-                            Total Disputes: <span className="text-primary">{totalCount}</span>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value as DisputeStatus);
+                                    setPage(1);
+                                }}
+                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white min-w-[150px]"
+                            >
+                                <option value="">All Statuses</option>
+                                {Object.values(DisputeStatus).map((status) => (
+                                    <option key={status} value={status}>{status}</option>
+                                ))}
+                            </select>
+                            <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                                Total Disputes: <span className="text-primary">{totalCount}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -114,11 +128,11 @@ const DisputesView = () => {
                         <table className="w-full text-left border-collapse text-sm">
                             <thead className="bg-gray-50 border-b border-gray-200 uppercase tracking-wider text-xs font-semibold text-gray-700">
                                 <tr>
-                                    <th className="px-6 py-4">Dispute ID</th>
-                                    <th className="px-6 py-4">Booking ID</th>
+                                    <th className="px-6 py-4">Dispute & Booking</th>
                                     <th className="px-6 py-4">Category</th>
+                                    <th className="px-6 py-4">Guest Info</th>
+                                    <th className="px-6 py-4">Owner Info</th>
                                     <th className="px-6 py-4 text-center">Status</th>
-                                    <th className="px-6 py-4">Raised On</th>
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -129,22 +143,32 @@ const DisputesView = () => {
                                         className="hover:bg-gray-50 transition-colors cursor-pointer"
                                         onClick={() => router.push(PAGE_ROUTES.dashboard.bookingManagement.bookingDisputes.details(dispute.id))}
                                     >
-                                        <td className="px-6 py-4 font-bold text-primary truncate max-w-[120px]">
-                                            {dispute.dispute_id || dispute.id.substring(0, 8)}
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-primary truncate max-w-[120px]">
+                                                {dispute.dispute_id || dispute.id.substring(0, 8)}
+                                            </div>
+                                            <div className="text-gray-500 text-xs truncate max-w-[120px] mt-0.5">
+                                                {dispute.booking_id.substring(0,8).toUpperCase()}
+                                            </div>
+                                            <div className="text-gray-400 text-[10px] mt-1">
+                                                {new Date(dispute.created_at).toLocaleDateString()}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-600 truncate max-w-[120px]">
-                                            {dispute.booking_id}
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-gray-800">
+                                        <td className="px-6 py-4 font-medium text-gray-800 text-xs">
                                             {dispute.category.replace(/_/g, " ")}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-semibold text-gray-900">{dispute.guest_name || 'N/A'}</div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Icon icon="solar:letter-bold" /> {dispute.guest_email || 'N/A'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-semibold text-gray-900">{dispute.owner_name || 'N/A'}</div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Icon icon="solar:letter-bold" /> {dispute.owner_email || 'N/A'}</div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${getStatusStyles(dispute.status)}`}>
                                                 {dispute.status}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500 text-xs">
-                                            {new Date(dispute.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end items-center" onClick={(e) => handleDotsClick(e, index)}>

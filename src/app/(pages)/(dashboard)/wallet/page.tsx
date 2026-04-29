@@ -14,18 +14,20 @@ import {
     List,
     ListItem,
     ListItemText,
-    ListItemSecondaryAction,
     Chip,
     Dialog,
     DialogTitle,
     DialogContent,
     DialogActions,
     Grid,
+    IconButton,
+    Tooltip,
 } from "@mui/material";
 import {
     Add as AddIcon,
     AccountBalance as BankIcon,
     AccountBalanceWallet as WalletIcon,
+    Delete as DeleteIcon,
 } from "@mui/icons-material";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
@@ -66,7 +68,11 @@ const WalletPage = () => {
     const [isAddBankOpen, setIsAddBankOpen] = useState(false);
     const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
-    // Form states
+    // Delete dialog state
+    const [deleteAccount, setDeleteAccount] = useState<PayoutAccount | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Add bank form states
     const [bankCode, setBankCode] = useState("");
     const [accountNumber, setAccountNumber] = useState("");
     const [accountName, setAccountName] = useState("");
@@ -76,6 +82,7 @@ const WalletPage = () => {
     const [addBankError, setAddBankError] = useState("");
     const [addBankSuccess, setAddBankSuccess] = useState("");
 
+    // Withdraw form states
     const [withdrawAmount, setWithdrawAmount] = useState("");
     const [selectedPayoutId, setSelectedPayoutId] = useState("");
     const [withdrawError, setWithdrawError] = useState("");
@@ -97,26 +104,21 @@ const WalletPage = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            // Fetch Wallet
             const walletRes = await axiosRequest.get(API_ROUTES.wallet.base);
             const wallets = walletRes?.data?.data?.items || [];
             const ngnWallet = wallets.find((w: any) => w.currency === "NGN") || wallets[0];
             setWallet(ngnWallet);
 
             if (ngnWallet) {
-                // Fetch Payout Accounts
                 const payoutRes = await axiosRequest.get(API_ROUTES.wallet.payoutAccounts.base(ngnWallet.id));
                 setPayoutAccounts(payoutRes?.data?.data?.items || []);
             }
 
-            // Fetch Banks
-            const banksRes = await axiosRequest.get("/wallets/banks"); // Assuming this is the endpoint
+            const banksRes = await axiosRequest.get("/wallets/banks");
             setBanks(banksRes?.data?.data || []);
 
-            // Check if user already has BVN on file
             const profileRes = await axiosRequest.get("/profile");
             setHasBvn(!!(profileRes?.data?.data?.profile?.bvn));
-
         } catch (err: any) {
             setError(formatError(err));
         } finally {
@@ -128,7 +130,7 @@ const WalletPage = () => {
         fetchData();
     }, [fetchData]);
 
-    // Auto-resolve account name once BVN is available (either on profile or entered in the field)
+    // Auto-resolve account name when account number + bank + bvn are ready
     useEffect(() => {
         const effectiveBvn = hasBvn ? undefined : bvn.length === 11 ? bvn : undefined;
         if (accountNumber.length === 10 && bankCode && (hasBvn || effectiveBvn)) {
@@ -167,12 +169,11 @@ const WalletPage = () => {
 
             setAddBankSuccess("Bank account added successfully!");
 
-            // Auto-verify
             if (res.data?.data?.id) {
                 try {
                     await axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(wallet.id, res.data.data.id));
                 } catch (e: any) {
-                                toast.error(e?.response?.data?.detail || "An Error Occurred while verifying the bank account")
+                    toast.error(e?.response?.data?.detail || "An error occurred while verifying the bank account");
                 }
             }
 
@@ -183,7 +184,7 @@ const WalletPage = () => {
                 setAccountName("");
                 setBvn("");
                 setAddBankSuccess("");
-                fetchData(); // Refresh list
+                fetchData();
             }, 1500);
         } catch (err: any) {
             setAddBankError(formatError(err));
@@ -196,8 +197,33 @@ const WalletPage = () => {
             await axiosRequest.post(API_ROUTES.wallet.payoutAccounts.verify(wallet.id, accountId));
             fetchData();
         } catch (err: any) {
-            toast.error(err?.response?.data?.detail || "An Error Occurred while verifying the bank account")
-            setAddBankError(formatError(err?.response?.data?.detail || "An Error Occurred while verifying the bank account"));
+            toast.error(err?.response?.data?.detail || "An error occurred while verifying the bank account");
+        }
+    };
+
+    // Delete: open confirmation dialog
+    const handleOpenDelete = (acc: PayoutAccount) => {
+        setDeleteAccount(acc);
+    };
+
+    const handleCloseDelete = () => {
+        setDeleteAccount(null);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!wallet || !deleteAccount) return;
+        setIsDeleting(true);
+        try {
+            await axiosRequest.delete(
+                API_ROUTES.wallet.payoutAccounts.details(wallet.id, deleteAccount.id),
+            );
+            toast.success("Bank account removed successfully");
+            handleCloseDelete();
+            fetchData();
+        } catch (err: any) {
+            toast.error(formatError(err));
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -214,7 +240,7 @@ const WalletPage = () => {
                 currency: wallet.currency || "NGN",
                 description: "Wallet Withdrawal",
                 user_id: user.id,
-                wallet_id: wallet.id
+                wallet_id: wallet.id,
             });
 
             setWithdrawSuccess("Withdrawal initiated successfully!");
@@ -223,7 +249,7 @@ const WalletPage = () => {
                 setWithdrawAmount("");
                 setSelectedPayoutId("");
                 setWithdrawSuccess("");
-                fetchData(); // Refresh balance
+                fetchData();
             }, 2000);
         } catch (err: any) {
             setWithdrawError(formatError(err));
@@ -328,7 +354,31 @@ const WalletPage = () => {
                                 payoutAccounts.map((acc, index) => (
                                     <React.Fragment key={acc.id}>
                                         {index > 0 && <Box sx={{ borderTop: "1px solid rgba(0,0,0,0.05)" }} />}
-                                        <ListItem sx={{ py: 2 }}>
+                                        <ListItem
+                                            sx={{ py: 2, pr: 1 }}
+                                            secondaryAction={
+                                                <Box display="flex" alignItems="center" gap={0.5}>
+                                                    {!acc.is_verified && (
+                                                        <Button
+                                                            size="small"
+                                                            onClick={() => handleVerifyBank(acc.id)}
+                                                            sx={{ mr: 0.5, fontSize: "0.75rem" }}
+                                                        >
+                                                            Verify
+                                                        </Button>
+                                                    )}
+                                                    <Tooltip title="Remove bank account">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleOpenDelete(acc)}
+                                                            sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Box>
+                                            }
+                                        >
                                             <ListItemText
                                                 primary={
                                                     <Box display="flex" alignItems="center" gap={1}>
@@ -345,13 +395,6 @@ const WalletPage = () => {
                                                 }
                                                 secondary={`${acc.account_number} • ${acc.account_name}`}
                                             />
-                                            <ListItemSecondaryAction>
-                                                {!acc.is_verified && (
-                                                    <Button size="small" onClick={() => handleVerifyBank(acc.id)}>
-                                                        Verify
-                                                    </Button>
-                                                )}
-                                            </ListItemSecondaryAction>
                                         </ListItem>
                                     </React.Fragment>
                                 ))
@@ -362,7 +405,12 @@ const WalletPage = () => {
             </Grid>
 
             {/* Add Bank Dialog */}
-            <Dialog open={isAddBankOpen} onClose={() => { setIsAddBankOpen(false); setBvn(""); setAddBankError(""); }} maxWidth="sm" fullWidth>
+            <Dialog
+                open={isAddBankOpen}
+                onClose={() => { setIsAddBankOpen(false); setBvn(""); setAddBankError(""); }}
+                maxWidth="sm"
+                fullWidth
+            >
                 <DialogTitle sx={{ fontWeight: "bold" }}>Add Bank Account</DialogTitle>
                 <DialogContent>
                     {addBankError && <Alert severity="error" sx={{ mb: 2, mt: 1 }}>{addBankError}</Alert>}
@@ -388,9 +436,7 @@ const WalletPage = () => {
                         onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         margin="normal"
                         inputProps={{ maxLength: 10 }}
-                        InputProps={{
-                            endAdornment: isResolving && <CircularProgress size={20} />
-                        }}
+                        InputProps={{ endAdornment: isResolving && <CircularProgress size={20} /> }}
                     />
 
                     <TextField
@@ -416,7 +462,9 @@ const WalletPage = () => {
                     )}
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 3 }}>
-                    <Button onClick={() => { setIsAddBankOpen(false); setBvn(""); setAddBankError(""); }}>Cancel</Button>
+                    <Button onClick={() => { setIsAddBankOpen(false); setBvn(""); setAddBankError(""); }}>
+                        Cancel
+                    </Button>
                     <Button
                         variant="contained"
                         onClick={handleAddBank}
@@ -424,6 +472,59 @@ const WalletPage = () => {
                         sx={{ bgcolor: "#028090", "&:hover": { bgcolor: "#006d7b" } }}
                     >
                         Save Account
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog
+                open={!!deleteAccount}
+                onClose={handleCloseDelete}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: "bold" }}>Remove Bank Account</DialogTitle>
+                <DialogContent>
+                    {deleteAccount && (
+                        <Box sx={{ pt: 1 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Are you sure you want to remove this bank account? This action cannot be undone.
+                            </Typography>
+                            <Box
+                                sx={{
+                                    p: 2,
+                                    bgcolor: "#fff5f5",
+                                    border: "1px solid #fecaca",
+                                    borderRadius: 1,
+                                }}
+                            >
+                                <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                                    <BankIcon fontSize="small" sx={{ color: "#ef4444" }} />
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                        {deleteAccount.bank_name}
+                                    </Typography>
+                                    {deleteAccount.is_verified && (
+                                        <Chip label="Verified" size="small" color="success" sx={{ height: 18, fontSize: "0.65rem" }} />
+                                    )}
+                                </Box>
+                                <Typography variant="caption" color="text.secondary">
+                                    {deleteAccount.account_number} • {deleteAccount.account_name}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button onClick={handleCloseDelete} disabled={isDeleting}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        onClick={handleConfirmDelete}
+                        disabled={isDeleting}
+                    >
+                        {isDeleting ? <CircularProgress size={20} color="inherit" /> : "Remove Account"}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -449,9 +550,7 @@ const WalletPage = () => {
                         value={withdrawAmount}
                         onChange={(e) => setWithdrawAmount(e.target.value)}
                         margin="normal"
-                        InputProps={{
-                            startAdornment: <Typography sx={{ mr: 1 }}>₦</Typography>
-                        }}
+                        InputProps={{ startAdornment: <Typography sx={{ mr: 1 }}>₦</Typography> }}
                     />
 
                     <TextField
@@ -471,6 +570,7 @@ const WalletPage = () => {
                             <MenuItem disabled value="">No verified accounts found</MenuItem>
                         )}
                     </TextField>
+
                     {payoutAccounts.length > 0 && payoutAccounts.filter(a => a.is_verified).length === 0 && (
                         <Typography variant="caption" color="warning.main" sx={{ mt: 1, display: "block" }}>
                             You need a verified bank account to withdraw funds.

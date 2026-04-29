@@ -1,4 +1,4 @@
-import { KycStatus, UserRole, DisputeCategory, DisputeStatus, DisputeOutcome } from "./enums";
+import { KycStatus, UserRole, DisputeCategory, DisputeStatus, DisputeOutcome, ExtensionStatus } from "./enums";
 
 export interface IReview {
   id: string;
@@ -41,11 +41,18 @@ export interface IDispute {
   dispute_id: string;
   booking_id: string;
   raised_by: string;
+  raised_by_role?: UserRole;
   category: DisputeCategory;
   description: string;
   status: DisputeStatus;
   outcome: DisputeOutcome | null;
   admin_notes: string | null;
+  guest_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
+  owner_name?: string;
+  owner_email?: string;
+  owner_phone?: string;
   evidence: IDisputeEvidence[];
   logs: IDisputeLog[];
   created_at: string;
@@ -192,6 +199,25 @@ export interface IAuthorization {
   expiresAt: string;
   token: string;
   type: string;
+}
+
+export interface IStayExtension {
+  id: string;
+  extension_id: string;
+  booking_id: string;
+  requested_by: string;
+  original_end_date: string;
+  new_end_date: string;
+  extra_nights: number;
+  price_per_night: number;
+  extension_amount: number;
+  status: ExtensionStatus;
+  payment_method: string;
+  created_at: string;
+  updated_at: string;
+  owner_decision_by?: string;
+  owner_decision_at?: string;
+  rejection_reason?: string;
 }
 
 export interface ILoginResponse {

@@ -57,12 +57,20 @@ export interface IPropertyVerification {
     agent_id?: number
     status: PropertyVerificationStatus
     feedback: string
+    evidence_urls?: string[]
     verificationDate?: string
     verification_date?: string
     createdAt: string
     created_at?: string
     agent: IUser
     property: IProperty
+    /** Set when the previous VERIFIED decision was overturned and the
+        agent's reward was debited. Drives the "Reward reversed" pill in
+        the sticky decision bar. */
+    rewardReversedAt?: string | null
+    reward_reversed_at?: string | null
+    rewardTxId?: string | null
+    reward_tx_id?: string | null
 }
 
 export interface IAmenityAssignment {
@@ -163,6 +171,9 @@ export interface IProperty {
     is_verified?: boolean
     isPetAllowed: boolean
     is_pet_allowed?: boolean
+    isPartyAllowed: boolean
+    is_party_allowed?: boolean
+    rules?: string
     isFeatured: boolean
     is_featured?: boolean
     createdAt: string
@@ -209,12 +220,19 @@ export interface IUpdatePropertyVerification {
     feedback: string,
     skip_kyc_check?: boolean,
     skip_document_check?: boolean,
+    evidence_urls?: string[],
 }
 
 export interface ICreateProperty {
     name: string
     description: string
     address: string
+    street_number?: string
+    street_name?: string
+    postal_code?: string
+    landmark?: string
+    google_place_id: string
+    geocode_raw?: Record<string, unknown>
     property_type: PropertyType
     city: string
     state: string
@@ -222,8 +240,9 @@ export interface ICreateProperty {
     latitude: number
     longitude: number
     amenities: number[]
-    // kyc_id: number
     is_pet_allowed: boolean
+    is_party_allowed: boolean
+    rules?: string
     owner_email?: string
     owner_name?: string
 }
@@ -236,6 +255,12 @@ export interface IUpdateProperty {
     name: string,
     description: string,
     address: string,
+    street_number?: string,
+    street_name?: string,
+    postal_code?: string,
+    landmark?: string,
+    google_place_id?: string,
+    geocode_raw?: Record<string, unknown>,
     property_type: PropertyType,
     city: string,
     state: string,
@@ -247,6 +272,8 @@ export interface IUpdateProperty {
     amenities?: number[],
     // assignedAgent?: IUser,
     is_pet_allowed: boolean,
+    is_party_allowed: boolean,
+    rules?: string,
     owner_email?: string,
     owner_name?: string
 }

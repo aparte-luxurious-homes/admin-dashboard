@@ -23,6 +23,9 @@ export const PAGE_ROUTES = {
                 base: '/user-management/admins',
                 details: (id: number) => `/user-management/admins/${id}`,
             },
+            kycQueue: {
+                base: '/user-management/kyc-queue',
+            },
         },
         bookingManagement: {
             bookingDisputes: {
@@ -34,6 +37,12 @@ export const PAGE_ROUTES = {
                 create: '/booking-management/bookings/create',
                 details: (id: string) => `/booking-management/bookings/${id}`,
             },
+            bookingRequests: {
+                base: '/booking-management/requests',
+            },
+            stayExtensions: {
+                base: '/booking-management/stay-extensions',
+            }
         },
         reviews: {
             base: '/reviews',
@@ -60,16 +69,18 @@ export const PAGE_ROUTES = {
                     bookings: (propertyId: number | string, unitId: number | string) => `/property-management/all-properties/${propertyId}/units/${unitId}/bookings`,
                 },
             },
-            assignAgents: {
-                base: '/property-management/assign-agents',
-                details: (id: number | string) => `/property-management/assign-agents/${id}`,
-            },
             manageVerifications: {
                 base: '/property-management/manage-verifications',
-                details: (verificationId: number | string) => `/property-management/manage-verifications/${verificationId}`,
+            },
+            myVerifications: {
+                base: '/property-management/my-verifications',
             },
         },
         transactions: {
+            all: {
+                base: '/transactions/all',
+                details: (id: number | string) => `/transactions/all/${id}`,
+            },
             payments: {
                 base: '/transactions/payments',
                 details: (id: number | string) => `/transactions/payments/${id}`,
@@ -98,6 +109,7 @@ export const PAGE_ROUTES = {
         },
         settings: {
             base: '/settings',
+            kyc: '/settings/kyc',
         },
         rolesPermissions: {
             base: '/roles-permissions',

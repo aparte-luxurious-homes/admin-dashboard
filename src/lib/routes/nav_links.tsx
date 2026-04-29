@@ -3,11 +3,14 @@ import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, Users
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
 
+export type NavBadgeKey = 'approvalPending';
+
 export interface ILinkChild {
     name: string,
     pathName: string,
     link: string,
     allow: UserRole[],
+    badgeKey?: NavBadgeKey,
 }
 
 export interface ILink {
@@ -62,6 +65,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.userManagement.admins.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
+            {
+                name: 'KYC Queue',
+                pathName: 'kyc-queue',
+                link: PAGE_ROUTES.dashboard.userManagement.kycQueue.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
         ]
     },
     {
@@ -78,17 +87,17 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.base,
                 allow: Object.values(UserRole),
             },
-            // {
-            //     name: 'Create property',
-            //     pathName: 'create',
-            //     link: PAGE_ROUTES.dashboard.propertyManagement.allProperties.create,
-            //     allow: [UserRole.ADMIN, UserRole.OWNER],
-            // },
             {
                 name: 'Manage verifications',
                 pathName: 'manage-verifications',
                 link: PAGE_ROUTES.dashboard.propertyManagement.manageVerifications.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
+            {
+                name: 'My verifications',
+                pathName: 'my-verifications',
+                link: PAGE_ROUTES.dashboard.propertyManagement.myVerifications.base,
+                allow: [UserRole.AGENT],
             },
         ]
     },
@@ -107,10 +116,23 @@ export const NAV_LINKS: ILink[] = [
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
             {
+                name: 'Booking requests',
+                pathName: 'requests',
+                link: PAGE_ROUTES.dashboard.bookingManagement.bookingRequests.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+                badgeKey: 'approvalPending',
+            },
+            {
                 name: 'Booking disputes',
                 pathName: 'booking-disputes',
                 link: PAGE_ROUTES.dashboard.bookingManagement.bookingDisputes.base,
-                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN, UserRole.OWNER, UserRole.AGENT],
+            },
+            {
+                name: 'Stay extensions',
+                pathName: 'stay-extensions',
+                link: PAGE_ROUTES.dashboard.bookingManagement.stayExtensions.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN, UserRole.OWNER, UserRole.AGENT],
             },
         ]
     },
@@ -153,6 +175,12 @@ export const NAV_LINKS: ILink[] = [
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
         secondary: true,
         children: [
+            {
+                name: 'All Transactions',
+                pathName: 'all',
+                link: PAGE_ROUTES.dashboard.transactions.all.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
             {
                 name: 'Payments',
                 pathName: 'payments',

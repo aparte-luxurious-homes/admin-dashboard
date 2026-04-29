@@ -1,20 +1,20 @@
 "use client";
 
 import BreadCrumb from "@/src/components/breadcrumb";
-import Grid from "@mui/material/Grid2";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { useEffect, useState, useCallback } from "react";
 import axiosRequest from "@/src/lib/api";
 import { toast } from "react-hot-toast";
-import InputGroup from "@/src/components/formcomponent/InputGroup";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import Badge from "@/src/components/badge";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { formatDate, formatMoney } from "@/src/lib/utils";
+import { Icon } from "@iconify/react";
 import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
 import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
 import { Button } from "@/src/components/ui/button";
+import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface Transaction {
     id: string;
@@ -56,6 +56,106 @@ interface TransactionDetailViewProps {
     backLinkName: string;
 }
 
+/* ── Helpers ── */
+
+const ACTION_STYLES: Record<string, string> = {
+    CREDIT: "bg-green-100 text-green-700 border-green-200",
+    DEBIT: "bg-red-100 text-red-700 border-red-200",
+};
+
+const STATUS_ICONS: Record<string, { icon: string; color: string }> = {
+    SUCCESSFUL: { icon: "mdi:check-circle", color: "text-green-500" },
+    PENDING: { icon: "mdi:clock-outline", color: "text-yellow-500" },
+    PENDING_APPROVAL: { icon: "mdi:clock-alert-outline", color: "text-orange-500" },
+    AWAITING_AUTHORIZATION: { icon: "mdi:shield-lock-outline", color: "text-blue-500" },
+    FAILED: { icon: "mdi:close-circle", color: "text-red-500" },
+    REJECTED: { icon: "mdi:close-circle", color: "text-red-500" },
+    OFFLINE_REFUNDED: { icon: "mdi:cash-refund", color: "text-gray-500" },
+};
+
+function CopyField({ label, value }: { label: string; value: string | null | undefined }) {
+    const display = value || "--/--";
+    const canCopy = value && value !== "--/--";
+
+    const handleCopy = () => {
+        if (canCopy) {
+            navigator.clipboard.writeText(value);
+            toast(`${label} copied!`);
+        }
+    };
+
+    return (
+        <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
+            <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-900 font-mono truncate">{display}</p>
+                {canCopy && (
+                    <button
+                        onClick={handleCopy}
+                        className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                        title={`Copy ${label}`}
+                    >
+                        <Icon icon="mdi:content-copy" width="14" />
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function Field({ label, value }: { label: string; value: string | null | undefined }) {
+    return (
+        <div className="space-y-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
+            <p className="text-sm font-medium text-gray-900">{value || "--/--"}</p>
+        </div>
+    );
+}
+
+function SectionHeader({ icon, title }: { icon: string; title: string }) {
+    return (
+        <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                <Icon icon={icon} width="20" />
+            </div>
+            <h4 className="text-lg font-bold text-gray-800">{title}</h4>
+        </div>
+    );
+}
+
+/* ── Skeleton ── */
+
+function DetailSkeleton() {
+    return (
+        <div className="space-y-6 mt-6">
+            <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-6">
+                <div className="flex gap-4 items-center">
+                    <Skeleton className="w-16 h-16 rounded-xl" />
+                    <div className="flex-1 space-y-3">
+                        <Skeleton className="h-8 w-40" />
+                        <Skeleton className="h-4 w-64" />
+                    </div>
+                </div>
+                <div className="border-t border-gray-200 my-5" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="space-y-2">
+                            <Skeleton className="h-3 w-20" />
+                            <Skeleton className="h-5 w-28" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Skeleton className="h-48 rounded-2xl" />
+                <Skeleton className="h-48 rounded-2xl" />
+            </div>
+        </div>
+    );
+}
+
+/* ── Main Component ── */
+
 const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDetailViewProps) => {
     const [data, setData] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(false);
@@ -64,19 +164,10 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
     const params = useParams();
     const id = params?.id;
-
-    const handleCopyToClipboard = (value: string, label: string) => {
-        if (value && value !== "--/--") {
-            navigator.clipboard.writeText(value);
-            toast(`${label} copied to clipboard!`);
-        } else {
-            toast.error(`No valid ${label} to copy.`);
-        }
-    };
+    const { canManageFinances } = usePermissions();
 
     const fetchData = useCallback(async () => {
         if (!id) return;
-
         setLoading(true);
         try {
             const response = await axiosRequest.get(
@@ -94,262 +185,196 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
         fetchData();
     }, [fetchData]);
 
-    if (loading) {
-        return (
-            <div className="p-[30px] mt-10">
-                <Skeleton className="h-[600px] w-full rounded-md" />
-            </div>
-        );
-    }
+    const fullName = data?.user
+        ? `${data.user.first_name || ""} ${data.user.last_name || ""}`.trim() || data.user.email
+        : "--/--";
 
-    if (!data && !loading) {
-        return (
-            <div className="p-[30px] mt-10 text-center">
-                <p className="text-gray-500 text-lg">Transaction not found.</p>
-            </div>
-        )
-    }
-
-    const fullName = data?.user ? `${data.user.first_name || ""} ${data.user.last_name || ""}`.trim() : "--/--";
+    const statusInfo = STATUS_ICONS[data?.status || ""] || STATUS_ICONS.PENDING;
+    const actionStyle = ACTION_STYLES[data?.action || ""] || "";
+    const isPendingApproval = data?.status === "PENDING_APPROVAL";
+    const isWithdrawal = data?.transaction_type === "WITHDRAWAL";
 
     return (
-        <div className="p-[20px] mr-5 ml-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)] text-black">
-            <BreadCrumb
-                description=""
-                active={title}
-                link_one={backLink}
-                link_one_name={backLinkName}
-            />
-            <div className="mt-6">
-                <div className="flex justify-between items-center mb-[40px] border-b pb-4">
-                    <h3 className="text-xl font-semibold">{title}</h3>
-                    {data?.status === "PENDING_APPROVAL" && (
-                        <div className="flex items-center gap-3">
-                            {data.transaction_type === "WITHDRAWAL" && (
-                                <Button
-                                    onClick={() => setIsWithdrawalRejectionOpen(true)}
-                                    className="bg-red-600 text-white hover:bg-red-700"
-                                >
-                                    Reject Withdrawal
-                                </Button>
-                            )}
-                            <Button
-                                onClick={() => {
-                                    if (data.transaction_type === "WITHDRAWAL") {
-                                        setIsWithdrawalApprovalOpen(true);
-                                    } else {
-                                        setIsApproveModalOpen(true);
-                                    }
-                                }}
-                                className="bg-primary text-white hover:bg-primary/90"
-                            >
-                                {data.transaction_type === "WITHDRAWAL" ? "Approve Withdrawal" : "Approve Refund"}
-                            </Button>
-                        </div>
-                    )}
+        <>
+            <div className="p-[20px] mr-5 ml-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
+                <BreadCrumb
+                    description=""
+                    active={title}
+                    link_one={backLink}
+                    link_one_name={backLinkName}
+                />
+
+                <div className="flex justify-between items-center mb-6 mt-2">
+                    <h3 className="font-semibold">{title}</h3>
                 </div>
 
-                <Grid container spacing={4}>
-                    {/* Main Info Section */}
-                    <Grid size={{ xs: 12 }}>
-                        <h4 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4">General Information</h4>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                        <InputGroup
-                            label="Amount"
-                            disabled
-                            defaultValue={formatMoney(Number(data?.amount || 0), data?.currency)}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                        <InputGroup
-                            label="Transaction Type"
-                            disabled
-                            defaultValue={data?.transaction_type || "--/--"}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-gray-700">Status</label>
-                            <Badge status={data?.status?.toLowerCase() || ""} />
-                        </div>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                        <InputGroup
-                            label="Action"
-                            disabled
-                            defaultValue={data?.action || "--/--"}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 8 }}>
-                        <InputGroup
-                            label="Reference"
-                            disabled
-                            defaultValue={data?.reference || "--/--"}
-                            onClick={(e) => handleCopyToClipboard(e.currentTarget.defaultValue, "Reference")}
-                        />
-                    </Grid>
-
-                    {/* User Info Section */}
-                    <Grid size={{ xs: 12 }} className="mt-4">
-                        <h4 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4 border-t pt-4">User Details</h4>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <InputGroup
-                            label="Full Name"
-                            disabled
-                            defaultValue={fullName}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <InputGroup
-                            label="Email Address"
-                            disabled
-                            defaultValue={data?.user?.email || "--/--"}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <InputGroup
-                            label="User ID"
-                            disabled
-                            defaultValue={data?.user_id || "--/--"}
-                            onClick={(e) => handleCopyToClipboard(e.currentTarget.defaultValue, "User ID")}
-                        />
-                    </Grid>
-
-                    {/* Wallet Info Section */}
-                    <Grid size={{ xs: 12 }} className="mt-4">
-                        <h4 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4 border-t pt-4">Wallet Information</h4>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <InputGroup
-                            label="Wallet ID"
-                            disabled
-                            defaultValue={data?.wallet_id || "--/--"}
-                            onClick={(e) => handleCopyToClipboard(e.currentTarget.defaultValue, "Wallet ID")}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <InputGroup
-                            label="Wallet Balance"
-                            disabled
-                            defaultValue={data?.wallet ? formatMoney(Number(data.wallet.balance), data.wallet.currency) : "--/--"}
-                        />
-                    </Grid>
-
-                    {/* Timeline Section */}
-                    <Grid size={{ xs: 12 }} className="mt-4">
-                        <h4 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4 border-t pt-4">Timeline</h4>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <InputGroup
-                            label="Date Created"
-                            disabled
-                            defaultValue={data?.created_at ? formatDate(data.created_at) : "--/--"}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <InputGroup
-                            label="Last Updated"
-                            disabled
-                            defaultValue={data?.updated_at ? formatDate(data.updated_at) : "--/--"}
-                        />
-                    </Grid>
-
-                    {/* Metadata Section */}
-                    {(data?.description || data?.comment || data?.payment_reference) && (
-                        <>
-                            <Grid size={{ xs: 12 }} className="mt-4">
-                                <h4 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4 border-t pt-4">Additional Details</h4>
-                            </Grid>
-
-                            <Grid size={{ xs: 12 }}>
-                                <InputGroup
-                                    label="Description"
-                                    disabled
-                                    defaultValue={data?.description || "--/--"}
-                                />
-                            </Grid>
-                            {data?.comment && (
-                                <Grid size={{ xs: 12 }}>
-                                    <InputGroup
-                                        label="Comment"
-                                        disabled
-                                        defaultValue={data.comment}
+                {loading ? (
+                    <DetailSkeleton />
+                ) : !data ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                        <Icon icon="mdi:receipt-text-remove-outline" width="48" className="mb-3" />
+                        <p className="text-lg font-medium">Transaction not found</p>
+                    </div>
+                ) : (
+                    <>
+                        {/* ── Header Card ── */}
+                        <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-6 mb-6">
+                            {/* Top row: Amount + Status + Actions */}
+                            <div className="flex flex-col sm:flex-row gap-4 sm:items-start">
+                                {/* Amount icon */}
+                                <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                    data.action === "CREDIT"
+                                        ? "bg-green-100 text-green-600"
+                                        : "bg-red-100 text-red-600"
+                                }`}>
+                                    <Icon
+                                        icon={data.action === "CREDIT" ? "mdi:arrow-down-bold" : "mdi:arrow-up-bold"}
+                                        width="28"
                                     />
-                                </Grid>
-                            )}
-                            {data.payment_reference && (
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <InputGroup
-                                        label="Payment Reference"
-                                        disabled
-                                        defaultValue={data.payment_reference}
-                                        onClick={(e) => handleCopyToClipboard(e.currentTarget.defaultValue, "Payment Reference")}
-                                    />
-                                </Grid>
-                            )}
-                            {data.refund_proof && (
-                                <Grid size={{ xs: 12 }}>
-                                    <div className="flex flex-col gap-2">
-                                        <label className="text-sm font-medium text-gray-700">Refund Proof</label>
-                                        <div className="p-4 border rounded-lg bg-gray-50 flex items-center justify-between">
-                                            <span className="text-sm text-gray-600 truncate mr-4">
-                                                {data.refund_proof.split('/').pop()}
-                                            </span>
-                                            <a
-                                                href={data.refund_proof}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="px-4 py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 transition-colors shrink-0"
-                                            >
-                                                View Proof
-                                            </a>
+                                </div>
+
+                                {/* Amount + Meta */}
+                                <div className="flex-1 min-w-0">
+                                    <h2 className="text-2xl font-bold text-gray-900">
+                                        {formatMoney(Number(data.amount || 0), data.currency)}
+                                    </h2>
+                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase bg-primary/10 text-primary border border-primary/20">
+                                            {data.transaction_type}
+                                        </span>
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase border ${actionStyle}`}>
+                                            {data.action}
+                                        </span>
+                                        <span className="text-xs text-gray-400">|</span>
+                                        <div className="flex items-center gap-1">
+                                            <Icon icon={statusInfo.icon} width="16" className={statusInfo.color} />
+                                            <Badge status={data.status?.toLowerCase() || ""} />
                                         </div>
                                     </div>
-                                </Grid>
-                            )}
-                        </>
-                    )}
+                                </div>
 
-                    {/* Gateway Metadata Section */}
-                    {data?.payment && (
-                        <>
-                            <Grid size={{ xs: 12 }} className="mt-4">
-                                <h4 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4 border-t pt-4">Payment Gateway Metadata</h4>
-                            </Grid>
+                                {/* Action buttons — Admin-only approval/rejection */}
+                                {isPendingApproval && canManageFinances && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        {isWithdrawal && (
+                                            <Button
+                                                onClick={() => setIsWithdrawalRejectionOpen(true)}
+                                                className="bg-red-600 text-white hover:bg-red-700"
+                                            >
+                                                <Icon icon="mdi:close" className="mr-1" width="16" />
+                                                Reject
+                                            </Button>
+                                        )}
+                                        <Button
+                                            onClick={() => {
+                                                if (isWithdrawal) {
+                                                    setIsWithdrawalApprovalOpen(true);
+                                                } else {
+                                                    setIsApproveModalOpen(true);
+                                                }
+                                            }}
+                                            className="bg-primary text-white hover:bg-primary/90"
+                                        >
+                                            <Icon icon="mdi:check" className="mr-1" width="16" />
+                                            {isWithdrawal ? "Approve Withdrawal" : "Approve Refund"}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
 
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                                <InputGroup
-                                    label="Provider"
-                                    disabled
-                                    defaultValue={data.payment.provider || "--/--"}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                                <InputGroup
-                                    label="Gateway Status"
-                                    disabled
-                                    defaultValue={data.payment.status || "--/--"}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                                <InputGroup
-                                    label="Processing Fees"
-                                    disabled
-                                    defaultValue={data.payment.fees ? formatMoney(Number(data.payment.fees), data.currency) : "₦ 0.00"}
-                                />
-                            </Grid>
-                        </>
-                    )}
-                </Grid>
+                            {/* Divider */}
+                            <div className="border-t border-gray-200 my-5" />
+
+                            {/* Quick info row */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <Field label="Customer" value={fullName} />
+                                <Field label="Email" value={data.user?.email} />
+                                <Field label="Created" value={data.created_at ? formatDate(data.created_at) : null} />
+                                <Field label="Last Updated" value={data.updated_at ? formatDate(data.updated_at) : null} />
+                            </div>
+                        </div>
+
+                        {/* ── Details Grid ── */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            {/* References & IDs */}
+                            <div>
+                                <SectionHeader icon="solar:document-bold-duotone" title="References" />
+                                <div className="grid grid-cols-1 gap-4 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                                    <CopyField label="Transaction Reference" value={data.reference} />
+                                    {data.payment_reference && (
+                                        <CopyField label="Payment Reference" value={data.payment_reference} />
+                                    )}
+                                    <CopyField label="User ID" value={data.user_id} />
+                                    <CopyField label="Wallet ID" value={data.wallet_id} />
+                                </div>
+                            </div>
+
+                            {/* Wallet & Financials */}
+                            <div>
+                                <SectionHeader icon="solar:wallet-bold-duotone" title="Financial Details" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                                    <Field
+                                        label="Wallet Balance"
+                                        value={data.wallet ? formatMoney(Number(data.wallet.balance), data.wallet.currency) : null}
+                                    />
+                                    {data.payment && (
+                                        <>
+                                            <Field label="Payment Provider" value={data.payment.provider} />
+                                            <Field label="Gateway Status" value={data.payment.status} />
+                                            <Field
+                                                label="Processing Fees"
+                                                value={data.payment.fees
+                                                    ? formatMoney(Number(data.payment.fees), data.currency)
+                                                    : "None"
+                                                }
+                                            />
+                                        </>
+                                    )}
+                                    {!data.payment && (
+                                        <Field label="Payment Provider" value="SYSTEM" />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Additional Details (conditional) ── */}
+                        {(data.description || data.comment || data.refund_proof) && (
+                            <div className="mb-6">
+                                <SectionHeader icon="solar:notes-bold-duotone" title="Notes & Attachments" />
+                                <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 space-y-4">
+                                    {data.description && (
+                                        <Field label="Description" value={data.description} />
+                                    )}
+                                    {data.comment && (
+                                        <Field label="Comment" value={data.comment} />
+                                    )}
+                                    {data.refund_proof && (
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Refund Proof</p>
+                                            <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl">
+                                                <Icon icon="mdi:file-document-outline" width="20" className="text-gray-400 flex-shrink-0" />
+                                                <span className="text-sm text-gray-700 truncate flex-1">
+                                                    {data.refund_proof.split("/").pop()}
+                                                </span>
+                                                <a
+                                                    href={data.refund_proof}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors flex-shrink-0"
+                                                >
+                                                    View
+                                                </a>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
 
+            {/* Modals */}
             {data && (
                 <ApproveRefundModal
                     isOpen={isApproveModalOpen}
@@ -363,37 +388,36 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                 />
             )}
 
-            {data && data.transaction_type === "WITHDRAWAL" && (
-                <ApproveWithdrawalModal
-                    isOpen={isWithdrawalApprovalOpen}
-                    onClose={() => {
-                        setIsWithdrawalApprovalOpen(false);
-                        fetchData();
-                    }}
-                    transactionId={data.id}
-                    userId={data.user_id}
-                    email={data.user?.email || ""}
-                    amount={data.amount}
-                    currency={data.currency}
-                    walletId={data.wallet_id}
-                />
+            {data && isWithdrawal && (
+                <>
+                    <ApproveWithdrawalModal
+                        isOpen={isWithdrawalApprovalOpen}
+                        onClose={() => {
+                            setIsWithdrawalApprovalOpen(false);
+                            fetchData();
+                        }}
+                        transactionId={data.id}
+                        userId={data.user_id}
+                        email={data.user?.email || ""}
+                        amount={data.amount}
+                        currency={data.currency}
+                        walletId={data.wallet_id}
+                    />
+                    <RejectWithdrawalModal
+                        isOpen={isWithdrawalRejectionOpen}
+                        onClose={() => {
+                            setIsWithdrawalRejectionOpen(false);
+                            fetchData();
+                        }}
+                        transactionId={data.id}
+                        email={data.user?.email || ""}
+                        amount={data.amount}
+                        currency={data.currency}
+                        walletId={data.wallet_id}
+                    />
+                </>
             )}
-
-            {data && data.transaction_type === "WITHDRAWAL" && (
-                <RejectWithdrawalModal
-                    isOpen={isWithdrawalRejectionOpen}
-                    onClose={() => {
-                        setIsWithdrawalRejectionOpen(false);
-                        fetchData();
-                    }}
-                    transactionId={data.id}
-                    email={data.user?.email || ""}
-                    amount={data.amount}
-                    currency={data.currency}
-                    walletId={data.wallet_id}
-                />
-            )}
-        </div>
+        </>
     );
 };
 

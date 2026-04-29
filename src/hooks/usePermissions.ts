@@ -8,7 +8,13 @@ export const usePermissions = () => {
     const role = user?.role as UserRole | undefined;
 
     const isSuperAdmin = role === UserRole.SUPER_ADMIN;
-    const isAdmin = role === UserRole.ADMIN || isSuperAdmin;
+    const isAdminRole = [
+        UserRole.SUPER_ADMIN,
+        UserRole.ADMIN,
+        UserRole.OPERATIONS_ADMIN,
+        UserRole.SUPPORT_ADMIN,
+    ].includes(role as UserRole);
+    const isAdmin = isAdminRole;
     const isAgent = role === UserRole.AGENT;
     const isOwner = role === UserRole.OWNER;
     const isStaff = isAdmin || isAgent || isOwner;
@@ -28,7 +34,10 @@ export const usePermissions = () => {
     // Specific Actions
     const canCreateProperty = isStaff;
     const canEditProperty = isStaff; // Specific ownership check happens on backend/detail view
-    const canDeleteProperty = isAdmin || isOwner;
+    const canDeleteProperty = isSuperAdmin;
+    const canDeleteUnit = isSuperAdmin;
+    const canDeleteBooking = isSuperAdmin;
+    const canDeleteUser = isSuperAdmin;
     const canVerifyProperty = isAdmin || isAgent;
 
     const canManageBookings = isStaff;
@@ -36,7 +45,7 @@ export const usePermissions = () => {
 
     const canManageFinances = isAdmin; // Withdrawals etc.
     const canFlagReview = isAdmin;
-    const canRemoveReview = isAdmin;
+    const canRemoveReview = isSuperAdmin; // Moderation purge restricted to SUPER_ADMIN
     const canManageDisputes = isAdmin; // Admin can resolve, update status etc.
     const canRaiseDispute = isOwner; // Owners can raise disputes after checkout
 
@@ -63,6 +72,9 @@ export const usePermissions = () => {
         canCreateProperty,
         canEditProperty,
         canDeleteProperty,
+        canDeleteUnit,
+        canDeleteBooking,
+        canDeleteUser,
         canVerifyProperty,
 
         canManageBookings,

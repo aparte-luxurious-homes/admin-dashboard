@@ -83,26 +83,33 @@ export interface IBooking {
     payment_notes?: string
     rejectionReason?: string
     rejection_reason?: string
-    revenueSplit?: {
-        owner_amount: number;
-        agent_amount: number;
-        platform_amount: number;
-        percentages: {
+    revenueSplit?: RevenueSplit;
+    revenue_split?: RevenueSplit;
+}
+
+export interface RevenueSplit {
+    splitting_base?: number;
+    owner_amount: number;
+    agent_amount: number;
+    referrer_amount?: number;
+    platform_amount: number;
+    percentages: {
+        owner: number;
+        agent: number;
+        referrer?: number;
+        platform: number;
+    };
+    stages?: {
+        on_confirmation: {
             owner: number;
             agent: number;
+            referrer?: number;
             platform: number;
         };
+        on_check_in: { owner: number };
     };
-    revenue_split?: {
-        owner_amount: number;
-        agent_amount: number;
-        platform_amount: number;
-        percentages: {
-            owner: number;
-            agent: number;
-            platform: number;
-        };
-    };
+    has_referrer?: boolean;
+    has_agent?: boolean;
 }
 export interface ICreateBooking {
     user_id?: string | number
@@ -118,6 +125,8 @@ export interface ICreateBooking {
     payment_proof_url?: string
     payment_notes?: string
     mark_as_paid?: boolean
+    send_payment_link?: boolean
+    referral_code?: string
 
     // Quick Guest Onboarding
     guest_first_name?: string
