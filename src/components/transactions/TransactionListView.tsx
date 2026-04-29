@@ -18,6 +18,7 @@ import { formatDate, formatMoney } from "@/src/lib/utils";
 import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
 import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
+import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface Transaction {
     id: string;
@@ -57,9 +58,19 @@ interface TransactionListViewProps {
         tx_type?: string;
         action?: string;
     };
+    /**
+     * Optional override for the row's detail-view href.
+     * Used by the "All Transactions" view to route each row to the appropriate
+     * existing category detail page (payments / withdrawals / refunds / etc.)
+     * instead of an `/all/{id}` route that doesn't exist.
+     * Defaults to `${basePath}/{tx.id}` when omitted.
+     */
+    resolveRowHref?: (tx: Transaction) => string;
 }
 
-const TransactionListView = ({ title, description, basePath, apiUrl, filters }: TransactionListViewProps) => {
+const TransactionListView = ({ title, description, basePath, apiUrl, filters, resolveRowHref }: TransactionListViewProps) => {
+    const getRowHref = (tx: Transaction) =>
+        resolveRowHref ? resolveRowHref(tx) : `${basePath}/${tx.id}`;
     const router = useRouter();
     const [data, setData] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
@@ -79,6 +90,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
 
     const [isOpen, setIsOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
+    const { canManageFinances } = usePermissions();
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -245,14 +257,14 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
             Icon: <LuEye />,
             onClick: () => {
                 if (selectedRow !== null) {
-                    router.push(`${basePath}/${data[selectedRow].id}`);
+                    router.push(getRowHref(data[selectedRow]));
                 }
                 setSelectedRow(null);
             },
         }
     ];
 
-    if (selectedRow !== null && data[selectedRow]?.status === "PENDING_APPROVAL") {
+    if (canManageFinances && selectedRow !== null && data[selectedRow]?.status === "PENDING_APPROVAL") {
         const tx = data[selectedRow];
         detailButtons.push({
             label: tx.transaction_type === "WITHDRAWAL" ? "Approve Withdrawal" : "Approve Refund",
@@ -272,7 +284,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
         }
     }
 
-    if (selectedRow !== null && data[selectedRow]?.status === "AWAITING_AUTHORIZATION") {
+    if (canManageFinances && selectedRow !== null && data[selectedRow]?.status === "AWAITING_AUTHORIZATION") {
         const tx = data[selectedRow];
         if (tx.transaction_type === "WITHDRAWAL") {
             detailButtons.push({
@@ -317,8 +329,8 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1 max-w-md relative">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                            <div className="flex-1 max-w-full sm:max-w-md relative">
                                 <input
                                     type="text"
                                     value={searchValue}
@@ -328,23 +340,25 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                 />
                                 <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                             </div>
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={`px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-white text-gray-700'}`}
-                            >
-                                <FilterIcon className="w-4 h-4" color={showFilters ? "#028090" : "#6B7280"} />
-                                <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
-                            </button>
-                            {(statusFilter || (typeFilter !== (filters?.tx_type || "")) || (actionFilter !== (filters?.action || "")) || gatewayFilter || startDate || endDate) && (
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <button
-                                    onClick={resetFilters}
-                                    className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-4"
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={`px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-white text-gray-700'}`}
                                 >
-                                    Reset Filters
+                                    <FilterIcon className="w-4 h-4" color={showFilters ? "#028090" : "#6B7280"} />
+                                    <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
                                 </button>
-                            )}
-                            <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
-                                Total Records: <span className="text-primary">{rowCount}</span>
+                                {(statusFilter || (typeFilter !== (filters?.tx_type || "")) || (actionFilter !== (filters?.action || "")) || gatewayFilter || startDate || endDate) && (
+                                    <button
+                                        onClick={resetFilters}
+                                        className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-4"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                )}
+                                <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                                    Total Records: <span className="text-primary">{rowCount}</span>
+                                </div>
                             </div>
                         </div>
 
@@ -494,7 +508,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                     <tr
                                         key={tx.id}
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => router.push(`${basePath}/${tx.id}`)}
+                                        onClick={() => router.push(getRowHref(tx))}
                                     >
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                             {tx.reference?.substring(0, 18) || String(tx.id).substring(0, 8)}...

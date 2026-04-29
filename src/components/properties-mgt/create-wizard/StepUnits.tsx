@@ -12,6 +12,12 @@ interface StepUnitsProps {
 }
 
 export default function StepUnits({ units, onAddUnit, onEditUnit, onDeleteUnit }: StepUnitsProps) {
+    // Once any unit is marked "whole property", the listing represents the entire property
+    // as a single bookable entity — adding a second unit makes no sense.
+    const hasWholePropertyUnit = units.some((u) => u.is_whole_property);
+    const addDisabled = hasWholePropertyUnit;
+    const addDisabledHint = 'This listing has a whole-property unit; remove or untoggle it to add another unit.';
+
     return (
         <div className="max-w-3xl mx-auto space-y-8">
             {/* Header */}
@@ -29,7 +35,9 @@ export default function StepUnits({ units, onAddUnit, onEditUnit, onDeleteUnit }
                     <button
                         type="button"
                         onClick={onAddUnit}
-                        className="h-9 px-4 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2"
+                        disabled={addDisabled}
+                        title={addDisabled ? addDisabledHint : undefined}
+                        className="h-9 px-4 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
                     >
                         <Icon icon="solar:add-circle-bold" className="text-sm" />
                         Add Unit
@@ -71,15 +79,17 @@ export default function StepUnits({ units, onAddUnit, onEditUnit, onDeleteUnit }
                         />
                     ))}
 
-                    {/* Add Another Card */}
-                    <button
-                        type="button"
-                        onClick={onAddUnit}
-                        className="border-2 border-dashed border-zinc-300 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group min-h-[120px]"
-                    >
-                        <Icon icon="solar:add-circle-bold-duotone" className="text-2xl text-zinc-400 group-hover:text-primary" />
-                        <span className="text-xs font-semibold text-zinc-500 group-hover:text-primary">Add Another Unit</span>
-                    </button>
+                    {/* Add Another Card — hidden when a whole-property unit exists */}
+                    {!addDisabled && (
+                        <button
+                            type="button"
+                            onClick={onAddUnit}
+                            className="border-2 border-dashed border-zinc-300 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group min-h-[120px]"
+                        >
+                            <Icon icon="solar:add-circle-bold-duotone" className="text-2xl text-zinc-400 group-hover:text-primary" />
+                            <span className="text-xs font-semibold text-zinc-500 group-hover:text-primary">Add Another Unit</span>
+                        </button>
+                    )}
                 </div>
             )}
 

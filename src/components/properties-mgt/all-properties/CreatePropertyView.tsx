@@ -5,10 +5,8 @@ import { FaRegBuilding } from "react-icons/fa";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
 import { DocumentType, IAmenity, ICreateProperty, MediaType, PropertyType } from "../types";
-import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
-import { ALL_COUNTRIES } from "@/src/data/countries";
 import { FaPlus, FaMapLocationDot, FaArrowLeftLong } from "react-icons/fa6";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from 'formik';
@@ -126,16 +124,23 @@ function AddressAutocomplete({ formik, isLoaded }: { formik: any, isLoaded: bool
             formik.setFieldValue('latitude', lat);
             formik.setFieldValue('longitude', lng);
 
-            results[0].address_components.forEach((component: any) => {
-                const types = component.types;
-                if (types.includes('locality')) {
-                    formik.setFieldValue('city', component.long_name);
-                } else if (types.includes('administrative_area_level_1')) {
-                    formik.setFieldValue('state', component.long_name);
-                } else if (types.includes('country')) {
-                    formik.setFieldValue('country', component.long_name);
-                }
-            });
+            // Country is locked to Nigeria — never overwrite from Google.
+            // City fallback chain handles Nigerian addresses where Google often
+            // omits `locality` and uses `administrative_area_level_2` or
+            // `sublocality_*` instead.
+            const components: any[] = results[0].address_components || [];
+            const findByType = (type: string) =>
+                components.find((c: any) => c.types?.includes(type))?.long_name || '';
+            const city =
+                findByType('locality') ||
+                findByType('administrative_area_level_2') ||
+                findByType('sublocality_level_1') ||
+                findByType('sublocality') ||
+                findByType('postal_town');
+            const state = findByType('administrative_area_level_1');
+            if (city) formik.setFieldValue('city', city);
+            if (state) formik.setFieldValue('state', state);
+            formik.setFieldValue('google_place_id', results[0].place_id || '');
         } catch (error) {
             console.error("Error geocoding selection:", error);
         }
@@ -231,10 +236,11 @@ export default function CreatePropertyView({ }) {
             initialValues: {
                 name: "",
                 address: "",
+                google_place_id: "",
                 property_type: PropertyType.DUPLEX,
                 country: "Nigeria",
-                state: "Lagos",
-                city: "Ikeja",
+                state: "",
+                city: "",
                 description: "",
                 latitude: 0,
                 longitude: 0,
@@ -252,6 +258,7 @@ export default function CreatePropertyView({ }) {
 
                 const payload: ICreateProperty = {
                     ...values,
+                    country: "Nigeria",
                     amenities: sortedAmenities,
                     is_party_allowed: false,
                 }
@@ -632,31 +639,28 @@ export default function CreatePropertyView({ }) {
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Country</label>
-                                <CustomFilterDropdown
-                                    placeholder={`E.g. ${formik.values.country}`}
-                                    options={Object.keys(ALL_COUNTRIES)}
-                                    handleSelection={(val) => formik.setFieldValue("country", val)}
-                                    selected={formik.values.country}
-                                />
-                            </div>
+                            {/* State & City — populated by Google Places autocomplete; editable for corrections.
+                                Country is locked to Nigeria (set in initialValues + payload). */}
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">State</label>
-                                <CustomFilterDropdown
-                                    placeholder={`E.g. Lagos`}
-                                    options={ALL_COUNTRIES[formik.values.country] ? Object.keys(ALL_COUNTRIES[formik.values.country]) : []}
-                                    handleSelection={(val) => formik.setFieldValue("state", val)}
-                                    selected={ALL_COUNTRIES[formik.values.country] && Object.keys(ALL_COUNTRIES[formik.values.country])?.includes(formik.values.state) ? formik.values.state : ''}
+                                <input
+                                    id="state"
+                                    type="text"
+                                    placeholder="E.g. Lagos"
+                                    value={formik.values.state}
+                                    onChange={formik.handleChange}
+                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">City</label>
-                                <CustomFilterDropdown
-                                    placeholder={`E.g. Ikeja`}
-                                    options={(ALL_COUNTRIES[formik.values.country] && ALL_COUNTRIES[formik.values.country][formik.values.state]) ? ALL_COUNTRIES[formik.values.country][formik.values.state] : []}
-                                    handleSelection={(val) => formik.setFieldValue("city", val)}
-                                    selected={(ALL_COUNTRIES[formik.values.country] && ALL_COUNTRIES[formik.values.country][formik.values.state])?.includes(formik.values.city) ? formik.values.city : ''}
+                                <input
+                                    id="city"
+                                    type="text"
+                                    placeholder="E.g. Ikeja"
+                                    value={formik.values.city}
+                                    onChange={formik.handleChange}
+                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
                                 />
                             </div>
                         </div>

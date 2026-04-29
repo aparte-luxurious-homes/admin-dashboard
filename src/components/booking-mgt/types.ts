@@ -125,6 +125,7 @@ export interface ICreateBooking {
     payment_proof_url?: string
     payment_notes?: string
     mark_as_paid?: boolean
+    send_payment_link?: boolean
     referral_code?: string
 
     // Quick Guest Onboarding

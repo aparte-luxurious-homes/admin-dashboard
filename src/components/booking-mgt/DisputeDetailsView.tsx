@@ -11,20 +11,24 @@ import {
     useUpdateDisputeStatus,
     useRequestDisputeEvidence,
     useResolveDispute,
-    useUploadDisputeEvidence
+    useUploadDisputeEvidence,
+    useDeleteDisputeEvidence
 } from "@/src/hooks/useDisputes";
 import Spinner from "@/src/components/ui/Spinner";
 import { format } from "date-fns";
 import CustomModal from "@/src/components/ui/CustomModal";
 import toast from "react-hot-toast";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import { useAuth } from "@/src/hooks/useAuth";
 import Image from "next/image";
 
 const DisputeDetailsView = () => {
     const { id } = useParams();
     const disputeId = id as string;
     const router = useRouter();
-    const { isAdmin, isOwner, isAgent } = usePermissions();
+    const { isAdmin, isOwner, isAgent, isSuperAdmin } = usePermissions();
+    const { user } = useAuth();
+    const currentUserId = user?.id;
 
     const adminQuery = useDisputeDetails(disputeId);
     const ownerQuery = useMyDisputeDetails(disputeId);
@@ -40,6 +44,21 @@ const DisputeDetailsView = () => {
     const requestEvidenceMutation = useRequestDisputeEvidence();
     const resolveMutation = useResolveDispute();
     const uploadEvidenceMutation = useUploadDisputeEvidence();
+    const deleteEvidenceMutation = useDeleteDisputeEvidence();
+
+    const [deletingEvidenceId, setDeletingEvidenceId] = useState<string | null>(null);
+
+    const handleDeleteEvidence = (evidenceId: string) => {
+        if (window.confirm("Are you sure you want to delete this evidence?")) {
+            setDeletingEvidenceId(evidenceId);
+            deleteEvidenceMutation.mutate(
+                { disputeId, evidenceId },
+                {
+                    onSettled: () => setDeletingEvidenceId(null),
+                }
+            );
+        }
+    };
 
     const [adminNotes, setAdminNotes] = useState("");
     const [newStatus, setNewStatus] = useState<DisputeStatus>(DisputeStatus.OPEN);
@@ -50,12 +69,8 @@ const DisputeDetailsView = () => {
 
     useEffect(() => {
         if (isResolveModalOpen && dispute) {
-            const role = (dispute.raised_by_role as string)?.toUpperCase();
-            if (role === 'GUEST') {
-                setOutcome(DisputeOutcome.NO_ACTION);
-            } else {
-                setOutcome(DisputeOutcome.PARTIAL_COMPENSATION);
-            }
+            // Default to NO_ACTION for all roles as it's a common option now
+            setOutcome(DisputeOutcome.NO_ACTION);
         }
     }, [isResolveModalOpen, dispute]);
 
@@ -219,11 +234,21 @@ const DisputeDetailsView = () => {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                     {dispute.evidence.map((item, idx) => (
                                         <div key={idx} className="group relative aspect-square rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 hover:shadow-lg transition-all">
-                                            <Image src={item.media_url} alt="Evidence" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <img src={item.media_url} alt="Evidence" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                                                 <a href={item.media_url} target="_blank" className="p-2 bg-white rounded-full text-gray-900 shadow-xl transform scale-75 group-hover:scale-100 transition-transform">
                                                     <Icon icon="solar:eye-bold" />
                                                 </a>
+                                                {(isSuperAdmin || (currentUserId != null && String(item.uploaded_by) === String(currentUserId))) && (
+                                                    <button
+                                                        onClick={() => handleDeleteEvidence(item.id)}
+                                                        disabled={deletingEvidenceId === item.id}
+                                                        className="p-2 bg-red-500 rounded-full text-white shadow-xl transform scale-75 group-hover:scale-100 transition-transform hover:bg-red-600 disabled:opacity-50"
+                                                        title="Delete Evidence"
+                                                    >
+                                                        {deletingEvidenceId === item.id ? <Spinner color="white" /> : <Icon icon="solar:trash-bin-trash-bold" />}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -276,20 +301,43 @@ const DisputeDetailsView = () => {
                             Parties Involved
                         </h3>
                         <div className="space-y-6 relative z-10">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-xl font-bold italic">
-                                    {(dispute.raised_by_role as string)?.[0] || 'U'}
+                            {/* Guest Details */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-xl font-bold italic flex-shrink-0">
+                                    G
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                                        {dispute.raised_by_role || 'USER'} (COMPLAINANT)
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                        GUEST {dispute.raised_by_role === 'GUEST' && <span className="px-1.5 py-0.5 bg-primary/20 text-primary rounded text-[8px]">RAISED BY</span>}
                                     </p>
-                                    <p className="text-sm font-bold text-white"># {String(dispute.raised_by).split('-')[0].toUpperCase()}</p>
+                                    <p className="text-sm font-bold text-white">{dispute.guest_name || 'Guest'}</p>
+                                    {dispute.guest_email && <p className="text-xs text-zinc-400 flex items-center gap-1.5"><Icon icon="solar:letter-bold" /> {dispute.guest_email}</p>}
+                                    {dispute.guest_phone && <p className="text-xs text-zinc-400 flex items-center gap-1.5"><Icon icon="solar:phone-calling-bold" /> {dispute.guest_phone}</p>}
                                 </div>
                             </div>
+
                             <div className="w-full h-px bg-white/5" />
+
+                            {/* Owner Details */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-xl font-bold italic flex-shrink-0">
+                                    O
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                        OWNER {dispute.raised_by_role === 'OWNER' && <span className="px-1.5 py-0.5 bg-primary/20 text-primary rounded text-[8px]">RAISED BY</span>}
+                                    </p>
+                                    <p className="text-sm font-bold text-white">{dispute.owner_name || 'Owner'}</p>
+                                    {dispute.owner_email && <p className="text-xs text-zinc-400 flex items-center gap-1.5"><Icon icon="solar:letter-bold" /> {dispute.owner_email}</p>}
+                                    {dispute.owner_phone && <p className="text-xs text-zinc-400 flex items-center gap-1.5"><Icon icon="solar:phone-calling-bold" /> {dispute.owner_phone}</p>}
+                                </div>
+                            </div>
+
+                            <div className="w-full h-px bg-white/5" />
+
+                            {/* Booking Reference */}
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary italic">B</div>
+                                <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary italic flex-shrink-0">B</div>
                                 <div>
                                     <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">REFERENCED BOOKING</p>
                                     <p className="text-sm font-bold text-white"># {dispute.booking_id.split('-')[0].toUpperCase()}</p>
@@ -372,8 +420,8 @@ const DisputeDetailsView = () => {
                         <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Final Outcome</label>
                         <div className="grid grid-cols-2 gap-3">
                             {(dispute.raised_by_role?.toString()?.toUpperCase() === 'GUEST'
-                                ? [DisputeOutcome.NO_ACTION, DisputeOutcome.PARTIAL_REFUND, DisputeOutcome.FULL_REFUND]
-                                : [DisputeOutcome.PARTIAL_COMPENSATION, DisputeOutcome.FULL_COMPENSATION]
+                                ? [DisputeOutcome.PARTIAL_REFUND, DisputeOutcome.FULL_REFUND, DisputeOutcome.NO_ACTION]
+                                : [DisputeOutcome.PARTIAL_COMPENSATION, DisputeOutcome.FULL_REFUND, DisputeOutcome.NO_ACTION]
                             ).map(o => (
                                 <button
                                     key={o}
@@ -386,7 +434,7 @@ const DisputeDetailsView = () => {
                             ))}
                         </div>
                     </div>
-                    {([DisputeOutcome.PARTIAL_REFUND, DisputeOutcome.PARTIAL_COMPENSATION, DisputeOutcome.FULL_COMPENSATION].includes(outcome)) && (
+                    {([DisputeOutcome.PARTIAL_REFUND, DisputeOutcome.PARTIAL_COMPENSATION].includes(outcome)) && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
                             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
                                 {outcome === DisputeOutcome.PARTIAL_REFUND ? "Refund Amount (NGN)" : "Compensation Amount (NGN)"}

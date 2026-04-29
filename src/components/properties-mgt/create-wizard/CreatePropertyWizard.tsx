@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormik } from 'formik';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
@@ -38,7 +38,10 @@ import {
     PropertyFormValues,
     UnitFormValues,
     createEmptyUnit,
+    CategorizedMedia,
+    PropertyMediaCategory,
 } from './types';
+import { validatePropertyName } from './nameValidator';
 
 const libraries: any = ['places'];
 
@@ -52,17 +55,16 @@ export default function CreatePropertyWizard() {
 
     // Unit state
     const [units, setUnits] = useState<UnitFormValues[]>([]);
-    const [unitMediaMap, setUnitMediaMap] = useState<Record<string, File[]>>({});
-    const unitUploadRefs = useRef<Record<string, { url: string; file: File }[]>>({});
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
 
     // Amenity state
     const [showAmenityForm, setShowAmenityForm] = useState(false);
 
-    // Media state
-    const [uploadedMedia, setUploadedMedia] = useState<File[]>([]);
-    const uploadRef = useRef<{ url: string; file: File }[]>([]);
+    // Media state — files grouped by PropertyMediaCategory. Each non-empty
+    // category is uploaded in its own POST so the server can persist the tag.
+    const [propertyMedia, setPropertyMedia] = useState<CategorizedMedia>({});
+    const [unitMediaByCategory, setUnitMediaByCategory] = useState<Record<string, CategorizedMedia>>({});
     const [docFiles, setDocFiles] = useState<{ file: File; type: DocumentType }[]>([]);
 
     // Amenities
@@ -111,6 +113,13 @@ export default function CreatePropertyWizard() {
         initialValues: {
             name: '',
             address: '',
+            street_number: '',
+            street_name: '',
+            postal_code: '',
+            landmark: '',
+            google_place_id: '',
+            geocode_raw: null,
+            pin_confirmed: false,
             property_type: '',
             country: 'Nigeria',
             state: 'Lagos',
@@ -136,13 +145,38 @@ export default function CreatePropertyWizard() {
     const validateStep = (step: WizardStep): boolean => {
         switch (step) {
             case WizardStep.PROPERTY_DETAILS: {
-                const { name, address, property_type, city, state, country } = formik.values;
-                if (!name.trim()) {
-                    toast.error('Property name is required');
+                const {
+                    name,
+                    address,
+                    property_type,
+                    city,
+                    state,
+                    country,
+                    google_place_id,
+                    latitude,
+                    longitude,
+                    pin_confirmed,
+                } = formik.values;
+
+                const nameError = validatePropertyName(name);
+                if (nameError) {
+                    toast.error(nameError);
                     return false;
                 }
                 if (!address.trim()) {
                     toast.error('Address is required');
+                    return false;
+                }
+                if (!google_place_id) {
+                    toast.error('Please select the address from the suggestions so we can pin it on the map');
+                    return false;
+                }
+                if (latitude == null || longitude == null) {
+                    toast.error('Coordinates missing \u2014 pick the address from the suggestions again');
+                    return false;
+                }
+                if (!pin_confirmed) {
+                    toast.error('Please confirm the map pin matches the actual property location');
                     return false;
                 }
                 if (!property_type) {
@@ -166,8 +200,9 @@ export default function CreatePropertyWizard() {
             case WizardStep.UNITS:
                 return true; // Units are optional
             case WizardStep.MEDIA_DOCS: {
-                if (uploadedMedia.length < 3) {
-                    toast.error('Please upload at least 3 property images');
+                const anyPropertyMedia = Object.values(propertyMedia).some((files) => (files?.length ?? 0) > 0);
+                if (!anyPropertyMedia) {
+                    toast.error('Please upload photos for at least one property category before creating');
                     return false;
                 }
                 return true;
@@ -215,12 +250,11 @@ export default function CreatePropertyWizard() {
         const unit = units[index];
         setUnits((prev) => prev.filter((_, i) => i !== index));
         // Clean up media for deleted unit
-        setUnitMediaMap((prev) => {
+        setUnitMediaByCategory((prev) => {
             const next = { ...prev };
             delete next[unit._key];
             return next;
         });
-        delete unitUploadRefs.current[unit._key];
     };
 
     const handleSaveUnit = (unit: UnitFormValues) => {
@@ -238,6 +272,11 @@ export default function CreatePropertyWizard() {
 
         const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
 
+        if (values.latitude == null || values.longitude == null || !values.google_place_id) {
+            toast.error('Address details are incomplete. Go back to step 1 and re-select the address.');
+            return;
+        }
+
         const payload: ICreateProperty = {
             name: values.name,
             description: values.description,
@@ -246,11 +285,17 @@ export default function CreatePropertyWizard() {
             city: values.city,
             state: values.state,
             country: values.country,
-            latitude: values.latitude ?? 0,
-            longitude: values.longitude ?? 0,
+            latitude: values.latitude,
+            longitude: values.longitude,
+            google_place_id: values.google_place_id,
             amenities: sortedAmenities,
             is_pet_allowed: values.is_pet_allowed,
             is_party_allowed: values.is_party_allowed,
+            ...(values.street_number && { street_number: values.street_number }),
+            ...(values.street_name && { street_name: values.street_name }),
+            ...(values.postal_code && { postal_code: values.postal_code }),
+            ...(values.landmark && { landmark: values.landmark }),
+            ...(values.geocode_raw && { geocode_raw: values.geocode_raw }),
             ...(values.rules && { rules: values.rules }),
             ...(values.owner_email && { owner_email: values.owner_email }),
             ...(values.owner_name && { owner_name: values.owner_name }),
@@ -268,30 +313,35 @@ export default function CreatePropertyWizard() {
 
                     toast.success('Property created successfully');
 
-                    // Upload property media (split images and videos into separate batches)
-                    if (uploadedMedia.length > 0) {
-                        const imageFiles = uploadedMedia.filter(f => !f.type.startsWith('video/'));
-                        const videoFiles = uploadedMedia.filter(f => f.type.startsWith('video/'));
-
-                        const uploadBatch = (files: File[], mediaType: string) => {
-                            const batchFormData = new FormData();
-                            files.forEach(file => batchFormData.append('media_file', file));
-                            batchFormData.append('media_type', mediaType);
-                            batchFormData.append('is_featured', 'true');
+                    // Upload property media — one request per non-empty category, so
+                    // the server persists the `category` tag on each PropertyMedia row.
+                    const propertyMediaEntries = Object.entries(propertyMedia).filter(
+                        ([, files]) => (files?.length ?? 0) > 0,
+                    ) as [PropertyMediaCategory, File[]][];
+                    propertyMediaEntries.forEach(([category, files]) => {
+                        const imageFiles = files.filter((f) => !f.type.startsWith('video/'));
+                        const videoFiles = files.filter((f) => f.type.startsWith('video/'));
+                        const uploadCategoryBatch = (batch: File[], mediaType: string) => {
+                            if (batch.length === 0) return;
+                            const formData = new FormData();
+                            batch.forEach((file) => formData.append('media_file', file));
+                            formData.append('media_type', mediaType);
+                            formData.append('is_featured', category === PropertyMediaCategory.EXTERIOR_FRONT ? 'true' : 'false');
+                            formData.append('category', category);
                             uploadMedia(
-                                { propertyId, payload: batchFormData },
+                                { propertyId, payload: formData },
                                 {
                                     onError: (error: any) =>
                                         toast.error(
-                                            error?.response?.data?.detail || error?.response?.data?.message || 'Media upload failed',
-                                            { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } }
+                                            error?.response?.data?.detail || error?.response?.data?.message || `Media upload failed for ${category}`,
+                                            { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } },
                                         ),
-                                }
+                                },
                             );
                         };
-                        if (imageFiles.length > 0) uploadBatch(imageFiles, MediaType.IMAGE);
-                        if (videoFiles.length > 0) uploadBatch(videoFiles, MediaType.VIDEO);
-                    }
+                        uploadCategoryBatch(imageFiles, MediaType.IMAGE);
+                        uploadCategoryBatch(videoFiles, MediaType.VIDEO);
+                    });
 
                     // Upload documents
                     if (docFiles.length > 0) {
@@ -333,34 +383,49 @@ export default function CreatePropertyWizard() {
                             { propertyId: String(propertyId), payload: unitPayloads },
                             {
                                 onSuccess: (unitResponse) => {
-                                    // Upload unit media
+                                    // Upload unit media — one request per non-empty category.
                                     const createdUnits = unitResponse?.data?.data?.units ?? unitResponse?.data?.data ?? [];
                                     units.forEach((localUnit, index) => {
                                         const createdUnit = createdUnits[index];
-                                        const unitFiles = unitMediaMap[localUnit._key];
-                                        if (createdUnit?.id && unitFiles && unitFiles.length > 0) {
-                                            const unitFormData = new FormData();
-                                            unitFiles.forEach((file) => {
-                                                unitFormData.append('media_file', file);
-                                            });
-                                            unitFormData.append('media_type', MediaType.IMAGE);
-                                            unitFormData.append('is_featured', 'false');
+                                        // Whole-property units use the property gallery — never had per-unit media collected.
+                                        if (localUnit.is_whole_property) return;
+                                        const bucket = unitMediaByCategory[localUnit._key] ?? {};
+                                        if (!createdUnit?.id) return;
 
-                                            uploadUnitMedia(
-                                                {
-                                                    propertyId,
-                                                    unitId: createdUnit.id,
-                                                    payload: unitFormData,
-                                                },
-                                                {
-                                                    onError: () =>
-                                                        toast.error(`Failed to upload media for unit: ${localUnit.name}`, {
-                                                            duration: 6000,
-                                                            style: { maxWidth: '500px', width: 'max-content' },
-                                                        }),
-                                                }
-                                            );
-                                        }
+                                        (Object.entries(bucket) as [PropertyMediaCategory, File[]][]).forEach(
+                                            ([category, files]) => {
+                                                if (!files || files.length === 0) return;
+                                                const imageFiles = files.filter((f) => !f.type.startsWith('video/'));
+                                                const videoFiles = files.filter((f) => f.type.startsWith('video/'));
+                                                const uploadCategoryBatch = (batch: File[], mediaType: string) => {
+                                                    if (batch.length === 0) return;
+                                                    const formData = new FormData();
+                                                    batch.forEach((file) => formData.append('media_file', file));
+                                                    formData.append('media_type', mediaType);
+                                                    formData.append('is_featured', 'false');
+                                                    formData.append('category', category);
+                                                    uploadUnitMedia(
+                                                        {
+                                                            propertyId,
+                                                            unitId: createdUnit.id,
+                                                            payload: formData,
+                                                        },
+                                                        {
+                                                            onError: () =>
+                                                                toast.error(
+                                                                    `Failed to upload ${category} for unit: ${localUnit.name}`,
+                                                                    {
+                                                                        duration: 6000,
+                                                                        style: { maxWidth: '500px', width: 'max-content' },
+                                                                    },
+                                                                ),
+                                                        },
+                                                    );
+                                                };
+                                                uploadCategoryBatch(imageFiles, MediaType.IMAGE);
+                                                uploadCategoryBatch(videoFiles, MediaType.VIDEO);
+                                            },
+                                        );
                                     });
                                 },
                                 onError: () =>
@@ -440,6 +505,7 @@ export default function CreatePropertyWizard() {
                 availableAmenities={availableAmenities}
                 showAmenityForm={() => setShowAmenityForm(true)}
                 userRole={user?.role}
+                propertyName={formik.values.name}
             />
 
             {/* Step Content */}
@@ -469,20 +535,18 @@ export default function CreatePropertyWizard() {
 
                 {currentStep === WizardStep.MEDIA_DOCS && (
                     <StepMediaDocs
-                        uploadedMedia={uploadedMedia}
-                        setUploadedMedia={setUploadedMedia}
-                        uploadRef={uploadRef}
+                        propertyMedia={propertyMedia}
+                        setPropertyMedia={setPropertyMedia}
                         docFiles={docFiles}
                         setDocFiles={setDocFiles}
                         units={units}
-                        unitMediaMap={unitMediaMap}
-                        setUnitMediaMap={setUnitMediaMap}
-                        unitUploadRefs={unitUploadRefs}
+                        unitMediaByCategory={unitMediaByCategory}
+                        setUnitMediaByCategory={setUnitMediaByCategory}
                     />
                 )}
 
                 {/* Navigation Buttons */}
-                <div className="fixed bottom-16 left-0 right-0 z-30 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between md:relative md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:border-0 md:px-0 md:py-0 md:max-w-3xl md:mx-auto md:mt-10">
+                <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between md:relative md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:border-0 md:px-0 md:py-0 md:max-w-3xl md:mx-auto md:mt-10">
                     <button
                         type="button"
                         onClick={handleBack}

@@ -29,6 +29,7 @@ import BookingOwnerAgentCard from "./BookingOwnerAgentCard";
 import BookingTimeline from "./BookingTimeline";
 import BookingActionBar from "./BookingActionBar";
 import BookingExtensions from "./BookingExtensions";
+import FreshPaymentLinkCard from "./FreshPaymentLinkCard";
 
 export default function BookingDetailView({ bookingId }: { bookingId: string }) {
   const pathname = usePathname();
@@ -178,6 +179,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
 
   return (
     <div className="p-3 sm:p-4 md:p-6 lg:p-10 w-full max-w-[1600px] mx-auto">
+      <FreshPaymentLinkCard bookingUuid={String(booking.id)} />
       <div className="w-full bg-white rounded-xl shadow-sm min-h-[50vh]">
         <div className="p-4 sm:p-5 md:p-8 lg:p-10">
           {/* Header */}

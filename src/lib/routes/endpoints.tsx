@@ -18,6 +18,8 @@ export const API_ROUTES = {
             reassignOwner: (id: string | number) => `/admin/properties/${id}/reassign-owner`,
             verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
             feature: (id: string | number) => `/admin/properties/${id}/feature`,
+            verificationHistory: (propertyId: string | number, verificationId: string | number) =>
+                `/admin/properties/${propertyId}/verifications/${verificationId}/history`,
         },
         bookings: {
             base: '/bookings',
@@ -32,8 +34,10 @@ export const API_ROUTES = {
             userById: (id: string | number) => `/admin/users/${id}`,
             userByUuid: (id: string | number) => `/admin/users/${id}`,
             updateKyc: (id: string | number) => `/admin/users/${id}/kyc`,
+            kycHistory: (id: string | number) => `/admin/users/${id}/kyc/history`,
             roles: '/admin/users/roles',
         },
+        kycQueue: '/admin/kyc/queue',
         integrations: {
             configs: '/admin/integrations/configs',
             configByKey: (key: string) => `/admin/integrations/configs/${key}`,
@@ -63,6 +67,7 @@ export const API_ROUTES = {
         updatePassword: '/profile/password',
         kycStatus: '/profile/kyc-status',
         verifyGovId: '/profile/verify-gov-id',
+        kycDocuments: '/profile/kyc/documents',
         kyc: {
             upload: '/kyc/upload',
             details: (docId: string | number) => `/kyc/${docId}/details`,
@@ -75,6 +80,7 @@ export const API_ROUTES = {
             amenities: (propertyId: string | number) => `/properties/${propertyId}/amenities`,
             media: (propertyId: string | number) => `/properties/${propertyId}/media`,
             verify: (id: string | number) => `/properties/${id}/verify`,
+            verificationMedia: (id: string | number) => `/properties/${id}/verifications/media`,
             units: {
                 base: (propertyId: string | number) => `/properties/${propertyId}/units`,
                 details: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}`,
@@ -94,11 +100,15 @@ export const API_ROUTES = {
     },
     verifications: {
         base: '/verifications',
-        details: (verificationId: string | number) => `/verifications/${verificationId}`
+        details: (verificationId: string | number) => `/verifications/${verificationId}`,
+        myQueue: '/properties/verifications/my-queue',
+        ownerResubmit: (propertyId: string | number) =>
+            `/properties/${propertyId}/verifications/resubmit`,
     },
     bookings: {
         base: '/bookings',
         guestLookup: '/bookings/guest-lookup',
+        guestsDirectory: '/bookings/guests/directory',
         details: (id: string) => `/bookings/${id}`,
         status: (id: string | number) => `/bookings/${id}/status`,
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
@@ -166,6 +176,7 @@ export const API_ROUTES = {
         myDisputes: '/disputes/my',
         details: (id: string | number) => `/disputes/${id}`,
         evidence: (disputeId: string | number) => `/disputes/${disputeId}/evidence`,
+        deleteEvidence: (disputeId: string | number, evidenceId: string | number) => `/disputes/${disputeId}/evidence/${evidenceId}`,
     },
     referrals: {
         myCode: '/referrals/my-code',
@@ -175,13 +186,10 @@ export const API_ROUTES = {
 };
 
 
-const rawUrl = process.env.NEXT_PUBLIC_BASE_API_URL ||
+export const BASE_API_URL = (process.env.NEXT_PUBLIC_BASE_API_URL ||
     process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
     process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
-    "";
-
-export const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_STAGING_API_URL
-// rawUrl.trim().replace(/\/+$/, "");
+    "").trim().replace(/\/+$/, "");
 
 if (typeof window !== 'undefined') {
     console.log('[Endpoints] Initialized BASE_API_URL:', BASE_API_URL);

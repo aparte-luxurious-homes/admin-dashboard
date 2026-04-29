@@ -82,9 +82,20 @@ export default function BookingHeader({
         {isOwner && (
           <button
             onClick={onRaiseDispute}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 border border-amber-300 text-amber-700 bg-amber-50 rounded-lg text-xs sm:text-sm hover:bg-amber-100 transition-colors font-medium"
+            disabled={booking.status !== BookingStatus.CHECKED_OUT}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 border rounded-lg text-xs sm:text-sm transition-colors font-medium ${
+              booking.status === BookingStatus.CHECKED_OUT
+                ? "border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100"
+                : "border-zinc-200 text-zinc-500 bg-zinc-50 cursor-not-allowed opacity-60"
+            }`}
+            title={booking.status !== BookingStatus.CHECKED_OUT ? "Disputes can only be raised after check-out" : ""}
           >
-            <Icon icon="solar:danger-bold-duotone" className="text-sm sm:text-base text-amber-600" />
+            <Icon 
+              icon="solar:danger-bold-duotone" 
+              className={`text-sm sm:text-base ${
+                booking.status === BookingStatus.CHECKED_OUT ? "text-amber-600" : "text-zinc-400"
+              }`} 
+            />
             <span>Raise Dispute</span>
           </button>
         )}

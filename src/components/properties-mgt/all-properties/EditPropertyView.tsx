@@ -15,10 +15,8 @@ import {
   PropertyType,
   PropertyVerificationStatus,
 } from "../types";
-import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
-import { ALL_COUNTRIES } from "@/src/data/countries";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import Image from "next/image";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
@@ -93,15 +91,29 @@ function AddressAutocomplete({
       const { lat, lng } = await getLatLng(results[0]);
       formik.setFieldValue("latitude", lat);
       formik.setFieldValue("longitude", lng);
-      results[0].address_components.forEach((component: any) => {
-        const types = component.types;
-        if (types.includes("locality"))
-          formik.setFieldValue("city", component.long_name);
-        else if (types.includes("administrative_area_level_1"))
-          formik.setFieldValue("state", component.long_name);
-        else if (types.includes("country"))
-          formik.setFieldValue("country", component.long_name);
-      });
+      // Country is locked to Nigeria (componentRestrictions above) — never overwrite.
+      // City fallback chain handles Nigerian addresses where Google often omits
+      // `locality` and uses `administrative_area_level_2` or `sublocality_*` instead.
+      const components: any[] = results[0].address_components || [];
+      const findByType = (type: string) =>
+        components.find((c: any) => c.types?.includes(type))?.long_name || "";
+      const city =
+        findByType("locality") ||
+        findByType("administrative_area_level_2") ||
+        findByType("sublocality_level_1") ||
+        findByType("sublocality") ||
+        findByType("postal_town");
+      const state = findByType("administrative_area_level_1");
+      const street_number = findByType("street_number");
+      const street_name = findByType("route");
+      const postal_code = findByType("postal_code");
+      if (city) formik.setFieldValue("city", city);
+      if (state) formik.setFieldValue("state", state);
+      formik.setFieldValue("street_number", street_number);
+      formik.setFieldValue("street_name", street_name);
+      formik.setFieldValue("postal_code", postal_code);
+      formik.setFieldValue("google_place_id", results[0].place_id || "");
+      formik.setFieldValue("geocode_raw", results[0]);
     } catch (error) {
       console.error("Error geocoding selection:", error);
     }
@@ -366,9 +378,14 @@ export default function EditPropertyView({
       name: propertyData?.name ?? "",
       address: propertyData?.address ?? "",
       type: propertyData?.propertyType ?? propertyData?.property_type ?? PropertyType.DUPLEX,
-      country: propertyData?.country ?? "Nigeria",
-      state: propertyData?.state ?? "Lagos",
-      city: propertyData?.city ?? "Ikeja",
+      country: "Nigeria",
+      state: propertyData?.state ?? "",
+      city: propertyData?.city ?? "",
+      street_number: (propertyData as any)?.street_number ?? "",
+      street_name: (propertyData as any)?.street_name ?? "",
+      postal_code: (propertyData as any)?.postal_code ?? "",
+      landmark: (propertyData as any)?.landmark ?? "",
+      google_place_id: (propertyData as any)?.google_place_id ?? "",
       description: propertyData?.description ?? "",
       latitude: propertyData?.latitude ?? 0,
       longitude: propertyData?.longitude ?? 0,
@@ -404,11 +421,17 @@ export default function EditPropertyView({
 
       const updatePayload: IUpdateProperty = {
         ...values,
+        country: "Nigeria",
         amenities: sortedAmenities,
         property_type: values.type,
         is_pet_allowed: values.petsAllowed,
         is_party_allowed: values.partyAllowed,
         rules: values.rules || undefined,
+        street_number: values.street_number || undefined,
+        street_name: values.street_name || undefined,
+        postal_code: values.postal_code || undefined,
+        landmark: values.landmark || undefined,
+        google_place_id: values.google_place_id || undefined,
       };
 
       mutate(
@@ -794,55 +817,42 @@ export default function EditPropertyView({
                 </Field>
               </div>
 
-              {/* Country / State / City */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Field label="Country">
-                  <CustomFilterDropdown
-                    placeholder={formik.values.country}
-                    options={Object.keys(ALL_COUNTRIES)}
-                    handleSelection={(val) =>
-                      formik.setFieldValue("country", val)
-                    }
-                    selected={formik.values.country}
-                  />
-                </Field>
+              {/* State / City — populated by Google Places autocomplete; editable for corrections.
+                  Country is locked to Nigeria (set in initialValues + payload) and not exposed. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="State">
-                  <CustomFilterDropdown
-                    placeholder="Select state"
-                    options={Object.keys(
-                      ALL_COUNTRIES[formik.values.country] || {},
-                    )}
-                    handleSelection={(val) =>
-                      formik.setFieldValue("state", val)
-                    }
-                    selected={
-                      Object.keys(
-                        ALL_COUNTRIES[formik.values.country] || {},
-                      )?.includes(formik.values.state)
-                        ? formik.values.state
-                        : ""
-                    }
+                  <input
+                    id="state"
+                    type="text"
+                    placeholder="e.g. Lagos"
+                    value={formik.values.state}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
                   />
                 </Field>
                 <Field label="City">
-                  <CustomFilterDropdown
-                    placeholder="Select city"
-                    options={
-                      ALL_COUNTRIES[formik.values.country]?.[
-                        formik.values.state
-                      ] || []
-                    }
-                    handleSelection={(val) => formik.setFieldValue("city", val)}
-                    selected={
-                      ALL_COUNTRIES[formik.values.country]?.[
-                        formik.values.state
-                      ]?.includes(formik.values.city)
-                        ? formik.values.city
-                        : ""
-                    }
+                  <input
+                    id="city"
+                    type="text"
+                    placeholder="e.g. Ikeja"
+                    value={formik.values.city}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
                   />
                 </Field>
               </div>
+
+              {/* Landmark — optional free-text used for guest wayfinding. */}
+              <Field label="Landmark (optional)">
+                <input
+                  id="landmark"
+                  type="text"
+                  placeholder="e.g. Opposite Shoprite Lekki"
+                  value={formik.values.landmark}
+                  onChange={formik.handleChange}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+                />
+              </Field>
             </div>
           </FormCard>
 

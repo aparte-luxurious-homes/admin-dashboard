@@ -79,8 +79,8 @@ const ReviewsView = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 max-w-md relative">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1 max-w-full sm:max-w-md relative">
                             <input
                                 type="text"
                                 value={propertyId}
@@ -90,7 +90,7 @@ const ReviewsView = () => {
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                         </div>
-                        <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                        <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
                             Total Reviews: <span className="text-primary">{totalCount}</span>
                         </div>
                     </div>

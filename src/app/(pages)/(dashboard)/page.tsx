@@ -598,7 +598,7 @@ const Home = () => {
           <Skeleton className="h-[300px] w-full rounded-md" />
         ) : (
           <>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <TableSearch
                 placeholder="Search here..."
                 searchTableFunc={handleSearchProperty}

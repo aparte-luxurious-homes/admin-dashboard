@@ -3,11 +3,14 @@ import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, Users
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
 
+export type NavBadgeKey = 'approvalPending';
+
 export interface ILinkChild {
     name: string,
     pathName: string,
     link: string,
     allow: UserRole[],
+    badgeKey?: NavBadgeKey,
 }
 
 export interface ILink {
@@ -62,6 +65,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.userManagement.admins.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
+            {
+                name: 'KYC Queue',
+                pathName: 'kyc-queue',
+                link: PAGE_ROUTES.dashboard.userManagement.kycQueue.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
         ]
     },
     {
@@ -82,7 +91,13 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Manage verifications',
                 pathName: 'manage-verifications',
                 link: PAGE_ROUTES.dashboard.propertyManagement.manageVerifications.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
+            {
+                name: 'My verifications',
+                pathName: 'my-verifications',
+                link: PAGE_ROUTES.dashboard.propertyManagement.myVerifications.base,
+                allow: [UserRole.AGENT],
             },
         ]
     },
@@ -99,6 +114,13 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'bookings',
                 link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
+            {
+                name: 'Booking requests',
+                pathName: 'requests',
+                link: PAGE_ROUTES.dashboard.bookingManagement.bookingRequests.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+                badgeKey: 'approvalPending',
             },
             {
                 name: 'Booking disputes',

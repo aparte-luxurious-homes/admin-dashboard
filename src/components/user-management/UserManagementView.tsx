@@ -9,6 +9,7 @@ import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
 import { Icon } from "@iconify/react";
 import { CreateUser, OnboardUser, DeleteUser, UpdateUser, GetAssignableRoles } from "@/src/lib/request-handlers/userMgt";
+import { usePermissions } from "@/src/hooks/usePermissions";
 import { toast } from "react-hot-toast";
 import { DotsIcon, FilterIcon, SearchIcon, TrashIcon } from "@/src/components/icons";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
@@ -84,6 +85,7 @@ interface UserManagementViewProps {
 
 const UserManagementView = ({ role, title, description, basePath }: UserManagementViewProps) => {
     const router = useRouter();
+    const { canDeleteUser } = usePermissions();
     const [data, setData] = useState<User[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchValue, setSearchValue] = useState<string>("");
@@ -288,7 +290,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                 setSelectedRow(null);
             },
         },
-        {
+        ...(canDeleteUser ? [{
             label: "Delete",
             Icon: <TrashIcon className="w-4 h-4" color="#EF4444" />,
             onClick: () => {
@@ -319,7 +321,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                 }
                 setSelectedRow(null);
             },
-        }
+        }] : [])
     ];
 
     return (
@@ -375,12 +377,11 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                 <FilterIcon className="w-4 h-4" color="#6B7280" />
                                 <span>Filter</span>
                             </button>
-                            <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                            <div className="hidden sm:block ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
                                 Total Users: <span className="text-primary">{rowCount}</span>
                             </div>
                         </div>
-                        {/* Mobile Total Count */}
-                        <div className="sm:hidden mt-3 bg-white px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600">
+                        <div className="sm:hidden bg-white px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600">
                             Total {role.charAt(0) + role.slice(1).toLowerCase()}s: <span className="text-primary">{rowCount}</span>
                         </div>
                     </div>
@@ -690,7 +691,7 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                                 placeholder="••••••••"
                                                 type="password"
                                                 value={createForm.password}
-                                                onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                                                onChange={e => setCreateForm({ ...createForm, password: e.target.value.replace(/\s/g, '') })}
                                             />
                                         </div>
 

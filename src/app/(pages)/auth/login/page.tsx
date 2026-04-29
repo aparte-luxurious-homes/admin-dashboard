@@ -197,7 +197,7 @@ export default function Login() {
             <InputGroup
               label="Password"
               required
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value.replace(/\s/g, ''))}
               inputType={passwordType}
               inputName="password"
               inputClassName="pr-10"
