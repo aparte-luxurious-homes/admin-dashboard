@@ -53,11 +53,31 @@ export default function CreateBookingView() {
     const [selectionMode, setSelectionMode] = useState<boolean>(true)
     const [properties, setProperties] = useState<IProperty[]>([])
 
+<<<<<<< Updated upstream
     // Selection State
     const [selectedProperty, setSeletedProperty] = useState<IProperty | any | null>(null)
     const [selectedUnit, setSeletedUnit] = useState<IPropertyUnit | null>(null)
     const [selectedUser, setSeletedUser] = useState<IUser | null>(null)
     const [isNewGuest, setIsNewGuest] = useState<boolean>(false)
+=======
+  // Queries — booking-on-behalf needs the full public catalog, not the
+  // OWNER/AGENT scope-to-self view, so opt out of server-side auto-scoping.
+  const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(
+    propPage,
+    propSize,
+    propertySearchTerm,
+    undefined,
+    undefined,
+    null,
+    true,
+  );
+  const { data: guestLookupResult, isLoading: guestLookupLoading } =
+    GuestLookup(guestSearchTerm);
+  const { data: newGuestDuplicateResult, isLoading: newGuestLookupLoading } =
+    GuestLookup(newGuestLookupTerm);
+  const { mutate, isPending } = CreateBooking();
+  const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
+>>>>>>> Stashed changes
 
     // Fetch full property details to get units
     const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } = GetSingleProperty(selectedProperty?.id);

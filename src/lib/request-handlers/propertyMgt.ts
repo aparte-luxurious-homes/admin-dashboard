@@ -24,7 +24,7 @@ enum PropertyRequestKeys {
     updateBookingMode = "updateBookingMode",
 }
 
-export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: UserRole, id?: string | number, isVerified?: boolean | null) {
+export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: UserRole, id?: string | number, isVerified?: boolean | null, includeAll = false) {
     const params: Record<string, any> = {
         page,
         limit,
@@ -33,9 +33,13 @@ export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: U
     if (role) params.role = role;
     if (typeof id === 'number') params.user = String(id);
     if (isVerified !== undefined && isVerified !== null) params.is_verified = isVerified;
+    // OWNER/AGENT callers default to a scope-to-self view server-side. Pass
+    // include_all when the UI needs the full public catalog (booking-on-behalf
+    // flow). Behaviour for ADMIN/staff is unchanged either way.
+    if (includeAll) params.include_all = true;
 
     return useQuery({
-        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role ?? null, id ?? null, isVerified ?? null],
+        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role ?? null, id ?? null, isVerified ?? null, includeAll],
         queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.base, { params }),
         refetchOnWindowFocus: true,
     });
