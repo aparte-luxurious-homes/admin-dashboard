@@ -57,12 +57,6 @@ export default function CreateBookingView() {
   // controls so the UI doesn't offer choices that 403.
   const isAgent = user?.role === UserRole.AGENT;
 
-    // Queries — booking-on-behalf needs the full public catalog, not the
-    // OWNER/AGENT scope-to-self view, so opt out of server-side auto-scoping.
-    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm, undefined, undefined, null, true);
-    const { data: guestLookupResult, isLoading: guestLookupLoading } = GuestLookup(guestSearchTerm);
-    const { mutate, isPending } = CreateBooking();
-    const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
   // State
   const [guestSearchInput, setGuestSearchInput] = useState<string>("");
   const [guestSearchTerm, setGuestSearchTerm] = useState<string>("");
@@ -76,11 +70,16 @@ export default function CreateBookingView() {
   const [duplicateGuestMatch, setDuplicateGuestMatch] = useState<any | null>(null);
   const [duplicateDismissed, setDuplicateDismissed] = useState<boolean>(false);
 
-  // Queries
+  // Queries — booking-on-behalf needs the full public catalog, not the
+  // OWNER/AGENT scope-to-self view, so opt out of server-side auto-scoping.
   const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(
     propPage,
     propSize,
     propertySearchTerm,
+    undefined,
+    undefined,
+    null,
+    true,
   );
   const { data: guestLookupResult, isLoading: guestLookupLoading } =
     GuestLookup(guestSearchTerm);
