@@ -49,7 +49,7 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
 
   const handleResend = () => {
     resendLink(
-      { bookingId: booking.id },
+      { bookingId: booking.id, notify: true },
       {
         onSuccess: (response) => {
           const url = response?.data?.data?.payment_link;
@@ -60,6 +60,38 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
         },
         onError: (error: any) => {
           toast.error(error?.response?.data?.detail || "Failed to resend payment link");
+        },
+      },
+    );
+  };
+
+  // Pay on the guest's behalf: get a fresh checkout URL without notifying the
+  // guest, then open it in a new tab so the agent can complete payment
+  // themselves (e.g., when the guest is in front of them with cash to swipe
+  // on a card or do a transfer through the agent's account).
+  const handlePayOnBehalf = () => {
+    resendLink(
+      { bookingId: booking.id, notify: false },
+      {
+        onSuccess: (response) => {
+          const url = response?.data?.data?.payment_link;
+          if (url) {
+            const win = window.open(url, "_blank", "noopener,noreferrer");
+            if (!win) {
+              // Popup blocked — fall back to toast + copy
+              navigator.clipboard?.writeText(url).catch(() => {});
+              toast.error(
+                "Browser blocked the popup — link copied to clipboard, paste it in a new tab",
+              );
+            } else {
+              toast.success("Opening checkout in a new tab");
+            }
+          } else {
+            toast.error("Could not generate payment link");
+          }
+        },
+        onError: (error: any) => {
+          toast.error(error?.response?.data?.detail || "Failed to open payment link");
         },
       },
     );
@@ -182,12 +214,24 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
             {canResend && (
               <div className={`${canRetry ? "mt-2" : "mt-4 pt-4 border-t border-zinc-200"}`}>
                 <button
+                  onClick={handlePayOnBehalf}
+                  disabled={isResending}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-primary text-white rounded-lg text-xs sm:text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  <Icon icon="mdi:credit-card-fast" className={`text-base ${isResending ? "animate-pulse" : ""}`} />
+                  <span>{isResending ? "Opening..." : "Pay Now on Behalf"}</span>
+                </button>
+                <p className="text-[10px] sm:text-xs text-zinc-500 mt-1.5 text-center">
+                  Opens checkout in a new tab — guest is not notified
+                </p>
+
+                <button
                   onClick={handleResend}
                   disabled={isResending}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white border border-primary text-primary rounded-lg text-xs sm:text-sm hover:bg-primary/5 transition-colors disabled:opacity-50"
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-white border border-primary text-primary rounded-lg text-xs sm:text-sm hover:bg-primary/5 transition-colors disabled:opacity-50"
                 >
                   <Icon icon="mdi:email-send-outline" className={`text-base ${isResending ? "animate-pulse" : ""}`} />
-                  <span>{isResending ? "Sending..." : "Send Payment Link"}</span>
+                  <span>{isResending ? "Sending..." : "Send Payment Link to Guest"}</span>
                 </button>
                 <p className="text-[10px] sm:text-xs text-zinc-500 mt-1.5 text-center">
                   Re-issue and email + SMS the guest a fresh checkout link

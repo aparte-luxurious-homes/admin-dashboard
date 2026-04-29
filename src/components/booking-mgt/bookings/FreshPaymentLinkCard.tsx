@@ -74,6 +74,14 @@ export default function FreshPaymentLinkCard({ bookingUuid }: { bookingUuid: str
               className="flex-1 min-w-[240px] h-9 px-3 text-xs font-mono bg-white border border-emerald-200 rounded-md text-zinc-700 truncate"
               onFocus={(e) => e.currentTarget.select()}
             />
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noreferrer"
+              className="h-9 px-3 text-xs font-semibold text-white bg-primary rounded-md hover:bg-primary/90 transition-colors flex-shrink-0 flex items-center gap-1"
+            >
+              Pay Now on Behalf
+            </a>
             <button
               type="button"
               onClick={handleCopy}

@@ -173,8 +173,13 @@ export function RetryBookingPayment() {
 export function ResendPaymentLink() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/payment-link/resend`),
+        // `notify=false` returns a fresh checkout URL without emailing or
+        // SMSing the guest — used by the "Pay on Behalf" flow where the
+        // agent is handling payment themselves.
+        mutationFn: ({ bookingId, notify = true }: { bookingId: string | number; notify?: boolean }) =>
+            axiosRequest.post(
+                `${API_ROUTES.bookings.details(String(bookingId))}/payment-link/resend?notify=${notify ? "true" : "false"}`,
+            ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
