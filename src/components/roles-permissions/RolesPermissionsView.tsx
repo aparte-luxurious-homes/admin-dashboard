@@ -1,13 +1,22 @@
 "use client"
 
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { useState, useEffect, useCallback } from "react";
-import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import axiosRequest from "@/src/lib/api";
+import { useState, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import { UserRole } from "@/src/lib/enums";
-import { Permission, RolePermissionsResponse } from "@/src/lib/types/permissions";
+import { Permission } from "@/src/lib/types/permissions";
+import {
+    GetAllPermissions,
+    GetRolePermissions,
+    AssignPermissionToRole,
+    RemovePermissionFromRole,
+    SeedPermissions,
+} from "@/src/lib/request-handlers/permissionsMgt";
+import { usePermissions } from "@/src/hooks/usePermissions";
+import CreatePermissionModal from "./CreatePermissionModal";
+import EditPermissionModal from "./EditPermissionModal";
+import DeletePermissionConfirm from "./DeletePermissionConfirm";
 
 const ROLES = [
     { value: UserRole.SUPER_ADMIN, label: "Super Admin", color: "bg-purple-100 text-purple-700" },
@@ -21,10 +30,8 @@ const ROLES = [
 ];
 
 const RolesPermissionsView = () => {
-    const [loading, setLoading] = useState(false);
-    const [seeding, setSeeding] = useState(false);
-    const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
-    const [rolePermissions, setRolePermissions] = useState<Record<string, Permission[]>>({});
+    const { isSuperAdmin } = usePermissions();
+
     const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.ADMIN);
     const [searchValue, setSearchValue] = useState("");
     const [editMode, setEditMode] = useState(false);
@@ -32,147 +39,123 @@ const RolesPermissionsView = () => {
         toAdd: string[];
         toRemove: string[];
     }>({ toAdd: [], toRemove: [] });
+    const [saving, setSaving] = useState(false);
 
-    // Group permissions by resource
-    const groupedPermissions = allPermissions.reduce((acc, perm) => {
-        if (!acc[perm.resource]) {
-            acc[perm.resource] = [];
-        }
-        acc[perm.resource].push(perm);
-        return acc;
-    }, {} as Record<string, Permission[]>);
+    const [createOpen, setCreateOpen] = useState(false);
+    const [editTarget, setEditTarget] = useState<Permission | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Permission | null>(null);
 
-    // Filter permissions by search
-    const filteredResources = Object.keys(groupedPermissions).filter(resource =>
-        resource.toLowerCase().includes(searchValue.toLowerCase()) ||
-        groupedPermissions[resource].some(p =>
-            p.action.toLowerCase().includes(searchValue.toLowerCase())
-        )
-    );
+    const allPermsQuery = GetAllPermissions(500);
+    const roleQuery = GetRolePermissions(selectedRole);
+    const seedMutation = SeedPermissions();
+    const assignMutation = AssignPermissionToRole();
+    const revokeMutation = RemovePermissionFromRole();
 
-    const fetchAllPermissions = useCallback(async () => {
-        try {
-            const response = await axiosRequest.get(API_ROUTES.permissions.base, {
-                params: { limit: 500 }
-            });
-            setAllPermissions(response.data.data || response.data);
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to fetch permissions");
-        }
-    }, []);
+    const currentRolePermissions: Permission[] = roleQuery.data?.permissions ?? [];
 
-    const fetchRolePermissions = useCallback(async (role: UserRole) => {
-        try {
-            const response = await axiosRequest.get(API_ROUTES.permissions.rolePermissions(role));
-            const data: RolePermissionsResponse = response.data.data || response.data;
-            setRolePermissions(prev => ({
-                ...prev,
-                [role]: data.permissions
-            }));
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || `Failed to fetch ${role} permissions`);
-        }
-    }, []);
+    const groupedPermissions = useMemo(() => {
+        const list: Permission[] = allPermsQuery.data ?? [];
+        return list.reduce((acc, perm) => {
+            if (!acc[perm.resource]) acc[perm.resource] = [];
+            acc[perm.resource].push(perm);
+            return acc;
+        }, {} as Record<string, Permission[]>);
+    }, [allPermsQuery.data]);
 
-    const fetchAllRolePermissions = useCallback(async () => {
-        setLoading(true);
-        try {
-            await fetchAllPermissions();
-            for (const role of ROLES) {
-                await fetchRolePermissions(role.value);
-            }
-        } finally {
-            setLoading(false);
-        }
-    }, [fetchAllPermissions, fetchRolePermissions]);
+    const filteredResources = useMemo(() => {
+        const q = searchValue.toLowerCase();
+        if (!q) return Object.keys(groupedPermissions);
+        return Object.keys(groupedPermissions).filter(
+            (resource) =>
+                resource.toLowerCase().includes(q) ||
+                groupedPermissions[resource].some(
+                    (p) =>
+                        p.action.toLowerCase().includes(q) ||
+                        p.name.toLowerCase().includes(q)
+                )
+        );
+    }, [groupedPermissions, searchValue]);
 
-    useEffect(() => {
-        fetchAllRolePermissions();
-    }, [fetchAllRolePermissions]);
-
-    const hasPermission = (permissionId: string): boolean => {
-        const currentPerms = rolePermissions[selectedRole] || [];
-        return currentPerms.some(p => p.id === permissionId) ||
-            pendingChanges.toAdd.includes(permissionId);
+    const hasPermissionForRole = (permissionId: string): boolean => {
+        return (
+            currentRolePermissions.some((p) => p.id === permissionId) ||
+            pendingChanges.toAdd.includes(permissionId)
+        );
     };
 
     const isPendingChange = (permissionId: string): boolean => {
-        return pendingChanges.toAdd.includes(permissionId) ||
-            pendingChanges.toRemove.includes(permissionId);
+        return (
+            pendingChanges.toAdd.includes(permissionId) ||
+            pendingChanges.toRemove.includes(permissionId)
+        );
     };
 
     const togglePermission = (permissionId: string) => {
         if (!editMode) return;
 
-        const currentlyHas = (rolePermissions[selectedRole] || []).some(p => p.id === permissionId);
+        const currentlyHas = currentRolePermissions.some((p) => p.id === permissionId);
         const inToAdd = pendingChanges.toAdd.includes(permissionId);
         const inToRemove = pendingChanges.toRemove.includes(permissionId);
 
-        setPendingChanges(prev => {
+        setPendingChanges((prev) => {
             if (currentlyHas) {
-                // Currently has permission
-                if (inToRemove) {
-                    // Cancel removal
-                    return {
-                        ...prev,
-                        toRemove: prev.toRemove.filter(id => id !== permissionId)
-                    };
-                } else {
-                    // Mark for removal
-                    return {
-                        ...prev,
-                        toRemove: [...prev.toRemove, permissionId]
-                    };
-                }
-            } else {
-                // Currently doesn't have permission
-                if (inToAdd) {
-                    // Cancel addition
-                    return {
-                        ...prev,
-                        toAdd: prev.toAdd.filter(id => id !== permissionId)
-                    };
-                } else {
-                    // Mark for addition
-                    return {
-                        ...prev,
-                        toAdd: [...prev.toAdd, permissionId]
-                    };
-                }
+                return inToRemove
+                    ? { ...prev, toRemove: prev.toRemove.filter((id) => id !== permissionId) }
+                    : { ...prev, toRemove: [...prev.toRemove, permissionId] };
             }
+            return inToAdd
+                ? { ...prev, toAdd: prev.toAdd.filter((id) => id !== permissionId) }
+                : { ...prev, toAdd: [...prev.toAdd, permissionId] };
         });
     };
 
     const saveChanges = async () => {
-        if (pendingChanges.toAdd.length === 0 && pendingChanges.toRemove.length === 0) {
+        const totalChanges = pendingChanges.toAdd.length + pendingChanges.toRemove.length;
+        if (totalChanges === 0) {
             toast.error("No changes to save");
             return;
         }
 
-        setLoading(true);
+        setSaving(true);
         try {
-            // Add permissions
-            for (const permId of pendingChanges.toAdd) {
-                await axiosRequest.post(
-                    API_ROUTES.permissions.assignToRole(selectedRole, permId)
-                );
-            }
+            const addOps = pendingChanges.toAdd.map((id) =>
+                assignMutation
+                    .mutateAsync({ role: selectedRole, permissionId: id })
+                    .then(() => ({ status: "ok" as const, op: "add" as const, id }))
+                    .catch((err) => ({ status: "fail" as const, op: "add" as const, id, err }))
+            );
+            const removeOps = pendingChanges.toRemove.map((id) =>
+                revokeMutation
+                    .mutateAsync({ role: selectedRole, permissionId: id })
+                    .then(() => ({ status: "ok" as const, op: "remove" as const, id }))
+                    .catch((err) => ({ status: "fail" as const, op: "remove" as const, id, err }))
+            );
 
-            // Remove permissions
-            for (const permId of pendingChanges.toRemove) {
-                await axiosRequest.delete(
-                    API_ROUTES.permissions.removeFromRole(selectedRole, permId)
-                );
-            }
+            const results = await Promise.all([...addOps, ...removeOps]);
 
-            toast.success("Permissions updated successfully");
-            setPendingChanges({ toAdd: [], toRemove: [] });
-            setEditMode(false);
-            await fetchRolePermissions(selectedRole);
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to update permissions");
+            const failedAdds = results
+                .filter((r) => r.status === "fail" && r.op === "add")
+                .map((r) => r.id);
+            const failedRemoves = results
+                .filter((r) => r.status === "fail" && r.op === "remove")
+                .map((r) => r.id);
+            const succeededCount = results.filter((r) => r.status === "ok").length;
+
+            if (succeededCount > 0) {
+                toast.success(`${succeededCount} permission change(s) saved`);
+            }
+            if (failedAdds.length || failedRemoves.length) {
+                toast.error(
+                    `${failedAdds.length + failedRemoves.length} change(s) failed; left in pending state for retry`
+                );
+                // Keep only the failed ones — successes are now reflected on the server.
+                setPendingChanges({ toAdd: failedAdds, toRemove: failedRemoves });
+            } else {
+                setPendingChanges({ toAdd: [], toRemove: [] });
+                setEditMode(false);
+            }
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
@@ -182,17 +165,16 @@ const RolesPermissionsView = () => {
     };
 
     const seedPermissions = async () => {
-        setSeeding(true);
         try {
-            const response = await axiosRequest.post(API_ROUTES.permissions.seed);
-            toast.success(response.data.data?.message || "Permissions seeded successfully");
-            await fetchAllRolePermissions();
+            const result = await seedMutation.mutateAsync();
+            toast.success(result.message || "Permissions seeded successfully");
         } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to seed permissions");
-        } finally {
-            setSeeding(false);
+            toast.error(err?.response?.data?.message || "Failed to seed permissions");
         }
     };
+
+    const loading = allPermsQuery.isLoading || roleQuery.isLoading;
+    const seeding = seedMutation.isPending;
 
     return (
         <div className="p-6">
@@ -206,15 +188,28 @@ const RolesPermissionsView = () => {
                                 Manage role-based access control and permissions
                             </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                             {!editMode ? (
                                 <>
                                     <button
+                                        onClick={() => setCreateOpen(true)}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700 font-medium"
+                                    >
+                                        <Icon icon="mdi:plus" className="w-4 h-4" />
+                                        <span>Create Permission</span>
+                                    </button>
+                                    <button
                                         onClick={() => setEditMode(true)}
-                                        className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2"
+                                        disabled={selectedRole === UserRole.SUPER_ADMIN}
+                                        className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title={
+                                            selectedRole === UserRole.SUPER_ADMIN
+                                                ? "Super Admin permissions cannot be edited"
+                                                : undefined
+                                        }
                                     >
                                         <Icon icon="mdi:pencil" className="w-4 h-4" />
-                                        <span>Edit Permissions</span>
+                                        <span>Edit Role</span>
                                     </button>
                                     <button
                                         onClick={seedPermissions}
@@ -229,18 +224,28 @@ const RolesPermissionsView = () => {
                                 <>
                                     <button
                                         onClick={cancelChanges}
-                                        className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium"
+                                        disabled={saving}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium disabled:opacity-50"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         onClick={saveChanges}
-                                        disabled={loading || (pendingChanges.toAdd.length === 0 && pendingChanges.toRemove.length === 0)}
+                                        disabled={
+                                            saving ||
+                                            (pendingChanges.toAdd.length === 0 &&
+                                                pendingChanges.toRemove.length === 0)
+                                        }
                                         className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2 disabled:opacity-50"
                                     >
                                         <Icon icon="mdi:content-save" className="w-4 h-4" />
                                         <span>
-                                            {loading ? "Saving..." : `Save Changes ${pendingChanges.toAdd.length + pendingChanges.toRemove.length > 0 ? `(${pendingChanges.toAdd.length + pendingChanges.toRemove.length})` : ""}`}
+                                            {saving
+                                                ? "Saving..."
+                                                : `Save Changes${pendingChanges.toAdd.length + pendingChanges.toRemove.length > 0
+                                                    ? ` (${pendingChanges.toAdd.length + pendingChanges.toRemove.length})`
+                                                    : ""
+                                                }`}
                                         </span>
                                     </button>
                                 </>
@@ -271,7 +276,7 @@ const RolesPermissionsView = () => {
                                 }}
                                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-medium bg-white"
                             >
-                                {ROLES.map(role => (
+                                {ROLES.map((role) => (
                                     <option key={role.value} value={role.value}>
                                         {role.label}
                                     </option>
@@ -279,7 +284,7 @@ const RolesPermissionsView = () => {
                             </select>
                         </div>
                         <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
-                            Total Permissions: <span className="text-primary">{(rolePermissions[selectedRole] || []).length}</span>
+                            Total Permissions: <span className="text-primary">{currentRolePermissions.length}</span>
                         </div>
                     </div>
                 </div>
@@ -294,7 +299,7 @@ const RolesPermissionsView = () => {
                         </div>
                     ) : filteredResources.length > 0 ? (
                         <div className="space-y-6">
-                            {filteredResources.map(resource => (
+                            {filteredResources.map((resource) => (
                                 <div key={resource} className="border border-gray-200 rounded-lg overflow-hidden">
                                     <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                                         <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide flex items-center gap-2">
@@ -303,14 +308,16 @@ const RolesPermissionsView = () => {
                                         </h3>
                                     </div>
                                     <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                                        {groupedPermissions[resource].map(permission => {
-                                            const checked = hasPermission(permission.id);
+                                        {groupedPermissions[resource].map((permission) => {
+                                            const checked = hasPermissionForRole(permission.id);
                                             const pending = isPendingChange(permission.id);
+                                            const checkedActual =
+                                                checked && !pendingChanges.toRemove.includes(permission.id);
 
                                             return (
-                                                <label
+                                                <div
                                                     key={permission.id}
-                                                    className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all cursor-pointer ${editMode ? "hover:border-primary/50" : ""
+                                                    className={`group relative flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${editMode ? "hover:border-primary/50 cursor-pointer" : ""
                                                         } ${checked
                                                             ? pending
                                                                 ? "border-orange-300 bg-orange-50"
@@ -318,14 +325,16 @@ const RolesPermissionsView = () => {
                                                             : pending
                                                                 ? "border-orange-300 bg-orange-50"
                                                                 : "border-gray-200 bg-white"
-                                                        } ${!editMode ? "cursor-default" : ""}`}
+                                                        }`}
+                                                    onClick={() => togglePermission(permission.id)}
                                                 >
                                                     <input
                                                         type="checkbox"
-                                                        checked={checked && !pendingChanges.toRemove.includes(permission.id)}
+                                                        checked={checkedActual}
                                                         onChange={() => togglePermission(permission.id)}
                                                         disabled={!editMode || selectedRole === UserRole.SUPER_ADMIN}
                                                         className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary disabled:opacity-50"
+                                                        onClick={(e) => e.stopPropagation()}
                                                     />
                                                     <div className="flex-1 min-w-0">
                                                         <div className="text-sm font-medium text-gray-900 truncate">
@@ -333,11 +342,41 @@ const RolesPermissionsView = () => {
                                                         </div>
                                                         {pending && (
                                                             <div className="text-xs text-orange-600 font-medium">
-                                                                {pendingChanges.toAdd.includes(permission.id) ? "To Add" : "To Remove"}
+                                                                {pendingChanges.toAdd.includes(permission.id)
+                                                                    ? "To Add"
+                                                                    : "To Remove"}
                                                             </div>
                                                         )}
                                                     </div>
-                                                </label>
+                                                    {!editMode && (
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditTarget(permission);
+                                                                }}
+                                                                title="Edit description"
+                                                                className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                                                            >
+                                                                <Icon icon="mdi:pencil" className="w-4 h-4" />
+                                                            </button>
+                                                            {isSuperAdmin && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setDeleteTarget(permission);
+                                                                    }}
+                                                                    title="Delete permission"
+                                                                    className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-600"
+                                                                >
+                                                                    <Icon icon="mdi:trash-can-outline" className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             );
                                         })}
                                     </div>
@@ -369,6 +408,18 @@ const RolesPermissionsView = () => {
                     </div>
                 )}
             </div>
+
+            <CreatePermissionModal isOpen={createOpen} onClose={() => setCreateOpen(false)} />
+            <EditPermissionModal
+                isOpen={!!editTarget}
+                onClose={() => setEditTarget(null)}
+                permission={editTarget}
+            />
+            <DeletePermissionConfirm
+                isOpen={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                permission={deleteTarget}
+            />
         </div>
     );
 };

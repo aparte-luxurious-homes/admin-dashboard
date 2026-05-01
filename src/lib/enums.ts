@@ -13,7 +13,6 @@ export enum UserRole {
     GUEST = 'GUEST',
     AGENT = 'AGENT',
     OWNER = 'OWNER',
-    MANAGER = 'MANAGER',
 }
 
 export enum Gender {
