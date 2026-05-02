@@ -14,10 +14,15 @@ const ReferralsPage = () => {
     const [page, setPage] = useState(1);
     const pageSize = 10;
 
-    const { data: adminData, isLoading: adminLoading } = useAdminReferralRelationships({
-        page,
-        size: pageSize,
-    });
+    // Only fire the admin-only relationships query for admin-tier viewers.
+    // Without this gate, AGENTs visiting their referral-code page would
+    // trigger a background 403 against /admin/referrals. The page already
+    // hides the relationships table behind `isAdmin`, so the data is never
+    // rendered for them anyway.
+    const { data: adminData, isLoading: adminLoading } = useAdminReferralRelationships(
+        { page, size: pageSize },
+        { enabled: isAdmin },
+    );
 
     const { data: myReferralInfo, isLoading: infoLoading } = useMyReferralInfo();
 

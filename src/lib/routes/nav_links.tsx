@@ -216,10 +216,15 @@ export const NAV_LINKS: ILink[] = [
         secondary: true,
         children: [
             {
+                // Overview shows the user's own referral code + link via
+                // useMyReferralInfo (open to any authenticated user); for admins
+                // it also shows the platform-wide referral relationships table
+                // (gated inside the page by `isAdmin`). AGENT lands here to grab
+                // their referral code — the admin-only section stays hidden.
                 name: 'Overview',
                 pathName: 'referrals',
                 link: PAGE_ROUTES.dashboard.referrals.base,
-                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT],
             },
             {
                 name: 'My Referrals',
