@@ -17,13 +17,26 @@ interface PhoneOtpModalProps {
 }
 
 const OTP_LENGTH = 6;
-const RESEND_COOLDOWN_SECONDS = 30;
+const RESEND_COOLDOWN_SECONDS = 60; // matches backend rate limit (services/auth/services.py:866)
 
 const maskPhone = (phone: string): string => {
     if (!phone) return "";
     if (phone.length <= 4) return phone;
     const last4 = phone.slice(-4);
     return `${phone.slice(0, 2)}${"*".repeat(Math.max(0, phone.length - 6))}${last4}`;
+};
+
+// Backend returns errors as `{detail: "..."}` (string) or `{detail: {message: "..."}}`
+// (object with code) or `{message: "..."}` depending on the handler. Pull whichever is set.
+const extractApiMessage = (err: any, fallback: string): string => {
+    const data = err?.response?.data;
+    if (!data) return err?.message || fallback;
+    const candidate =
+        (typeof data.detail === "string" && data.detail) ||
+        data.detail?.message ||
+        data.message ||
+        err?.message;
+    return typeof candidate === "string" && candidate ? candidate : fallback;
 };
 
 const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
@@ -58,13 +71,7 @@ const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
             toast.success("Phone verified. Welcome back.");
             // useVerifyPhoneOtp's onSuccess handles the redirect.
         } catch (err: any) {
-            const message =
-                err?.response?.data?.message ||
-                err?.response?.data?.detail?.message ||
-                err?.response?.data?.detail ||
-                err?.message ||
-                "Invalid OTP. Please try again.";
-            toast.error(typeof message === "string" ? message : "Invalid OTP. Please try again.");
+            toast.error(extractApiMessage(err, "Invalid OTP. Please try again."));
             setDigits(Array(OTP_LENGTH).fill(""));
             inputRefs.current[0]?.focus();
         }
@@ -119,9 +126,12 @@ const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
             toast.success("New OTP sent to your phone.");
             setResendCooldown(RESEND_COOLDOWN_SECONDS);
         } catch (err: any) {
-            toast.error(
-                err?.response?.data?.message || "Couldn't resend OTP. Try the email fallback below."
-            );
+            toast.error(extractApiMessage(err, "Couldn't resend OTP. Try the email fallback below."));
+            // Backend rate-limits at 60s. On 429, lock the button so the user
+            // sees a visible countdown instead of being able to spam-retry.
+            if (err?.response?.status === 429) {
+                setResendCooldown(RESEND_COOLDOWN_SECONDS);
+            }
         }
     };
 
@@ -131,9 +141,10 @@ const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
             toast.success("OTP sent to the email on your account.");
             setResendCooldown(RESEND_COOLDOWN_SECONDS);
         } catch (err: any) {
-            toast.error(
-                err?.response?.data?.message || "Couldn't send OTP to email. Contact support."
-            );
+            toast.error(extractApiMessage(err, "Couldn't send OTP to email. Contact support."));
+            if (err?.response?.status === 429) {
+                setResendCooldown(RESEND_COOLDOWN_SECONDS);
+            }
         }
     };
 
