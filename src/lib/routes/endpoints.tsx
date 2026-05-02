@@ -111,6 +111,7 @@ export const API_ROUTES = {
     },
     bookings: {
         base: '/bookings',
+        upcoming: '/bookings/upcoming',
         guestLookup: '/bookings/guest-lookup',
         guestsDirectory: '/bookings/guests/directory',
         details: (id: string) => `/bookings/${id}`,
@@ -157,6 +158,7 @@ export const API_ROUTES = {
     statistic: {
         base: '/stats',
         gatewayBalances: '/stats/gateway-balances',
+        adminQueues: '/stats/admin/queues',
     },
     transactions: {
         base: '/wallets/transactions',
