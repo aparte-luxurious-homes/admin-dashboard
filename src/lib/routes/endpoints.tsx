@@ -38,6 +38,7 @@ export const API_ROUTES = {
             userByUuid: (id: string | number) => `/admin/users/${id}`,
             updateKyc: (id: string | number) => `/admin/users/${id}/kyc`,
             kycHistory: (id: string | number) => `/admin/users/${id}/kyc/history`,
+            uploadKycOnBehalf: (id: string | number) => `/admin/users/${id}/kyc/documents`,
             roles: '/admin/users/roles',
         },
         kycQueue: '/admin/kyc/queue',

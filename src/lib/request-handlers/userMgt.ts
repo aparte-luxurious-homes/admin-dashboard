@@ -12,6 +12,7 @@ enum UsersRequestKeys {
     kycHistory = "kycHistory",
     kycQueue = "kycQueue",
     updateKyc = "updateKyc",
+    uploadKycOnBehalf = "uploadKycOnBehalf",
 }
 
 export function GetAllUsers(page = 1, size = 10, searchQuery = '', role: UserRole | string = '', isVerified: string = '') {
@@ -118,6 +119,39 @@ export function UpdateUserKyc() {
             payload: { status: 'PENDING' | 'VERIFIED' | 'REJECTED'; rejection_reason?: string };
         }) => axiosRequest.patch(API_ROUTES.admin.users.updateKyc(userId), payload),
         onSuccess: (_data, vars) => {
+            queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.kycHistory, vars.userId] });
+            queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.kycQueue] });
+            queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.getAllUsers] });
+        },
+    });
+}
+
+// Admin-on-behalf KYC document upload. Mirrors the self-serve upload contract
+// but the endpoint expects multipart/form-data with `document_type`, `file`,
+// and an optional `notes` field. Backend gates access to {SUPER_ADMIN, ADMIN,
+// OPERATIONS_ADMIN} via require_roles.
+export function UploadKycOnBehalf() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, documentType, file, notes }: {
+            userId: string | number;
+            documentType: string;
+            file: File;
+            notes?: string;
+        }) => {
+            const form = new FormData();
+            form.append("document_type", documentType);
+            form.append("file", file);
+            if (notes) form.append("notes", notes);
+            return axiosRequest.post(
+                API_ROUTES.admin.users.uploadKycOnBehalf(userId),
+                form,
+                { headers: { "Content-Type": "multipart/form-data" } },
+            );
+        },
+        onSuccess: (_data, vars) => {
+            // Refresh the user detail + KYC timeline + queue so the new
+            // PENDING document shows up immediately.
             queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.kycHistory, vars.userId] });
             queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.kycQueue] });
             queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.getAllUsers] });
