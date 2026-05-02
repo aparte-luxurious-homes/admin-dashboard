@@ -7,6 +7,9 @@ export const API_ROUTES = {
         passwordReset: '/auth/password/reset',
         resendOtp: '/auth/otp/resend',
         logout: '/auth/logout',
+        requestPhoneOtp: '/auth/phone/request-otp',
+        requestPhoneOtpViaEmail: '/auth/phone/request-otp-via-email',
+        verifyPhoneOtp: '/auth/phone/verify',
     },
     admin: {
         kyc: {

@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import axiosRequest from "@/lib/api";
 import { setUser, clearUser } from "@/lib/slices/authSlice";
 import { useEffect } from "react";
-// import { BASE_API_URL } from "../lib/routes/endpoints";
+import { API_ROUTES } from "../lib/routes/endpoints";
 import { ILoginResponse, IUser, IBaseResponse } from "../lib/types";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
@@ -171,6 +171,92 @@ export const useLogin = () => {
       Cookies.remove("token");
       // console.error('[useLogin] Login failed:', error);
     }
+  });
+};
+
+// 🔹 Phone-OTP request (resend SMS)
+export const useRequestPhoneOtp = () => {
+  return useMutation({
+    mutationFn: async ({ phone }: { phone: string }) => {
+      const response = await axiosRequest.post(API_ROUTES.auth.requestPhoneOtp, { phone });
+      return response.data;
+    },
+  });
+};
+
+// 🔹 Phone-OTP request via email (DND fallback)
+export const useRequestPhoneOtpViaEmail = () => {
+  return useMutation({
+    mutationFn: async ({ phone }: { phone: string }) => {
+      const response = await axiosRequest.post(
+        API_ROUTES.auth.requestPhoneOtpViaEmail,
+        { phone }
+      );
+      return response.data;
+    },
+  });
+};
+
+// 🔹 Phone-OTP verify (completes login, mirrors useLogin's onSuccess)
+export const useVerifyPhoneOtp = () => {
+  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async ({ phone, otp }: { phone: string; otp: string }) => {
+      const response = await axiosRequest.post<IBaseResponse<ILoginResponse> | ILoginResponse>(
+        API_ROUTES.auth.verifyPhoneOtp,
+        { phone, otp }
+      );
+
+      const raw = response.data as any;
+      const payload: ILoginResponse = raw?.data?.user ? raw.data : raw;
+
+      if (!payload?.user || !payload?.authorization) {
+        throw new Error("Invalid verify response from server");
+      }
+
+      if (payload.user.role === UserRole.GUEST) {
+        throw new Error(
+          "Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support."
+        );
+      }
+
+      const isProduction = window.location.protocol === "https:";
+      const hostname = window.location.hostname;
+      const domain = hostname.includes("aparte.ng") ? ".aparte.ng" : undefined;
+
+      const cookieOptions: any = {
+        expires: 7,
+        secure: isProduction,
+        sameSite: "Lax" as const,
+        path: "/",
+      };
+      if (domain) cookieOptions.domain = domain;
+
+      Cookies.set("token", payload.authorization.token, cookieOptions);
+
+      const verifyToken = Cookies.get("token");
+      if (!verifyToken && domain) {
+        const fallbackOptions = { ...cookieOptions };
+        delete fallbackOptions.domain;
+        Cookies.set("token", payload.authorization.token, fallbackOptions);
+      }
+
+      return payload.user;
+    },
+    onSuccess: async (user) => {
+      dispatch(setUser(user));
+      queryClient.setQueryData(["authUser"], user);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      router.replace(PAGE_ROUTES.dashboard.base);
+    },
+    onError: () => {
+      // Don't remove the cookie here — the user just hasn't completed verification
+      // yet. They may retry the OTP. The login mutation already cleared any stale
+      // token before this flow began.
+    },
   });
 };
 
