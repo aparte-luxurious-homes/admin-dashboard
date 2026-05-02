@@ -444,12 +444,25 @@ const UserManagementView = ({ role, title, description, basePath }: UserManageme
                                                 </td>
                                             )}
                                             <td className="px-6 py-4 text-center">
-                                                <span className={`px-2 py-1 rounded-full text-[10px] font-semibold uppercase ${(user.profile?.kyc_status || user.profile?.kycStatus) === 'VERIFIED' ? 'bg-green-100 text-green-700' :
-                                                    (user.profile?.kyc_status || user.profile?.kycStatus) === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                                        'bg-yellow-100 text-yellow-700'
-                                                    }`}>
-                                                    {user.profile?.kyc_status || user.profile?.kycStatus || 'PENDING'}
-                                                </span>
+                                                {(() => {
+                                                    // The /admin/users list response flattens KYC to a top-level
+                                                    // `kycStatus` field. Detail responses nest it under `profile`.
+                                                    // Read both — list view reads top-level; component is robust
+                                                    // to either shape so future serialization changes don't break it.
+                                                    const kyc = (user as any).kycStatus
+                                                        || (user as any).kyc_status
+                                                        || user.profile?.kycStatus
+                                                        || user.profile?.kyc_status
+                                                        || 'PENDING';
+                                                    const cls = kyc === 'VERIFIED' ? 'bg-green-100 text-green-700'
+                                                        : kyc === 'REJECTED' ? 'bg-red-100 text-red-700'
+                                                            : 'bg-yellow-100 text-yellow-700';
+                                                    return (
+                                                        <span className={`px-2 py-1 rounded-full text-[10px] font-semibold uppercase ${cls}`}>
+                                                            {kyc}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                                                 <Badge status={user.is_verified ?? user.isVerified ?? false} />
