@@ -118,6 +118,7 @@ export const API_ROUTES = {
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
         approveRequest: (id: string | number) => `/bookings/${id}/approve-request`,
         rejectRequest: (id: string | number) => `/bookings/${id}/reject-request`,
+        reconcilePayment: (id: string | number) => `/bookings/${id}/reconcile-payment`,
         extensions: {
             base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
             listAll: '/bookings/extensions/all',

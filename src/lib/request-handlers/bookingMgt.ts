@@ -170,6 +170,29 @@ export function RetryBookingPayment() {
     });
 }
 
+// Admin remediation: attach a gateway-side payment reference (copied from
+// Paystack/Monnify/Flutterwave dashboard) to a stuck booking and finalize it.
+// Use when RetryBookingPayment can't resolve because the booking is stuck on
+// an abandoned alternate payment-link reference. Backend gates this to
+// {SUPER_ADMIN, ADMIN, OPERATIONS_ADMIN}.
+export function ReconcileBookingPayment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId, provider, payment_reference }: {
+            bookingId: string | number;
+            provider: "PAYSTACK" | "MONNIFY" | "FLUTTERWAVE";
+            payment_reference: string;
+        }) => axiosRequest.post(
+            API_ROUTES.bookings.reconcilePayment(bookingId),
+            { provider, payment_reference },
+        ),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
 export function ResendPaymentLink() {
     const queryClient = useQueryClient();
     return useMutation({
