@@ -159,6 +159,7 @@ export const API_ROUTES = {
         base: '/stats',
         gatewayBalances: '/stats/gateway-balances',
         adminQueues: '/stats/admin/queues',
+        adminAgentPerformance: '/stats/admin/agent-performance',
     },
     transactions: {
         base: '/wallets/transactions',
