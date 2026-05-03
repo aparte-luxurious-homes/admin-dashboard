@@ -114,6 +114,10 @@ export const PAGE_ROUTES = {
         rolesPermissions: {
             base: '/roles-permissions',
         },
+        reports: {
+            base: '/reports',
+            agentPerformance: '/reports/agent-performance',
+        },
         wallet: {
             base: '/wallet',
         }
