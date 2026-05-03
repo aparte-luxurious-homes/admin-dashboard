@@ -3,9 +3,20 @@
 import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
-import { KycStatus } from "@/src/lib/enums";
+import { KycStatus, UserRole } from "@/src/lib/enums";
 import { UpdateUserKyc } from "@/src/lib/request-handlers/userMgt";
+import { usePermissions } from "@/src/hooks/usePermissions";
 import type { KycDocument, UserDetail } from "./user-detail.types";
+import KycUploadOnBehalfModal from "./KycUploadOnBehalfModal";
+
+// Roles that can upload KYC documents on behalf of a user. Mirrors the backend
+// gate at /admin/users/{id}/kyc/documents (services/users/router.py). SUPPORT_ADMIN
+// is intentionally excluded — they decide on submitted docs, they don't submit.
+const KYC_UPLOAD_ROLES = new Set<string>([
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.OPERATIONS_ADMIN,
+]);
 
 interface Props {
     user: UserDetail;
@@ -103,6 +114,10 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<string>(currentStatus);
     const [reason, setReason] = useState("");
+    const [uploadOpen, setUploadOpen] = useState(false);
+
+    const { role } = usePermissions();
+    const canUploadOnBehalf = !!role && KYC_UPLOAD_ROLES.has(role);
 
     const updateMutation = UpdateUserKyc();
 
@@ -177,16 +192,28 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
                         </div>
                     </div>
                     {!isEditing && (
-                        <button
-                            onClick={() => {
-                                setSelectedStatus(currentStatus);
-                                setReason("");
-                                setIsEditing(true);
-                            }}
-                            className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium flex items-center gap-2"
-                        >
-                            <Icon icon="mdi:pencil" className="w-4 h-4" /> Update status
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {canUploadOnBehalf && (
+                                <button
+                                    onClick={() => setUploadOpen(true)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium flex items-center gap-2"
+                                    title="Upload KYC document on behalf of this user"
+                                >
+                                    <Icon icon="mdi:cloud-upload-outline" className="w-4 h-4" />
+                                    Upload on behalf
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    setSelectedStatus(currentStatus);
+                                    setReason("");
+                                    setIsEditing(true);
+                                }}
+                                className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium flex items-center gap-2"
+                            >
+                                <Icon icon="mdi:pencil" className="w-4 h-4" /> Update status
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -266,6 +293,20 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
                         </button>
                     </div>
                 </div>
+            )}
+
+            {canUploadOnBehalf && (
+                <KycUploadOnBehalfModal
+                    isOpen={uploadOpen}
+                    onClose={() => setUploadOpen(false)}
+                    userId={user.id}
+                    userLabel={
+                        [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() ||
+                        user.email ||
+                        undefined
+                    }
+                    onUploaded={onUpdate}
+                />
             )}
         </section>
     );

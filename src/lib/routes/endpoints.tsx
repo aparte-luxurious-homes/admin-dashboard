@@ -7,6 +7,9 @@ export const API_ROUTES = {
         passwordReset: '/auth/password/reset',
         resendOtp: '/auth/otp/resend',
         logout: '/auth/logout',
+        requestPhoneOtp: '/auth/phone/request-otp',
+        requestPhoneOtpViaEmail: '/auth/phone/request-otp-via-email',
+        verifyPhoneOtp: '/auth/phone/verify',
     },
     admin: {
         kyc: {
@@ -35,6 +38,7 @@ export const API_ROUTES = {
             userByUuid: (id: string | number) => `/admin/users/${id}`,
             updateKyc: (id: string | number) => `/admin/users/${id}/kyc`,
             kycHistory: (id: string | number) => `/admin/users/${id}/kyc/history`,
+            uploadKycOnBehalf: (id: string | number) => `/admin/users/${id}/kyc/documents`,
             roles: '/admin/users/roles',
         },
         kycQueue: '/admin/kyc/queue',
@@ -107,6 +111,7 @@ export const API_ROUTES = {
     },
     bookings: {
         base: '/bookings',
+        upcoming: '/bookings/upcoming',
         guestLookup: '/bookings/guest-lookup',
         guestsDirectory: '/bookings/guests/directory',
         details: (id: string) => `/bookings/${id}`,
@@ -114,6 +119,7 @@ export const API_ROUTES = {
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
         approveRequest: (id: string | number) => `/bookings/${id}/approve-request`,
         rejectRequest: (id: string | number) => `/bookings/${id}/reject-request`,
+        reconcilePayment: (id: string | number) => `/bookings/${id}/reconcile-payment`,
         extensions: {
             base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
             listAll: '/bookings/extensions/all',
@@ -152,6 +158,7 @@ export const API_ROUTES = {
     statistic: {
         base: '/stats',
         gatewayBalances: '/stats/gateway-balances',
+        adminQueues: '/stats/admin/queues',
     },
     transactions: {
         base: '/wallets/transactions',

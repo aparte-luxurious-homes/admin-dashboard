@@ -39,12 +39,18 @@ export const useMyReferrals = (params?: { page?: number; size?: number }) => {
 };
 
 // 🔹 View All Referral Relationships (Admin)
-export const useAdminReferralRelationships = (params?: { page?: number; size?: number }) => {
+// `enabled` lets the caller skip this query for non-admins (the endpoint is
+// require_admin on the backend; firing it as AGENT just produces a noisy 403).
+export const useAdminReferralRelationships = (
+    params?: { page?: number; size?: number },
+    options?: { enabled?: boolean },
+) => {
     return useQuery({
         queryKey: ["admin-referral-relationships", params],
         queryFn: async () => {
             const response = await axiosRequest.get<IBaseResponse<IAdminPaginatedResponse<IReferralRelationship>>>(API_ROUTES.admin.referrals.base, { params });
             return response.data.data;
         },
+        enabled: options?.enabled ?? true,
     });
 };

@@ -6,7 +6,6 @@ import Button from "@/src/components/button";
 import InputGroup from "../../../../components/formcomponent/InputGroup";
 import Image from "next/image";
 import Link from "next/link";
-import AparteeText from "../../../../../public/svg/logo_text_white.svg";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from "react-hot-toast";
 import Cookies from "js-cookie";
@@ -20,6 +19,7 @@ import Loader from "@/src/components/loader";
 import { UserRole } from "@/src/lib/enums";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import useValidator from "@/src/hooks/useValidator";
+import PhoneOtpModal from "@/src/components/auth/PhoneOtpModal";
 
 export default function Login() {
   const { mutate: loginMutation, isPending } = useLogin();
@@ -28,6 +28,7 @@ export default function Login() {
   const [validator, triggerValidation] = useValidator();
   const [passwordType, setPasswordType] = useState<string>("password");
   const [isTokenAuthenticating, setIsTokenAuthenticating] = useState(false);
+  const [phoneOtpPhone, setPhoneOtpPhone] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
@@ -113,6 +114,19 @@ export default function Login() {
         { email, password },
         {
           onError: (error: any) => {
+            // Phone verification gate: backend returns 401 with detail.code so
+            // the frontend can step the user through SMS-OTP entry instead of
+            // dead-ending on a generic toast.
+            const detail = error?.response?.data?.detail;
+            if (detail && typeof detail === "object" && detail.code === "PHONE_VERIFICATION_REQUIRED" && detail.phone) {
+              toast(detail.message || "Phone verification required.", {
+                icon: "📱",
+                duration: 4000,
+              });
+              setPhoneOtpPhone(detail.phone as string);
+              return;
+            }
+
             const errorMessage = error?.response?.data?.message ||
               (error.message?.includes('Access Denied') ? error.message : 'Login failed. Please check your credentials.');
 
@@ -233,6 +247,12 @@ export default function Login() {
           </div>
         </form>
       </main>
+
+      <PhoneOtpModal
+        isOpen={!!phoneOtpPhone}
+        phone={phoneOtpPhone || ""}
+        onClose={() => setPhoneOtpPhone(null)}
+      />
     </div>
   );
 }
