@@ -34,7 +34,16 @@ export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: U
         search: searchTerm,
     };
     if (role) params.role = role;
-    if (typeof id === 'number') params.user = String(id);
+    // User IDs are UUID strings, not numbers — the previous `typeof id === 'number'`
+    // guard was always false, so the backend's auto-scope was the only thing
+    // hiding other owners' properties. When backend auth resolves current_user
+    // to None for any reason (e.g. is_verified=False on freshly auto-onboarded
+    // owners), the auto-scope short-circuits and the OWNER sees the full catalog.
+    // Sending `user` explicitly for OWNER/AGENT belt-and-braces the scoping
+    // regardless of backend auth state.
+    if (id && (role === UserRole.OWNER || role === UserRole.AGENT) && !includeAll) {
+        params.user = String(id);
+    }
     if (isVerified !== undefined && isVerified !== null) params.is_verified = isVerified;
     // OWNER/AGENT callers default to a scope-to-self view server-side. Pass
     // include_all when the UI needs the full public catalog (booking-on-behalf
