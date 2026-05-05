@@ -6,6 +6,22 @@ import { getDayDifference } from "@/src/lib/utils";
  * into a single consistent camelCase interface. Use this at the top of any component
  * that consumes booking data instead of scattering `(bookingDetails as any)` casts.
  */
+/**
+ * Person summary used for booking attribution surfaces (owner, agent, referrer).
+ * Mirrors the backend `_user_summary()` shape in services/bookings/router.py.
+ */
+export interface BookingPerson {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
+  profile: {
+    firstName: string | null;
+    lastName: string | null;
+    referralCode?: string | null;
+  } | null;
+}
+
 export interface NormalizedBooking {
   id: string | number;
   bookingId: string;
@@ -34,6 +50,10 @@ export interface NormalizedBooking {
   paymentNotes: string;
   referralCodeUsed: string;
   referrerId: string;
+  // Attribution surfaces — populated by the backend's booking detail
+  // endpoint so support can resolve commission/onboarding without DB queries.
+  bookingReferrer: BookingPerson | null;
+  signupReferrer: BookingPerson | null;
   user: IBooking["user"];
   unit: IBooking["unit"];
   revenueSplit: IBooking["revenueSplit"] | null;
@@ -88,6 +108,8 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     paymentNotes: raw.paymentNotes || r.payment_notes || "",
     referralCodeUsed: r.referral_code_used || "",
     referrerId: r.referrer_id || "",
+    bookingReferrer: r.booking_referrer ?? null,
+    signupReferrer: r.signup_referrer ?? null,
     user: raw.user,
     unit: raw.unit,
     revenueSplit: raw.revenueSplit || raw.revenue_split || null,
