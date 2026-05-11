@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-05-06",
+  "faqs": [
+    {
+      "id": "faq-guest-cancel",
+      "audience": "guest",
+      "question": "How do I cancel my booking?",
+      "answer": "Open My Account → Bookings, choose your booking, and tap \"Request cancellation.\" Most approved cancellations refund 80% of the booking price; the caution fee is refunded in full. An admin reviews each cancellation and the refund usually lands in your wallet within 24 hours.",
+      "related_guide_id": "guest-02-request-refund"
+    },
+    {
+      "id": "faq-guest-instant-vs-request",
+      "audience": "guest",
+      "question": "What's the difference between Instant Book and Request to Book?",
+      "answer": "Instant Book confirms your dates immediately once you pay. Request to Book sends your dates to the host for approval first — you only pay if they approve. If a host doesn't respond within 24 hours the request expires automatically and no charge is taken.",
+      "related_guide_id": "guest-01-make-booking"
+    },
+    {
+      "id": "faq-guest-caution-fee",
+      "audience": "guest",
+      "question": "What is the caution fee and when do I get it back?",
+      "answer": "The caution fee is a refundable damage deposit, collected with your booking payment and held separately from the nightly price. After checkout, an admin verifies the property condition with the host and refunds the full caution fee to your Aparte wallet, usually within 48 hours."
+    },
+    {
+      "id": "faq-guest-approval-pending",
+      "audience": "guest",
+      "question": "Why does my booking say \"Approval pending\"?",
+      "answer": "That status means the property uses Request to Book mode and the host hasn't responded yet. You haven't been charged. The host has 24 hours to approve or reject; if they don't respond in time, the request is auto-cancelled and your dates are released."
+    },
+    {
+      "id": "faq-guest-wallet",
+      "audience": "guest",
+      "question": "How does my Aparte wallet work?",
+      "answer": "Your wallet stores refunds, caution-fee returns, and any bonuses you've earned. You can spend wallet balance directly on a future booking, or withdraw to a verified Nigerian bank account once your KYC is approved. Wallet credits land instantly; bank withdrawals settle in 24–72 hours."
+    },
+    {
+      "id": "faq-owner-verification-time",
+      "audience": "owner",
+      "question": "How long does property verification take?",
+      "answer": "Most listings are reviewed within 48 hours of submission. We check your ownership documents, photos, and address before approving. You'll get an email and an in-app notification when the property is approved or if we need anything else. Verified listings can show as Featured and earn a verification reward.",
+      "related_guide_id": "owner-01-list-property"
+    },
+    {
+      "id": "faq-owner-payout-split",
+      "audience": "owner",
+      "question": "How is my payout calculated?",
+      "answer": "When a guest's booking is confirmed, the platform splits the booking price (excluding the caution fee). Owners receive 90%, agents receive 5%, and the platform retains 5%. Your share is credited to your wallet at check-in. The caution fee is held separately and refunded to the guest after checkout."
+    },
+    {
+      "id": "faq-owner-booking-mode",
+      "audience": "owner",
+      "question": "Should I use Instant Book or Request to Book?",
+      "answer": "Instant Book maximizes bookings: guests can pay and confirm dates without waiting on you. Request to Book lets you screen each guest first, at the cost of slower confirmations and a 24-hour response window. You can switch modes per property at any time from the property settings.",
+      "related_guide_id": "owner-02-set-availability"
+    },
+    {
+      "id": "faq-owner-block-dates",
+      "audience": "owner",
+      "question": "Can I block off dates without a booking?",
+      "answer": "Yes — open the property's calendar, tap a date or date range, and set it as a blackout. You can also override the price for specific dates (peak periods, holidays, etc.) without affecting your default nightly rate."
+    },
+    {
+      "id": "faq-owner-withdraw",
+      "audience": "owner",
+      "question": "Why can't I withdraw my wallet balance?",
+      "answer": "Withdrawals require completed KYC and a verified payout account. If either is missing, the withdraw button stays disabled. Add your NIN or BVN under Settings → KYC, attach a bank account under Payments & Payouts, and tap \"Verify\" — once both show as approved you can request a withdrawal."
+    },
+    {
+      "id": "faq-agent-record-offline",
+      "audience": "agent",
+      "question": "How do I record a cash or bank-transfer booking?",
+      "answer": "Create the booking on behalf of the guest, choose Cash / POS / Bank Transfer as the payment method, then upload the payment receipt from the booking detail screen. The booking stays in Pending Payment until an admin reviews and confirms the proof, which usually takes a few hours.",
+      "related_guide_id": "agent-01-process-booking"
+    },
+    {
+      "id": "faq-agent-commission",
+      "audience": "agent",
+      "question": "What's my commission on bookings I facilitate?",
+      "answer": "Agents earn 5% of every confirmed booking on their assigned properties. The commission credits to your wallet automatically when the guest checks in. Your earnings appear under My Account → Wallet and on your monthly performance report."
+    },
+    {
+      "id": "faq-agent-guest-receipt",
+      "audience": "agent",
+      "question": "A guest lost their booking confirmation — what do I do?",
+      "answer": "Open the booking under Booking Management, scroll to the bottom of the detail page, and tap \"Download PDF receipt.\" You can email it directly to the guest or download and share via WhatsApp. The PDF contains the booking ID, dates, payment summary, and check-in details."
+    },
+    {
+      "id": "faq-all-kyc",
+      "audience": "all",
+      "question": "Why does Aparte need my BVN or NIN?",
+      "answer": "Nigerian regulators require us to verify identity before processing payouts to bank accounts. Your BVN or NIN is used once to verify your name against the national registry. We never share it with hosts or guests, and the value is masked in our internal logs."
+    },
+    {
+      "id": "faq-all-contact",
+      "audience": "all",
+      "question": "How do I contact Aparte support?",
+      "answer": "Email support@aparte.ng for any issue — we reply within one business day. For booking-specific problems (cancellations, refunds, disputes), the fastest route is to open the booking and use the \"Raise a dispute\" or \"Request cancellation\" button so the request lands directly with the right team."
+    }
+  ]
+}

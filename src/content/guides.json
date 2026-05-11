@@ -1,0 +1,289 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-05-06",
+  "platform": "aparte",
+  "guide_count": 5,
+  "guides": [
+    {
+      "id": "owner-01-list-property",
+      "audience": "owner",
+      "category": "listing",
+      "title": "How to list your property",
+      "summary": "Walk through the listing wizard from property details to verification submission.",
+      "estimated_time": "10 min",
+      "short_form": {
+        "intro": "List a property in 11 short steps. Most owners finish in under 10 minutes once they have photos and ownership documents ready.",
+        "steps": [
+          "Tap \"List your Aparte\" from the header or footer.",
+          "Choose your property type (apartment, duplex, villa, hotel, etc.).",
+          "Add address — Google Places autocompletes city and state.",
+          "Add units, prices, and caution fee.",
+          "Pick amenities and house rules.",
+          "Upload photos and ownership documents.",
+          "Choose Instant Book or Request to Book.",
+          "Review and submit for verification."
+        ],
+        "tip": "Have your title deed, utility bill, or tenancy agreement scanned before you start. The submission won't complete without at least one ownership document."
+      },
+      "long_form": {
+        "intro": "The listing wizard collects everything Aparte needs to verify and publish your property. Verification typically takes 48 hours, and you'll get an email and in-app notification when your property is approved.",
+        "prerequisites": [
+          "An owner or agent account (sign up at /signup).",
+          "At least one ownership document (title deed, certificate of occupancy, tenancy agreement, or utility/power bill in your name).",
+          "5–10 photos per unit (well-lit, 1024×768 or larger)."
+        ],
+        "sections": [
+          {
+            "heading": "1. Property details",
+            "body": "Pick your property type, name, and full Nigerian address. Aparte is locked to Nigeria for now — the country field is fixed, and Google Places autocomplete restricts results to Nigerian addresses. State and city are populated from your address — don't override them.",
+            "substeps": []
+          },
+          {
+            "heading": "2. Units and pricing",
+            "body": "Add at least one rentable unit. For each unit, set the nightly price, refundable caution fee, max guests, and number of bedrooms/bathrooms. If your listing is the entire property (a whole house or full apartment), toggle \"Whole property\" — count is locked to 1 and the unit inherits the property name.",
+            "substeps": []
+          },
+          {
+            "heading": "3. Amenities and rules",
+            "body": "Select all amenities that apply (Wi-Fi, AC, kitchen, parking, etc.). Then toggle whether pets and parties are allowed. The rules text box is plain language — describe quiet hours, check-in time, or anything a guest must know."
+          },
+          {
+            "heading": "4. Booking mode",
+            "body": "Pick Instant Book (default) for hands-off bookings — guests pay and confirm without waiting on you. Pick Request to Book if you want to approve each guest first. You can change this later from property settings.",
+            "substeps": []
+          },
+          {
+            "heading": "5. Photos and documents",
+            "body": "Photos must be JPG, PNG, or WebP, under 10MB each. Add one or more ownership documents — a title deed, tenancy agreement, or utility bill is enough. Aparte never publishes documents; they're only used by the verification team."
+          },
+          {
+            "heading": "6. Submit for verification",
+            "body": "Once submitted, your property enters PENDING status. An admin reviews documents, photos, and address within 48 hours. Verified properties are eligible for Featured placement and earn a verification reward if you have an assigned agent."
+          }
+        ],
+        "tips": [
+          "List one unit type per property — if you rent both a 1-bed and a 2-bed in the same building, add them as separate units, not separate properties.",
+          "Photos with people in them get more clicks. Add at least one lifestyle photo of the living area if you can."
+        ],
+        "next_steps": "After your property is approved, set your availability calendar and switch on Instant Book to start receiving requests.",
+        "related": ["owner-02-set-availability"]
+      }
+    },
+    {
+      "id": "owner-02-set-availability",
+      "audience": "owner",
+      "category": "calendar",
+      "title": "Setting availability and pricing",
+      "summary": "Block dates, override prices, and switch booking modes from the unit calendar.",
+      "estimated_time": "5 min",
+      "short_form": {
+        "intro": "Every published unit has its own calendar. From the unit calendar you can block dates, override the nightly price, and switch the property's booking mode.",
+        "steps": [
+          "Open Property Management → your property → Units.",
+          "Pick a unit and tap Calendar.",
+          "Tap a date or drag to select a range.",
+          "Choose Block dates (blackout) or Override price.",
+          "Save."
+        ],
+        "tip": "Bulk-edit by dragging across multiple dates — Aparte applies the same blackout or price override to every date in the range."
+      },
+      "long_form": {
+        "intro": "Your calendar drives what guests can book. Blocked dates disappear from search results immediately; price overrides apply only to the dates you select and don't change your default nightly rate.",
+        "prerequisites": [
+          "A verified property with at least one published unit.",
+          "Owner or agent role with management access."
+        ],
+        "sections": [
+          {
+            "heading": "Blackout dates",
+            "body": "Tap any future date and choose \"Block.\" Blackout dates are reserved for personal use, maintenance, or any other reason you don't want guests booking. They appear greyed-out for guests and aren't bookable. You can unblock at any time.",
+            "substeps": []
+          },
+          {
+            "heading": "Price overrides",
+            "body": "Use price overrides for peak periods (holidays, New Year, Eid, Christmas) or special pricing for long weekends. Set the override per date or per range. Aparte uses the override for any night that falls inside the range; default pricing resumes outside.",
+            "substeps": []
+          },
+          {
+            "heading": "Switching booking modes",
+            "body": "From the property's overview, tap \"Booking Mode\" to switch between Instant Book and Request to Book. The change applies immediately to all units under that property. Switching to Request to Book means every new booking goes through the 24-hour approval window."
+          },
+          {
+            "heading": "Multiple units of the same type",
+            "body": "If your property has, say, 3 identical 1-bed units, Aparte tracks how many are available per night. A guest can book up to that many; the calendar shows the count remaining."
+          }
+        ],
+        "tips": [
+          "Set holiday prices a month in advance so guests searching ahead see your peak pricing.",
+          "If you go on holiday yourself, block a few extra days on either side so cleaning and turnover have breathing room."
+        ],
+        "next_steps": "Check the Reviews tab regularly — guest feedback affects your search ranking and your verified-property badge.",
+        "related": ["owner-01-list-property"]
+      }
+    },
+    {
+      "id": "agent-01-process-booking",
+      "audience": "agent",
+      "category": "bookings",
+      "title": "Processing a booking on behalf of a guest",
+      "summary": "Create a booking with offline payment (cash, POS, or bank transfer) and upload proof.",
+      "estimated_time": "5 min",
+      "short_form": {
+        "intro": "Agents can create bookings directly for guests who walk in or pay offline. Online payments still flow through the standard payment gateway.",
+        "steps": [
+          "Open Booking Management → Create Booking.",
+          "Look up the guest by email or phone, or onboard a new guest.",
+          "Pick the property, unit, and dates.",
+          "Choose payment method: Cash, POS, Bank Transfer, or Online.",
+          "For offline payments, upload the receipt.",
+          "Submit."
+        ],
+        "warning": "Offline bookings stay in PENDING_PAYMENT until an admin reviews the proof. Don't promise the guest a confirmed booking until you see the status flip to CONFIRMED."
+      },
+      "long_form": {
+        "intro": "Agents have a few extra tools that guests don't. The Create Booking flow lets you record a sale that happened outside the app — for example a guest paying you in cash at the door — and attach proof so admin can confirm it.",
+        "prerequisites": [
+          "Agent role with access to the property.",
+          "If the guest doesn't have an account, you'll need their first name, last name, email, and phone."
+        ],
+        "sections": [
+          {
+            "heading": "Guest lookup or onboard",
+            "body": "Search by phone or email. If the guest doesn't exist, the system creates a GUEST-role account with a temporary password. They get an email with their login. This means returning guests can manage their booking themselves later."
+          },
+          {
+            "heading": "Choosing payment method",
+            "body": "Online payment kicks off the normal gateway flow (Monnify, Paystack, or Flutterwave) — the guest pays directly. Cash, POS, or Bank Transfer means you'll record the payment yourself.",
+            "substeps": [
+              "Cash — physical money handed over.",
+              "POS — card-on-terminal at your business.",
+              "Bank Transfer — direct deposit to your account or Aparte's account."
+            ]
+          },
+          {
+            "heading": "Uploading payment proof",
+            "body": "For Cash/POS/Bank Transfer, you must upload a receipt, transfer screenshot, or POS slip. JPG, PNG, or PDF up to 10MB. The booking stays PENDING_PAYMENT until an admin reviews and accepts the proof — usually within a few hours."
+          },
+          {
+            "heading": "What happens next",
+            "body": "Once an admin confirms, the booking moves to CONFIRMED, the guest gets a confirmation email + PDF receipt, the calendar locks the dates, and your 5% agent commission credits to your wallet at check-in."
+          }
+        ],
+        "tips": [
+          "Take a clear photo of the receipt — admin needs to read the amount and date.",
+          "If a guest pays you cash and then disputes the booking later, the receipt + the audit log on the booking is your record."
+        ],
+        "next_steps": "Issue the guest their PDF receipt from the booking detail page. Email or WhatsApp it from there.",
+        "related": ["guest-01-make-booking"]
+      }
+    },
+    {
+      "id": "guest-01-make-booking",
+      "audience": "guest",
+      "category": "booking",
+      "title": "Making your first booking",
+      "summary": "Search, pick a unit, and pay — from first visit to confirmed booking.",
+      "estimated_time": "5 min",
+      "short_form": {
+        "intro": "Find a place and book it in under five minutes. You'll need an account, working email, and a way to pay (card, bank transfer, or wallet balance).",
+        "steps": [
+          "Search by city or neighborhood, set your check-in/check-out and guest count.",
+          "Pick a property from results.",
+          "Choose your unit and confirm dates.",
+          "Sign in (or sign up) — guests can complete signup with email or Google.",
+          "Pay by card, transfer, or wallet."
+        ],
+        "tip": "If your dates are flexible, scan the calendar for price overrides — hosts often discount weekdays."
+      },
+      "long_form": {
+        "intro": "Aparte handles two kinds of bookings: Instant Book confirms instantly when you pay; Request to Book holds your dates and asks the host first. Both feel similar from your side, but Request to Book may pause for up to 24 hours before payment is taken.",
+        "prerequisites": [
+          "A guest account (sign up at /signup or with Google).",
+          "Payment method: card via Monnify/Paystack/Flutterwave, bank transfer, or sufficient wallet balance."
+        ],
+        "sections": [
+          {
+            "heading": "Searching",
+            "body": "Use the search bar on the home page. Set location, dates, and guest count. Add filters (property type, price range, amenities) on the results page to narrow down."
+          },
+          {
+            "heading": "Choosing a unit",
+            "body": "On the property detail page you'll see units, prices per night, photos, amenities, and a map. The map shows an approximate area until your booking is confirmed — your exact address unlocks once payment goes through."
+          },
+          {
+            "heading": "Booking modes",
+            "body": "Instant Book takes you straight to payment. Request to Book sends your dates to the host first; you'll get an email when they approve or reject. If the host doesn't reply within 24 hours, the request is auto-cancelled and no charge is taken.",
+            "substeps": []
+          },
+          {
+            "heading": "Payment",
+            "body": "Pay by card, bank transfer (via Paystack/Monnify), or your Aparte wallet if you have a balance. The caution fee is collected alongside the booking price and is refunded after checkout."
+          },
+          {
+            "heading": "After you book",
+            "body": "You'll get a confirmation email and a PDF receipt. The exact property address is revealed in the booking detail page. Your dates are now locked and the host is notified."
+          }
+        ],
+        "tips": [
+          "Sign in before you start the booking flow — re-entering your details on the payment page is the most common dropoff point.",
+          "If a property uses Request to Book, message the host through Aparte support if you don't hear back within 12 hours."
+        ],
+        "next_steps": "On the day of check-in, the host will reach out with arrival instructions. If you don't hear from them, open the booking and tap \"Contact host.\"",
+        "related": ["guest-02-request-refund"]
+      }
+    },
+    {
+      "id": "guest-02-request-refund",
+      "audience": "guest",
+      "category": "bookings",
+      "title": "Requesting a refund or cancellation",
+      "summary": "Cancel a booking, request a caution-fee refund, or escalate to a dispute.",
+      "estimated_time": "3 min",
+      "short_form": {
+        "intro": "Plans change. Aparte refunds 80% of the booking price when you cancel and 100% of the caution fee after checkout. Disputes are for when something more serious goes wrong.",
+        "steps": [
+          "Open My Account → Bookings → the booking.",
+          "Tap \"Request cancellation\" and choose a reason.",
+          "Wait for admin approval (usually under 24 hours).",
+          "Refund lands in your Aparte wallet, then withdraw to your bank if needed."
+        ],
+        "warning": "If you've already checked in, cancellation isn't available — open a dispute instead."
+      },
+      "long_form": {
+        "intro": "How much you get back depends on when and why you cancel. Standard cancellation returns 80% of the booking price and 100% of the caution fee. Host-initiated cancellations and auto-expired Request-to-Book bookings refund in full.",
+        "prerequisites": [
+          "A booking in PENDING, CONFIRMED, or APPROVAL_PENDING status.",
+          "An Aparte account (the one you booked with)."
+        ],
+        "sections": [
+          {
+            "heading": "Standard cancellation",
+            "body": "From the booking detail page, tap \"Request cancellation\" and pick a reason. Status moves to CANCEL_REQUESTED while an admin reviews. Once approved, you get 80% of the booking back plus the full caution fee, credited to your Aparte wallet within 24 hours."
+          },
+          {
+            "heading": "Host rejection (Request to Book)",
+            "body": "If you booked with Request to Book and the host either rejected or didn't respond within 24 hours, the booking is auto-cancelled and you're refunded 100% — there's no penalty because the booking was never confirmed."
+          },
+          {
+            "heading": "Caution-fee refund after checkout",
+            "body": "Caution fees come back automatically after the host signs off post-checkout. If it's been more than 48 hours and you haven't seen it, message support — sometimes the host's caution-refund approval is queued."
+          },
+          {
+            "heading": "Disputes",
+            "body": "If something happened during your stay — the property didn't match the listing, safety concerns, cleanliness — open a dispute from the booking page. Pick a category, describe what happened, and upload photos or videos as evidence. An admin reviews each dispute and can issue partial or full refunds depending on outcome."
+          },
+          {
+            "heading": "From wallet to bank",
+            "body": "Refunds land in your Aparte wallet first. To send the money to your bank, complete KYC (NIN or BVN + a verified payout account), then request a withdrawal from the wallet page. Bank settlement takes 24–72 hours."
+          }
+        ],
+        "tips": [
+          "Always pick a clear cancellation reason — vague reasons sometimes slow admin review.",
+          "For disputes, more photo/video evidence speeds the decision."
+        ],
+        "next_steps": "If your wallet refund doesn't show in 24 hours, email support@aparte.ng with your booking ID.",
+        "related": ["guest-01-make-booking"]
+      }
+    }
+  ]
+}
