@@ -36,6 +36,7 @@
     "dom-to-image": "^2.6.0",
     "dom-to-image-more": "^3.5.0",
     "formik": "^2.4.6",
+    "fuse.js": "^7.3.0",
     "html2pdf": "^0.0.11",
     "html2pdf.js": "0.10.1",
     "js-cookie": "^3.0.5",
@@ -59,7 +60,9 @@
     "tailwind-merge": "^3.0.1",
     "tinycolor2": "^1.6.0",
     "use-places-autocomplete": "^4.0.1",
-    "yup": "^1.6.1"
+    "vaul": "^1.1.2",
+    "yup": "^1.6.1",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

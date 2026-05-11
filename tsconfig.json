@@ -25,6 +25,7 @@
       "@/layouts*": ["./src/layouts*"],
       "@/app*": ["./src/app*"],
       "@/lib*": ["./src/lib*"],
+      "@/content*": ["./src/content*"],
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/(pages)/(dashboard)/booking-management/bookings/[bookingId]"],

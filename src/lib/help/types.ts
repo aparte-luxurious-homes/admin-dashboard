@@ -1,0 +1,69 @@
+// Mirrors the schema of guides.json + faqs.json.
+// Keep in sync if either schema evolves.
+
+export type Audience = "owner" | "agent" | "guest";
+
+export type Category =
+  | "listing"
+  | "calendar"
+  | "payouts"
+  | "bookings"
+  | "earnings"
+  | "booking";
+
+export interface ShortForm {
+  intro: string;
+  steps: string[];
+  tip?: string;
+  warning?: string;
+}
+
+export interface LongFormSection {
+  heading: string;
+  body?: string;
+  substeps?: string[];
+}
+
+export interface LongForm {
+  intro: string;
+  prerequisites?: string[];
+  sections: LongFormSection[];
+  tips?: string[];
+  next_steps?: string;
+  related?: string[];
+}
+
+export interface Guide {
+  id: string;
+  audience: Audience;
+  category: Category;
+  title: string;
+  summary: string;
+  estimated_time: string;
+  short_form: ShortForm;
+  long_form: LongForm;
+}
+
+export interface GuidesManifest {
+  version: string;
+  generated_at: string;
+  platform: string;
+  guide_count: number;
+  guides: Guide[];
+}
+
+export type FaqAudience = Audience | "all";
+
+export interface Faq {
+  id: string;
+  audience: FaqAudience;
+  question: string;
+  answer: string;
+  related_guide_id?: string;
+}
+
+export interface FaqsManifest {
+  version: string;
+  generated_at: string;
+  faqs: Faq[];
+}
