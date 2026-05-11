@@ -5,6 +5,7 @@ import type { Guide } from "@/lib/help/types";
 import { trackHelpEvent } from "@/lib/help/analytics";
 import { HelpfulWidget } from "./HelpfulWidget";
 import { RelatedGuides } from "./RelatedGuides";
+import { VideoEmbed } from "./VideoEmbed";
 
 interface ArticleViewProps {
   guide: Guide;
@@ -37,6 +38,9 @@ export function ArticleView({ guide, surface = "page", onRelatedSelect }: Articl
         </h1>
       )}
 
+      {/* Walkthrough video */}
+      {guide.video_url && <VideoEmbed url={guide.video_url} title={guide.title} />}
+
       {/* Intro */}
       <p className="text-gray-700 leading-relaxed mb-5">{long_form.intro}</p>
 
@@ -67,6 +71,25 @@ export function ArticleView({ guide, surface = "page", onRelatedSelect }: Articl
                 <li key={j}>{step}</li>
               ))}
             </ul>
+          )}
+          {section.images && section.images.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {section.images.map((img, j) => (
+                <figure key={j}>
+                  <img
+                    src={img.url}
+                    alt={img.alt}
+                    loading="lazy"
+                    className="w-full h-auto rounded-lg border border-gray-200"
+                  />
+                  {img.caption && (
+                    <figcaption className="mt-2 text-xs text-gray-500 italic">
+                      {img.caption}
+                    </figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
           )}
         </section>
       ))}

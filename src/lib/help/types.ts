@@ -18,10 +18,18 @@ export interface ShortForm {
   warning?: string;
 }
 
+export interface ImageRef {
+  url: string;
+  alt: string;
+  caption?: string;
+}
+
 export interface LongFormSection {
   heading: string;
   body?: string;
   substeps?: string[];
+  /** Screenshots/illustrations for this section. Rendered after body + substeps. */
+  images?: ImageRef[];
 }
 
 export interface LongForm {
@@ -40,6 +48,12 @@ export interface Guide {
   title: string;
   summary: string;
   estimated_time: string;
+  /**
+   * Optional short walkthrough video shown above the intro. The provider is
+   * inferred from the URL: loom.com → Loom iframe, youtube.com|youtu.be →
+   * YouTube iframe, anything else → HTML5 <video>.
+   */
+  video_url?: string;
   short_form: ShortForm;
   long_form: LongForm;
 }

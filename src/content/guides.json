@@ -11,6 +11,7 @@
       "title": "How to list your property",
       "summary": "Walk through the listing wizard from property details to verification submission.",
       "estimated_time": "10 min",
+      "video_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
       "short_form": {
         "intro": "List a property in 11 short steps. Most owners finish in under 10 minutes once they have photos and ownership documents ready.",
         "steps": [
@@ -36,12 +37,26 @@
           {
             "heading": "1. Property details",
             "body": "Pick your property type, name, and full Nigerian address. Aparte is locked to Nigeria for now — the country field is fixed, and Google Places autocomplete restricts results to Nigerian addresses. State and city are populated from your address — don't override them.",
-            "substeps": []
+            "substeps": [],
+            "images": [
+              {
+                "url": "https://placehold.co/1200x700/e6f1f3/028090?text=Property+details+form",
+                "alt": "Screenshot of the property details form with name, type, and address fields",
+                "caption": "Step 1 — the property details form."
+              }
+            ]
           },
           {
             "heading": "2. Units and pricing",
             "body": "Add at least one rentable unit. For each unit, set the nightly price, refundable caution fee, max guests, and number of bedrooms/bathrooms. If your listing is the entire property (a whole house or full apartment), toggle \"Whole property\" — count is locked to 1 and the unit inherits the property name.",
-            "substeps": []
+            "substeps": [],
+            "images": [
+              {
+                "url": "https://placehold.co/1200x700/e6f1f3/028090?text=Units+%26+pricing",
+                "alt": "Screenshot of the units and pricing step with the Whole Property toggle",
+                "caption": "Step 2 — add units, prices, and the whole-property toggle."
+              }
+            ]
           },
           {
             "heading": "3. Amenities and rules",
@@ -50,7 +65,14 @@
           {
             "heading": "4. Booking mode",
             "body": "Pick Instant Book (default) for hands-off bookings — guests pay and confirm without waiting on you. Pick Request to Book if you want to approve each guest first. You can change this later from property settings.",
-            "substeps": []
+            "substeps": [],
+            "images": [
+              {
+                "url": "https://placehold.co/1200x500/e6f1f3/028090?text=Instant+Book+vs+Request+to+Book",
+                "alt": "Booking mode picker showing Instant Book selected by default",
+                "caption": "Step 4 — picking your booking mode."
+              }
+            ]
           },
           {
             "heading": "5. Photos and documents",
