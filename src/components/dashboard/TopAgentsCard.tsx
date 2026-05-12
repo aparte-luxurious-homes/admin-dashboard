@@ -17,6 +17,7 @@ interface TopAgent {
     listingsMtd?: number | null;
     isActiveAgent?: boolean | null;
     verificationRatePct?: string | null;
+    bookingsThisWeek?: number | null;
     // Backwards-compat aliases
     weeklyVerifications?: number;
     weeklyListings?: number;
@@ -120,6 +121,17 @@ const TopAgentsCard = ({ isLoading, topListings, showWeeklyMetrics }: TopAgentsC
                                                     </span>{" "}
                                                     verified
                                                 </span>
+                                                {row.bookingsThisWeek != null && (
+                                                    <>
+                                                        <span className="text-gray-200">·</span>
+                                                        <span>
+                                                            <span className="font-semibold text-gray-700">
+                                                                {row.bookingsThisWeek}
+                                                            </span>{" "}
+                                                            bookings
+                                                        </span>
+                                                    </>
+                                                )}
                                                 {verifPct !== null && (
                                                     <>
                                                         <span className="text-gray-200">·</span>

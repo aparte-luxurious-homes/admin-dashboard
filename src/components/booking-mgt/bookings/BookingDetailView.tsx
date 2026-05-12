@@ -210,33 +210,57 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                   <BookingGuestCard booking={booking} />
                   <BookingPaymentCard booking={booking} />
 
-                  {/* Referral info */}
-                  {booking.referralCodeUsed && (
-                    <div className="border border-violet-200 rounded-xl overflow-hidden">
-                      <div className="px-4 sm:px-5 py-3 bg-violet-50 border-b border-violet-100">
-                        <h2 className="text-sm sm:text-base font-semibold text-violet-800">
-                          Referral Applied
-                        </h2>
-                      </div>
-                      <div className="p-4 sm:p-5">
-                        <div className="flex justify-between items-center py-1 text-xs sm:text-sm">
-                          <span className="text-zinc-600">Referral Code</span>
-                          <span className="font-mono font-semibold text-zinc-800 tracking-widest">
-                            {booking.referralCodeUsed}
-                          </span>
+                  {/* Referral & on-behalf attribution */}
+                  {(() => {
+                    const onBehalf =
+                      booking.bookedBy && String(booking.bookedBy) !== String(booking.userId);
+                    if (!booking.referralCodeUsed && !onBehalf) return null;
+                    const bookerName = booking.booker
+                      ? [booking.booker.profile?.firstName, booking.booker.profile?.lastName]
+                          .filter(Boolean)
+                          .join(" ") || booking.booker.email || booking.bookedBy
+                      : booking.bookedBy;
+                    return (
+                      <div className="border border-violet-200 rounded-xl overflow-hidden">
+                        <div className="px-4 sm:px-5 py-3 bg-violet-50 border-b border-violet-100">
+                          <h2 className="text-sm sm:text-base font-semibold text-violet-800">
+                            {onBehalf && !booking.referralCodeUsed
+                              ? "Booked on behalf"
+                              : "Referral Applied"}
+                          </h2>
                         </div>
-                        {booking.referrerId && (
-                          <div className="flex justify-between items-center py-1 border-t border-zinc-100 mt-1 pt-2 text-xs sm:text-sm">
-                            <span className="text-zinc-600">Referrer ID</span>
-                            <span className="font-mono text-zinc-500">{booking.referrerId}</span>
-                          </div>
-                        )}
-                        <div className="mt-3 p-2 bg-violet-50 rounded-lg border border-violet-100 text-[10px] sm:text-xs text-violet-700 italic">
-                          Agent commission reduced to 3%; referrer credited 2%
+                        <div className="p-4 sm:p-5">
+                          {booking.referralCodeUsed && (
+                            <div className="flex justify-between items-center py-1 text-xs sm:text-sm">
+                              <span className="text-zinc-600">Referral Code</span>
+                              <span className="font-mono font-semibold text-zinc-800 tracking-widest">
+                                {booking.referralCodeUsed}
+                              </span>
+                            </div>
+                          )}
+                          {booking.referrerId && (
+                            <div className="flex justify-between items-center py-1 border-t border-zinc-100 mt-1 pt-2 text-xs sm:text-sm">
+                              <span className="text-zinc-600">Referrer ID</span>
+                              <span className="font-mono text-zinc-500">{booking.referrerId}</span>
+                            </div>
+                          )}
+                          {onBehalf && (
+                            <div className="flex justify-between items-center py-1 border-t border-zinc-100 mt-1 pt-2 text-xs sm:text-sm">
+                              <span className="text-zinc-600">Booked by</span>
+                              <span className="text-zinc-800 font-medium truncate ml-3">
+                                {bookerName}
+                              </span>
+                            </div>
+                          )}
+                          {booking.referralCodeUsed && (
+                            <div className="mt-3 p-2 bg-violet-50 rounded-lg border border-violet-100 text-[10px] sm:text-xs text-violet-700 italic">
+                              Agent commission reduced to 3%; referrer credited 2%
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   <BookingRevenueSplit booking={booking} />
                   <BookingStatusBanner booking={booking} />

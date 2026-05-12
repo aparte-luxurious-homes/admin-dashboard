@@ -35,6 +35,12 @@ const formatDate = (iso: string | null): string => {
     }
 };
 
+// GMV values arrive as Decimal-as-string from the API. Format as ₦ with
+// thousands separators, no decimals (units are NGN so cents don't matter
+// at the report-level granularity).
+const formatNgn = (s: string | null | undefined): string =>
+    "₦" + parseFloat(s ?? "0").toLocaleString("en-NG", { maximumFractionDigits: 0 });
+
 const daysSince = (iso: string | null): number | null => {
     if (!iso) return null;
     try {
@@ -72,14 +78,38 @@ const downloadCsv = (filename: string, rows: AgentPerformanceRow[]) => {
         "verification_rate_pct",
         "last_listed_at",
         "last_verified_at",
+        "assigned_count_week",
+        "assigned_count_mtd",
+        "assigned_count_total",
+        "assigned_gmv_total",
+        "assigned_last_booking_at",
+        "referred_count_week",
+        "referred_count_mtd",
+        "referred_count_total",
+        "referred_gmv_total",
+        "referred_last_booking_at",
     ];
+    // Hand-written value extractor: booking fields live one level deep, so the
+    // generic index-based lookup used previously can't reach them.
+    const valueFor = (r: AgentPerformanceRow, h: string): unknown => {
+        const rec = r as unknown as Record<string, unknown>;
+        switch (h) {
+            case "assigned_count_week": return r.assigned_bookings.count_week;
+            case "assigned_count_mtd": return r.assigned_bookings.count_mtd;
+            case "assigned_count_total": return r.assigned_bookings.count_total;
+            case "assigned_gmv_total": return r.assigned_bookings.gmv_total;
+            case "assigned_last_booking_at": return r.assigned_bookings.last_booking_at;
+            case "referred_count_week": return r.referred_bookings.count_week;
+            case "referred_count_mtd": return r.referred_bookings.count_mtd;
+            case "referred_count_total": return r.referred_bookings.count_total;
+            case "referred_gmv_total": return r.referred_bookings.gmv_total;
+            case "referred_last_booking_at": return r.referred_bookings.last_booking_at;
+            default: return rec[h];
+        }
+    };
     const lines = [
         headers.join(","),
-        ...rows.map((r) =>
-            headers
-                .map((h) => csvEscape((r as unknown as Record<string, unknown>)[h]))
-                .join(",")
-        ),
+        ...rows.map((r) => headers.map((h) => csvEscape(valueFor(r, h))).join(",")),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -178,13 +208,13 @@ const AgentPerformanceReportPage = () => {
 
             {/* Summary header */}
             {isLoading ? (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
                         <Skeleton key={i} className="h-20 w-full rounded-2xl" />
                     ))}
                 </div>
             ) : summary ? (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                     <SummaryCard
                         label="Registered"
                         value={summary.total_registered_agents}
@@ -210,6 +240,11 @@ const AgentPerformanceReportPage = () => {
                         label="Joined last 30d"
                         value={summary.agents_joined_last_30d}
                         hint="Fresh signups"
+                    />
+                    <SummaryCard
+                        label="Bookings (MTD)"
+                        value={summary.total_attributed_bookings_mtd}
+                        hint={`${formatNgn(summary.total_attributed_gmv_mtd)} GMV`}
                     />
                 </div>
             ) : null}
@@ -310,6 +345,18 @@ const AgentPerformanceReportPage = () => {
                                             verified / total
                                         </span>
                                     </th>
+                                    <th className="px-4 py-3 text-right">
+                                        Bookings (assigned)
+                                        <span className="block text-[9px] font-normal text-gray-400">
+                                            wk / mtd / total · gmv mtd
+                                        </span>
+                                    </th>
+                                    <th className="px-4 py-3 text-right">
+                                        Bookings (referred)
+                                        <span className="block text-[9px] font-normal text-gray-400">
+                                            wk / mtd / total · gmv mtd
+                                        </span>
+                                    </th>
                                     <th className="px-4 py-3 text-right">Verif. rate</th>
                                     <th className="px-4 py-3 text-left">Last activity</th>
                                 </tr>
@@ -365,6 +412,24 @@ const AgentPerformanceReportPage = () => {
                                                 <span className="text-[11px] text-gray-400">
                                                     / {r.total_listings}
                                                 </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                                                {r.assigned_bookings.count_week}
+                                                <span className="text-[11px] text-gray-400">
+                                                    {" "}/ {r.assigned_bookings.count_mtd} / {r.assigned_bookings.count_total}
+                                                </span>
+                                                <div className="text-[10px] text-gray-400 font-normal">
+                                                    {formatNgn(r.assigned_bookings.gmv_mtd)}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                                                {r.referred_bookings.count_week}
+                                                <span className="text-[11px] text-gray-400">
+                                                    {" "}/ {r.referred_bookings.count_mtd} / {r.referred_bookings.count_total}
+                                                </span>
+                                                <div className="text-[10px] text-gray-400 font-normal">
+                                                    {formatNgn(r.referred_bookings.gmv_mtd)}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <span
