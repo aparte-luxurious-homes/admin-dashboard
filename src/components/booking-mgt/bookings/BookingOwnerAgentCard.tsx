@@ -13,8 +13,9 @@ export default function BookingOwnerAgentCard({ booking }: BookingOwnerAgentCard
   const agent = booking.unit?.property?.agent;
   const bookingReferrer = booking.bookingReferrer;
   const signupReferrer = booking.signupReferrer;
+  const booker = booking.booker;
 
-  if (!owner && !agent && !bookingReferrer && !signupReferrer) return null;
+  if (!owner && !agent && !bookingReferrer && !signupReferrer && !booker) return null;
 
   const sameId = (a: { id?: string | number | null } | null | undefined, b: { id?: string | number | null } | null | undefined) =>
     !!a && !!b && a.id != null && b.id != null && String(a.id) === String(b.id);
@@ -27,6 +28,14 @@ export default function BookingOwnerAgentCard({ booking }: BookingOwnerAgentCard
     !!signupReferrer
     && !sameId(signupReferrer, agent)
     && !sameId(signupReferrer, bookingReferrer);
+  // Only surface the on-behalf creator when it adds new information:
+  //   - the booker isn't the guest themselves (i.e., actually on-behalf), AND
+  //   - they aren't already shown as agent / referrer above.
+  const showBooker =
+    !!booker
+    && String(booker.id) !== String(booking.userId)
+    && !sameId(booker, agent)
+    && !sameId(booker, bookingReferrer);
 
   const detailsRouteForRole = (role: string | null | undefined): ((id: any) => string) | null => {
     switch ((role || "").toUpperCase()) {
@@ -113,6 +122,14 @@ export default function BookingOwnerAgentCard({ booking }: BookingOwnerAgentCard
       label: "Signup Referrer",
       route: detailsRouteForRole(signupReferrer.role),
       sublabel: "Lifetime referrer of the guest",
+    });
+  }
+  if (showBooker && booker) {
+    cells.push({
+      person: booker,
+      label: "Booked by",
+      route: detailsRouteForRole(booker.role),
+      sublabel: "Submitted the booking on the guest's behalf",
     });
   }
 

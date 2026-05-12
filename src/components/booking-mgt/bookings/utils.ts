@@ -50,10 +50,14 @@ export interface NormalizedBooking {
   paymentNotes: string;
   referralCodeUsed: string;
   referrerId: string;
+  // Booking attribution — the caller (agent/admin) who actually submitted the
+  // create request. Equals userId for self-bookings.
+  bookedBy: string;
   // Attribution surfaces — populated by the backend's booking detail
   // endpoint so support can resolve commission/onboarding without DB queries.
   bookingReferrer: BookingPerson | null;
   signupReferrer: BookingPerson | null;
+  booker: BookingPerson | null;
   user: IBooking["user"];
   unit: IBooking["unit"];
   revenueSplit: IBooking["revenueSplit"] | null;
@@ -108,8 +112,10 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     paymentNotes: raw.paymentNotes || r.payment_notes || "",
     referralCodeUsed: r.referral_code_used || "",
     referrerId: r.referrer_id || "",
+    bookedBy: r.booked_by || r.bookedBy || "",
     bookingReferrer: r.booking_referrer ?? null,
     signupReferrer: r.signup_referrer ?? null,
+    booker: r.booker ?? null,
     user: raw.user,
     unit: raw.unit,
     revenueSplit: raw.revenueSplit || raw.revenue_split || null,

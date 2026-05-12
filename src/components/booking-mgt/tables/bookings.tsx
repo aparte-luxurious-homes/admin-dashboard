@@ -21,6 +21,7 @@ import DeleteBookingDialog from "../dialogs/DeleteBookingDialog";
 import { useIsMobile } from "@/src/hooks/useIsMobile";
 import BookingCard from "../BookingCard";
 import PullToRefresh from "../../mobile/PullToRefresh";
+import BookingAttributionChip from "../bookings/AttributionChip";
 
 export default function BookingsTable({
     unitId,
@@ -309,14 +310,17 @@ export default function BookingsTable({
                                             {formatMoney(Number((booking as any)?.total_price ?? 0))}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                                                (booking as any)?.status === 'PENDING' || (booking as any)?.status === 'PENDING_PAYMENT' ? 'bg-yellow-100 text-yellow-800' :
-                                                    (booking as any)?.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                                                        (booking as any)?.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                {(booking as any)?.status?.replace('_', ' ') ?? '--/--'}
-                                            </span>
+                                            <div className="inline-flex flex-wrap items-center justify-center gap-1.5">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                                                    (booking as any)?.status === 'PENDING' || (booking as any)?.status === 'PENDING_PAYMENT' ? 'bg-yellow-100 text-yellow-800' :
+                                                        (booking as any)?.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                                            (booking as any)?.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
+                                                                'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                    {(booking as any)?.status?.replace('_', ' ') ?? '--/--'}
+                                                </span>
+                                                <BookingAttributionChip booking={booking as any} />
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700 text-center">
                                             {formatDate((booking as any)?.created_at)}
