@@ -60,12 +60,27 @@ export interface UpcomingBookingsResponse {
 // --- Agent performance framework (powers Top Agents widget + reports page) ---
 // Shape mirrors services/statistics/agent_performance_service.py exactly. See
 // scripts/agent_performance_metrics.sql for the canonical metric definitions.
+//
+// Booking buckets are disjoint per (booking, agent): assigned beats referred,
+// per-booking referrer beats signup referrer.
+export interface AgentBookingBucket {
+    count_week: number;
+    count_mtd: number;
+    count_total: number;
+    gmv_week: string;        // Decimal-as-string (₦, integer kobo precision)
+    gmv_mtd: string;
+    gmv_total: string;
+    last_booking_at: string | null;
+}
+
 export interface AgentPerformanceSummary {
     total_registered_agents: number;
     active_account_agents: number;
     verified_contact_agents: number;
     total_active_agents: number;
     agents_joined_last_30d: number;
+    total_attributed_bookings_mtd: number;
+    total_attributed_gmv_mtd: string;  // Decimal-as-string
     week_start_monday: string | null;
     week_end_sunday: string | null;
     month_start_date: string | null;
@@ -88,6 +103,8 @@ export interface AgentPerformanceRow {
     verification_rate_pct: string; // Decimal-as-string; parseFloat to display
     last_listed_at: string | null;
     last_verified_at: string | null;
+    assigned_bookings: AgentBookingBucket;
+    referred_bookings: AgentBookingBucket;
 }
 
 export interface AgentPerformanceResponse {
