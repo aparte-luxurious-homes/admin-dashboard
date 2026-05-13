@@ -9,8 +9,8 @@ interface BookingOwnerAgentCardProps {
 }
 
 export default function BookingOwnerAgentCard({ booking }: BookingOwnerAgentCardProps) {
-  const owner = booking.unit?.property?.owner;
-  const agent = booking.unit?.property?.agent;
+  const owner = booking.property?.owner ?? booking.unit?.property?.owner;
+  const agent = booking.property?.agent ?? booking.unit?.property?.agent;
   const bookingReferrer = booking.bookingReferrer;
   const signupReferrer = booking.signupReferrer;
   const booker = booking.booker;
