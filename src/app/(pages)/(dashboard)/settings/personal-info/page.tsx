@@ -50,7 +50,7 @@ const ReferralCodeBox = ({ code }: { code: string }) => {
 };
 
 const PersonalInfoPage = () => {
-  const { user } = useAuth();
+  const { user, isFetching } = useAuth();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const fromIncomplete = searchParams.get("from") === "incomplete";
@@ -118,6 +118,21 @@ const PersonalInfoPage = () => {
     const { name, value } = e.target;
     setPersonalInfo({ ...personalInfo, [name]: value });
   };
+
+  // InputGroup uses `defaultValue`, which is read once at mount and never
+  // refreshed. If we render the form before `user` resolves, every input
+  // captures an empty string and ignores the user data when it arrives.
+  // Gate the entire form on user being present so the InputGroups mount
+  // with the correct initial values.
+  if (!user) {
+    return (
+      <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[400px] flex items-center justify-center">
+        <p className="text-zinc-500 text-sm">
+          {isFetching ? "Loading your profile…" : "Profile unavailable."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
