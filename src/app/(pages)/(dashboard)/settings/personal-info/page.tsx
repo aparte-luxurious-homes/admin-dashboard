@@ -1,12 +1,14 @@
 "use client";
 
 import BreadCrumb from "@/src/components/breadcrumb";
-import { useAuth } from "@/src/hooks/useAuth";
+import { useAuth, fetchUser } from "@/src/hooks/useAuth";
+import { setUser } from "@/src/lib/slices/authSlice";
+import { useDispatch } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import Grid from "@mui/material/Grid2";
 import { useEffect, useMemo, useState } from "react";
 import Button from "@/src/components/button";
 import { toast } from "react-hot-toast";
-import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import axiosRequest from "@/src/lib/api";
 import InputGroup from "@/src/components/formcomponent/InputGroup";
@@ -71,9 +73,31 @@ const ReferralCodeBox = ({ code }: { code: string }) => {
 
 const PersonalInfoPage = () => {
   const { user, isFetching } = useAuth();
+  const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const fromIncomplete = searchParams.get("from") === "incomplete";
+
+  // useAuth() only fetches when Redux's `user` is empty (gated by
+  // `enabled: !!token && !user`). On first arrival to this page, the
+  // persisted Redux user is often stale (no phone/dob/gender). Force a
+  // fresh /profile fetch + dispatch so the form shows current server state.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const fresh = await fetchUser();
+        if (!cancelled) dispatch(setUser(fresh));
+      } catch {
+        // Silently ignore — useAuth's polling will catch up on its own.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Only on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [isEditing, setIsEditing] = useState(false);
   // Controlled form state — single source of truth. Synced from `user` via
@@ -119,15 +143,23 @@ const PersonalInfoPage = () => {
       .put(API_ROUTES.profile.update, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       })
-      .then((res) => {
+      .then(async (res) => {
         setIsEditing(false);
         toast.success(res?.data?.message || "Profile updated.", {
           duration: 3000,
           style: { maxWidth: "500px", width: "max-content" },
         });
-        // Refetch useAuth().user so missingProfileFields + the form values
-        // reflect what the server just persisted.
-        queryClient.invalidateQueries({ queryKey: ["authUser"] });
+        // useAuth's query is gated by `enabled: !!token && !user`, so
+        // invalidate alone won't refetch — push fresh data into Redux
+        // explicitly so the form (and missingProfileFields) reflect the
+        // values the server just persisted.
+        try {
+          const fresh = await fetchUser();
+          dispatch(setUser(fresh));
+          queryClient.setQueryData(["authUser"], fresh);
+        } catch {
+          // Best-effort — next poll interval will catch up.
+        }
       })
       .catch((err) => {
         setIsEditing(false);
