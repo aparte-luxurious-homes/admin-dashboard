@@ -93,7 +93,16 @@ function DocCard({ doc }: { doc: IKycDocument }) {
   );
 }
 
-export default function KycVerification() {
+interface KycVerificationProps {
+  /**
+   * When true, suppresses the internal BreadCrumb so the component can be
+   * embedded inside another settings page (e.g. /settings/personal-info)
+   * without showing a duplicate breadcrumb trail.
+   */
+  embedded?: boolean;
+}
+
+export default function KycVerification({ embedded = false }: KycVerificationProps = {}) {
   const router = useRouter();
   const { data, isLoading } = GetMyKycDocuments();
   const { mutate: upload, isPending: uploading } = UploadMyKycDocument();
@@ -142,13 +151,15 @@ export default function KycVerification() {
   const profileStatus = data?.profile_kyc_status ?? null;
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 w-full max-w-5xl mx-auto">
-      <BreadCrumb
-        description=""
-        active="KYC Verification"
-        link_one={PAGE_ROUTES.dashboard.settings.base}
-        link_one_name="Settings"
-      />
+    <div className={embedded ? "w-full" : "p-4 sm:p-6 md:p-8 w-full max-w-5xl mx-auto"}>
+      {!embedded && (
+        <BreadCrumb
+          description=""
+          active="KYC Verification"
+          link_one={PAGE_ROUTES.dashboard.settings.base}
+          link_one_name="Settings"
+        />
+      )}
 
       <div className="flex items-start justify-between gap-4 mt-4 mb-6">
         <div>
