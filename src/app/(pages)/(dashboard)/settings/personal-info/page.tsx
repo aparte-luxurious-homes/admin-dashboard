@@ -26,6 +26,26 @@ const GENDER_OPTIONS = [
   { value: "OTHER", label: "Other" },
 ];
 
+interface FormState {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  dob: string;
+  gender: string;
+  address: string;
+}
+
+const emptyForm: FormState = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  dob: "",
+  gender: "",
+  address: "",
+};
+
 const ReferralCodeBox = ({ code }: { code: string }) => {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
@@ -56,7 +76,9 @@ const PersonalInfoPage = () => {
   const fromIncomplete = searchParams.get("from") === "incomplete";
 
   const [isEditing, setIsEditing] = useState(false);
-  const [personalInfo, setPersonalInfo] = useState<{ [key: string]: string }>({});
+  // Controlled form state — single source of truth. Synced from `user` via
+  // the effect below so the form rehydrates when React Query refetches.
+  const [form, setForm] = useState<FormState>(emptyForm);
 
   // Server-reported missing fields (HOST_REQUIRED_PROFILE_FIELDS set).
   const missingFields = useMemo<string[]>(
@@ -65,21 +87,29 @@ const PersonalInfoPage = () => {
   );
   const showKyc = !!user?.role && KYC_ALLOWED_ROLES.includes(user.role as UserRole);
 
-  // Seed gender + dob from the user so unchanged fields aren't blanked out
-  // by a partial-update payload (the backend treats Form(None) as "skip").
+  // Hydrate from server profile whenever user data changes (initial load,
+  // refetch after save, etc.). The form fields stay in sync because they
+  // bind to `form` (controlled), not `defaultValue` (uncontrolled).
   useEffect(() => {
     if (!user) return;
-    setPersonalInfo((prev) => ({
-      ...prev,
-      ...(user.profile?.gender && !prev.gender ? { gender: user.profile.gender } : {}),
-      ...(user.profile?.dob && !prev.dob ? { dob: user.profile.dob } : {}),
-    }));
+    setForm({
+      first_name: user.profile?.firstName || user.profile?.first_name || "",
+      last_name: user.profile?.lastName || user.profile?.last_name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      dob: user.profile?.dob || "",
+      gender: user.profile?.gender || "",
+      address: user.profile?.address || "",
+    });
   }, [user]);
 
   const handleEditProfile = () => {
     setIsEditing(true);
     const formData = new FormData();
-    Object.entries(personalInfo).forEach(([key, value]) => {
+    // Skip email (server-side disabled) and empty fields so the partial
+    // update doesn't blank out columns the user didn't touch.
+    (Object.entries(form) as [keyof FormState, string][]).forEach(([key, value]) => {
+      if (key === "email") return;
       if (value !== undefined && value !== null && String(value).trim() !== "") {
         formData.append(key, String(value));
       }
@@ -95,7 +125,8 @@ const PersonalInfoPage = () => {
           duration: 3000,
           style: { maxWidth: "500px", width: "max-content" },
         });
-        // Refresh useAuth().user so missingProfileFields reflects the new state.
+        // Refetch useAuth().user so missingProfileFields + the form values
+        // reflect what the server just persisted.
         queryClient.invalidateQueries({ queryKey: ["authUser"] });
       })
       .catch((err) => {
@@ -112,18 +143,13 @@ const PersonalInfoPage = () => {
       });
   };
 
-  const handleTextChange = (
+  const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
-    setPersonalInfo({ ...personalInfo, [name]: value });
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // InputGroup uses `defaultValue`, which is read once at mount and never
-  // refreshed. If we render the form before `user` resolves, every input
-  // captures an empty string and ignores the user data when it arrives.
-  // Gate the entire form on user being present so the InputGroups mount
-  // with the correct initial values.
   if (!user) {
     return (
       <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[400px] flex items-center justify-center">
@@ -166,20 +192,22 @@ const PersonalInfoPage = () => {
               <InputGroup
                 label="First Name"
                 required
-                defaultValue={user?.profile?.firstName || ""}
-                onChange={handleTextChange}
+                value={form.first_name}
+                onChange={handleChange}
                 inputType="text"
                 inputName="first_name"
+                placeHolder="Enter your first name"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
                 label="Last Name"
                 required
-                defaultValue={user?.profile?.lastName || ""}
-                onChange={handleTextChange}
+                value={form.last_name}
+                onChange={handleChange}
                 inputType="text"
                 inputName="last_name"
+                placeHolder="Enter your last name"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
@@ -187,8 +215,8 @@ const PersonalInfoPage = () => {
                 label="Email Address"
                 required
                 disabled
-                defaultValue={user?.email}
-                onChange={handleTextChange}
+                value={form.email}
+                onChange={handleChange}
                 inputType="email"
                 inputName="email"
               />
@@ -197,32 +225,33 @@ const PersonalInfoPage = () => {
               <InputGroup
                 label="Phone Number"
                 required
-                defaultValue={user?.phone || ""}
-                onChange={handleTextChange}
+                value={form.phone}
+                onChange={handleChange}
                 inputType="text"
                 inputName="phone"
+                placeHolder="+234 801 234 5678"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
                 label="Date of Birth"
                 required
-                defaultValue={user?.profile?.dob || ""}
-                onChange={handleTextChange}
+                value={form.dob}
+                onChange={handleChange}
                 inputType="date"
                 inputName="dob"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <div className="flex flex-col">
-                <label className="text-sm font-medium text-zinc-700 mb-1">
-                  Gender <span className="text-red-500">*</span>
+                <label className="text-[#101928] mb-0 text-sm font-medium mt-1">
+                  Gender <span className="text-[#DD514D] text-base ml-[3px]">*</span>
                 </label>
                 <select
                   name="gender"
-                  defaultValue={user?.profile?.gender || ""}
-                  onChange={handleTextChange}
-                  className="border border-zinc-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={form.gender}
+                  onChange={handleChange}
+                  className="w-full h-[46px] box-border pl-2.5 pr-2.5 border border-[#d1d5db] mt-1 rounded-lg bg-white text-[#667185] text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="">Select…</option>
                   {GENDER_OPTIONS.map((opt) => (
@@ -236,15 +265,15 @@ const PersonalInfoPage = () => {
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
                 label="Address"
-                defaultValue={user?.profile?.address || ""}
-                onChange={handleTextChange}
+                value={form.address}
+                onChange={handleChange}
                 inputType="text"
                 inputName="address"
               />
             </Grid>
           </Grid>
 
-          {user?.profile?.referral_code && (
+          {user.profile?.referral_code && (
             <div className="mt-8 p-5 rounded-xl border border-dashed border-primary/50 bg-primary/5">
               <p className="text-sm text-zinc-500 mb-1 font-medium">Your Referral Code</p>
               <ReferralCodeBox code={user.profile.referral_code} />
