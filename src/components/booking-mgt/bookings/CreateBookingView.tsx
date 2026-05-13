@@ -261,18 +261,18 @@ export default function CreateBookingView() {
             );
           },
           onError: (error: any) => {
-            toast.error(
-              error?.response?.data?.detail ||
-                error?.response?.data?.message ||
-                "Something went wrong",
-              {
-                duration: 6000,
-                style: {
-                  maxWidth: "500px",
-                  width: "max-content",
-                },
+            const detail = error?.response?.data?.detail;
+            const message =
+              (typeof detail === "string" ? detail : detail?.message) ||
+              error?.response?.data?.message ||
+              "Something went wrong";
+            toast.error(message, {
+              duration: 6000,
+              style: {
+                maxWidth: "500px",
+                width: "max-content",
               },
-            );
+            });
           },
         },
       );

@@ -68,16 +68,30 @@ let isRedirecting = false;
 axiosRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // PROFILE_INCOMPLETE — backend rejected an action because the operator's
-    // profile is missing required fields. Bounce them to settings.
+    // PROFILE_INCOMPLETE — last-resort handler. Most call sites (property
+    // create, booking-on-behalf) render an inline dialog, so the user
+    // already has context. This interceptor only fires for stray fetches
+    // that aren't wrapped by a page-level handler.
     if (error.response?.status === 403) {
       const detail = error.response?.data?.detail;
       const code = typeof detail === "object" ? detail?.code : undefined;
       if (code === "PROFILE_INCOMPLETE") {
-        const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+        const currentPath =
+          typeof window !== "undefined" ? window.location.pathname : "";
         if (!currentPath.startsWith("/settings/personal-info")) {
+          try {
+            const { default: toast } = await import("react-hot-toast");
+            toast.error(
+              detail?.message || "Please complete your profile to continue.",
+              { duration: 5000 }
+            );
+          } catch {
+            // toast import failed (very rare) — fall through to redirect
+          }
           if (typeof window !== "undefined") {
-            window.location.href = "/settings/personal-info?from=incomplete";
+            setTimeout(() => {
+              window.location.href = "/settings/personal-info?from=incomplete";
+            }, 600);
           }
         }
         return Promise.reject(error);

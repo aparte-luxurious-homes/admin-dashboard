@@ -26,6 +26,7 @@ import StepPropertyDetails from './StepPropertyDetails';
 import StepUnits from './StepUnits';
 import StepMediaDocs from './StepMediaDocs';
 import UnitDrawer from './UnitDrawer';
+import IncompleteProfileDialog from '@/src/components/shared/IncompleteProfileDialog';
 import {
     IAmenity,
     ICreateProperty,
@@ -60,6 +61,10 @@ export default function CreatePropertyWizard() {
 
     // Amenity state
     const [showAmenityForm, setShowAmenityForm] = useState(false);
+
+    // PROFILE_INCOMPLETE dialog state — surfaced when the backend rejects
+    // POST /properties because the operator's profile lacks host-required fields.
+    const [incompleteFields, setIncompleteFields] = useState<string[] | null>(null);
 
     // Media state — files grouped by PropertyMediaCategory. Each non-empty
     // category is uploaded in its own POST so the server can persist the tag.
@@ -440,11 +445,28 @@ export default function CreatePropertyWizard() {
                     // Navigate to property details
                     router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(propertyId));
                 },
-                onError: (error: any) =>
-                    toast.error(
-                        error?.response?.data?.detail || error?.response?.data?.message || 'Something went wrong',
-                        { duration: 6000, style: { maxWidth: '500px', width: 'max-content' } }
-                    ),
+                onError: (error: any) => {
+                    const detail = error?.response?.data?.detail;
+                    // Surface PROFILE_INCOMPLETE with the dedicated dialog so
+                    // the user gets a clear list of missing fields + CTA.
+                    if (
+                        error?.response?.status === 403 &&
+                        typeof detail === 'object' &&
+                        detail?.code === 'PROFILE_INCOMPLETE'
+                    ) {
+                        setIncompleteFields(detail.missing_fields ?? []);
+                        return;
+                    }
+                    // Otherwise, fall back to a toast but never render an object.
+                    const message =
+                        (typeof detail === 'string' ? detail : detail?.message) ||
+                        error?.response?.data?.message ||
+                        'Something went wrong';
+                    toast.error(message, {
+                        duration: 6000,
+                        style: { maxWidth: '500px', width: 'max-content' },
+                    });
+                },
             }
         );
     };
@@ -584,6 +606,12 @@ export default function CreatePropertyWizard() {
                     )}
                 </div>
             </form>
+
+            <IncompleteProfileDialog
+                open={incompleteFields !== null}
+                missingFields={incompleteFields ?? []}
+                onClose={() => setIncompleteFields(null)}
+            />
         </div>
     );
 }
