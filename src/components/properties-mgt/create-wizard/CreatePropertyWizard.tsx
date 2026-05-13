@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFormik } from 'formik';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
@@ -27,6 +27,7 @@ import StepUnits from './StepUnits';
 import StepMediaDocs from './StepMediaDocs';
 import UnitDrawer from './UnitDrawer';
 import IncompleteProfileDialog from '@/src/components/shared/IncompleteProfileDialog';
+import { readWizardDraft, writeWizardDraft, clearWizardDraft } from './wizardDraft';
 import {
     IAmenity,
     ICreateProperty,
@@ -50,12 +51,23 @@ export default function CreatePropertyWizard() {
     const { user } = useAuth();
     const router = useRouter();
 
+    // Restore from localStorage on first mount so the agent doesn't lose
+    // progress if they were bounced to /settings/personal-info to complete
+    // their profile (or otherwise navigated away). Files are not persisted
+    // — step validation will prompt for re-uploads at the media step.
+    const draft = useMemo(() => readWizardDraft(), []);
+    const draftRestoredRef = useRef(false);
+
     // Step state
-    const [currentStep, setCurrentStep] = useState<WizardStep>(WizardStep.PROPERTY_DETAILS);
-    const [highestStep, setHighestStep] = useState<WizardStep>(WizardStep.PROPERTY_DETAILS);
+    const [currentStep, setCurrentStep] = useState<WizardStep>(
+        draft?.currentStep ?? WizardStep.PROPERTY_DETAILS,
+    );
+    const [highestStep, setHighestStep] = useState<WizardStep>(
+        draft?.highestStep ?? WizardStep.PROPERTY_DETAILS,
+    );
 
     // Unit state
-    const [units, setUnits] = useState<UnitFormValues[]>([]);
+    const [units, setUnits] = useState<UnitFormValues[]>(draft?.units ?? []);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
 
@@ -113,9 +125,11 @@ export default function CreatePropertyWizard() {
         return sorted;
     };
 
-    // Formik
+    // Formik — initialValues is read once at mount, so we merge in any
+    // restored draft here. Subsequent edits flow through formik state and
+    // are persisted via the useEffect below.
     const formik = useFormik<PropertyFormValues>({
-        initialValues: {
+        initialValues: draft?.values ?? {
             name: '',
             address: '',
             street_number: '',
@@ -145,6 +159,37 @@ export default function CreatePropertyWizard() {
             handleCreateProperty(values);
         },
     });
+
+    // Persist the JSON-serialisable parts of wizard state to localStorage
+    // on every meaningful change. File state (media/docs) is intentionally
+    // excluded — see wizardDraft.ts.
+    useEffect(() => {
+        writeWizardDraft({
+            values: formik.values,
+            units,
+            currentStep,
+            highestStep,
+        });
+    }, [formik.values, units, currentStep, highestStep]);
+
+    // Once per mount, if we actually restored something, surface a toast so
+    // the user knows their previous work is back. Skipped when the draft
+    // looks empty (just defaults) to avoid noise on first-ever visits.
+    useEffect(() => {
+        if (draftRestoredRef.current) return;
+        draftRestoredRef.current = true;
+        if (!draft) return;
+        const hasMeaningfulDraft =
+            !!draft.values?.name?.trim() ||
+            !!draft.values?.address?.trim() ||
+            (draft.units?.length ?? 0) > 0 ||
+            draft.currentStep !== WizardStep.PROPERTY_DETAILS;
+        if (hasMeaningfulDraft) {
+            toast.success('Welcome back — we restored your property draft.', {
+                duration: 4500,
+            });
+        }
+    }, [draft]);
 
     // Step validation
     const validateStep = (step: WizardStep): boolean => {
@@ -315,6 +360,9 @@ export default function CreatePropertyWizard() {
                         toast.error('Property created but failed to get ID');
                         return;
                     }
+
+                    // Property persisted — drop the draft so a future visit starts fresh.
+                    clearWizardDraft();
 
                     toast.success('Property created successfully');
 
