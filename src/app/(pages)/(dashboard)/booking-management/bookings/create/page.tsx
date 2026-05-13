@@ -1,9 +1,12 @@
 import CreateBookingView from "@/src/components/booking-mgt/bookings/CreateBookingView";
+import RequireCompleteOwnerProfile from "@/src/components/shared/RequireCompleteOwnerProfile";
 
 export default function CreateProperty(){
     return (
-        <div className="w-full">
-            <CreateBookingView />
-        </div>
+        <RequireCompleteOwnerProfile>
+            <div className="w-full">
+                <CreateBookingView />
+            </div>
+        </RequireCompleteOwnerProfile>
     )
 }
