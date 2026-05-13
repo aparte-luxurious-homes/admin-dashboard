@@ -198,6 +198,10 @@ export interface IUser {
   kyc?: [],
   kycDocuments?: any[],
   wallets?: IWallet[],
+  isProfileComplete?: boolean;
+  is_profile_complete?: boolean;
+  missingProfileFields?: string[];
+  missing_profile_fields?: string[];
 }
 
 export interface IAuthorization {

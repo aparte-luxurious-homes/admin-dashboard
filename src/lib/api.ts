@@ -64,10 +64,26 @@ axiosRequest.interceptors.request.use((config) => {
 // Flag to prevent multiple simultaneous redirects
 let isRedirecting = false;
 
-// 🔹 Handle token expiration (401 errors)
+// 🔹 Handle token expiration (401 errors) + PROFILE_INCOMPLETE (403) redirects
 axiosRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // PROFILE_INCOMPLETE — backend rejected an action because the operator's
+    // profile is missing required fields. Bounce them to settings.
+    if (error.response?.status === 403) {
+      const detail = error.response?.data?.detail;
+      const code = typeof detail === "object" ? detail?.code : undefined;
+      if (code === "PROFILE_INCOMPLETE") {
+        const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+        if (!currentPath.startsWith("/settings/personal-info")) {
+          if (typeof window !== "undefined") {
+            window.location.href = "/settings/personal-info?from=incomplete";
+          }
+        }
+        return Promise.reject(error);
+      }
+    }
+
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       const requestUrl: string = error.config?.url || '';
