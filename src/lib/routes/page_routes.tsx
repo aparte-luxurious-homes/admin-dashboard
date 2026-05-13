@@ -23,6 +23,9 @@ export const PAGE_ROUTES = {
                 base: '/user-management/admins',
                 details: (id: number) => `/user-management/admins/${id}`,
             },
+            kycQueue: {
+                base: '/user-management/kyc-queue',
+            },
         },
         bookingManagement: {
             bookingDisputes: {
@@ -33,6 +36,9 @@ export const PAGE_ROUTES = {
                 base: '/booking-management/bookings',
                 create: '/booking-management/bookings/create',
                 details: (id: string) => `/booking-management/bookings/${id}`,
+            },
+            bookingRequests: {
+                base: '/booking-management/requests',
             },
             stayExtensions: {
                 base: '/booking-management/stay-extensions',
@@ -65,6 +71,9 @@ export const PAGE_ROUTES = {
             },
             manageVerifications: {
                 base: '/property-management/manage-verifications',
+            },
+            myVerifications: {
+                base: '/property-management/my-verifications',
             },
         },
         transactions: {
@@ -100,9 +109,14 @@ export const PAGE_ROUTES = {
         },
         settings: {
             base: '/settings',
+            kyc: '/settings/kyc',
         },
         rolesPermissions: {
             base: '/roles-permissions',
+        },
+        reports: {
+            base: '/reports',
+            agentPerformance: '/reports/agent-performance',
         },
         wallet: {
             base: '/wallet',

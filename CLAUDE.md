@@ -1,6 +1,6 @@
 # Aparte Admin Dashboard - AI Agent Guide
 
-> **Last Updated:** March 2, 2026
+> **Last Updated:** May 2, 2026
 > **Project Type:** Admin Management Portal for Aparte Property Platform
 > **Stack:** Next.js 15 + React 19 + TypeScript + Redux Toolkit + TanStack Query
 
@@ -141,20 +141,40 @@ admin-dashboard/
 4. 401 responses trigger auto-logout with cookie/state cleanup
 5. Cookie domain: `.aparte.ng` in production
 
+**Phone-OTP gate (added 2026-05-02):** Onboarded staff with `phone_verified=false` get a 401 with `detail.code === 'PHONE_VERIFICATION_REQUIRED'` on first login. The login page detects this and opens [src/components/auth/PhoneOtpModal.tsx](src/components/auth/PhoneOtpModal.tsx) with the masked phone, a 6-digit auto-advance input (paste-friendly), 60-second resend cooldown matching backend rate limit, and an email-fallback button (`POST /auth/phone/request-otp-via-email`). Successful verify (`POST /auth/phone/verify`) returns a full JWT and completes the login the same way as a normal password flow. Hooks live in `src/hooks/useAuth.ts` (`useRequestPhoneOtp`, `useRequestPhoneOtpViaEmail`, `useVerifyPhoneOtp`).
+
 ### RBAC System (usePermissions hook)
 
 ```typescript
-// Role checks
+// Role checks (synchronous — derived from user.role, no network call)
 isSuperAdmin, isAdmin, isAgent, isOwner, isStaff
 
-// Module access
-canViewDashboard, canViewProperties, canViewBookings, canViewUsers, ...
+// Module access flags (synchronous, role-based — render nav links instantly)
+canViewDashboard, canViewProperties, canViewBookings, canViewUsers,
+canViewRolesPermissions, ...
 
-// Action permissions
+// Action permissions (synchronous, role-based)
 canCreateProperty, canEditProperty, canDeleteProperty, canVerifyProperty, ...
+
+// Granular permissions (async, DB-backed — mirrors backend's
+// services/permissions/service.py::user_has_permission)
+permissions: Permission[]              // current user's granular perms
+permissionsLoading: boolean
+hasPermission(name: string) => boolean // SUPER_ADMIN auto-passes
 ```
 
 Navigation links in `nav_links.tsx` use `allow` arrays to show/hide based on user role.
+
+**Granular vs role-based:** the synchronous role flags drive nav rendering and route gating (instant, no flicker). The async `hasPermission(name)` call is for fine-grained in-page UI gates (e.g. "show this Delete button only if `users.delete` is granted") and matches the seeded permission catalog in the backend. They're complementary — use role flags for layout, `hasPermission` for surgical button-level gates.
+
+### Permissions Management Page (RolesPermissionsView)
+
+Lives at `/roles-permissions` ([src/components/roles-permissions/](src/components/roles-permissions/)). Full e2e flow:
+- Create / edit-description / delete a permission resource (`CreatePermissionModal`, `EditPermissionModal`, `DeletePermissionConfirm`)
+- Assign / revoke per role with parallel `Promise.allSettled` saves (failed toggles stay pending for retry)
+- Seed defaults button calls `POST /permissions/seed`
+- React Query handler: [src/lib/request-handlers/permissionsMgt.ts](src/lib/request-handlers/permissionsMgt.ts) — query keys `permissions:list` / `permissions:role`, 5-min `staleTime` matching the backend TTL cache
+- Delete buttons visible only to SUPER_ADMIN (matches backend `require_super_admin` on DELETE endpoints)
 
 ### Request Handler Pattern
 
@@ -184,7 +204,7 @@ export function DeleteProperty()         // useMutation
 ```typescript
 interface IUser {
   id, email, phone, firstName, lastName, isActive, isVerified
-  role: UserRole  // SUPER_ADMIN, ADMIN, AGENT, OWNER, GUEST, MANAGER
+  role: UserRole  // SUPER_ADMIN, ADMIN, OPERATIONS_ADMIN, SUPPORT_ADMIN, ANALYST, AGENT, OWNER, GUEST  (MANAGER was removed 2026-05-02 — frontend now matches backend's 8 roles)
   profile: IUserProfile
   wallets?: IWallet[]
 }
@@ -274,5 +294,14 @@ yarn lint         # ESLint
 
 ---
 
-**Last Updated:** March 2, 2026
+## Notable conventions (added 2026-05-02)
+
+- **`images.unoptimized: true`** in [next.config.ts](next.config.ts). Vercel's image-optimization API is bypassed entirely (the staging deployment hit the Hobby-tier quota and returned 402 on every transform). All `<Image>` renders are passthroughs to Cloudinary / GCS — both already provide CDN. If responsive sizing / AVIF transcoding becomes necessary later, wire `images.loader: 'custom'` with a Cloudinary fetch URL builder rather than re-enabling Vercel optimization.
+- **AutoBreadcrumb section-only segments.** [src/components/breadcrumb/AutoBreadcrumb.tsx](src/components/breadcrumb/AutoBreadcrumb.tsx) maintains a `NON_NAVIGABLE_SEGMENTS` set covering `booking-management`, `notifications`, `property-management`, `transactions`, `user-management`. Those route segments have no `page.tsx` so rendering them as `<Link>` causes Next.js to prefetch a non-existent route and 404. Render as plain text. If you add a parent overview page for one of those sections, remove the segment from the set.
+- **Stepper inputs (units / guests count).** Use the transient string state pattern documented in [BookingSidebar.tsx](../landing-page/src/components/property/BookingSidebar.tsx) — `<input type="number">` with `value={transientStringState}`, `onFocus={(e) => e.target.select()}`, `onChange` allowing empty mid-edit, `onBlur` clamp. Direct numeric binding produces the append-then-clamp + empty-snaps-back bugs.
+- **Admin-on-behalf KYC upload.** [KycReviewPanel.tsx](src/components/user-management/KycReviewPanel.tsx) has an "Upload on behalf" button gated by `KYC_UPLOAD_ROLES = {SUPER_ADMIN, ADMIN, OPERATIONS_ADMIN}` mirroring the backend (SUPPORT_ADMIN excluded). Modal: [KycUploadOnBehalfModal.tsx](src/components/user-management/KycUploadOnBehalfModal.tsx). Hook: `UploadKycOnBehalf` in `userMgt.ts`.
+
+---
+
+**Last Updated:** May 2, 2026
 **Version:** 1.0.0

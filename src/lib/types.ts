@@ -189,10 +189,19 @@ export interface IUser {
   verification_token?: string;
   referralCode?: string | null;
   referralLink?: string | null;
+  // The /admin/users list response flattens KYC to top-level (no `profile` key).
+  // The detail response nests under `profile`. Both fields optional so the
+  // type works for either shape.
+  kycStatus?: KycStatus;
+  kyc_status?: KycStatus;
   profile: IUserProfile;
   kyc?: [],
   kycDocuments?: any[],
   wallets?: IWallet[],
+  isProfileComplete?: boolean;
+  is_profile_complete?: boolean;
+  missingProfileFields?: string[];
+  missing_profile_fields?: string[];
 }
 
 export interface IAuthorization {

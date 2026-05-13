@@ -21,12 +21,16 @@ import DeleteBookingDialog from "../dialogs/DeleteBookingDialog";
 import { useIsMobile } from "@/src/hooks/useIsMobile";
 import BookingCard from "../BookingCard";
 import PullToRefresh from "../../mobile/PullToRefresh";
+import BookingAttributionChip from "../bookings/AttributionChip";
 
 export default function BookingsTable({
-    unitId
+    unitId,
+    mode = 'all',
 }: {
-    unitId?: string | number
+    unitId?: string | number,
+    mode?: 'all' | 'requests',
 }) {
+    const isRequestsMode = mode === 'requests';
     const [page, setPage] = useState<number>(1);
     const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -36,13 +40,15 @@ export default function BookingsTable({
     const [startDateFrom, setStartDateFrom] = useState<string>("");
     const [startDateTo, setStartDateTo] = useState<string>("");
 
+    const effectiveStatus = isRequestsMode ? 'APPROVAL_PENDING' : (statusFilter || undefined);
+
     const { data: bookings, isLoading, refetch: refetchBookings } = GetAllBookings(
         page,
         10,
         searchTerm,
         unitId,
         propertyFilter || undefined,
-        statusFilter || undefined,
+        effectiveStatus,
         startDateFrom || undefined,
         startDateTo || undefined
     );
@@ -137,20 +143,24 @@ export default function BookingsTable({
                                     </button>
                                 )}
                                 <h1 className="text-lg sm:text-xl font-semibold text-gray-900">
-                                    {unitId ? "Unit Bookings" : "All Bookings"}
+                                    {isRequestsMode ? "Booking Requests" : unitId ? "Unit Bookings" : "All Bookings"}
                                 </h1>
                             </div>
                             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                                {unitId ? "View and manage bookings for this specific unit" : "Manage and track all property bookings"}
+                                {isRequestsMode
+                                    ? "Approve or reject incoming requests for your Request-to-Book properties"
+                                    : unitId ? "View and manage bookings for this specific unit" : "Manage and track all property bookings"}
                             </p>
                         </div>
-                        <Link
-                            href={`${PAGE_ROUTES.dashboard.bookingManagement.bookings.create}`}
-                            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2"
-                        >
-                            <FiPlus className="w-4 h-4" />
-                            <span>New Booking</span>
-                        </Link>
+                        {!isRequestsMode && (
+                            <Link
+                                href={`${PAGE_ROUTES.dashboard.bookingManagement.bookings.create}`}
+                                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2"
+                            >
+                                <FiPlus className="w-4 h-4" />
+                                <span>New Booking</span>
+                            </Link>
+                        )}
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex-1 max-w-md relative">
@@ -188,23 +198,26 @@ export default function BookingsTable({
                             </div>
                         )}
 
-                        {/* Status Filter */}
-                        <div className="w-full sm:w-auto sm:min-w-[180px]">
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value);
-                                    setPage(1);
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
-                            >
-                                <option value="">All Statuses</option>
-                                <option value="PENDING">Pending</option>
-                                <option value="CONFIRMED">Confirmed</option>
-                                <option value="CANCELLED">Cancelled</option>
-                                <option value="COMPLETED">Completed</option>
-                            </select>
-                        </div>
+                        {/* Status Filter — hidden in requests mode (status is locked to APPROVAL_PENDING) */}
+                        {!isRequestsMode && (
+                            <div className="w-full sm:w-auto sm:min-w-[180px]">
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => {
+                                        setStatusFilter(e.target.value);
+                                        setPage(1);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                >
+                                    <option value="">All Statuses</option>
+                                    <option value="APPROVAL_PENDING">Awaiting Approval</option>
+                                    <option value="PENDING">Pending</option>
+                                    <option value="CONFIRMED">Confirmed</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                    <option value="COMPLETED">Completed</option>
+                                </select>
+                            </div>
+                        )}
 
                         {/* Date Range Filters */}
                         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -297,14 +310,17 @@ export default function BookingsTable({
                                             {formatMoney(Number((booking as any)?.total_price ?? 0))}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                                                (booking as any)?.status === 'PENDING' || (booking as any)?.status === 'PENDING_PAYMENT' ? 'bg-yellow-100 text-yellow-800' :
-                                                    (booking as any)?.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                                                        (booking as any)?.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                {(booking as any)?.status?.replace('_', ' ') ?? '--/--'}
-                                            </span>
+                                            <div className="inline-flex flex-wrap items-center justify-center gap-1.5">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(booking as any)?.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                                                    (booking as any)?.status === 'PENDING' || (booking as any)?.status === 'PENDING_PAYMENT' ? 'bg-yellow-100 text-yellow-800' :
+                                                        (booking as any)?.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                                            (booking as any)?.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
+                                                                'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                    {(booking as any)?.status?.replace('_', ' ') ?? '--/--'}
+                                                </span>
+                                                <BookingAttributionChip booking={booking as any} />
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700 text-center">
                                             {formatDate((booking as any)?.created_at)}
@@ -325,8 +341,14 @@ export default function BookingsTable({
                         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                             <Icon icon="hugeicons:album-not-found-01" width="32" height="32" className="text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-1">No bookings found</h3>
-                        <p className="text-sm text-gray-500">Try adjusting your search or create a new booking</p>
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">
+                            {isRequestsMode ? "No pending booking requests" : "No bookings found"}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                            {isRequestsMode
+                                ? "When guests request to book your Request-to-Book properties, they'll show up here for your approval."
+                                : "Try adjusting your search or create a new booking"}
+                        </p>
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-12">

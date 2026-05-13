@@ -6,6 +6,22 @@ import { getDayDifference } from "@/src/lib/utils";
  * into a single consistent camelCase interface. Use this at the top of any component
  * that consumes booking data instead of scattering `(bookingDetails as any)` casts.
  */
+/**
+ * Person summary used for booking attribution surfaces (owner, agent, referrer).
+ * Mirrors the backend `_user_summary()` shape in services/bookings/router.py.
+ */
+export interface BookingPerson {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
+  profile: {
+    firstName: string | null;
+    lastName: string | null;
+    referralCode?: string | null;
+  } | null;
+}
+
 export interface NormalizedBooking {
   id: string | number;
   bookingId: string;
@@ -34,9 +50,21 @@ export interface NormalizedBooking {
   paymentNotes: string;
   referralCodeUsed: string;
   referrerId: string;
+  // Booking attribution — the caller (agent/admin) who actually submitted the
+  // create request. Equals userId for self-bookings.
+  bookedBy: string;
+  // Attribution surfaces — populated by the backend's booking detail
+  // endpoint so support can resolve commission/onboarding without DB queries.
+  bookingReferrer: BookingPerson | null;
+  signupReferrer: BookingPerson | null;
+  booker: BookingPerson | null;
   user: IBooking["user"];
   unit: IBooking["unit"];
   revenueSplit: IBooking["revenueSplit"] | null;
+  // Fee breakdown — gateway_fee is added on top of total_price; total_payable
+  // is what the guest actually pays at checkout.
+  gatewayFee: number;
+  totalPayable: number;
   // Computed fields
   nights: number;
   pricePerNight: number;
@@ -67,6 +95,8 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     unitCount,
     totalPrice: Number(raw.totalPrice || r.total_price || 0),
     cautionFee: Number(raw.cautionFee || r.caution_fee || 0),
+    gatewayFee: Number((raw as any).gatewayFee ?? r.gateway_fee ?? 0),
+    totalPayable: Number((raw as any).totalPayable ?? r.total_payable ?? (Number(raw.totalPrice || r.total_price || 0) + Number((raw as any).gatewayFee ?? r.gateway_fee ?? 0))),
     isCautionRefunded: raw.isCautionRefunded ?? r.is_caution_refunded ?? false,
     cautionRefundNotes: raw.cautionRefundNotes || r.caution_refund_notes || "",
     cautionRefundActionBy: raw.cautionRefundActionBy || r.caution_refund_action_by || "",
@@ -82,6 +112,10 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     paymentNotes: raw.paymentNotes || r.payment_notes || "",
     referralCodeUsed: r.referral_code_used || "",
     referrerId: r.referrer_id || "",
+    bookedBy: r.booked_by || r.bookedBy || "",
+    bookingReferrer: r.booking_referrer ?? null,
+    signupReferrer: r.signup_referrer ?? null,
+    booker: r.booker ?? null,
     user: raw.user,
     unit: raw.unit,
     revenueSplit: raw.revenueSplit || raw.revenue_split || null,

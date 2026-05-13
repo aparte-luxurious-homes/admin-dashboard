@@ -239,7 +239,7 @@ export default function EditBookingDetails({
                             </div>
 
                             {/* 2. Payment Information */}
-                            {(user && (user.role === UserRole.ADMIN || user.role === UserRole.MANAGER)) && (
+                            {(user && user.role === UserRole.ADMIN) && (
                                 <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
                                     <h2 className="text-xl font-medium text-zinc-800 mb-6 flex items-center gap-2">
                                         <span className="bg-green-50 text-green-600 p-1.5 rounded-lg"><MdOutlinePayments className="w-5 h-5" /></span>

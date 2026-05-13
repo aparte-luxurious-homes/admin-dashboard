@@ -35,6 +35,7 @@ import { toast } from "react-hot-toast";
 import { DocumentType, IPropertyDocument, PropertyVerificationStatus } from "../types";
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from "@/src/hooks/useAuth";
+import { usePermissions } from "@/src/hooks/usePermissions";
 import { UserRole } from "@/src/lib/enums";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
@@ -52,6 +53,7 @@ export default function PropertyDetailsView({
 }) {
     const dispatch = useDispatch();
     const { user } = useAuth();
+    const { canDeleteProperty } = usePermissions();
 
     const { data, isLoading } = GetSingleProperty(propertyId)
     const { data: fetchedAmenites } = GetAmenities();
@@ -288,18 +290,20 @@ export default function PropertyDetailsView({
                                                     <p className="text-sm md:text-base break-words">{property?.address || "Address not available"}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 bg-zinc-50 border border-zinc-100 px-3 py-2 rounded-xl self-start flex-shrink-0">
-                                                <span className="text-xl font-bold text-primary">{averageRating.toFixed(1)}</span>
-                                                <div className="flex gap-0.5">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <IoStarSharp
-                                                            key={i}
-                                                            className={`text-sm ${i < Math.round(averageRating) ? 'text-primary' : 'text-zinc-200'}`}
-                                                        />
-                                                    ))}
+                                            {(property?.meta?.total_reviews ?? 0) > 0 && (
+                                                <div className="flex items-center gap-2 bg-zinc-50 border border-zinc-100 px-3 py-2 rounded-xl self-start flex-shrink-0">
+                                                    <span className="text-xl font-bold text-primary">{averageRating.toFixed(1)}</span>
+                                                    <div className="flex gap-0.5">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <IoStarSharp
+                                                                key={i}
+                                                                className={`text-sm ${i < Math.round(averageRating) ? 'text-primary' : 'text-zinc-200'}`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-zinc-400 text-xs ml-0.5">({property?.meta?.total_reviews ?? 0})</span>
                                                 </div>
-                                                <span className="text-zinc-400 text-xs ml-0.5">({property?.meta?.total_reviews ?? 0})</span>
-                                            </div>
+                                            )}
                                         </div>
 
                                         {/* Description */}
@@ -587,13 +591,15 @@ export default function PropertyDetailsView({
                                                     <HiOutlinePencilAlt className="text-sm" />
                                                     Edit
                                                 </button>
-                                                <button
-                                                    onClick={handleDelete}
-                                                    className="flex-1 h-9 bg-red-50 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-1.5 border border-red-100 uppercase tracking-wider"
-                                                >
-                                                    <TrashIcon className="w-2.5" color="#dc2626" />
-                                                    Delete
-                                                </button>
+                                                {canDeleteProperty && (
+                                                    <button
+                                                        onClick={handleDelete}
+                                                        className="flex-1 h-9 bg-red-50 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-1.5 border border-red-100 uppercase tracking-wider"
+                                                    >
+                                                        <TrashIcon className="w-2.5" color="#dc2626" />
+                                                        Delete
+                                                    </button>
+                                                )}
                                             </div>
                                             <Link
                                                 href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.verifications.base(propertyId)}

@@ -85,6 +85,21 @@ export interface IBooking {
     rejection_reason?: string
     revenueSplit?: RevenueSplit;
     revenue_split?: RevenueSplit;
+    // Attribution — the caller who actually submitted the booking. Differs
+    // from userId when an agent/admin books on behalf of a guest.
+    bookedBy?: string | number | null
+    booked_by?: string | number | null
+    referrerId?: string | number | null
+    referrer_id?: string | number | null
+    referralCodeUsed?: string | null
+    referral_code_used?: string | null
+    // List-endpoint convenience flags computed server-side against the caller.
+    isMyBooking?: boolean
+    is_my_booking?: boolean
+    isMyReferral?: boolean
+    is_my_referral?: boolean
+    isMyManagement?: boolean
+    is_my_management?: boolean
 }
 
 export interface RevenueSplit {
@@ -125,6 +140,7 @@ export interface ICreateBooking {
     payment_proof_url?: string
     payment_notes?: string
     mark_as_paid?: boolean
+    send_payment_link?: boolean
     referral_code?: string
 
     // Quick Guest Onboarding

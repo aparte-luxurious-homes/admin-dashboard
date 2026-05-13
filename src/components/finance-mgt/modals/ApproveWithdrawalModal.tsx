@@ -72,9 +72,16 @@ export function ApproveWithdrawalModal({
             {
                 onSuccess: (response: any) => {
                     const data = response?.data;
-                    if (data?.requires_otp || data?.data?.status === "AWAITING_AUTHORIZATION") {
+                    const txnStatus = data?.data?.status;
+                    if (data?.requires_otp || txnStatus === "AWAITING_AUTHORIZATION") {
                         setStep("otp");
                         toast.success("OTP sent to merchant admin. Enter it to complete the disbursement.");
+                    } else if (txnStatus === "FAILED") {
+                        // Defensive: backend now raises 400 on disbursement failure,
+                        // but guard against older deploys that still return 200 with a FAILED txn.
+                        const reason = data?.data?.comment || data?.message || "Disbursement was rejected by the gateway.";
+                        toast.error(reason);
+                        handleClose();
                     } else {
                         toast.success("Withdrawal approved and payout initiated");
                         handleClose();
@@ -85,6 +92,9 @@ export function ApproveWithdrawalModal({
                     if (detail?.error_code === "PROVIDER_MISMATCH") {
                         setMismatch(detail as ProviderMismatchInfo);
                         setStep("mismatch");
+                    } else if (detail?.error_code === "DISBURSEMENT_FAILED") {
+                        toast.error(detail.message || "Disbursement was rejected by the gateway.");
+                        handleClose();
                     } else {
                         toast.error(
                             detail?.message || detail || err?.response?.data?.message || "Failed to approve withdrawal"

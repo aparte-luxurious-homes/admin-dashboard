@@ -44,12 +44,18 @@ import { useMediaQuery } from "@mui/material";
 import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
 import { HiOutlineCloudUpload } from "react-icons/hi";
 import { MdOutlinePayments } from "react-icons/md";
+import { Icon } from "@iconify/react";
 
 export default function CreateBookingView() {
   const router = useRouter();
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  // Agents must use the payment-link flow — they cannot self-attest to
+  // payment or pick offline methods. Backend rejects regardless; we hide the
+  // controls so the UI doesn't offer choices that 403.
+  const isAgent = user?.role === UserRole.AGENT;
 
   // State
   const [guestSearchInput, setGuestSearchInput] = useState<string>("");
@@ -64,11 +70,16 @@ export default function CreateBookingView() {
   const [duplicateGuestMatch, setDuplicateGuestMatch] = useState<any | null>(null);
   const [duplicateDismissed, setDuplicateDismissed] = useState<boolean>(false);
 
-  // Queries
+  // Queries — booking-on-behalf needs the full public catalog, not the
+  // OWNER/AGENT scope-to-self view, so opt out of server-side auto-scoping.
   const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(
     propPage,
     propSize,
     propertySearchTerm,
+    undefined,
+    undefined,
+    null,
+    true,
   );
   const { data: guestLookupResult, isLoading: guestLookupLoading } =
     GuestLookup(guestSearchTerm);
@@ -113,10 +124,16 @@ export default function CreateBookingView() {
       guests_count: 1,
       unit_count: 1,
       total_price: 0,
-      payment_method: "cash",
+      // Agents can only use the online/gateway flow.
+      payment_method: isAgent ? "online" : "cash",
       payment_proof_url: "",
       payment_notes: "",
       mark_as_paid: false,
+      // Default the payment-link dispatch ON for agents — they're booking on
+      // behalf of a guest who can't otherwise discover the checkout URL. Backend
+      // also generates the link regardless; this just controls email + SMS
+      // notification.
+      send_payment_link: isAgent,
       referral_code: "",
       // Onboarding fields
       guest_first_name: "",
@@ -199,13 +216,49 @@ export default function CreateBookingView() {
                 width: "max-content",
               },
             });
-            if (values?.data?.data) {
-              router.push(
-                PAGE_ROUTES.dashboard.bookingManagement.bookings.details(
-                  values?.data?.data?.id,
-                ),
+            const data = values?.data?.data;
+            if (!data) return;
+            // If a payment link was generated, hand it off to the booking
+            // details page via sessionStorage so the detail view can render
+            // the share/WhatsApp card on first load. Keyed by booking UUID
+            // so it's only shown for *this* booking and clears after first
+            // read (so a refresh doesn't show stale prompts).
+            if (data.payment_link) {
+              const guestEmail = isNewGuest
+                ? (formik.values.guest_email || null)
+                : (selectedUser?.email || null);
+              const guestPhone = isNewGuest
+                ? (formik.values.guest_phone || null)
+                : (selectedUser?.phone || null);
+              const propName = selectedProperty?.name ?? "your booking";
+              const waMessage = encodeURIComponent(
+                `Hi! Your Aparté booking ${data.booking_id} at ${propName} is ready. Pay here: ${data.payment_link}`,
               );
+              const waNumber = (guestPhone || "").replace(/\D/g, "");
+              try {
+                sessionStorage.setItem(
+                  `aparte:freshPaymentLink:${data.id}`,
+                  JSON.stringify({
+                    url: data.payment_link,
+                    emailSent: !!data.payment_link_email_sent,
+                    smsSent: !!data.payment_link_sms_sent,
+                    bookingId: data.booking_id,
+                    guestEmail,
+                    guestPhone,
+                    whatsappHref: waNumber
+                      ? `https://wa.me/${waNumber}?text=${waMessage}`
+                      : `https://wa.me/?text=${waMessage}`,
+                  }),
+                );
+              } catch {
+                // sessionStorage unavailable (private mode etc.) — falling
+                // through still navigates to the detail page. The agent can
+                // resend the link from there.
+              }
             }
+            router.push(
+              PAGE_ROUTES.dashboard.bookingManagement.bookings.details(data.id),
+            );
           },
           onError: (error: any) => {
             toast.error(
@@ -1082,7 +1135,7 @@ export default function CreateBookingView() {
                     className="w-full h-10 px-3 pr-8 border border-zinc-300 rounded-lg text-sm font-mono bg-white
                                focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all
                                uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:font-sans"
-                    placeholder="e.g. ABC12345"
+                    placeholder="e.g. YOURCODE123"
                     value={formik.values.referral_code}
                     maxLength={12}
                     onChange={(e) =>
@@ -1129,27 +1182,75 @@ export default function CreateBookingView() {
                 </div>
 
                 <div className="space-y-3">
-                  <div
-                    className="flex items-center gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200 cursor-pointer hover:bg-zinc-100 transition-colors"
-                    onClick={() =>
-                      formik.setFieldValue(
-                        "mark_as_paid",
-                        !formik.values.mark_as_paid,
-                      )
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
-                      checked={formik.values.mark_as_paid}
-                      onChange={() => {}} // Handled by div click
-                    />
-                    <span className="text-sm font-medium text-zinc-700">
-                      Mark as Paid
-                    </span>
-                  </div>
+                  {!isAgent && (
+                    <div
+                      className="flex items-center gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200 cursor-pointer hover:bg-zinc-100 transition-colors"
+                      onClick={() => {
+                        const next = !formik.values.mark_as_paid;
+                        formik.setFieldValue("mark_as_paid", next);
+                        if (next) formik.setFieldValue("send_payment_link", false);
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
+                        checked={formik.values.mark_as_paid}
+                        onChange={() => {}} // Handled by div click
+                      />
+                      <span className="text-sm font-medium text-zinc-700">
+                        Mark as Paid
+                      </span>
+                    </div>
+                  )}
 
-                  {formik.values.mark_as_paid && (
+                  {/* Send payment link — for agents this is locked ON because
+                      they have no other way to collect payment from the guest. */}
+                  {isAgent ? (
+                    <div className="flex items-start gap-3 p-3 rounded-lg border bg-teal-50 border-teal-200">
+                      <Icon icon="mdi:email-send-outline" className="mt-0.5 text-teal-700 text-lg" />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-teal-900 block">
+                          Payment link will be sent to guest
+                        </span>
+                        <span className="text-xs text-teal-700 block mt-0.5">
+                          We'll email + SMS the guest a checkout URL when you confirm. You also get a copyable link to share on WhatsApp.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                        formik.values.mark_as_paid
+                          ? "bg-zinc-50 border-zinc-200 opacity-50 cursor-not-allowed"
+                          : "bg-zinc-50 border-zinc-200 cursor-pointer hover:bg-zinc-100"
+                      }`}
+                      onClick={() => {
+                        if (formik.values.mark_as_paid) return;
+                        formik.setFieldValue(
+                          "send_payment_link",
+                          !formik.values.send_payment_link,
+                        );
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
+                        checked={formik.values.send_payment_link}
+                        disabled={formik.values.mark_as_paid}
+                        onChange={() => {}}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-zinc-700 block">
+                          Send payment link to guest
+                        </span>
+                        <span className="text-xs text-zinc-500 block mt-0.5">
+                          Emails and SMSes the guest a checkout URL. You also get a copyable link to share on WhatsApp.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {formik.values.mark_as_paid && !isAgent && (
                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-zinc-500 uppercase">

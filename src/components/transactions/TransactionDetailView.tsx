@@ -14,6 +14,7 @@ import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveR
 import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
 import { Button } from "@/src/components/ui/button";
+import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface Transaction {
     id: string;
@@ -163,6 +164,7 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
     const params = useParams();
     const id = params?.id;
+    const { canManageFinances } = usePermissions();
 
     const fetchData = useCallback(async () => {
         if (!id) return;
@@ -251,8 +253,8 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                                     </div>
                                 </div>
 
-                                {/* Action buttons */}
-                                {isPendingApproval && (
+                                {/* Action buttons — Admin-only approval/rejection */}
+                                {isPendingApproval && canManageFinances && (
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {isWithdrawal && (
                                             <Button

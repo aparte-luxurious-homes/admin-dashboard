@@ -5,7 +5,9 @@ import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import BreadCrumb from "@/src/components/breadcrumb";
 import { EditWalletModal } from "@/src/components/finance-mgt/modals/EditWalletModal";
-import KycStatusEditor from "./KycStatusEditor";
+import KycReviewPanel from "./KycReviewPanel";
+import KycHistoryTimeline from "./KycHistoryTimeline";
+import AllowMagicOtpToggle from "./AllowMagicOtpToggle";
 import UserProfileHeader from "./UserProfileHeader";
 import UserDetailsPanel from "./UserDetailsPanel";
 import UserEditDrawer from "./UserEditDrawer";
@@ -93,9 +95,11 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
               isCreatingWallet={isCreatingWallet}
             />
             <UserDetailsPanel user={user} />
-            <KycStatusEditor
+            <KycReviewPanel user={user} onUpdate={refetch} />
+            <KycHistoryTimeline userId={String(id)} />
+            <AllowMagicOtpToggle
               userId={String(id)}
-              currentStatus={user.profile.kycStatus || "PENDING"}
+              currentValue={user.allowMagicOtp}
               onUpdate={refetch}
             />
           </>

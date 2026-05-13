@@ -7,6 +7,9 @@ export const API_ROUTES = {
         passwordReset: '/auth/password/reset',
         resendOtp: '/auth/otp/resend',
         logout: '/auth/logout',
+        requestPhoneOtp: '/auth/phone/request-otp',
+        requestPhoneOtpViaEmail: '/auth/phone/request-otp-via-email',
+        verifyPhoneOtp: '/auth/phone/verify',
     },
     admin: {
         kyc: {
@@ -18,6 +21,8 @@ export const API_ROUTES = {
             reassignOwner: (id: string | number) => `/admin/properties/${id}/reassign-owner`,
             verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
             feature: (id: string | number) => `/admin/properties/${id}/feature`,
+            verificationHistory: (propertyId: string | number, verificationId: string | number) =>
+                `/admin/properties/${propertyId}/verifications/${verificationId}/history`,
         },
         bookings: {
             base: '/bookings',
@@ -32,8 +37,11 @@ export const API_ROUTES = {
             userById: (id: string | number) => `/admin/users/${id}`,
             userByUuid: (id: string | number) => `/admin/users/${id}`,
             updateKyc: (id: string | number) => `/admin/users/${id}/kyc`,
+            kycHistory: (id: string | number) => `/admin/users/${id}/kyc/history`,
+            uploadKycOnBehalf: (id: string | number) => `/admin/users/${id}/kyc/documents`,
             roles: '/admin/users/roles',
         },
+        kycQueue: '/admin/kyc/queue',
         integrations: {
             configs: '/admin/integrations/configs',
             configByKey: (key: string) => `/admin/integrations/configs/${key}`,
@@ -63,6 +71,7 @@ export const API_ROUTES = {
         updatePassword: '/profile/password',
         kycStatus: '/profile/kyc-status',
         verifyGovId: '/profile/verify-gov-id',
+        kycDocuments: '/profile/kyc/documents',
         kyc: {
             upload: '/kyc/upload',
             details: (docId: string | number) => `/kyc/${docId}/details`,
@@ -75,6 +84,7 @@ export const API_ROUTES = {
             amenities: (propertyId: string | number) => `/properties/${propertyId}/amenities`,
             media: (propertyId: string | number) => `/properties/${propertyId}/media`,
             verify: (id: string | number) => `/properties/${id}/verify`,
+            verificationMedia: (id: string | number) => `/properties/${id}/verifications/media`,
             units: {
                 base: (propertyId: string | number) => `/properties/${propertyId}/units`,
                 details: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}`,
@@ -94,16 +104,22 @@ export const API_ROUTES = {
     },
     verifications: {
         base: '/verifications',
-        details: (verificationId: string | number) => `/verifications/${verificationId}`
+        details: (verificationId: string | number) => `/verifications/${verificationId}`,
+        myQueue: '/properties/verifications/my-queue',
+        ownerResubmit: (propertyId: string | number) =>
+            `/properties/${propertyId}/verifications/resubmit`,
     },
     bookings: {
         base: '/bookings',
+        upcoming: '/bookings/upcoming',
         guestLookup: '/bookings/guest-lookup',
+        guestsDirectory: '/bookings/guests/directory',
         details: (id: string) => `/bookings/${id}`,
         status: (id: string | number) => `/bookings/${id}/status`,
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
         approveRequest: (id: string | number) => `/bookings/${id}/approve-request`,
         rejectRequest: (id: string | number) => `/bookings/${id}/reject-request`,
+        reconcilePayment: (id: string | number) => `/bookings/${id}/reconcile-payment`,
         extensions: {
             base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
             listAll: '/bookings/extensions/all',
@@ -142,6 +158,8 @@ export const API_ROUTES = {
     statistic: {
         base: '/stats',
         gatewayBalances: '/stats/gateway-balances',
+        adminQueues: '/stats/admin/queues',
+        adminAgentPerformance: '/stats/admin/agent-performance',
     },
     transactions: {
         base: '/wallets/transactions',

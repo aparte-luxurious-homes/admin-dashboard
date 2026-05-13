@@ -7,11 +7,13 @@ import { useReviewDetails, useFlagReview, useRemoveReview } from "@/src/hooks/us
 import Spinner from "@/src/components/ui/Spinner";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import { usePermissions } from "@/src/hooks/usePermissions";
 
 const ReviewDetailsView = () => {
     const { id } = useParams();
     const reviewId = id as string;
     const router = useRouter();
+    const { canFlagReview, canRemoveReview } = usePermissions();
 
     const { data: reviewResponse, isLoading } = useReviewDetails(reviewId);
     const review = reviewResponse?.data;
@@ -69,22 +71,26 @@ const ReviewDetailsView = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button 
-                        onClick={handleFlag}
-                        disabled={flagMutation.isPending || review.is_flagged}
-                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs transition-all shadow-lg ${review.is_flagged ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20'}`}
-                    >
-                        <Icon icon="solar:danger-bold" width="18" />
-                        {review.is_flagged ? 'FLAGGED' : 'FLAG CONTENT'}
-                    </button>
-                    <button 
-                        onClick={handleRemove}
-                        disabled={removeMutation.isPending}
-                        className="flex items-center gap-2 px-5 py-3 bg-red-600 text-white hover:bg-red-700 rounded-2xl transition-all font-bold text-xs shadow-lg shadow-red-600/20"
-                    >
-                        <Icon icon="solar:trash-bin-trash-bold" width="18" />
-                        PURGE REVIEW
-                    </button>
+                    {canFlagReview && (
+                        <button
+                            onClick={handleFlag}
+                            disabled={flagMutation.isPending || review.is_flagged}
+                            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs transition-all shadow-lg ${review.is_flagged ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20'}`}
+                        >
+                            <Icon icon="solar:danger-bold" width="18" />
+                            {review.is_flagged ? 'FLAGGED' : 'FLAG CONTENT'}
+                        </button>
+                    )}
+                    {canRemoveReview && (
+                        <button
+                            onClick={handleRemove}
+                            disabled={removeMutation.isPending}
+                            className="flex items-center gap-2 px-5 py-3 bg-red-600 text-white hover:bg-red-700 rounded-2xl transition-all font-bold text-xs shadow-lg shadow-red-600/20"
+                        >
+                            <Icon icon="solar:trash-bin-trash-bold" width="18" />
+                            PURGE REVIEW
+                        </button>
+                    )}
                 </div>
             </div>
 

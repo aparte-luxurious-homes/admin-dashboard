@@ -7,7 +7,6 @@ import { IoBedOutline } from 'react-icons/io5';
 import { TbCurrencyNaira, TbToolsKitchen } from 'react-icons/tb';
 import { PiBathtub } from 'react-icons/pi';
 import { LuSofa, LuUsers } from 'react-icons/lu';
-import CustomCheckbox from '@/components/ui/customCheckbox';
 import MultipleChoice from '@/components/ui/MultipleChoice';
 import { IAmenity } from '../types';
 import { UnitFormValues, createEmptyUnit } from './types';
@@ -67,7 +66,7 @@ function NumberInput({ field, value, onChange, min = 0, max = 100 }: {
     );
 }
 
-function CountInput({ value, onChange, min = 0, max = 100 }: { value: number; onChange: (v: number) => void; min?: number; max?: number; }) {
+function CountInput({ value, onChange, min = 0, max = 100, disabled = false }: { value: number; onChange: (v: number) => void; min?: number; max?: number; disabled?: boolean; }) {
     const [isFocused, setIsFocused] = useState(false);
     const [dv, setDv] = useState(value.toString());
     useEffect(() => { setDv(value.toString()); }, [value]);
@@ -82,8 +81,9 @@ function CountInput({ value, onChange, min = 0, max = 100 }: { value: number; on
     const handleBlur = () => { setIsFocused(false); const v = clamp(parseInt(dv, 10) || 0); setDv(v.toString()); onChange(v); };
     return (
         <input type="text" inputMode="numeric" pattern="\d*" value={dv} onChange={handleChange}
+            disabled={disabled} readOnly={disabled}
             onFocus={() => setIsFocused(true)} onBlur={handleBlur}
-            className={`w-full bg-zinc-50 border rounded-lg px-3 py-2.5 outline-none transition-all font-semibold text-zinc-900 text-center text-sm ${isFocused ? 'border-primary ring-1 ring-primary/20' : 'border-zinc-200 hover:border-zinc-300'}`} />
+            className={`w-full bg-zinc-50 border rounded-lg px-3 py-2.5 outline-none transition-all font-semibold text-zinc-900 text-center text-sm ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${isFocused ? 'border-primary ring-1 ring-primary/20' : 'border-zinc-200 hover:border-zinc-300'}`} />
     );
 }
 
@@ -95,16 +95,32 @@ interface UnitDrawerProps {
     availableAmenities: IAmenity[];
     showAmenityForm: () => void;
     userRole?: string;
+    /** Property name — used to auto-fill the unit name when "Whole property" is toggled on. */
+    propertyName?: string;
 }
 
-export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, availableAmenities, showAmenityForm, userRole }: UnitDrawerProps) {
+export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, availableAmenities, showAmenityForm, userRole, propertyName }: UnitDrawerProps) {
     const [unit, setUnit] = useState<UnitFormValues>(editingUnit ?? createEmptyUnit());
 
     useEffect(() => {
         if (isOpen) setUnit(editingUnit ?? createEmptyUnit());
     }, [isOpen, editingUnit]);
 
-    const updateField = (field: string, value: any) => setUnit(prev => ({ ...prev, [field]: value }));
+    const updateField = (field: string, value: any) => {
+        // Toggling "Whole property" ON: lock count to 1 and auto-fill name if blank.
+        // Toggling OFF: leave count where the user puts it next.
+        if (field === 'is_whole_property') {
+            const isOn = Boolean(value);
+            setUnit(prev => ({
+                ...prev,
+                is_whole_property: isOn,
+                count: isOn ? 1 : prev.count,
+                name: isOn && !prev.name.trim() ? (propertyName?.trim() || 'Whole Property') : prev.name,
+            }));
+            return;
+        }
+        setUnit(prev => ({ ...prev, [field]: value }));
+    };
 
     const handleSave = () => {
         if (!unit.name.trim()) return;
@@ -133,6 +149,31 @@ export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, avail
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                    {/* Whole-property toggle — placed first because it changes how the
+                        rest of the form (and the media step) behaves. */}
+                    <label
+                        htmlFor="unit-is-whole-property"
+                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                            unit.is_whole_property
+                                ? 'border-primary bg-primary/5'
+                                : 'border-zinc-200 bg-zinc-50 hover:border-zinc-300'
+                        }`}
+                    >
+                        <input
+                            id="unit-is-whole-property"
+                            type="checkbox"
+                            checked={unit.is_whole_property}
+                            onChange={(e) => updateField('is_whole_property', e.target.checked)}
+                            className="mt-0.5 h-4 w-4 accent-primary cursor-pointer"
+                        />
+                        <span className="flex-1">
+                            <span className="text-xs font-bold text-zinc-900 block">This unit is the whole property</span>
+                            <span className="text-[11px] text-zinc-500 block leading-snug">
+                                Use this when guests book the entire property exclusively. Photos go in the property gallery and only one unit is allowed.
+                            </span>
+                        </span>
+                    </label>
+
                     {/* Basic Info */}
                     <div className="space-y-3">
                         <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Basic Information</h4>
@@ -187,11 +228,16 @@ export default function UnitDrawer({ isOpen, onClose, onSave, editingUnit, avail
                                 </div>
                             ))}
                         </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-                            <CustomCheckbox label="Whole property" checked={unit.is_whole_property} onChange={(val: boolean) => updateField('is_whole_property', val)} />
+                        <div className="flex items-center justify-end pt-2 border-t border-zinc-100">
                             <div className="w-24">
                                 <label className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1">Units</label>
-                                <CountInput value={unit.count} onChange={(val) => updateField('count', val)} min={1} max={MAX_VALUES.count} />
+                                <CountInput
+                                    value={unit.count}
+                                    onChange={(val) => updateField('count', val)}
+                                    min={1}
+                                    max={unit.is_whole_property ? 1 : MAX_VALUES.count}
+                                    disabled={unit.is_whole_property}
+                                />
                             </div>
                         </div>
                     </div>
