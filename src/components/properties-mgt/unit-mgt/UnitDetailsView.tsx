@@ -217,7 +217,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                         { label: 'Bedrooms', value: propertyUnit?.bedroomCount || propertyUnit?.bedroom_count || 0, icon: IoBedOutline },
                                         { label: 'Bathrooms', value: propertyUnit?.bathroomCount || propertyUnit?.bathroom_count || 0, icon: PiBathtub },
                                         { label: 'Kitchens', value: propertyUnit?.kitchenCount || propertyUnit?.kitchen_count || 0, icon: TbToolsKitchen },
-                                        { label: 'Lounges', value: propertyUnit?.livingRoomCount || propertyUnit?.living_room_count || 0, icon: LuSofa }
+                                        { label: 'Living Rooms', value: propertyUnit?.livingRoomCount || propertyUnit?.living_room_count || 0, icon: LuSofa }
                                     ].map((feature, i) => (
                                         <div key={i} className="p-1 sm:p-1 md:p-1 lg:p-1 bg-white border border-zinc-200 rounded-[4px] sm:rounded-[8px] md:rounded-[1rem] flex flex-col items-center gap-2 sm:gap-3 md:gap-4 hover:border-primary/40 hover:shadow-lg transition-all group cursor-default">
                                             <div className="p-1 sm:p-1 md:p-1 bg-zinc-50 rounded-lg sm:rounded-xl md:rounded-2xl group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-300">

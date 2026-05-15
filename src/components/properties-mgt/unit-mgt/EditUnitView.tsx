@@ -316,7 +316,7 @@ export default function EditUnitView({
                                 { id: 'bedroomCount', label: 'Bedrooms', icon: IoBedOutline },
                                 { id: 'kitchenCount', label: 'Kitchens', icon: TbToolsKitchen },
                                 { id: 'bathroomCount', label: 'Bathrooms', icon: PiBathtub },
-                                { id: 'livingRoomCount', label: 'Lounges', icon: LuSofa },
+                                { id: 'livingRoomCount', label: 'Living Rooms', icon: LuSofa },
                             ].map((field) => (
                                 <div key={field.id} className="space-y-2">
                                     <label htmlFor={field.id} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
