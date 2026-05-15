@@ -1,5 +1,5 @@
-import KycVerification from "@/src/components/settings/KycVerification";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <KycVerification />;
+  redirect("/settings/personal-info#kyc");
 }

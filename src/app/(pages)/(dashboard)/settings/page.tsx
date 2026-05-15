@@ -4,21 +4,14 @@ import SettingCard from "@/src/components/settings-card/settingscard";
 import Grid from "@mui/material/Grid2";
 import { useAuth } from "@/src/hooks/useAuth";
 import { Icon } from "@iconify/react";
-import { UserRole } from "@/src/lib/enums";
-
-// KYC verification is self-serve for any authenticated user with a real
-// trust-surface on the platform (AGENT, OWNER, GUEST). Admin roles don't
-// need to upload their own KYC — their identity is vetted during onboarding.
-const KYC_ALLOWED_ROLES: UserRole[] = [UserRole.AGENT, UserRole.OWNER, UserRole.GUEST];
 
 const SettingsPage = () => {
   const { user } = useAuth();
-  const showKyc = !!user?.role && KYC_ALLOWED_ROLES.includes(user.role as UserRole);
 
   const settingsOptions = [
     {
       title: "Personal info",
-      description: "Provide personal details",
+      description: "Profile details & identity verification",
       route: "/settings/personal-info",
       icon: <Icon icon="carbon:user-profile" width="32" height="32" />,
     },
@@ -34,14 +27,6 @@ const SettingsPage = () => {
       route: "/settings/payments-payouts",
       icon: <Icon icon="material-symbols:payments" width="32" height="32" />,
     },
-    ...(showKyc
-      ? [{
-          title: "KYC Verification",
-          description: "Upload identity, address, or ownership documents",
-          route: "/settings/kyc",
-          icon: <Icon icon="mdi:shield-check-outline" width="32" height="32" />,
-        }]
-      : []),
   ];
 
   return (
