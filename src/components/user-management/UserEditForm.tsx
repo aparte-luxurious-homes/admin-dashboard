@@ -68,6 +68,10 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    useEffect(() => {
+        console.log('Form Data Updated:', formData);
+    }, [formData]);
+
     const handleSubmit = () => {
         onSave(formData);
     };
