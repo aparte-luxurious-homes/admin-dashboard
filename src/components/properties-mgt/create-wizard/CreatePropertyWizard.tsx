@@ -166,6 +166,7 @@ export default function CreatePropertyWizard() {
       ownerId: 0,
       owner_name: "",
       owner_email: "",
+      owner_phoneNumber: "",
       is_pet_allowed: false,
       is_party_allowed: false,
       rules: "",
@@ -384,6 +385,7 @@ export default function CreatePropertyWizard() {
       ...(values.rules && { rules: values.rules }),
       ...(values.owner_email && { owner_email: values.owner_email }),
       ...(values.owner_name && { owner_name: values.owner_name }),
+      ...(values.owner_phoneNumber && { owner_phone: values.owner_phoneNumber }),
     };
 
     createProperty(
