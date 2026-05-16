@@ -24,7 +24,7 @@ const CONFIG_FIELDS: ConfigField[] = [
     { id: 'bedroom_count', label: 'Bedrooms', icon: IoBedOutline },
     { id: 'kitchen_count', label: 'Kitchens', icon: TbToolsKitchen },
     { id: 'bathroom_count', label: 'Bathrooms', icon: PiBathtub },
-    { id: 'living_room_count', label: 'Lounges', icon: LuSofa },
+    { id: 'living_room_count', label: 'Living Rooms', icon: LuSofa },
     { id: 'max_guests', label: 'Max Guests', icon: LuUsers },
 ];
 
