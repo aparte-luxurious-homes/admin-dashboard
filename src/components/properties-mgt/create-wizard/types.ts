@@ -154,6 +154,7 @@ export type PropertyFormValues = {
     ownerId: number;
     owner_name: string;
     owner_email: string;
+    owner_phoneNumber: string;
     is_pet_allowed: boolean;
     is_party_allowed: boolean;
     rules: string;

@@ -419,6 +419,24 @@ export default function StepPropertyDetails({
                   />
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                  Owner Phone Number
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                    <Icon icon="mdi:phone-outline" />
+                  </div>
+                  <input
+                    id="owner_phoneNumber"
+                    type="email"
+                    placeholder="e.g. 090 0000 0000"
+                    value={formik.values.owner_phoneNumber}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
