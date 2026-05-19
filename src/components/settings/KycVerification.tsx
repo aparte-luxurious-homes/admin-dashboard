@@ -19,6 +19,7 @@ import {
 const DOC_TYPE_OPTIONS: { value: KycDocumentType; label: string; group: string }[] = [
   { value: KycDocumentType.INTERNATIONAL_PASSPORT, label: "International Passport", group: "Identity" },
   { value: KycDocumentType.DRIVERS_LICENSE, label: "Driver's License", group: "Identity" },
+  { value: KycDocumentType.NIN, label: "National Identity Number", group: "Identity" },
   { value: KycDocumentType.UTILITY_BILL, label: "Utility Bill", group: "Address" },
   { value: KycDocumentType.POWER_BILL, label: "Power Bill", group: "Address" },
   { value: KycDocumentType.TENANCY_AGREEMENT, label: "Tenancy Agreement", group: "Address" },
