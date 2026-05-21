@@ -134,6 +134,7 @@ export default function CreateBookingView() {
       guest_last_name: "",
       guest_email: "",
       guest_phone: "",
+      agent_custom_fee: 5000.00
     },
     onSubmit: async (values) => {
       if (!selectedProperty) {
@@ -192,6 +193,7 @@ export default function CreateBookingView() {
         end_date: formatDateToYYYYMMDD(values.end_date!),
         // Ensure user_id is null if we are creating a new guest
         user_id: isNewGuest ? null : values.user_id,
+        total_price: values.total_price + values.agent_custom_fee
       };
 
       // Don't send empty referral_code — omit the key entirely
@@ -1062,6 +1064,12 @@ export default function CreateBookingView() {
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Agent Custom Fee</span>
+                  <span className="text-zinc-900 font-medium">
+                    {formik.value?.agent_custom_fee || (5000).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Dates</span>
                   <div className="text-right">
                     {formik.values.start_date && formik.values.end_date ? (
@@ -1123,7 +1131,8 @@ export default function CreateBookingView() {
                 <div className="border-t border-zinc-200 mt-2 pt-3 flex justify-between items-center">
                   <span className="font-semibold text-zinc-900">Total</span>
                   <span className="text-xl font-bold text-primary">
-                    {formatMoney(formik.values.total_price)}
+                    {formik.values.total_price ? formatMoney(formik.values.total_price + formik.values.agent_custom_fee) : formatMoney(formik.values.total_price)}
+                    {/* {formatMoney(formik.values.total_price + formik.values.agent_custom_fee)} */}
                   </span>
                 </div>
               </div>
