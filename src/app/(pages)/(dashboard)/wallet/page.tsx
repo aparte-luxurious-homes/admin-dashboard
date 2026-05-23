@@ -111,7 +111,7 @@ const WalletPage = () => {
     } else {
       setWithdrawalLimitStatus(false);
     }
-  }, [withdrawAmount]);
+  }, [withdrawAmount,amount]);
 
   const formatError = (err: any): string => {
     const detail = err?.response?.data?.detail || err?.message || err;

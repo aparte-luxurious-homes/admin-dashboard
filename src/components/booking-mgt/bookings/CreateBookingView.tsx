@@ -116,7 +116,7 @@ export default function CreateBookingView() {
       start_date: null,
       end_date: null,
       guests_count: 1,
-      unit_count: "",
+      unit_count: 0,
       total_price: 0,
       // Agents can only use the online/gateway flow.
       payment_method: isAgent ? "online" : "cash",
@@ -422,7 +422,7 @@ export default function CreateBookingView() {
           selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0,
         );
 
-        const firstPrice = days * (values.unit_count || 1) * pricePerNight;
+        const firstPrice = days * Number(values.unit_count || 1) * Number(pricePerNight);
         const grandPrice = firstPrice + cautionFee;
 
         // Only update if the price has changed to avoid unnecessary re-renders
@@ -1066,7 +1066,7 @@ export default function CreateBookingView() {
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Agent Custom Fee</span>
                   <span className="text-zinc-900 font-medium">
-                    {formik.value?.agent_custom_fee || (5000).toFixed(2)}
+                    {formik.values?.agent_custom_fee || (5000).toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -1109,7 +1109,7 @@ export default function CreateBookingView() {
                             selectedUnit.pricePerNight ??
                               selectedUnit.price_per_night ??
                               0,
-                          ) * (formik.values.unit_count || 1),
+                          ) * Number(formik.values.unit_count || 1),
                         )
                       : "-"}
                   </span>
