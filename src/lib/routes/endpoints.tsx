@@ -113,6 +113,12 @@ export const API_ROUTES = {
             details: (id: string) => `/admin/network/events/${id}`,
             update: (id: string) => `/admin/network/events/${id}/status`,
         },
+        configs: {
+            actions: {
+                base: `/admin/network/configs/actions`,
+                update: (actionType: string) => `/admin/network/configs/actions/${actionType}`,
+            },
+        },
     },
     permissions: {
         base: '/permissions',

@@ -87,7 +87,7 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
-        name: 'Network',
+        name: 'Network Management',
         pathName: 'network',
         link: PAGE_ROUTES.dashboard.network.events.base,
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
@@ -98,6 +98,12 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Events',
                 pathName: 'events',
                 link: PAGE_ROUTES.dashboard.network.events.base,
+                allow: [UserRole.ADMIN],
+            },
+            {
+                name: 'Actions',
+                pathName: 'actions',
+                link: PAGE_ROUTES.dashboard.network.configs.actions.base,
                 allow: [UserRole.ADMIN],
             },
         ]
