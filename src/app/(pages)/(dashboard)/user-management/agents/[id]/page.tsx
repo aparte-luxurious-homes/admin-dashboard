@@ -94,6 +94,18 @@ interface UserProfile {
   updated_at?: string;
 }
 
+interface AgentTierState {
+  agent_id: string;
+  current_tier: "BRONZE" | "SILVER" | "GOLD";
+  commission_listing_pct: number;
+  commission_referral_pct: number;
+  points_30d: number;
+  streak_count: number;
+  consecutive_misses: number;
+  grace_period_until: string | null;
+  is_inactive: boolean;
+}
+
 interface User {
   id: string | number;
   email: string;
@@ -123,10 +135,18 @@ interface User {
   verification_token?: string | null;
 }
 
+const TIER_CONFIG = {
+  BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", icon: "solar:medal-ribbons-star-bold-duotone" },
+  SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200", icon: "solar:medal-ribbons-star-bold-duotone" },
+  GOLD: { label: "Gold", color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", icon: "solar:medal-ribbons-star-bold-duotone" },
+} as const;
+
 const AgentInfo = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [searchResult, setSearchResult] = useState<Property[]>([]);
   const [userInfo, setUserInfo] = useState<User>({} as User);
+  const [tierState, setTierState] = useState<AgentTierState | null>(null);
+  const [tierLoading, setTierLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
   const [searchValue, setSearchValue] = useState<string>("");
@@ -165,6 +185,29 @@ const AgentInfo = () => {
   useEffect(() => {
     fetchAUserInfo();
   }, [fetchAUserInfo]);
+
+  const fetchTierState = useCallback(async () => {
+    if (!id) return;
+
+    setTierLoading(true);
+    try {
+      const response = await axiosRequest.get(
+        `${API_ROUTES.network.agents.tier(String(id))}`
+      );
+      const data = response?.data?.data;
+      if (data) {
+        setTierState(data);
+      }
+    } catch {
+      // Network feature may not be available yet; keep defaults
+    } finally {
+      setTierLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchTierState();
+  }, [fetchTierState]);
 
   const fetchProperties = useCallback(async () => {
     if (!id) return;
@@ -480,6 +523,79 @@ const AgentInfo = () => {
                           <Badge status={userInfo?.is_verified ?? userInfo?.isVerified ?? false} />
                         </div>
                       </div>
+                    </Grid>
+
+                    {/* Network Info Section */}
+                    <Grid size={{ xs: 12 }}>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                          <Icon icon="solar:chart-bold-duotone" width="20" />
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800">Network Info</h4>
+                      </div>
+                      {tierLoading ? (
+                        <Skeleton className="h-[200px] w-full rounded-2xl" />
+                      ) : (() => {
+                        const tier = tierState?.current_tier ?? "BRONZE";
+                        const tierCfg = TIER_CONFIG[tier];
+                        const listingPct = tierState?.commission_listing_pct != null
+                          ? `${(tierState.commission_listing_pct * 100).toFixed(1)}%`
+                          : "--/--";
+                        const referralPct = tierState?.commission_referral_pct != null
+                          ? `${(tierState.commission_referral_pct * 100).toFixed(1)}%`
+                          : "--/--";
+                        const gracePeriod = tierState?.grace_period_until
+                          ? new Date(tierState.grace_period_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                          : null;
+                        return (
+                          <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Current Tier</p>
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
+                                  <Icon icon={tierCfg.icon} width="16" />
+                                  {tierCfg.label}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Activity State</p>
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border ${tierState?.is_inactive ? "bg-red-50 text-red-600 border-red-200" : "bg-green-50 text-green-600 border-green-200"}`}>
+                                  <Icon icon={tierState?.is_inactive ? "solar:close-circle-bold-duotone" : "solar:check-circle-bold-duotone"} width="16" />
+                                  {tierState?.is_inactive ? "Inactive" : "Active"}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Points (Last 30 Days)</p>
+                                <p className="text-sm font-medium text-gray-900">{(tierState?.points_30d ?? 0).toLocaleString()} pts</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Streak</p>
+                                <p className="text-sm font-medium text-gray-900">{tierState?.streak_count ?? 0} period{tierState?.streak_count !== 1 ? "s" : ""}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Listing Commission</p>
+                                <p className="text-sm font-medium text-gray-900">{listingPct}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Referral Commission</p>
+                                <p className="text-sm font-medium text-gray-900">{referralPct}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Consecutive Misses</p>
+                                <p className={`text-sm font-medium ${(tierState?.consecutive_misses ?? 0) > 0 ? "text-red-600" : "text-gray-900"}`}>
+                                  {tierState?.consecutive_misses ?? 0}
+                                </p>
+                              </div>
+                              {tier === "BRONZE" && gracePeriod && (
+                                <div className="space-y-1">
+                                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Grace Period Until</p>
+                                  <p className="text-sm font-medium text-amber-700">{gracePeriod}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </Grid>
                   </Grid>
                 </>

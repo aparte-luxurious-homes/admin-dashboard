@@ -103,6 +103,13 @@ export const API_ROUTES = {
         base: '/wallets/transactions',
         details: (transactionId: string) => `/wallets/transactions/${transactionId}`
     },
+    network: {
+        agents: {
+            tier: (id: string | number) => `/admin/network/agents/${id}/tier`,
+            adjust: (id: string | number) => `/admin/network/agents/${id}/adjust`,
+            events: `/admin/network/events`,
+        },
+    },
     permissions: {
         base: '/permissions',
         details: (permissionId: string) => `/permissions/${permissionId}`,
