@@ -190,7 +190,7 @@ export default function NetworkEventDetail() {
                         <button
                             onClick={() => setIsEditing(true)}
                             disabled={eventLoading || !event}
-                            className="px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                            className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                         >
                             <Icon icon="mdi:pencil" width="16" />
                             Edit
@@ -384,20 +384,29 @@ export default function NetworkEventDetail() {
                     </Grid>
 
                     {isEditing && (
-                        <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
+                        <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end gap-3">
                             <button
                                 onClick={() => setIsEditing(false)}
-                                className="px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="px-5 py-2.5 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
-                                {isSaving && <Icon icon="svg-spinners:ring-resize" width="14" />}
-                                {isSaving ? "Saving..." : "Save Changes"}
+                                {isSaving ? (
+                                    <>
+                                        <Icon icon="mdi:loading" className="animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon icon="mdi:content-save" />
+                                        Save Changes
+                                    </>
+                                )}
                             </button>
                         </div>
                     )}

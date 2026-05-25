@@ -154,6 +154,14 @@ const AgentInfo = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<any>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [tierEditData, setTierEditData] = useState({
+    current_tier: "BRONZE" as "BRONZE" | "SILVER" | "GOLD",
+    commission_listing_pct: 0,
+    commission_referral_pct: 0,
+    streak_count: 0,
+    consecutive_misses: 0,
+    is_inactive: false,
+  });
   const params = useParams();
   const id = params?.id;
   console.log("params", params?.id);
@@ -329,6 +337,16 @@ const AgentInfo = () => {
         address: userInfo?.profile?.address || "",
         gender: userInfo?.profile?.gender || "",
       });
+      if (tierState) {
+        setTierEditData({
+          current_tier: tierState.current_tier,
+          commission_listing_pct: parseFloat((tierState.commission_listing_pct * 100).toFixed(1)),
+          commission_referral_pct: parseFloat((tierState.commission_referral_pct * 100).toFixed(1)),
+          streak_count: tierState.streak_count,
+          consecutive_misses: tierState.consecutive_misses,
+          is_inactive: tierState.is_inactive,
+        });
+      }
     }
   };
 
@@ -425,15 +443,107 @@ const AgentInfo = () => {
                             },
                           }
                         );
+                        if (tierState) {
+                          await axiosRequest.patch(
+                            `${API_ROUTES.network.agents.tier(String(id))}`,
+                            {
+                              ...tierEditData,
+                              commission_listing_pct: parseFloat((tierEditData.commission_listing_pct / 100).toFixed(4)),
+                              commission_referral_pct: parseFloat((tierEditData.commission_referral_pct / 100).toFixed(4)),
+                            }
+                          );
+                        }
                         toast.success("Agent profile updated successfully");
                         setIsEditing(false);
                         fetchAUserInfo();
+                        fetchTierState();
                       } catch (error: any) {
                         toast.error(error.response?.data?.message || "Failed to update agent");
                       } finally {
                         setIsSaving(false);
                       }
                     }}
+                    extraSection={tierState ? (
+                      <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                        <div className="flex items-center gap-2 mb-6">
+                          <div className="h-4 w-1 bg-primary rounded-full"></div>
+                          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Network Info</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700 ml-1">Current Tier</label>
+                            <select
+                              value={tierEditData.current_tier}
+                              onChange={(e) => setTierEditData((prev) => ({ ...prev, current_tier: e.target.value as "BRONZE" | "SILVER" | "GOLD" }))}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50 transition-all"
+                            >
+                              <option value="BRONZE">Bronze</option>
+                              <option value="SILVER">Silver</option>
+                              <option value="GOLD">Gold</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700 ml-1">Activity State</label>
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">{tierEditData.is_inactive ? "Inactive" : "Active"}</span>
+                              <button
+                                type="button"
+                                onClick={() => setTierEditData((prev) => ({ ...prev, is_inactive: !prev.is_inactive }))}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${tierEditData.is_inactive ? "bg-red-400" : "bg-primary"}`}
+                              >
+                                <span className={`${tierEditData.is_inactive ? "translate-x-6" : "translate-x-1"} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700 ml-1">Listing Commission (%)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={0.1}
+                              placeholder="e.g. 19.0"
+                              value={tierEditData.commission_listing_pct}
+                              onChange={(e) => setTierEditData((prev) => ({ ...prev, commission_listing_pct: parseFloat(parseFloat(e.target.value || "0").toFixed(1)) }))}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50 transition-all"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700 ml-1">Referral Commission (%)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={0.1}
+                              placeholder="e.g. 19.0"
+                              value={tierEditData.commission_referral_pct}
+                              onChange={(e) => setTierEditData((prev) => ({ ...prev, commission_referral_pct: parseFloat(parseFloat(e.target.value || "0").toFixed(1)) }))}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50 transition-all"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700 ml-1">Streak Count</label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={tierEditData.streak_count}
+                              onChange={(e) => setTierEditData((prev) => ({ ...prev, streak_count: parseInt(e.target.value) || 0 }))}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50 transition-all"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700 ml-1">Consecutive Misses</label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={tierEditData.consecutive_misses}
+                              onChange={(e) => setTierEditData((prev) => ({ ...prev, consecutive_misses: parseInt(e.target.value) || 0 }))}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50 transition-all"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : undefined}
                   />
                 </div>
               ) : (
