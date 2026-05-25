@@ -1,14 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { DotsIcon, SearchIcon } from "../../icons";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import Loader from "@/src/components/loader";
-import { LuEye, LuPencil, LuRefreshCw, LuX, LuCheck } from "react-icons/lu";
+import { LuEye, LuPencil, LuCheck } from "react-icons/lu";
 import { toast } from "react-hot-toast";
 
 interface NetworkEvent {
@@ -54,6 +56,8 @@ function formatEntityType(type: string | null) {
 }
 
 export default function NetworkEventsTable() {
+    const router = useRouter();
+
     const [events, setEvents]         = useState<NetworkEvent[]>([]);
     const [total, setTotal]           = useState(0);
     const [page, setPage]             = useState(1);
@@ -65,10 +69,6 @@ export default function NetworkEventsTable() {
 
     const [selectedRow, setSelectedRow]     = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
-    const [viewEvent, setViewEvent]         = useState<NetworkEvent | null>(null);
-    const [editEvent, setEditEvent]         = useState<NetworkEvent | null>(null);
-    const [editReason, setEditReason]       = useState("");
-    const [isSaving, setIsSaving]           = useState(false);
 
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -114,35 +114,20 @@ export default function NetworkEventsTable() {
         setModalPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
     };
 
-    const updateEventStatus = async (eventId: string, status: string) => {
+    const confirmEvent = async (eventId: string) => {
         setSelectedRow(null);
         try {
             await toast.promise(
-                axiosRequest.patch(API_ROUTES.network.events.update(eventId), { status }),
+                axiosRequest.patch(API_ROUTES.network.events.update(eventId), { status: "CONFIRMED" }),
                 {
-                    loading: "Updating event...",
-                    success: `Event ${status.toLowerCase()} successfully`,
-                    error: (err) => err?.response?.data?.message || "Failed to update event",
+                    loading: "Confirming event...",
+                    success: "Event confirmed successfully",
+                    error: (err) => err?.response?.data?.message || "Failed to confirm event",
                 }
             );
             fetchEvents();
         } catch {
-            // error toast already handled by toast.promise
-        }
-    };
-
-    const handleEditSave = async () => {
-        if (!editEvent) return;
-        setIsSaving(true);
-        try {
-            await axiosRequest.patch(API_ROUTES.network.events.update(editEvent.id), { reason: editReason });
-            toast.success("Event updated successfully");
-            setEditEvent(null);
-            fetchEvents();
-        } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to update event");
-        } finally {
-            setIsSaving(false);
+            // handled by toast.promise
         }
     };
 
@@ -152,29 +137,23 @@ export default function NetworkEventsTable() {
         {
             label: "View",
             Icon: <LuEye />,
-            onClick: () => { setViewEvent(event); setSelectedRow(null); },
+            onClick: () => {
+                setSelectedRow(null);
+                router.push(PAGE_ROUTES.dashboard.network.events.details(event.id));
+            },
         },
         {
             label: "Edit",
             Icon: <LuPencil />,
-            onClick: () => { setEditReason(event.reason ?? ""); setEditEvent(event); setSelectedRow(null); },
-        },
-        {
-            label: "Reverse",
-            Icon: <LuRefreshCw className="text-orange-500" />,
-            onClick: () => updateEventStatus(event.id, "REVERSED"),
-            hidden: event.status === "REVERSED",
-        },
-        {
-            label: "Reject",
-            Icon: <LuX className="text-red-500" />,
-            onClick: () => updateEventStatus(event.id, "REJECTED"),
-            hidden: event.status === "REJECTED",
+            onClick: () => {
+                setSelectedRow(null);
+                router.push(`${PAGE_ROUTES.dashboard.network.events.details(event.id)}?edit=true`);
+            },
         },
         {
             label: "Confirm",
             Icon: <LuCheck className="text-green-600" />,
-            onClick: () => updateEventStatus(event.id, "CONFIRMED"),
+            onClick: () => confirmEvent(event.id),
             hidden: event.status === "CONFIRMED",
         },
     ];
@@ -290,7 +269,7 @@ export default function NetworkEventsTable() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${event.adjustment_direction === "ADDITION" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                    {event.adjustment_direction === "ADDITION" ? "+" : "−"}&nbsp;{event.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}
+                                                    {event.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
@@ -302,7 +281,7 @@ export default function NetworkEventsTable() {
                                                 {formatDate(event.created_at)}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                                <div
+                                                <div
                                                     className="flex justify-end items-center"
                                                     onClick={(e) => handleDotsClick(e, index)}
                                                 >
@@ -358,96 +337,6 @@ export default function NetworkEventsTable() {
                                 <span>{button.label}</span>
                             </button>
                         ))}
-                </div>
-            )}
-
-            {/* View modal */}
-            {viewEvent && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <h3 className="text-lg font-semibold text-gray-900">Event Details</h3>
-                            <button
-                                onClick={() => setViewEvent(null)}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <LuX className="w-5 h-5 text-gray-500" />
-                            </button>
-                        </div>
-                        <div className="p-6 grid grid-cols-2 gap-x-6 gap-y-4 max-h-[70vh] overflow-y-auto">
-                            {(
-                                [
-                                    ["Event ID",     viewEvent.id],
-                                    ["Agent ID",     viewEvent.agent_id],
-                                    ["Action",       formatActionType(viewEvent.action_type)],
-                                    ["Status",       viewEvent.status],
-                                    ["Base Points",  String(viewEvent.base_points)],
-                                    ["Multiplier",   `${viewEvent.multiplier_applied}×`],
-                                    ["Points",       `${viewEvent.points_awarded >= 0 ? "+" : ""}${viewEvent.points_awarded}`],
-                                    ["Entity",       formatEntityType(viewEvent.entity_type)],
-                                    ["Entity ID",    viewEvent.entity_id ?? "--/--"],
-                                    ["Adjustment",   viewEvent.adjustment_direction],
-                                    ["Remitted",     viewEvent.is_remitted ? "Yes" : "No"],
-                                    ["Reason",       viewEvent.reason ?? "--/--"],
-                                    ["Created At",   formatDate(viewEvent.created_at)],
-                                    ["Updated At",   formatDate(viewEvent.updated_at)],
-                                ] as [string, string][]
-                            ).map(([label, value]) => (
-                                <div key={label} className="space-y-1">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
-                                    <p className="text-sm font-medium text-gray-900 break-all">{value}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Edit modal */}
-            {editEvent && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <h3 className="text-lg font-semibold text-gray-900">Edit Event</h3>
-                            <button
-                                onClick={() => setEditEvent(null)}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <LuX className="w-5 h-5 text-gray-500" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="space-y-1">
-                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</p>
-                                <p className="text-sm font-medium text-gray-900">{formatActionType(editEvent.action_type)}</p>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</label>
-                                <textarea
-                                    rows={4}
-                                    value={editReason}
-                                    onChange={(e) => setEditReason(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm resize-none"
-                                    placeholder="Enter reason..."
-                                />
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-                            <button
-                                onClick={() => setEditEvent(null)}
-                                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleEditSave}
-                                disabled={isSaving}
-                                className="px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                {isSaving ? "Saving..." : "Save"}
-                            </button>
-                        </div>
-                    </div>
                 </div>
             )}
         </div>

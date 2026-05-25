@@ -110,7 +110,8 @@ export const API_ROUTES = {
         },
         events: {
             base: `/admin/network/events`,
-            update: (id: string) => `/admin/network/events/${id}`,
+            details: (id: string) => `/admin/network/events/${id}`,
+            update: (id: string) => `/admin/network/events/${id}/status`,
         },
     },
     permissions: {
