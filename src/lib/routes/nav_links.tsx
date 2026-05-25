@@ -87,6 +87,22 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
+        name: 'Network',
+        pathName: 'network',
+        link: PAGE_ROUTES.dashboard.network.events.base,
+        icon: <FinancialsIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN],
+        secondary: true,
+        children: [
+            {
+                name: 'Events',
+                pathName: 'events',
+                link: PAGE_ROUTES.dashboard.network.events.base,
+                allow: [UserRole.ADMIN],
+            },
+        ]
+    },
+    {
         name: 'Booking Management',
         pathName: 'booking-management',
         link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,

@@ -95,6 +95,9 @@ export const PAGE_ROUTES = {
         },
         network: {
             base: '/network',
+            events: {
+                base: '/network/events',
+            },
             agents: {
                 base: '/network/agents',
                 details: (id: string) => `/network/agents/${id}`,

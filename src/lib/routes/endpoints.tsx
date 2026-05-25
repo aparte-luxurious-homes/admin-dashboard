@@ -107,7 +107,10 @@ export const API_ROUTES = {
         agents: {
             tier: (id: string | number) => `/admin/network/agents/${id}/tier`,
             adjust: (id: string | number) => `/admin/network/agents/${id}/adjust`,
-            events: `/admin/network/events`,
+        },
+        events: {
+            base: `/admin/network/events`,
+            update: (id: string) => `/admin/network/events/${id}`,
         },
     },
     permissions: {
