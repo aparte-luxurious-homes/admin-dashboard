@@ -108,6 +108,7 @@ export const API_ROUTES = {
             tier: (id: string | number) => `/admin/network/agents/${id}/tier`,
             adjust: (id: string | number) => `/admin/network/agents/${id}/adjust`,
         },
+        remit: `/jobs/remit-agent-points`,
         events: {
             base: `/admin/network/events`,
             details: (id: string) => `/admin/network/events/${id}`,
