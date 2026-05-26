@@ -87,6 +87,22 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
+        name: 'Network',
+        pathName: 'network',
+        link: PAGE_ROUTES.dashboard.network.history.base,
+        icon: <UsersIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.AGENT],
+        secondary: true,
+        children: [
+            {
+                name: 'My Events',
+                pathName: 'history',
+                link: PAGE_ROUTES.dashboard.network.history.base,
+                allow: [UserRole.AGENT],
+            },
+        ]
+    },
+    {
         name: 'Network Management',
         pathName: 'network',
         link: PAGE_ROUTES.dashboard.network.events.base,

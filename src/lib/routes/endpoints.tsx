@@ -119,6 +119,8 @@ export const API_ROUTES = {
                 update: (actionType: string) => `/admin/network/configs/actions/${actionType}`,
             },
         },
+        me: `/network/me`,
+        history: `/network/history`,
     },
     permissions: {
         base: '/permissions',

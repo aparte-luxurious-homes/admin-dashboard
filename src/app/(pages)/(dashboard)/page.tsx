@@ -111,6 +111,23 @@ interface MonthlyPropertyStats {
   totalUnverified: number;
 }
 
+interface AgentNetworkSummary {
+  current_tier: "BRONZE" | "SILVER" | "GOLD";
+  commission_listing_pct: number;
+  commission_referral_pct: number;
+  points_30d: number;
+  streak_count: number;
+  consecutive_misses: number;
+  grace_period_until: string | null;
+  is_inactive: boolean;
+}
+
+const TIER_CONFIG = {
+  BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", icon: "solar:medal-ribbons-star-bold-duotone" },
+  SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-50",  border: "border-slate-200", icon: "solar:medal-ribbons-star-bold-duotone" },
+  GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", icon: "solar:medal-ribbons-star-bold-duotone" },
+} as const;
+
 const Home = () => {
   const [searchResult, setSearchResult] = useState<Property[]>([]);
   // const allAgents = topAgents;
@@ -123,6 +140,21 @@ const Home = () => {
   const [searchValue, setSearchValue] = useState<string>("");
   const [range, setRange] = useState<string>("year");
   const { user, isFetching } = useAuth();
+
+  const [networkSummary, setNetworkSummary] = useState<AgentNetworkSummary | null>(null);
+  const [networkLoading, setNetworkLoading] = useState(false);
+
+  const fetchNetworkSummary = useCallback(async () => {
+    setNetworkLoading(true);
+    try {
+      const response = await axiosRequest.get(API_ROUTES.network.me);
+      setNetworkSummary(response?.data?.data ?? null);
+    } catch {
+      // fail silently
+    } finally {
+      setNetworkLoading(false);
+    }
+  }, []);
 
   console.log(isFetching ? "Fetching User" : user);
 
@@ -164,7 +196,8 @@ const Home = () => {
   useEffect(() => {
     fetchProperties();
     fetchStatistics();
-  }, [fetchProperties, fetchStatistics]);
+    if (user?.role === "AGENT") fetchNetworkSummary();
+  }, [fetchProperties, fetchStatistics, fetchNetworkSummary, user?.role]);
 
   console.log("stats", stats);
   console.log(error)
@@ -443,7 +476,7 @@ const Home = () => {
     <div className="full py-6">
       <div className="mb-6">
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" ? 9 : 12, }}>
+          <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "AGENT" ? 9 : 12, }}>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
                 <StatsCard
@@ -551,9 +584,78 @@ const Home = () => {
                 <Table columns={topAgentColumns} rows={stats?.topListings} getRowId={(row) => row.agent?.id} pagination={false} />
               </div>
             </Grid>
-          ) : (
-            null
-          )}
+          ) : user?.role === "AGENT" ? (
+            <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }}>
+              <div className="h-full p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <Icon icon="solar:chart-bold-duotone" width="16" />
+                  </div>
+                  <h3 className="font-semibold text-gray-800">Network Overview</h3>
+                </div>
+
+                {networkLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />
+                    ))}
+                  </div>
+                ) : networkSummary ? (() => {
+                  const tier = networkSummary.current_tier;
+                  const tierCfg = TIER_CONFIG[tier];
+                  const listingPct = `${(networkSummary.commission_listing_pct * 100).toFixed(1)}%`;
+                  const referralPct = `${(networkSummary.commission_referral_pct * 100).toFixed(1)}%`;
+                  const gracePeriod = networkSummary.grace_period_until
+                    ? new Date(networkSummary.grace_period_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                    : null;
+                  return (
+                    <div className="space-y-4">
+                      {/* Points + Streak */}
+                      <div className="flex items-end justify-between">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Points (Last 30d)</p>
+                          <p className="text-2xl font-bold text-gray-900">{networkSummary.points_30d.toLocaleString()} <span className="text-sm font-medium text-gray-400">pts</span></p>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Streak</p>
+                          <p className="text-2xl font-bold text-gray-900">{networkSummary.streak_count} <span className="text-sm font-medium text-gray-400">period{networkSummary.streak_count !== 1 ? "s" : ""}</span></p>
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-gray-100" />
+
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Listing Comm.</p>
+                          <p className="text-sm font-semibold text-gray-800">{listingPct}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Referral Comm.</p>
+                          <p className="text-sm font-semibold text-gray-800">{referralPct}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Misses</p>
+                          <p className={`text-sm font-semibold ${networkSummary.consecutive_misses > 0 ? "text-red-600" : "text-gray-800"}`}>{networkSummary.consecutive_misses}</p>
+                        </div>
+                        {tier === "BRONZE" && gracePeriod && (
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Grace Period Until</p>
+                            <p className="text-sm font-semibold text-amber-700">{gracePeriod}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <div className="flex flex-col items-center justify-center h-40 text-center">
+                    <Icon icon="solar:chart-bold-duotone" width="32" className="text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-400">No network data available</p>
+                  </div>
+                )}
+              </div>
+            </Grid>
+          ) : null}
         </Grid>
       </div>
       <div className="p-[30px] mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">

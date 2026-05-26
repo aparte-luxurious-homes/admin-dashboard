@@ -18,6 +18,15 @@ import { clearUser } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
+import axiosRequest from "../lib/api";
+import { API_ROUTES } from "../lib/routes/endpoints";
+import { UserRole } from "../lib/enums";
+
+const TIER_CONFIG = {
+  BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+  SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+  GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+} as const;
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   const { user, isFetching } = useAuth();
@@ -27,6 +36,18 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "?";
+
+  const [agentTier, setAgentTier] = useState<"BRONZE" | "SILVER" | "GOLD" | null>(null);
+
+  useEffect(() => {
+    if (user?.role !== UserRole.AGENT) return;
+    axiosRequest.get(API_ROUTES.network.me)
+      .then((res) => {
+        const tier = res?.data?.data?.current_tier;
+        if (tier) setAgentTier(tier);
+      })
+      .catch(() => {});
+  }, [user?.role]);
 
   // Handle click to navigate
   const handleClick = () => {
@@ -203,6 +224,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             <AutoBreadcrumb />
           </div>
           <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-2 sm:gap-3 items-center">
+            {agentTier && (() => {
+              const cfg = TIER_CONFIG[agentTier];
+              return (
+                <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                  <Icon icon={cfg.icon} width="14" />
+                  {cfg.label}
+                </span>
+              );
+            })()}
             <div
               className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
               onClick={handleClick}
