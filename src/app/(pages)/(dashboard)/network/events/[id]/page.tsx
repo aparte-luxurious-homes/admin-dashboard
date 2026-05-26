@@ -109,10 +109,11 @@ export default function NetworkEventDetail() {
     const [eventLoading, setEventLoading] = useState(false);
     const [agentLoading, setAgentLoading] = useState(false);
 
-    const [isEditing, setIsEditing]   = useState(searchParams.get("edit") === "true");
-    const [editStatus, setEditStatus] = useState<string>("");
-    const [editReason, setEditReason] = useState<string>("");
-    const [isSaving, setIsSaving]     = useState(false);
+    const [isEditing, setIsEditing]       = useState(searchParams.get("edit") === "true");
+    const [editStatus, setEditStatus]     = useState<string>("");
+    const [editReason, setEditReason]     = useState<string>("");
+    const [isSaving, setIsSaving]         = useState(false);
+    const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
     const fetchEvent = useCallback(async () => {
         if (!id) return;
@@ -124,7 +125,7 @@ export default function NetworkEventDetail() {
             setEditStatus(data.status);
             setEditReason(data.reason ?? "");
         } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to fetch event");
+            toast.error(error?.response?.data?.detail || error?.response?.data?.message || "Failed to fetch event");
         } finally {
             setEventLoading(false);
         }
@@ -160,7 +161,7 @@ export default function NetworkEventDetail() {
                 {
                     loading: "Saving changes...",
                     success: "Event updated successfully",
-                    error: (err) => err?.response?.data?.message || "Failed to update event",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to update event",
                 }
             );
             setIsEditing(false);
@@ -175,6 +176,7 @@ export default function NetworkEventDetail() {
     const agentImage = agent ? getAgentImage(agent) : null;
 
     return (
+        <>
         <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
             <BreadCrumb
                 description=""
@@ -392,21 +394,12 @@ export default function NetworkEventDetail() {
                                 Cancel
                             </button>
                             <button
-                                onClick={handleSave}
+                                onClick={() => setShowSaveConfirm(true)}
                                 disabled={isSaving}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
-                                {isSaving ? (
-                                    <>
-                                        <Icon icon="mdi:loading" className="animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Icon icon="mdi:content-save" />
-                                        Save Changes
-                                    </>
-                                )}
+                                <Icon icon="mdi:content-save" />
+                                Save Changes
                             </button>
                         </div>
                     )}
@@ -414,5 +407,36 @@ export default function NetworkEventDetail() {
                 )}
             </div>
         </div>
+
+            {/* Save Changes Confirmation Modal */}
+            {showSaveConfirm && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="p-6">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                <Icon icon="mdi:content-save" width="24" className="text-primary" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Save changes?</h3>
+                            <p className="text-sm text-gray-500">You are about to update this event&apos;s status{editReason ? " and reason" : ""}. Please confirm you want to proceed.</p>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowSaveConfirm(false)}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => { setShowSaveConfirm(false); handleSave(); }}
+                                disabled={isSaving}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
+                            >
+                                Yes, save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

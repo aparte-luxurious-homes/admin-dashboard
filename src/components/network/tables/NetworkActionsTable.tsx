@@ -47,7 +47,7 @@ export default function NetworkActionsTable() {
             const data = response?.data?.data ?? response?.data;
             setActions(Array.isArray(data) ? data : []);
         } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to fetch action configs");
+            toast.error(error?.response?.data?.detail || error?.response?.data?.message || "Failed to fetch action configs");
         } finally {
             setIsLoading(false);
         }
@@ -91,7 +91,7 @@ export default function NetworkActionsTable() {
                 {
                     loading: "Saving...",
                     success: "Action config updated",
-                    error: (err) => err?.response?.data?.message || "Failed to update",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to update",
                 }
             );
             setEditAction(null);
@@ -136,7 +136,11 @@ export default function NetworkActionsTable() {
                                 {actions.map((action, index) => {
                                     const statusCfg = action.is_active ? STATUS_CONFIG.active : STATUS_CONFIG.inactive;
                                     return (
-                                        <tr key={action.action_type} className="hover:bg-gray-50 transition-colors">
+                                        <tr
+                                            key={action.action_type}
+                                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                            onClick={() => setViewAction(action)}
+                                        >
                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                                 {formatActionType(action.action_type)}
                                             </td>

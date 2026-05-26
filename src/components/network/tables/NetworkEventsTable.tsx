@@ -10,7 +10,7 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import Loader from "@/src/components/loader";
-import { LuEye, LuPencil, LuCheck } from "react-icons/lu";
+import { LuEye, LuPencil, LuCheck, LuX } from "react-icons/lu";
 import { toast } from "react-hot-toast";
 
 interface NetworkEvent {
@@ -37,6 +37,21 @@ interface ActionButton {
     Icon: React.ReactElement;
     onClick: () => void;
     hidden?: boolean;
+}
+
+interface Agent {
+    id: string;
+    profile?: { first_name?: string | null; last_name?: string | null; firstName?: string | null; lastName?: string | null };
+    first_name?: string | null;
+    last_name?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+}
+
+function agentFullName(a: Agent): string {
+    const first = a.profile?.first_name ?? a.profile?.firstName ?? a.first_name ?? a.firstName ?? "";
+    const last  = a.profile?.last_name  ?? a.profile?.lastName  ?? a.last_name  ?? a.lastName  ?? "";
+    return `${first} ${last}`.trim() || "Unnamed Agent";
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
@@ -70,7 +85,28 @@ export default function NetworkEventsTable() {
     const [selectedRow, setSelectedRow]     = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
 
-    const modalRef = useRef<HTMLDivElement>(null);
+    const [confirmEventId, setConfirmEventId] = useState<string | null>(null);
+
+    const [showAdjustModal, setShowAdjustModal] = useState(false);
+    const [adjustAgentId, setAdjustAgentId]     = useState("");
+    const [adjustPoints, setAdjustPoints]       = useState<number>(0);
+    const [adjustReason, setAdjustReason]       = useState("");
+    const [isAdjusting, setIsAdjusting]         = useState(false);
+
+    const [agents, setAgents]               = useState<Agent[]>([]);
+    const [agentsLoading, setAgentsLoading] = useState(false);
+
+    // table search combobox
+    const [tableAgentSearch, setTableAgentSearch]       = useState("");
+    const [tableDropdownOpen, setTableDropdownOpen]     = useState(false);
+
+    // modal combobox
+    const [agentSearch, setAgentSearch]                 = useState("");
+    const [agentDropdownOpen, setAgentDropdownOpen]     = useState(false);
+
+    const modalRef       = useRef<HTMLDivElement>(null);
+    const agentComboRef  = useRef<HTMLDivElement>(null);
+    const tableComboRef  = useRef<HTMLDivElement>(null);
 
     const fetchEvents = useCallback(async () => {
         setIsLoading(true);
@@ -89,7 +125,7 @@ export default function NetworkEventsTable() {
             setEvents(data?.items ?? []);
             setTotal(data?.total ?? 0);
         } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to fetch events");
+            toast.error(error?.response?.data?.detail || error?.response?.data?.message || "Failed to fetch events");
         } finally {
             setIsLoading(false);
         }
@@ -107,6 +143,31 @@ export default function NetworkEventsTable() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        setAgentsLoading(true);
+        axiosRequest
+            .get(API_ROUTES.admin.users.base, { params: { role: "AGENT", page: 1, size: 100 } })
+            .then((res) => {
+                const data = res?.data?.data;
+                setAgents(data?.data ?? []);
+            })
+            .catch(() => {})
+            .finally(() => setAgentsLoading(false));
+    }, []);
+
+    useEffect(() => {
+        function handleOutside(e: MouseEvent) {
+            if (agentComboRef.current && !agentComboRef.current.contains(e.target as Node)) {
+                setAgentDropdownOpen(false);
+            }
+            if (tableComboRef.current && !tableComboRef.current.contains(e.target as Node)) {
+                setTableDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleOutside);
+        return () => document.removeEventListener("mousedown", handleOutside);
+    }, []);
+
     const handleDotsClick = (e: React.MouseEvent, index: number) => {
         e.stopPropagation();
         setSelectedRow(index);
@@ -122,12 +183,43 @@ export default function NetworkEventsTable() {
                 {
                     loading: "Confirming event...",
                     success: "Event confirmed successfully",
-                    error: (err) => err?.response?.data?.message || "Failed to confirm event",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to confirm event",
                 }
             );
             fetchEvents();
         } catch {
             // handled by toast.promise
+        }
+    };
+
+    const handleAdjustSubmit = async () => {
+        if (!adjustAgentId.trim()) {
+            toast.error("Agent ID is required");
+            return;
+        }
+        setIsAdjusting(true);
+        try {
+            await toast.promise(
+                axiosRequest.post(API_ROUTES.network.agents.adjust(adjustAgentId.trim()), {
+                    points: adjustPoints,
+                    reason: adjustReason,
+                }),
+                {
+                    loading: "Creating adjustment...",
+                    success: "Manual adjustment created successfully",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to create adjustment",
+                }
+            );
+            setShowAdjustModal(false);
+            setAdjustAgentId("");
+            setAdjustPoints(0);
+            setAdjustReason("");
+            setAgentSearch("");
+            fetchEvents();
+        } catch {
+            // handled by toast.promise
+        } finally {
+            setIsAdjusting(false);
         }
     };
 
@@ -153,7 +245,7 @@ export default function NetworkEventsTable() {
         {
             label: "Confirm",
             Icon: <LuCheck className="text-green-600" />,
-            onClick: () => confirmEvent(event.id),
+            onClick: () => { setSelectedRow(null); setConfirmEventId(event.id); },
             hidden: event.status === "CONFIRMED",
         },
     ];
@@ -169,19 +261,56 @@ export default function NetworkEventsTable() {
                             <h1 className="text-xl font-semibold text-gray-900">Network Events</h1>
                             <p className="text-sm text-gray-500 mt-1">Monitor and manage all agent activity events</p>
                         </div>
+                        <button
+                            onClick={() => setShowAdjustModal(true)}
+                            className="px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                        >
+                            <Icon icon="lucide:plus" width="16" height="16" />
+                            Manual Adjustment
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
-                        {/* Search */}
-                        <div className="flex-1 max-w-md relative">
+                        {/* Search by agent name */}
+                        <div className="flex-1 max-w-md relative" ref={tableComboRef}>
                             <input
                                 type="text"
-                                value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+                                value={tableAgentSearch}
+                                onChange={(e) => {
+                                    setTableAgentSearch(e.target.value);
+                                    setSearchTerm("");
+                                    setPage(1);
+                                    setTableDropdownOpen(true);
+                                }}
+                                onFocus={() => setTableDropdownOpen(true)}
                                 className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
-                                placeholder="Search by agent ID..."
+                                placeholder="Search by agent name..."
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
+                            {tableDropdownOpen && !agentsLoading && tableAgentSearch && (
+                                <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                    {agents
+                                        .filter((a) => agentFullName(a).toLowerCase().includes(tableAgentSearch.toLowerCase()))
+                                        .map((a) => (
+                                            <li
+                                                key={a.id}
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    setTableAgentSearch(agentFullName(a));
+                                                    setSearchTerm(a.id);
+                                                    setPage(1);
+                                                    setTableDropdownOpen(false);
+                                                }}
+                                                className="px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                            >
+                                                {agentFullName(a)}
+                                            </li>
+                                        ))}
+                                    {agents.filter((a) => agentFullName(a).toLowerCase().includes(tableAgentSearch.toLowerCase())).length === 0 && (
+                                        <li className="px-3 py-2.5 text-sm text-gray-400 italic">No agents found</li>
+                                    )}
+                                </ul>
+                            )}
                         </div>
 
                         {/* Status filter */}
@@ -190,7 +319,7 @@ export default function NetworkEventsTable() {
                             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm min-w-[160px]"
                         >
-                            <option value="">All Statuses</option>
+                            <option value="">All</option>
                             <option value="PENDING">Pending</option>
                             <option value="CONFIRMED">Confirmed</option>
                             <option value="REVERSED">Reversed</option>
@@ -214,9 +343,9 @@ export default function NetworkEventsTable() {
                         </select>
 
                         {/* Clear filters */}
-                        {(statusFilter || actionFilter || searchTerm) && (
+                        {(statusFilter || actionFilter || searchTerm || tableAgentSearch) && (
                             <button
-                                onClick={() => { setStatusFilter(""); setActionFilter(""); setSearchTerm(""); setPage(1); }}
+                                onClick={() => { setStatusFilter(""); setActionFilter(""); setSearchTerm(""); setTableAgentSearch(""); setPage(1); }}
                                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <Icon icon="lucide:x" width="16" height="16" />
@@ -250,7 +379,11 @@ export default function NetworkEventsTable() {
                                 {events.map((event, index) => {
                                     const statusCfg = STATUS_CONFIG[event.status] ?? { bg: "bg-gray-100", text: "text-gray-800" };
                                     return (
-                                        <tr key={event.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr
+                                            key={event.id}
+                                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                            onClick={() => router.push(PAGE_ROUTES.dashboard.network.events.details(event.id))}
+                                        >
                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                                 {formatActionType(event.action_type)}
                                             </td>
@@ -317,6 +450,137 @@ export default function NetworkEventsTable() {
                     </div>
                 )}
             </div>
+
+            {/* Confirm Event Modal */}
+            {confirmEventId && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="p-6">
+                            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                                <LuCheck className="w-6 h-6 text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Confirm event?</h3>
+                            <p className="text-sm text-gray-500">This will mark the event as confirmed and award the associated points to the agent. This action cannot be undone.</p>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setConfirmEventId(null)}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => { confirmEvent(confirmEventId); setConfirmEventId(null); }}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-green-600 rounded-xl hover:bg-green-700 transition-all shadow-lg shadow-green-600/20"
+                            >
+                                Yes, confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Adjustment Modal */}
+            {showAdjustModal && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Manual Adjustment</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Award or deduct points for an agent</p>
+                            </div>
+                            <button
+                                onClick={() => { setShowAdjustModal(false); setAgentSearch(""); setAdjustAgentId(""); }}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <LuX className="w-5 h-5 text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+                                Manually credit or debit points on an agent&apos;s network balance. Use a <span className="font-semibold">positive value</span> to award points and a <span className="font-semibold">negative value</span> to deduct them. This action is logged and cannot be undone.
+                            </div>
+                            <div className="space-y-1" ref={agentComboRef}>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Agent</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={agentSearch}
+                                        onChange={(e) => {
+                                            setAgentSearch(e.target.value);
+                                            setAdjustAgentId("");
+                                            setAgentDropdownOpen(true);
+                                        }}
+                                        onFocus={() => setAgentDropdownOpen(true)}
+                                        placeholder={agentsLoading ? "Loading agents..." : "Search agent by name..."}
+                                        disabled={agentsLoading}
+                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                                    />
+                                    {agentDropdownOpen && !agentsLoading && (
+                                        <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                            {agents
+                                                .filter((a) => agentFullName(a).toLowerCase().includes(agentSearch.toLowerCase()))
+                                                .map((a) => (
+                                                    <li
+                                                        key={a.id}
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            setAdjustAgentId(a.id);
+                                                            setAgentSearch(agentFullName(a));
+                                                            setAgentDropdownOpen(false);
+                                                        }}
+                                                        className="px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                                    >
+                                                        {agentFullName(a)}
+                                                    </li>
+                                                ))}
+                                            {agents.filter((a) => agentFullName(a).toLowerCase().includes(agentSearch.toLowerCase())).length === 0 && (
+                                                <li className="px-3 py-2.5 text-sm text-gray-400 italic">No agents found</li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Points</label>
+                                <input
+                                    type="number"
+                                    value={adjustPoints}
+                                    onChange={(e) => setAdjustPoints(Number(e.target.value))}
+                                    placeholder="e.g. 50 or -50"
+                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                />
+                                <p className="text-xs text-gray-400">Use a negative number to deduct points</p>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</label>
+                                <textarea
+                                    value={adjustReason}
+                                    onChange={(e) => setAdjustReason(e.target.value)}
+                                    placeholder="Provide a reason for this adjustment..."
+                                    rows={3}
+                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm resize-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => { setShowAdjustModal(false); setAgentSearch(""); setAdjustAgentId(""); }}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAdjustSubmit}
+                                disabled={isAdjusting}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                            >
+                                {isAdjusting ? "Submitting..." : "Submit"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Context menu */}
             {contextEvent && modalPosition && (

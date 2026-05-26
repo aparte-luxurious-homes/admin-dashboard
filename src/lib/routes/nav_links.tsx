@@ -106,7 +106,7 @@ export const NAV_LINKS: ILink[] = [
         name: 'Network Management',
         pathName: 'network',
         link: PAGE_ROUTES.dashboard.network.events.base,
-        icon: <FinancialsIcon className={"w-5"} color={"white"} />,
+        icon: <UsersIcon className={"w-5"} color={"white"} />,
         allow: [UserRole.ADMIN],
         secondary: true,
         children: [

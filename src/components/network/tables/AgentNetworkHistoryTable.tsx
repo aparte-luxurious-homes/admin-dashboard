@@ -78,7 +78,7 @@ export default function AgentNetworkHistoryTable() {
             setEvents(data?.items ?? []);
             setTotal(data?.total ?? 0);
         } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to fetch events");
+            toast.error(error?.response?.data?.detail || error?.response?.data?.message || "Failed to fetch events");
         } finally {
             setIsLoading(false);
         }
@@ -123,7 +123,7 @@ export default function AgentNetworkHistoryTable() {
                             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm min-w-[160px]"
                         >
-                            <option value="">All Statuses</option>
+                            <option value="">All</option>
                             <option value="PENDING">Pending</option>
                             <option value="CONFIRMED">Confirmed</option>
                             <option value="REVERSED">Reversed</option>
@@ -183,7 +183,11 @@ export default function AgentNetworkHistoryTable() {
                                 {events.map((event, index) => {
                                     const statusCfg = STATUS_CONFIG[event.status] ?? { bg: "bg-gray-100", text: "text-gray-800" };
                                     return (
-                                        <tr key={event.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr
+                                            key={event.id}
+                                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                            onClick={() => setViewEvent(event)}
+                                        >
                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                                 {formatActionType(event.action_type)}
                                             </td>
