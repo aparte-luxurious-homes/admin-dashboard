@@ -207,6 +207,7 @@ export function ResendPaymentLink() {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
         },
+
     });
 }
 
