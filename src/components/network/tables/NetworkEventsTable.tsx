@@ -89,11 +89,14 @@ export default function NetworkEventsTable() {
     const [showRemitConfirm, setShowRemitConfirm]   = useState(false);
     const [isRemitting, setIsRemitting]             = useState(false);
 
-    const [showAdjustModal, setShowAdjustModal] = useState(false);
-    const [adjustAgentId, setAdjustAgentId]     = useState("");
-    const [adjustPoints, setAdjustPoints]       = useState<number>(0);
-    const [adjustReason, setAdjustReason]       = useState("");
-    const [isAdjusting, setIsAdjusting]         = useState(false);
+    const [showAdjustModal, setShowAdjustModal]   = useState(false);
+    const [showAdjustConfirm, setShowAdjustConfirm] = useState(false);
+    const [adjustAgentId, setAdjustAgentId]       = useState("");
+    const [adjustPoints, setAdjustPoints]         = useState<number>(0);
+    const [adjustReason, setAdjustReason]         = useState("");
+    const [adjustEntityType, setAdjustEntityType] = useState("");
+    const [adjustEntityId, setAdjustEntityId]     = useState("");
+    const [isAdjusting, setIsAdjusting]           = useState(false);
 
     const [agents, setAgents]               = useState<Agent[]>([]);
     const [agentsLoading, setAgentsLoading] = useState(false);
@@ -215,7 +218,11 @@ export default function NetworkEventsTable() {
 
     const handleAdjustSubmit = async () => {
         if (!adjustAgentId.trim()) {
-            toast.error("Agent ID is required");
+            toast.error("Agent is required");
+            return;
+        }
+        if (!adjustEntityType.trim()) {
+            toast.error("Entity type is required");
             return;
         }
         setIsAdjusting(true);
@@ -224,6 +231,8 @@ export default function NetworkEventsTable() {
                 axiosRequest.post(API_ROUTES.network.agents.adjust(adjustAgentId.trim()), {
                     points: adjustPoints,
                     reason: adjustReason,
+                    entity_type: adjustEntityType.trim(),
+                    ...(adjustEntityId.trim() ? { entity_id: adjustEntityId.trim() } : {}),
                 }),
                 {
                     loading: "Creating adjustment...",
@@ -232,9 +241,12 @@ export default function NetworkEventsTable() {
                 }
             );
             setShowAdjustModal(false);
+            setShowAdjustConfirm(false);
             setAdjustAgentId("");
             setAdjustPoints(0);
             setAdjustReason("");
+            setAdjustEntityType("");
+            setAdjustEntityId("");
             setAgentSearch("");
             fetchEvents();
         } catch {
@@ -556,7 +568,7 @@ export default function NetworkEventsTable() {
                                 <p className="text-xs text-gray-500 mt-0.5">Award or deduct points for an agent</p>
                             </div>
                             <button
-                                onClick={() => { setShowAdjustModal(false); setAgentSearch(""); setAdjustAgentId(""); }}
+                                onClick={() => { setShowAdjustModal(false); setShowAdjustConfirm(false); setAgentSearch(""); setAdjustAgentId(""); setAdjustEntityType(""); setAdjustEntityId(""); }}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             >
                                 <LuX className="w-5 h-5 text-gray-500" />
@@ -618,6 +630,35 @@ export default function NetworkEventsTable() {
                                 />
                                 <p className="text-xs text-gray-400">Use a negative number to deduct points</p>
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Entity Type</label>
+                                    <select
+                                        value={adjustEntityType}
+                                        onChange={(e) => setAdjustEntityType(e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white"
+                                    >
+                                        <option value="">Select type…</option>
+                                        <option value="PROPERTY">PROPERTY</option>
+                                        <option value="BOOKING">BOOKING</option>
+                                        <option value="PROFILE">PROFILE</option>
+                                        <option value="KYC">KYC</option>
+                                        <option value="USER">USER</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                        Entity ID <span className="normal-case font-normal text-gray-400">(optional)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={adjustEntityId}
+                                        onChange={(e) => setAdjustEntityId(e.target.value)}
+                                        placeholder="e.g. uuid or numeric ID"
+                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                    />
+                                </div>
+                            </div>
                             <div className="space-y-1">
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</label>
                                 <textarea
@@ -631,17 +672,58 @@ export default function NetworkEventsTable() {
                         </div>
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
                             <button
-                                onClick={() => { setShowAdjustModal(false); setAgentSearch(""); setAdjustAgentId(""); }}
+                                onClick={() => { setShowAdjustModal(false); setShowAdjustConfirm(false); setAgentSearch(""); setAdjustAgentId(""); setAdjustEntityType(""); setAdjustEntityId(""); }}
                                 className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={handleAdjustSubmit}
+                                onClick={() => {
+                                    if (!adjustAgentId.trim()) { toast.error("Agent is required"); return; }
+                                    if (!adjustEntityType.trim()) { toast.error("Entity type is required"); return; }
+                                    setShowAdjustConfirm(true);
+                                }}
                                 disabled={isAdjusting}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
-                                {isAdjusting ? "Submitting..." : "Submit"}
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Adjustment Confirm Modal */}
+            {showAdjustConfirm && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="p-6">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                <Icon icon="mdi:swap-vertical-bold" width="24" className="text-primary" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Create adjustment?</h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                You are about to apply a{" "}
+                                <span className={`font-semibold ${adjustPoints >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                    {adjustPoints >= 0 ? "+" : ""}{adjustPoints} point
+                                </span>{" "}
+                                manual adjustment for{" "}
+                                <span className="font-semibold text-gray-700">{agentSearch}</span>. This action is logged and cannot be undone.
+                            </p>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowAdjustConfirm(false)}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => { setShowAdjustConfirm(false); handleAdjustSubmit(); }}
+                                disabled={isAdjusting}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
+                            >
+                                Yes, submit
                             </button>
                         </div>
                     </div>
