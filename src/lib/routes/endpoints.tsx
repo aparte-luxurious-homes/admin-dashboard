@@ -109,6 +109,10 @@ export const API_ROUTES = {
             adjust: (id: string | number) => `/admin/network/agents/${id}/adjust`,
         },
         remit: `/jobs/evaluate-agent-tiers`,
+        mentorships: {
+            base: `/admin/network/mentorship`,
+            details: (id: string) => `/admin/network/mentorship/${id}`,
+        },
         events: {
             base: `/admin/network/events`,
             details: (id: string) => `/admin/network/events/${id}`,
@@ -122,6 +126,8 @@ export const API_ROUTES = {
         },
         me: `/network/me`,
         history: `/network/history`,
+        myMentorship: `/network/mentorship`,
+        myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
     },
     permissions: {
         base: '/permissions',
