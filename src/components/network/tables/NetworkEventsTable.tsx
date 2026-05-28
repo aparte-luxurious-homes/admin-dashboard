@@ -641,9 +641,8 @@ export default function NetworkEventsTable() {
                                         <option value="">Select type…</option>
                                         <option value="PROPERTY">PROPERTY</option>
                                         <option value="BOOKING">BOOKING</option>
-                                        <option value="PROFILE">PROFILE</option>
-                                        <option value="KYC">KYC</option>
-                                        <option value="USER">USER</option>
+                                        <option value="USER_KYC">USER KYC</option>
+                                        <option value="USER_PROFILE">USER PROFILE</option>
                                     </select>
                                 </div>
                                 <div className="space-y-1">
