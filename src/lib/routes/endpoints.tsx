@@ -123,11 +123,17 @@ export const API_ROUTES = {
                 base: `/admin/network/configs/actions`,
                 update: (actionType: string) => `/admin/network/configs/actions/${actionType}`,
             },
+            tiers: {
+                base: `/network/configs/tiers`,
+            },
         },
         me: `/network/me`,
         history: `/network/history`,
         myMentorship: `/network/mentorship`,
         myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
+        acceptMentorship: `/network/mentorship/accept`,
+        mentorshipCandidates: `/network/mentorship/candidates`,
+        createMentorshipInvite: `/network/mentorship/invite`,
     },
     permissions: {
         base: '/permissions',
