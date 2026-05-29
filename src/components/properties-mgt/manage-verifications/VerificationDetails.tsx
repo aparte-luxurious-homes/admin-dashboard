@@ -28,7 +28,7 @@ import Spinner from '../../ui/Spinner';
 import Loader from '../../loader';
 import { PAGE_ROUTES } from '@/src/lib/routes/page_routes';
 
-
+ 
 export default function VerificationDetails({
     propertyId,
     verificationId

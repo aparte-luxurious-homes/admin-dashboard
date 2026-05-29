@@ -27,7 +27,10 @@ interface BookingActionBarProps {
   onStatusChange: (status: BookingStatus) => void;
 }
 
-export default function BookingActionBar({ booking, onStatusChange }: BookingActionBarProps) {
+export default function BookingActionBar({
+  booking,
+  onStatusChange,
+}: BookingActionBarProps) {
   const router = useRouter();
   const status = booking.status;
   const {
@@ -44,10 +47,14 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
   const { mutate: checkOut, isPending: isCheckingOut } = CheckOutBooking();
   const { mutate: refundCaution, isPending: isRefunding } = RefundCautionFee();
   const { mutate: deleteBooking, isPending: isDeleting } = DeleteBooking();
-  const { mutate: requestCancellation, isPending: isCancelling } = RequestCancellation();
-  const { mutate: approveCancellation, isPending: isApproving } = ApproveCancellation();
-  const { mutate: approveRequest, isPending: isApprovingRequest } = ApproveBookingRequest();
-  const { mutate: rejectRequest, isPending: isRejectingRequest } = RejectBookingRequest();
+  const { mutate: requestCancellation, isPending: isCancelling } =
+    RequestCancellation();
+  const { mutate: approveCancellation, isPending: isApproving } =
+    ApproveCancellation();
+  const { mutate: approveRequest, isPending: isApprovingRequest } =
+    ApproveBookingRequest();
+  const { mutate: rejectRequest, isPending: isRejectingRequest } =
+    RejectBookingRequest();
 
   // Modal state
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
@@ -67,7 +74,7 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
           onStatusChange(BookingStatus.CHECKED_IN);
         },
         onError: (err: any) =>
-          toast.error(err?.response?.data?.detail || "Failed to check in"),
+          toast.error(err?.response?.data?.detail?.message || "Failed to check in" || "Guest has not claimed their account yet."),
       },
     );
   };
@@ -109,7 +116,9 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
           onStatusChange(BookingStatus.PENDING);
         },
         onError: (err: any) =>
-          toast.error(err?.response?.data?.detail || "Failed to approve request"),
+          toast.error(
+            err?.response?.data?.detail || "Failed to approve request",
+          ),
       },
     );
   };
@@ -125,7 +134,9 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
           onStatusChange(BookingStatus.CANCELLED);
         },
         onError: (err: any) =>
-          toast.error(err?.response?.data?.detail || "Failed to reject request"),
+          toast.error(
+            err?.response?.data?.detail || "Failed to reject request",
+          ),
       },
     );
   };
@@ -139,7 +150,9 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
           onStatusChange(BookingStatus.CANCELLED);
         },
         onError: (err: any) =>
-          toast.error(err?.response?.data?.detail || "Failed to approve cancellation"),
+          toast.error(
+            err?.response?.data?.detail || "Failed to approve cancellation",
+          ),
       },
     );
   };
@@ -204,7 +217,9 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
             <p className="text-[10px] text-amber-700 text-right max-w-xs">
               20% booking fee non-refundable. Guest receives{" "}
               <strong>
-                {formatMoney((Number(booking.totalPrice) - booking.cautionFee) * 0.8)}
+                {formatMoney(
+                  (Number(booking.totalPrice) - booking.cautionFee) * 0.8,
+                )}
               </strong>
             </p>
             <button
@@ -298,20 +313,18 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
 
           {/* Destructive actions */}
           {destructiveActions.length > 0 && (
-            <div className="flex gap-2 flex-shrink-0">
-              {destructiveActions}
-            </div>
+            <div className="flex gap-2 flex-shrink-0">{destructiveActions}</div>
           )}
 
           {/* Secondary actions */}
           {secondaryActions.length > 0 && (
-            <div className="flex gap-2 flex-shrink-0">
-              {secondaryActions}
-            </div>
+            <div className="flex gap-2 flex-shrink-0">{secondaryActions}</div>
           )}
 
           {/* Primary action — rightmost, most prominent */}
-          {primaryAction && <div className="flex-shrink-0">{primaryAction}</div>}
+          {primaryAction && (
+            <div className="flex-shrink-0">{primaryAction}</div>
+          )}
         </div>
       </div>
 
@@ -327,8 +340,11 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
             <p>
               This booking is scheduled to end on{" "}
               <span className="font-semibold">
-                {booking.endDate ? formatDate(booking.endDate) : "the scheduled date"}
-              </span>.
+                {booking.endDate
+                  ? formatDate(booking.endDate)
+                  : "the scheduled date"}
+              </span>
+              .
             </p>
             <p className="mt-2">
               Are you sure you want to mark this guest as checked out early?
@@ -367,17 +383,23 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
             { bookingId: booking.id, cancellationReason: reason },
             {
               onSuccess: (resp: any) => {
-                const newStatus = resp?.data?.data?.status as BookingStatus | undefined;
+                const newStatus = resp?.data?.data?.status as
+                  | BookingStatus
+                  | undefined;
                 setShowCancelConfirm(false);
                 if (newStatus === BookingStatus.CANCEL_REQUESTED) {
-                  toast.success("Cancellation requested — awaiting admin approval");
+                  toast.success(
+                    "Cancellation requested — awaiting admin approval",
+                  );
                 } else {
                   toast.success("Booking cancelled");
                 }
                 onStatusChange(newStatus ?? BookingStatus.CANCELLED);
               },
               onError: (err: any) => {
-                toast.error(err?.response?.data?.detail || "Failed to cancel booking");
+                toast.error(
+                  err?.response?.data?.detail || "Failed to cancel booking",
+                );
               },
             },
           );
@@ -396,14 +418,21 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
         confirmText="Delete Permanently"
         onConfirm={(reason) => {
           deleteBooking(
-            { bookingId: booking.id, cancellationReason: reason || "Deleted by admin" },
+            {
+              bookingId: booking.id,
+              cancellationReason: reason || "Deleted by admin",
+            },
             {
               onSuccess: () => {
                 toast.success("Booking record deleted");
-                router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.base);
+                router.push(
+                  PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
+                );
               },
               onError: (err: any) => {
-                toast.error(err?.response?.data?.detail || "Failed to delete booking");
+                toast.error(
+                  err?.response?.data?.detail || "Failed to delete booking",
+                );
               },
             },
           );
@@ -417,14 +446,22 @@ export default function BookingActionBar({ booking, onStatusChange }: BookingAct
         isPending={isRefunding}
         onConfirm={(shouldRefund, notes) => {
           refundCaution(
-            { bookingId: booking.id, payload: { should_refund: shouldRefund, notes } },
+            {
+              bookingId: booking.id,
+              payload: { should_refund: shouldRefund, notes },
+            },
             {
               onSuccess: () => {
-                toast.success(shouldRefund ? "Refund approved" : "Caution fee withheld");
+                toast.success(
+                  shouldRefund ? "Refund approved" : "Caution fee withheld",
+                );
                 setShowRefundModal(false);
               },
               onError: (err: any) => {
-                toast.error(err?.response?.data?.detail || "Failed to process caution fee");
+                toast.error(
+                  err?.response?.data?.detail ||
+                    "Failed to process caution fee",
+                );
               },
             },
           );

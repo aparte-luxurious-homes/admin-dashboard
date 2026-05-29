@@ -1,7 +1,6 @@
 "use client";
 
-import { TbCurrencyNaira } from "react-icons/tb";
-import { CalendarIcon, PriceTagIcon, UnitIcon, UsersIcon } from "../../icons";
+import { PriceTagIcon, UnitIcon, UsersIcon } from "../../icons";
 import {
   formatDate,
   formatDateToYYYYMMDD,
@@ -10,9 +9,6 @@ import {
 } from "@/src/lib/utils";
 import { useFormik } from "formik";
 import Image from "next/image";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Autoplay } from "swiper/modules";
-import CustomFilterDropdown from "../../ui/customFilterDropDown";
 import {
   GetAllProperties,
   GetSingleProperty,
@@ -22,7 +18,6 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   IProperty,
   IPropertyUnit,
-  PropertyType,
 } from "../../properties-mgt/types";
 import { IUser } from "@/src/lib/types";
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
@@ -49,7 +44,6 @@ import { Icon } from "@iconify/react";
 export default function CreateBookingView() {
   const router = useRouter();
   const { user } = useAuth();
-  const searchParams = useSearchParams();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   // Agents must use the payment-link flow — they cannot self-attest to
@@ -122,7 +116,7 @@ export default function CreateBookingView() {
       start_date: null,
       end_date: null,
       guests_count: 1,
-      unit_count: 1,
+      unit_count: 0,
       total_price: 0,
       // Agents can only use the online/gateway flow.
       payment_method: isAgent ? "online" : "cash",
@@ -140,6 +134,7 @@ export default function CreateBookingView() {
       guest_last_name: "",
       guest_email: "",
       guest_phone: "",
+      agent_custom_fee: 5000.00
     },
     onSubmit: async (values) => {
       if (!selectedProperty) {
@@ -198,6 +193,7 @@ export default function CreateBookingView() {
         end_date: formatDateToYYYYMMDD(values.end_date!),
         // Ensure user_id is null if we are creating a new guest
         user_id: isNewGuest ? null : values.user_id,
+        total_price: values.total_price + values.agent_custom_fee
       };
 
       // Don't send empty referral_code — omit the key entirely
@@ -426,7 +422,7 @@ export default function CreateBookingView() {
           selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0,
         );
 
-        const firstPrice = days * (values.unit_count || 1) * pricePerNight;
+        const firstPrice = days * Number(values.unit_count || 1) * Number(pricePerNight);
         const grandPrice = firstPrice + cautionFee;
 
         // Only update if the price has changed to avoid unnecessary re-renders
@@ -521,6 +517,25 @@ export default function CreateBookingView() {
       },
     );
   };
+
+  // const [units,setUnits] = useState(formik.values.unit_count);
+  const handleUnitChange = (e: React.ChangeEvent<HTMLInputElement>)=> {
+    const val = e.target.value;
+    const max = selectedUnit?.count ?? 1;
+
+    if (val === "") {
+      formik.setFieldValue("unit_count", "");
+      return;
+    }
+    if (Number(val )< 1) {
+      formik.setFieldValue("unit_count", 1);
+    } else if (Number(val )> max) {
+      toast.error(`Only ${max} units available`);
+      formik.setFieldValue("unit_count", max);
+    } else {
+      formik.setFieldValue("unit_count", val);
+    }
+  }
 
   return (
     <section className="bg-zinc-50 min-h-screen p-4 md:p-8">
@@ -940,12 +955,12 @@ export default function CreateBookingView() {
                             className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
                             value={formik.values.guests_count}
                             onChange={(e) => {
-                              const val = Number(e.target.value);
+                              const val = e.target.value;
                               const max =
                                 selectedUnit?.maxGuests ??
                                 selectedUnit?.max_guests ??
                                 10;
-                              if (val <= max) {
+                              if (Number(val) <= max) {
                                 formik.setFieldValue("guests_count", val);
                               } else {
                                 toast.error(
@@ -966,24 +981,16 @@ export default function CreateBookingView() {
                         </label>
                         <div className="relative">
                           <input
-                            type="number"
+                           type="text"
+                           inputMode="numeric"
+                           pattern="[0-9]*"
                             min="1"
                             disabled={!selectedUnit}
+                            placeholder="0"
                             max={selectedUnit?.count ?? 1}
                             className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
                             value={formik.values.unit_count}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              const max = selectedUnit?.count ?? 1;
-                              if (val < 1) {
-                                formik.setFieldValue("unit_count", 1);
-                              } else if (val > max) {
-                                toast.error(`Only ${max} units available`);
-                                formik.setFieldValue("unit_count", max);
-                              } else {
-                                formik.setFieldValue("unit_count", val);
-                              }
-                            }}
+                            onChange={(e) => handleUnitChange(e)}
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
                             Qty
@@ -1057,6 +1064,12 @@ export default function CreateBookingView() {
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Agent Custom Fee</span>
+                  <span className="text-zinc-900 font-medium">
+                    {formik.values?.agent_custom_fee || (5000).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Dates</span>
                   <div className="text-right">
                     {formik.values.start_date && formik.values.end_date ? (
@@ -1096,7 +1109,7 @@ export default function CreateBookingView() {
                             selectedUnit.pricePerNight ??
                               selectedUnit.price_per_night ??
                               0,
-                          ) * (formik.values.unit_count || 1),
+                          ) * Number(formik.values.unit_count || 1),
                         )
                       : "-"}
                   </span>
@@ -1118,7 +1131,8 @@ export default function CreateBookingView() {
                 <div className="border-t border-zinc-200 mt-2 pt-3 flex justify-between items-center">
                   <span className="font-semibold text-zinc-900">Total</span>
                   <span className="text-xl font-bold text-primary">
-                    {formatMoney(formik.values.total_price)}
+                    {formik.values.total_price ? formatMoney(formik.values.total_price + formik.values.agent_custom_fee) : formatMoney(formik.values.total_price)}
+                    {/* {formatMoney(formik.values.total_price + formik.values.agent_custom_fee)} */}
                   </span>
                 </div>
               </div>
