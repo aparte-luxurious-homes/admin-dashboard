@@ -41,7 +41,8 @@ interface ActionButton {
 
 interface Agent {
     id: string;
-    profile?: { first_name?: string | null; last_name?: string | null; firstName?: string | null; lastName?: string | null };
+    email?: string | null;
+    profile?: { first_name?: string | null; last_name?: string | null; firstName?: string | null; lastName?: string | null; email?: string | null };
     first_name?: string | null;
     last_name?: string | null;
     firstName?: string | null;
@@ -49,9 +50,17 @@ interface Agent {
 }
 
 function agentFullName(a: Agent): string {
-    const first = a.profile?.first_name ?? a.profile?.firstName ?? a.first_name ?? a.firstName ?? "";
-    const last  = a.profile?.last_name  ?? a.profile?.lastName  ?? a.last_name  ?? a.lastName  ?? "";
-    return `${first} ${last}`.trim() || "Unnamed Agent";
+    const first = a.profile?.first_name || a.profile?.firstName || a.first_name || a.firstName || "";
+    const last  = a.profile?.last_name  || a.profile?.lastName  || a.last_name  || a.lastName  || "";
+    return `${first} ${last}`.trim();
+}
+
+function agentEmail(a: Agent): string {
+    return a.email || a.profile?.email || "";
+}
+
+function agentLabel(a: Agent): string {
+    return agentFullName(a) || agentEmail(a) || "Unnamed Agent";
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
@@ -333,23 +342,24 @@ export default function NetworkEventsTable() {
                             {tableDropdownOpen && !agentsLoading && tableAgentSearch && (
                                 <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                                     {agents
-                                        .filter((a) => agentFullName(a).toLowerCase().includes(tableAgentSearch.toLowerCase()))
+                                        .filter((a) => agentLabel(a).toLowerCase().includes(tableAgentSearch.toLowerCase()))
                                         .map((a) => (
                                             <li
                                                 key={a.id}
                                                 onMouseDown={(e) => {
                                                     e.preventDefault();
-                                                    setTableAgentSearch(agentFullName(a));
+                                                    setTableAgentSearch(agentLabel(a));
                                                     setSearchTerm(a.id);
                                                     setPage(1);
                                                     setTableDropdownOpen(false);
                                                 }}
-                                                className="px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                                className="px-3 py-2.5 hover:bg-gray-50 cursor-pointer"
                                             >
-                                                {agentFullName(a)}
+                                                <p className="text-sm font-semibold text-gray-900">{agentFullName(a) || agentEmail(a)}</p>
+                                                {agentFullName(a) && agentEmail(a) && <p className="text-xs text-gray-400 mt-0.5">{agentEmail(a)}</p>}
                                             </li>
                                         ))}
-                                    {agents.filter((a) => agentFullName(a).toLowerCase().includes(tableAgentSearch.toLowerCase())).length === 0 && (
+                                    {agents.filter((a) => agentLabel(a).toLowerCase().includes(tableAgentSearch.toLowerCase())).length === 0 && (
                                         <li className="px-3 py-2.5 text-sm text-gray-400 italic">No agents found</li>
                                     )}
                                 </ul>
@@ -597,14 +607,14 @@ export default function NetworkEventsTable() {
                                     {agentDropdownOpen && !agentsLoading && (
                                         <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                                             {agents
-                                                .filter((a) => agentFullName(a).toLowerCase().includes(agentSearch.toLowerCase()))
+                                                .filter((a) => agentLabel(a).toLowerCase().includes(agentSearch.toLowerCase()))
                                                 .map((a) => (
                                                     <li
                                                         key={a.id}
                                                         onMouseDown={(e) => {
                                                             e.preventDefault();
                                                             setAdjustAgentId(a.id);
-                                                            setAgentSearch(agentFullName(a));
+                                                            setAgentSearch(agentLabel(a));
                                                             setAgentDropdownOpen(false);
                                                         }}
                                                         className="px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
@@ -612,7 +622,7 @@ export default function NetworkEventsTable() {
                                                         {agentFullName(a)}
                                                     </li>
                                                 ))}
-                                            {agents.filter((a) => agentFullName(a).toLowerCase().includes(agentSearch.toLowerCase())).length === 0 && (
+                                            {agents.filter((a) => agentLabel(a).toLowerCase().includes(agentSearch.toLowerCase())).length === 0 && (
                                                 <li className="px-3 py-2.5 text-sm text-gray-400 italic">No agents found</li>
                                             )}
                                         </ul>

@@ -122,6 +122,17 @@ interface AgentNetworkSummary {
   is_inactive: boolean;
 }
 
+interface AgentZoneSummary {
+  id?: string;
+  role?: string;
+  status?: string;
+  override_rate?: number;
+  zone?: {
+    name?: string;
+    type?: string;
+  };
+}
+
 const TIER_CONFIG = {
   BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", icon: "solar:medal-ribbons-star-bold-duotone" },
   SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-50",  border: "border-slate-200", icon: "solar:medal-ribbons-star-bold-duotone" },
@@ -143,12 +154,17 @@ const Home = () => {
 
   const [networkSummary, setNetworkSummary] = useState<AgentNetworkSummary | null>(null);
   const [networkLoading, setNetworkLoading] = useState(false);
+  const [zoneSummary, setZoneSummary]       = useState<AgentZoneSummary | null>(null);
 
   const fetchNetworkSummary = useCallback(async () => {
     setNetworkLoading(true);
     try {
-      const response = await axiosRequest.get(API_ROUTES.network.me);
-      setNetworkSummary(response?.data?.data ?? null);
+      const [meRes, zoneRes] = await Promise.allSettled([
+        axiosRequest.get(API_ROUTES.network.me),
+        axiosRequest.get(API_ROUTES.network.zoneMe),
+      ]);
+      if (meRes.status === "fulfilled") setNetworkSummary(meRes.value?.data?.data ?? null);
+      if (zoneRes.status === "fulfilled") setZoneSummary(zoneRes.value?.data?.data ?? null);
     } catch {
       // fail silently
     } finally {
@@ -645,6 +661,47 @@ const Home = () => {
                           </div>
                         )}
                       </div>
+
+                      {/* Zone Assignment Summary */}
+                      {zoneSummary && (
+                        <>
+                          <div className="h-px bg-gray-100" />
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-1.5">
+                              <Icon icon="solar:map-point-bold-duotone" width="14" className="text-primary" />
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Zone Assignment</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                              {zoneSummary.zone?.name && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">Zone</p>
+                                  <p className="text-xs font-semibold text-gray-800 text-right truncate">{zoneSummary.zone.name}{zoneSummary.zone.type ? ` (${zoneSummary.zone.type})` : ""}</p>
+                                </div>
+                              )}
+                              {zoneSummary.role && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">Role</p>
+                                  <p className="text-xs font-semibold text-gray-800">{zoneSummary.role === "AREA_MANAGER" ? "Area Manager" : zoneSummary.role === "REGIONAL_LEAD" ? "Regional Lead" : zoneSummary.role}</p>
+                                </div>
+                              )}
+                              {zoneSummary.status && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">Status</p>
+                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${zoneSummary.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}>
+                                    {zoneSummary.status}
+                                  </span>
+                                </div>
+                              )}
+                              {typeof zoneSummary.override_rate === "number" && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">Override Rate</p>
+                                  <p className="text-xs font-semibold text-gray-800">{(zoneSummary.override_rate * 100).toFixed(1)}%</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })() : (
