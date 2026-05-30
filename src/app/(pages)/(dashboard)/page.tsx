@@ -18,6 +18,7 @@ import LineChart from "@/src/components/linecharts/linecharts";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link";
+import { formatDate } from "@/src/lib/utils";
 import ItemCount from "@/src/components/item-count/itemcount";
 
 interface Agent {
@@ -142,9 +143,9 @@ interface AgentZoneSummary {
 }
 
 const TIER_CONFIG = {
-  BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", icon: "solar:medal-ribbons-star-bold-duotone" },
-  SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-50",  border: "border-slate-200", icon: "solar:medal-ribbons-star-bold-duotone" },
-  GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", icon: "solar:medal-ribbons-star-bold-duotone" },
+  BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", icon: "solar:medal-ribbons-star-bold-duotone", activeBg: "bg-amber-700", activeColor: "text-white", activeBorder: "border-amber-700" },
+  SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-50",  border: "border-slate-200", icon: "solar:medal-ribbons-star-bold-duotone", activeBg: "bg-slate-600", activeColor: "text-white", activeBorder: "border-slate-600" },
+  GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", icon: "solar:medal-ribbons-star-bold-duotone", activeBg: "bg-yellow-500", activeColor: "text-white", activeBorder: "border-yellow-500" },
 } as const;
 
 interface NetworkEvent {
@@ -153,6 +154,7 @@ interface NetworkEvent {
   base_points: number;
   multiplier_applied: number;
   points_awarded: number;
+  adjustment_direction: "ADDITION" | "DEDUCTION";
   status: "PENDING" | "CONFIRMED" | "REVERSED" | "REJECTED";
   created_at: string;
 }
@@ -161,6 +163,13 @@ interface MentorshipRecord {
   id: string;
   status: string;
 }
+
+const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
+  CONFIRMED: { bg: "bg-green-100",  text: "text-green-800"  },
+  PENDING:   { bg: "bg-yellow-100", text: "text-yellow-800" },
+  REVERSED:  { bg: "bg-orange-100", text: "text-orange-800" },
+  REJECTED:  { bg: "bg-red-100",    text: "text-red-800"    },
+};
 
 const ACTION_ICONS: Record<string, string> = {
   LISTING_CREATED: "solar:home-add-bold-duotone",
@@ -916,15 +925,15 @@ const Home = () => {
                     const commissions = t === "BRONZE" ? "2.0% / 1.5%" : t === "SILVER" ? "2.6% / 1.8%" : "3.0% / 2.0%";
                     const multiplier = t === "BRONZE" ? "1×" : t === "SILVER" ? "1.25×" : "1.5×";
                     return (
-                      <div key={t} className={`flex items-center justify-between p-2.5 rounded-xl border ${isCurrentTier ? `${cfg.bg} ${cfg.border}` : "bg-gray-50 border-gray-100"}`}>
+                      <div key={t} className={`flex items-center justify-between p-2.5 rounded-xl border ${isCurrentTier ? `${cfg.activeBg} ${cfg.activeBorder}` : "bg-gray-50 border-gray-100"}`}>
                         <div className="flex items-center gap-2">
-                          <Icon icon={cfg.icon} width="14" className={isCurrentTier ? cfg.color : "text-gray-400"} />
+                          <Icon icon={cfg.icon} width="14" className={isCurrentTier ? cfg.activeColor : "text-gray-400"} />
                           <div>
-                            <p className={`text-xs font-semibold ${isCurrentTier ? cfg.color : "text-gray-500"}`}>{cfg.label}</p>
-                            <p className={`text-[10px] ${isCurrentTier ? cfg.color : "text-gray-400"}`}>{commissions}</p>
+                            <p className={`text-xs font-semibold ${isCurrentTier ? cfg.activeColor : "text-gray-500"}`}>{cfg.label}</p>
+                            <p className={`text-[10px] ${isCurrentTier ? "text-white/75" : "text-gray-400"}`}>{commissions}</p>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCurrentTier ? `${cfg.bg} ${cfg.color}` : "bg-gray-100 text-gray-400"}`}>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCurrentTier ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"}`}>
                           {multiplier}
                         </span>
                       </div>
@@ -949,45 +958,65 @@ const Home = () => {
               <h4 className="text-sm font-semibold text-gray-800">Recent Activity</h4>
             </div>
             {agentDataLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-2">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                  <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
                 ))}
               </div>
             ) : activityHistory.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[...activityHistory]
-                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                  .slice(0, 3)
-                  .map((event) => (
-                    <div key={event.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Icon icon={ACTION_ICONS[event.action_type] ?? "solar:star-bold-duotone"} width="16" className="text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-gray-700 truncate">
-                          {event.action_type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(event.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                          </span>
-                          <span className="text-[10px] font-semibold text-primary">+{event.points_awarded} pts</span>
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                            event.status === "CONFIRMED" ? "bg-green-100 text-green-700" :
-                            event.status === "PENDING"   ? "bg-yellow-100 text-yellow-700" :
-                            event.status === "REVERSED"  ? "bg-orange-100 text-orange-700" :
-                            "bg-red-100 text-red-700"
-                          }`}>
-                            {event.status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left">Action</th>
+                      <th className="px-4 py-3 text-left">Status</th>
+                      <th className="px-4 py-3 text-left">Points</th>
+                      <th className="px-4 py-3 text-left">Adjustment</th>
+                      <th className="px-4 py-3 text-left">Created At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {[...activityHistory]
+                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                      .slice(0, 3)
+                      .map((event) => {
+                        const statusCfg = STATUS_CONFIG[event.status] ?? { bg: "bg-gray-100", text: "text-gray-800" };
+                        return (
+                          <tr key={event.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                              {event.action_type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusCfg.bg} ${statusCfg.text}`}>
+                                {event.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-semibold">
+                              <span className={event.points_awarded >= 0 ? "text-green-600" : "text-red-600"}>
+                                {event.points_awarded >= 0 ? "+" : ""}{event.points_awarded}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${event.adjustment_direction === "DEDUCTION" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+                                {event.adjustment_direction === "DEDUCTION" ? "Deduction" : "Addition"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {formatDate(event.created_at)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <p className="text-xs text-gray-400 text-center py-6">No recent activity</p>
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                  <Icon icon="hugeicons:album-not-found-01" width="24" height="24" className="text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-500">No recent activity</p>
+              </div>
             )}
           </>
         ) : loading ? (
