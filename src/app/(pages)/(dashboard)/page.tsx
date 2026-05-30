@@ -156,11 +156,17 @@ interface NetworkEvent {
   created_at: string;
 }
 
-// phase 2 — mentorship not included
-// interface MentorshipRecord {
-//   id: string;
-//   status: string;
-// }
+interface MentorshipRecord {
+  id: string;
+  mentor_id: string;
+  mentee_id: string;
+  status: string;
+  started_at: string | null;
+  mentor?: { first_name?: string; last_name?: string; email?: string; profile?: { first_name?: string; last_name?: string } };
+  mentee?: { first_name?: string; last_name?: string; email?: string; profile?: { first_name?: string; last_name?: string } };
+  mentor_tier?: string;
+  mentee_tier?: string;
+}
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
   CONFIRMED: { bg: "bg-green-100",  text: "text-green-800"  },
@@ -195,7 +201,7 @@ const Home = () => {
   const [networkLoading, setNetworkLoading] = useState(false);
   // const [zoneSummary, setZoneSummary]       = useState<AgentZoneSummary | null>(null); // phase 2
   const [activityHistory, setActivityHistory] = useState<NetworkEvent[]>([]);
-  // const [mentorshipData, setMentorshipData]   = useState<MentorshipRecord[]>([]);
+  const [mentorshipData, setMentorshipData]   = useState<MentorshipRecord[]>([]);
   const [walletData, setWalletData]           = useState<Record<string, any> | null>(null);
   const [agentDataLoading, setAgentDataLoading] = useState(false);
 
@@ -223,19 +229,19 @@ const Home = () => {
   const fetchAgentData = useCallback(async () => {
     setAgentDataLoading(true);
     try {
-      const [historyRes, walletListRes] = await Promise.allSettled([
+      const [historyRes, mentorshipRes, walletListRes] = await Promise.allSettled([
         axiosRequest.get(API_ROUTES.network.history, { params: { size: 10 } }),
-        // axiosRequest.get(API_ROUTES.network.myMentorship), // phase 2
+        axiosRequest.get(API_ROUTES.network.myMentorship),
         axiosRequest.get(API_ROUTES.wallet.base),
       ]);
       if (historyRes.status === "fulfilled") {
         const body = historyRes.value?.data?.data ?? historyRes.value?.data;
         setActivityHistory(body?.items ?? []);
       }
-      // if (mentorshipRes.status === "fulfilled") { // phase 2
-      //   const body = mentorshipRes.value?.data?.data;
-      //   setMentorshipData(body?.data ?? (Array.isArray(body) ? body : []));
-      // }
+      if (mentorshipRes.status === "fulfilled") {
+        const body = mentorshipRes.value?.data?.data ?? mentorshipRes.value?.data;
+        setMentorshipData(body?.items ?? body?.data ?? (Array.isArray(body) ? body : []));
+      }
       if (walletListRes.status === "fulfilled") {
         const raw = walletListRes.value?.data?.data;
         // handle paginated list, plain array, or single object
@@ -816,37 +822,77 @@ const Home = () => {
             <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }} sx={{ display: "flex", flexDirection: "column" }}>
               <div className="flex-1 p-[24px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md flex flex-col">
 
-                {/* Mentorship — phase 2, not included */}
-
-                {/* Tier Benefits */}
+                {/* Current Mentorship */}
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <Icon icon="solar:medal-ribbons-star-bold-duotone" width="16" />
+                    <Icon icon="solar:users-group-rounded-bold-duotone" width="16" />
                   </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Tier Benefits</h3>
+                  <h3 className="font-semibold text-gray-800 text-sm">Current Mentorship</h3>
                 </div>
-                <div className="space-y-2">
-                  {(["BRONZE", "SILVER", "GOLD"] as const).map((t) => {
-                    const cfg = TIER_CONFIG[t];
-                    const isCurrentTier = t === networkSummary?.current_tier;
-                    const commissions = t === "BRONZE" ? "2.0% / 1.5%" : t === "SILVER" ? "2.6% / 1.8%" : "3.0% / 2.0%";
-                    const multiplier = t === "BRONZE" ? "1×" : t === "SILVER" ? "1.25×" : "1.5×";
-                    return (
-                      <div key={t} className={`flex items-center justify-between p-2.5 rounded-xl border ${isCurrentTier ? `${cfg.activeBg} ${cfg.activeBorder}` : "bg-gray-50 border-gray-100"}`}>
-                        <div className="flex items-center gap-2">
-                          <Icon icon={cfg.icon} width="14" className={isCurrentTier ? cfg.activeColor : "text-gray-400"} />
-                          <div>
-                            <p className={`text-xs font-semibold ${isCurrentTier ? cfg.activeColor : "text-gray-500"}`}>{cfg.label}</p>
-                            <p className={`text-[10px] ${isCurrentTier ? "text-white/75" : "text-gray-400"}`}>{commissions}</p>
-                          </div>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCurrentTier ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"}`}>
-                          {multiplier}
+                {agentDataLoading ? (
+                  <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                ) : (() => {
+                  const MENTORSHIP_STATUS: Record<string, { bg: string; text: string }> = {
+                    ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
+                    PENDING: { bg: "bg-yellow-100", text: "text-yellow-800" },
+                    PAUSED:  { bg: "bg-orange-100", text: "text-orange-800" },
+                    ENDED:   { bg: "bg-gray-100",   text: "text-gray-600"   },
+                  };
+                  const TIER_COLORS: Record<string, string> = {
+                    BRONZE: "text-amber-700",
+                    SILVER: "text-slate-600",
+                    GOLD:   "text-yellow-600",
+                  };
+                  const current =
+                    mentorshipData.find((m) => m.status === "ACTIVE") ??
+                    mentorshipData.find((m) => m.status === "PENDING") ??
+                    null;
+                  if (!current) return (
+                    <div className="flex flex-col items-center justify-center py-5 text-center">
+                      <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center mb-2">
+                        <Icon icon="solar:users-group-rounded-bold-duotone" width="20" className="text-primary/40" />
+                      </div>
+                      <p className="text-xs text-gray-400">No active mentorship</p>
+                    </div>
+                  );
+                  const isMentor = current.mentor_id === String(user?.id);
+                  const partner  = isMentor ? current.mentee : current.mentor;
+                  const partnerTier = isMentor ? current.mentee_tier : current.mentor_tier;
+                  const roleLabel   = isMentor ? "Your Mentee" : "Your Mentor";
+                  const partnerName =
+                    [partner?.first_name || partner?.profile?.first_name, partner?.last_name || partner?.profile?.last_name]
+                      .filter(Boolean).join(" ") || partner?.email || "—";
+                  const sc = MENTORSHIP_STATUS[current.status] ?? MENTORSHIP_STATUS.ENDED;
+                  return (
+                    <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{roleLabel}</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
+                          {current.status}
                         </span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Icon icon="gg:profile" width="16" className="text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{partnerName}</p>
+                          {partner?.email && <p className="text-[10px] text-gray-400 truncate">{partner.email}</p>}
+                          {partnerTier && (
+                            <p className={`text-[10px] font-semibold ${TIER_COLORS[partnerTier] ?? "text-gray-500"}`}>
+                              {partnerTier.charAt(0) + partnerTier.slice(1).toLowerCase()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {current.started_at && (
+                        <p className="text-[10px] text-gray-400">
+                          Since {new Date(current.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Wallet Balance */}
                 <div className="mt-auto pt-5 border-t border-gray-100">
