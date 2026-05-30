@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
@@ -51,7 +51,6 @@ export default function AgentNetworkHistoryTable() {
     const [page, setPage]             = useState(1);
     const size                        = 20;
     const [isLoading, setIsLoading]   = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [actionFilter, setActionFilter] = useState("");
 
@@ -82,7 +81,7 @@ export default function AgentNetworkHistoryTable() {
     useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
     return (
-        <div className="p-6">
+        <>
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
 
                 {/* Header */}
@@ -152,11 +151,10 @@ export default function AgentNetworkHistoryTable() {
                                     <th className="px-6 py-3 text-left">Adjustment</th>
                                     <th className="px-6 py-3 text-left">Remitted</th>
                                     <th className="px-6 py-3 text-left">Created At</th>
-                                    <th className="px-6 py-3 text-left">Updated At</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {events.map((event, index) => {
+                                {events.map((event) => {
                                     const statusCfg = STATUS_CONFIG[event.status] ?? { bg: "bg-gray-100", text: "text-gray-800" };
                                     return (
                                         <tr
@@ -192,9 +190,6 @@ export default function AgentNetworkHistoryTable() {
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-700">
                                                 {formatDate(event.created_at)}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-700">
-                                                {formatDate(event.updated_at)}
                                             </td>
                                         </tr>
                                     );
@@ -244,17 +239,17 @@ export default function AgentNetworkHistoryTable() {
                         </div>
                         <div className="p-6 grid grid-cols-2 gap-x-6 gap-y-5 max-h-[70vh] overflow-y-auto">
                             {([
-                                ["Status",      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).bg} ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).text}`}>{viewEvent.status}</span>],
-                                ["Points Awarded", <span className={`text-xl font-bold ${viewEvent.points_awarded >= 0 ? "text-green-600" : "text-red-600"}`}>{viewEvent.points_awarded >= 0 ? "+" : ""}{viewEvent.points_awarded}</span>],
-                                ["Base Points",  <span className="text-xl font-bold text-gray-900">{viewEvent.base_points}</span>],
-                                ["Multiplier",   <span className="text-xl font-bold text-gray-900">{viewEvent.multiplier_applied}×</span>],
-                                ["Adjustment",   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.adjustment_direction === "ADDITION" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{viewEvent.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}</span>],
+                                ["Status",      <span key="status" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).bg} ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).text}`}>{viewEvent.status}</span>],
+                                ["Points Awarded", <span key="points-awarded" className={`text-xl font-bold ${viewEvent.points_awarded >= 0 ? "text-green-600" : "text-red-600"}`}>{viewEvent.points_awarded >= 0 ? "+" : ""}{viewEvent.points_awarded}</span>],
+                                ["Base Points",  <span key="base-points" className="text-xl font-bold text-gray-900">{viewEvent.base_points}</span>],
+                                ["Multiplier",   <span key="multiplier" className="text-xl font-bold text-gray-900">{viewEvent.multiplier_applied}×</span>],
+                                ["Adjustment",   <span key="adjustment" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.adjustment_direction === "ADDITION" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{viewEvent.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}</span>],
                                 ["Entity",       formatEntityType(viewEvent.entity_type)],
-                                ["Remitted",     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.is_remitted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>{viewEvent.is_remitted ? "Yes" : "No"}</span>],
+                                ["Remitted",     <span key="remitted" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.is_remitted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>{viewEvent.is_remitted ? "Yes" : "No"}</span>],
                                 ["Reason",       viewEvent.reason || "--/--"],
                                 ["Created At",   formatDate(viewEvent.created_at)],
                                 ["Updated At",   formatDate(viewEvent.updated_at)],
-                            ] as [string, React.ReactNode][]).map(([label, value]) => (
+                            ] as [string, ReactNode][]).map(([label, value]) => (
                                 <div key={label} className="space-y-1">
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
                                     <div className="text-sm font-medium text-gray-900">{value}</div>
@@ -264,6 +259,6 @@ export default function AgentNetworkHistoryTable() {
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }
