@@ -1,14 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import { DotsIcon, SearchIcon } from "../../icons";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { formatDate } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import Loader from "@/src/components/loader";
-import { LuEye, LuX } from "react-icons/lu";
+import { LuX } from "react-icons/lu";
 import { toast } from "react-hot-toast";
 
 interface NetworkEvent {
@@ -52,15 +51,10 @@ export default function AgentNetworkHistoryTable() {
     const [page, setPage]             = useState(1);
     const size                        = 20;
     const [isLoading, setIsLoading]   = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [actionFilter, setActionFilter] = useState("");
 
-    const [selectedRow, setSelectedRow]     = useState<number | null>(null);
-    const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
-    const [viewEvent, setViewEvent]         = useState<NetworkEvent | null>(null);
-
-    const menuRef = useRef<HTMLDivElement>(null);
+    const [viewEvent, setViewEvent] = useState<NetworkEvent | null>(null);
 
     const fetchEvents = useCallback(async () => {
         setIsLoading(true);
@@ -86,27 +80,8 @@ export default function AgentNetworkHistoryTable() {
 
     useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
-    useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-                setSelectedRow(null);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const handleDotsClick = (e: React.MouseEvent, index: number) => {
-        e.stopPropagation();
-        setSelectedRow(index);
-        const rect = (e.target as HTMLElement).getBoundingClientRect();
-        setModalPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
-    };
-
-    const contextEvent = selectedRow !== null ? events[selectedRow] : null;
-
     return (
-        <div className="p-6">
+        <>
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
 
                 {/* Header */}
@@ -176,7 +151,6 @@ export default function AgentNetworkHistoryTable() {
                                     <th className="px-6 py-3 text-left">Adjustment</th>
                                     <th className="px-6 py-3 text-left">Remitted</th>
                                     <th className="px-6 py-3 text-left">Created At</th>
-                                    <th className="px-6 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -217,14 +191,6 @@ export default function AgentNetworkHistoryTable() {
                                             <td className="px-6 py-4 text-sm text-gray-700">
                                                 {formatDate(event.created_at)}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div
-                                                    className="flex justify-end items-center"
-                                                    onClick={(e) => handleDotsClick(e, index)}
-                                                >
-                                                    <DotsIcon className="w-5 cursor-pointer hover:text-primary transition-colors text-gray-400" />
-                                                </div>
-                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -254,23 +220,6 @@ export default function AgentNetworkHistoryTable() {
                     </div>
                 )}
             </div>
-
-            {/* Context menu — View only */}
-            {contextEvent && modalPosition && (
-                <div
-                    ref={menuRef}
-                    className="fixed bg-white shadow-xl rounded-lg z-50 border border-gray-200 overflow-hidden min-w-[120px]"
-                    style={{ top: modalPosition.top, left: modalPosition.left }}
-                >
-                    <button
-                        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); setViewEvent(contextEvent); setSelectedRow(null); }}
-                    >
-                        <span className="text-gray-500"><LuEye /></span>
-                        <span>View</span>
-                    </button>
-                </div>
-            )}
 
             {/* View modal — read-only */}
             {viewEvent && (
@@ -310,6 +259,6 @@ export default function AgentNetworkHistoryTable() {
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }
