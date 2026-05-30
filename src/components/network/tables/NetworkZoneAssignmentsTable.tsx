@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/src/hooks/useAuth";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
@@ -100,6 +101,8 @@ function formatNGN(amount: number) {
 
 export default function NetworkZoneAssignmentsTable() {
     const router = useRouter();
+    const { user } = useAuth();
+    const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
     const [assignments, setAssignments] = useState<ZoneAssignment[]>([]);
     const [isLoading, setIsLoading]     = useState(false);
     const [page, setPage]               = useState(1);
@@ -158,9 +161,14 @@ export default function NetworkZoneAssignmentsTable() {
         setIsLoading(true);
         try {
             const params: Record<string, any> = { page, size: 20 };
-            if (roleFilter) params.role    = roleFilter;
-            if (zoneFilter) params.zone_id = zoneFilter;
-            const res = await axiosRequest.get(API_ROUTES.network.configs.zones.assignments.base, { params });
+            if (isAdmin) {
+                if (roleFilter) params.role    = roleFilter;
+                if (zoneFilter) params.zone_id = zoneFilter;
+            }
+            const endpoint = isAdmin
+                ? API_ROUTES.network.configs.zones.assignments.base
+                : API_ROUTES.network.myZoneAssignments;
+            const res = await axiosRequest.get(endpoint, { params });
             const data = res?.data?.data ?? res?.data;
             const items = data?.items ?? data?.data ?? (Array.isArray(data) ? data : []);
             setAssignments(items);
@@ -171,12 +179,14 @@ export default function NetworkZoneAssignmentsTable() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, roleFilter, zoneFilter]);
+    }, [page, roleFilter, zoneFilter, isAdmin]);
 
     useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
 
-    // Load zones + agents
+    // Load zones + agents (admin only — agents have zone info embedded in their assignments)
     useEffect(() => {
+        if (!isAdmin) return;
+
         axiosRequest.get(API_ROUTES.network.configs.zones.base, { params: { page: 1, size: 200 } })
             .then((res) => {
                 const data = res?.data?.data ?? res?.data;
@@ -191,7 +201,7 @@ export default function NetworkZoneAssignmentsTable() {
                 setAgents(data?.data ?? []);
             }).catch(() => {})
             .finally(() => setAgentsLoading(false));
-    }, []);
+    }, [isAdmin]);
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
@@ -347,26 +357,29 @@ export default function NetworkZoneAssignmentsTable() {
                             <h1 className="text-xl font-semibold text-gray-900">Zone Assignments</h1>
                             <p className="text-sm text-gray-500 mt-1">Assign Area Managers and Regional Leads to geographic zones</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                                onClick={() => setShowPayoutConfirm(true)}
-                                disabled={isRunningPayout}
-                                className="px-4 py-2.5 text-sm font-bold text-emerald-600 bg-transparent border border-emerald-600 rounded-xl hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                            >
-                                <Icon icon="lucide:coins" width="16" />
-                                Run Zone Payout
-                            </button>
-                            <button
-                                onClick={() => setShowCreateModal(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
-                            >
-                                <Icon icon="mdi:plus" width="16" />
-                                Create Assignment
-                            </button>
-                        </div>
+                        {isAdmin && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <button
+                                    onClick={() => setShowPayoutConfirm(true)}
+                                    disabled={isRunningPayout}
+                                    className="px-4 py-2.5 text-sm font-bold text-emerald-600 bg-transparent border border-emerald-600 rounded-xl hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                                >
+                                    <Icon icon="lucide:coins" width="16" />
+                                    Run Zone Payout
+                                </button>
+                                <button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                                >
+                                    <Icon icon="mdi:plus" width="16" />
+                                    Create Assignment
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Filters */}
+                    {/* Filters — admin only */}
+                    {isAdmin && (
                     <div className="mt-4 flex items-center gap-3 flex-wrap">
                         {/* Zone search-select */}
                         <div className="relative" ref={zoneComboRef}>
@@ -412,6 +425,7 @@ export default function NetworkZoneAssignmentsTable() {
                             <option value="REGIONAL_LEAD">Regional Lead</option>
                         </select>
                     </div>
+                    )}
                 </div>
 
                 {/* Table */}
@@ -429,7 +443,7 @@ export default function NetworkZoneAssignmentsTable() {
                                     <th className="px-6 py-3 text-left">GBV Threshold</th>
                                     <th className="px-6 py-3 text-left">Status</th>
                                     <th className="px-6 py-3 text-left">Start Date</th>
-                                    <th className="px-6 py-3 text-right">Actions</th>
+                                    {isAdmin && <th className="px-6 py-3 text-right">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -438,7 +452,12 @@ export default function NetworkZoneAssignmentsTable() {
                                     const resolvedZone = resolveAssignmentZone(a, zones);
                                     const resolvedUser = resolveAssignmentUser(a, agents);
                                     return (
-                                        <tr key={a.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => router.push(PAGE_ROUTES.dashboard.network.zoneAssignments.details(a.id))}>
+                                        <tr key={a.id} className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                            onClick={() => isAdmin
+                                                ? router.push(PAGE_ROUTES.dashboard.network.zoneAssignments.details(a.id))
+                                                : setViewAssignment(a)
+                                            }
+                                        >
                                             <td className="px-6 py-4">
                                                 <p className="text-sm font-medium text-gray-900">{resolvedZone?.name ?? "—"}</p>
                                                 {resolvedZone?.type && <p className="text-xs text-gray-400">{resolvedZone.type}</p>}
@@ -465,11 +484,13 @@ export default function NetworkZoneAssignmentsTable() {
                                                 })()}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-700">{a.start_date ? formatDate(a.start_date) : "—"}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end" onClick={(e) => handleDotsClick(e, index)}>
-                                                    <DotsIcon className="w-5 cursor-pointer hover:text-primary transition-colors text-gray-400" />
-                                                </div>
-                                            </td>
+                                            {isAdmin && (
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex justify-end" onClick={(e) => handleDotsClick(e, index)}>
+                                                        <DotsIcon className="w-5 cursor-pointer hover:text-primary transition-colors text-gray-400" />
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
@@ -543,6 +564,7 @@ export default function NetworkZoneAssignmentsTable() {
                                 ["Agent",          agentName(resolveAssignmentUser(viewAssignment, agents))],
                                 ["Zone",           (() => { const z = resolveAssignmentZone(viewAssignment, zones); return z ? `${z.name} (${z.type})` : "—"; })()],
                                 ["Role",           <span key="role" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${ROLE_CONFIG[viewAssignment.role].bg} ${ROLE_CONFIG[viewAssignment.role].text} ${ROLE_CONFIG[viewAssignment.role].border}`}>{ROLE_CONFIG[viewAssignment.role].label}</span>],
+                                ["Status",         (() => { const cfg = viewAssignment.status ? STATUS_CONFIG[viewAssignment.status] : null; return cfg ? <span key="status" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.text} ${cfg.border}`}>{cfg.label}</span> : <span key="status">—</span>; })()],
                                 ["Override Rate",  `${(viewAssignment.override_rate * 100).toFixed(1)}%`],
                                 ["GBV Threshold",  formatNGN(viewAssignment.monthly_gbv_threshold)],
                                 ["Employment",     <span key="employment" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${MODE_CONFIG[viewAssignment.employment_mode].bg} ${MODE_CONFIG[viewAssignment.employment_mode].text}`}>{MODE_CONFIG[viewAssignment.employment_mode].label}</span>],
@@ -555,11 +577,13 @@ export default function NetworkZoneAssignmentsTable() {
                                 </div>
                             ))}
                         </div>
-                        <div className="px-6 pb-6 flex justify-end gap-3">
-                            <button onClick={() => { setViewAssignment(null); openEdit(viewAssignment); }} className="px-6 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
-                                <Icon icon="mdi:pencil" width="14" /> Edit
-                            </button>
-                        </div>
+                        {isAdmin && (
+                            <div className="px-6 pb-6 flex justify-end gap-3">
+                                <button onClick={() => { setViewAssignment(null); openEdit(viewAssignment); }} className="px-6 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
+                                    <Icon icon="mdi:pencil" width="14" /> Edit
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

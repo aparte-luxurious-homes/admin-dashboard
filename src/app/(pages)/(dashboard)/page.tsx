@@ -127,9 +127,17 @@ interface AgentZoneSummary {
   role?: string;
   status?: string;
   override_rate?: number;
+  monthly_gbv_threshold?: number;
+  employment_mode?: "COMMISSION_ONLY" | "SALARIED_OVERLAY";
+  start_date?: string | null;
+  end_date?: string | null;
+  current_month_gbv?: number;
+  threshold_progress_pct?: number;
+  projected_payout?: number;
   zone?: {
     name?: string;
     type?: string;
+    status?: string;
   };
 }
 
@@ -650,10 +658,6 @@ const Home = () => {
                           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Referral Comm.</p>
                           <p className="text-sm font-semibold text-gray-800">{referralPct}</p>
                         </div>
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Misses</p>
-                          <p className={`text-sm font-semibold ${networkSummary.consecutive_misses > 0 ? "text-red-600" : "text-gray-800"}`}>{networkSummary.consecutive_misses}</p>
-                        </div>
                         {tier === "BRONZE" && gracePeriod && (
                           <div className="space-y-0.5">
                             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Grace Period Until</p>
@@ -671,33 +675,118 @@ const Home = () => {
                               <Icon icon="solar:map-point-bold-duotone" width="14" className="text-primary" />
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Zone Assignment</p>
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                            <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+
+                              {/* Zone name + type */}
                               {zoneSummary.zone?.name && (
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-start justify-between gap-2">
                                   <p className="text-xs text-gray-500 shrink-0">Zone</p>
-                                  <p className="text-xs font-semibold text-gray-800 text-right truncate">{zoneSummary.zone.name}{zoneSummary.zone.type ? ` (${zoneSummary.zone.type})` : ""}</p>
+                                  <div className="text-right">
+                                    <p className="text-xs font-semibold text-gray-800 truncate">{zoneSummary.zone.name}</p>
+                                    {zoneSummary.zone.type && <p className="text-xs text-gray-400">{zoneSummary.zone.type}</p>}
+                                  </div>
                                 </div>
                               )}
+
+                              {/* Role */}
                               {zoneSummary.role && (
                                 <div className="flex items-center justify-between gap-2">
                                   <p className="text-xs text-gray-500 shrink-0">Role</p>
-                                  <p className="text-xs font-semibold text-gray-800">{zoneSummary.role === "AREA_MANAGER" ? "Area Manager" : zoneSummary.role === "REGIONAL_LEAD" ? "Regional Lead" : zoneSummary.role}</p>
+                                  <p className="text-xs font-semibold text-gray-800">
+                                    {zoneSummary.role === "AREA_MANAGER" ? "Area Manager" : zoneSummary.role === "REGIONAL_LEAD" ? "Regional Lead" : zoneSummary.role}
+                                  </p>
                                 </div>
                               )}
+
+                              {/* Status */}
                               {zoneSummary.status && (
                                 <div className="flex items-center justify-between gap-2">
                                   <p className="text-xs text-gray-500 shrink-0">Status</p>
-                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${zoneSummary.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}>
+                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                    zoneSummary.status === "ACTIVE"    ? "bg-green-100 text-green-700"  :
+                                    zoneSummary.status === "SUSPENDED" ? "bg-yellow-100 text-yellow-700" :
+                                    zoneSummary.status === "EXPIRED"   ? "bg-red-100 text-red-700"      :
+                                    "bg-gray-200 text-gray-600"
+                                  }`}>
                                     {zoneSummary.status}
                                   </span>
                                 </div>
                               )}
+
+                              {/* Employment mode */}
+                              {zoneSummary.employment_mode && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">Mode</p>
+                                  <p className="text-xs font-semibold text-gray-800">
+                                    {zoneSummary.employment_mode === "COMMISSION_ONLY" ? "Commission Only" : "Salaried Overlay"}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Override rate */}
                               {typeof zoneSummary.override_rate === "number" && (
                                 <div className="flex items-center justify-between gap-2">
                                   <p className="text-xs text-gray-500 shrink-0">Override Rate</p>
                                   <p className="text-xs font-semibold text-gray-800">{(zoneSummary.override_rate * 100).toFixed(1)}%</p>
                                 </div>
                               )}
+
+                              {/* GBV Threshold */}
+                              {typeof zoneSummary.monthly_gbv_threshold === "number" && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">GBV Threshold</p>
+                                  <p className="text-xs font-semibold text-gray-800">₦{zoneSummary.monthly_gbv_threshold.toLocaleString()}</p>
+                                </div>
+                              )}
+
+                              {/* Current month GBV + progress (from /network/zone/me) */}
+                              {typeof zoneSummary.current_month_gbv === "number" && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">This Month GBV</p>
+                                  <p className="text-xs font-semibold text-gray-800">₦{zoneSummary.current_month_gbv.toLocaleString()}</p>
+                                </div>
+                              )}
+                              {typeof zoneSummary.threshold_progress_pct === "number" && (
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs text-gray-500">Threshold Progress</p>
+                                    <p className="text-xs font-semibold text-gray-800">{zoneSummary.threshold_progress_pct.toFixed(0)}%</p>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div
+                                      className={`h-1.5 rounded-full transition-all ${zoneSummary.threshold_progress_pct >= 100 ? "bg-green-500" : "bg-primary"}`}
+                                      style={{ width: `${Math.min(zoneSummary.threshold_progress_pct, 100)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Projected payout */}
+                              {typeof zoneSummary.projected_payout === "number" && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">Projected Payout</p>
+                                  <p className="text-xs font-semibold text-emerald-700">₦{zoneSummary.projected_payout.toLocaleString()}</p>
+                                </div>
+                              )}
+
+                              {/* Start / End dates */}
+                              {zoneSummary.start_date && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">Start Date</p>
+                                  <p className="text-xs font-semibold text-gray-800">
+                                    {new Date(zoneSummary.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                  </p>
+                                </div>
+                              )}
+                              {zoneSummary.end_date && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs text-gray-500 shrink-0">End Date</p>
+                                  <p className="text-xs font-semibold text-gray-800">
+                                    {new Date(zoneSummary.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                  </p>
+                                </div>
+                              )}
+
                             </div>
                           </div>
                         </>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/src/hooks/useAuth";
 import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
@@ -82,6 +83,8 @@ export default function ZoneAssignmentDetailPage() {
     const router       = useRouter();
     const searchParams = useSearchParams();
     const id           = String(params?.id ?? "");
+    const { user: authUser } = useAuth();
+    const isAdmin            = authUser?.role === "ADMIN" || authUser?.role === "SUPER_ADMIN";
 
     const [assignment, setAssignment] = useState<ZoneAssignment | null>(null);
     const [isLoading, setIsLoading]   = useState(false);
@@ -99,7 +102,10 @@ export default function ZoneAssignmentDetailPage() {
         if (!id) return;
         setIsLoading(true);
         try {
-            const res = await axiosRequest.get(API_ROUTES.network.configs.zones.assignments.details(id));
+            const endpoint = isAdmin
+                ? API_ROUTES.network.configs.zones.assignments.details(id)
+                : API_ROUTES.network.myZoneAssignmentDetails(id);
+            const res = await axiosRequest.get(endpoint);
             const data: ZoneAssignment = res?.data?.data ?? res?.data;
             setAssignment(data);
             setEditRate(parseFloat((data.override_rate * 100).toFixed(4)));
