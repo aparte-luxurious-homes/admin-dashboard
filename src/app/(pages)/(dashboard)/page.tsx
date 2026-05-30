@@ -147,6 +147,30 @@ const TIER_CONFIG = {
   GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", icon: "solar:medal-ribbons-star-bold-duotone" },
 } as const;
 
+interface NetworkEvent {
+  id: string;
+  action_type: string;
+  base_points: number;
+  multiplier_applied: number;
+  points_awarded: number;
+  status: "PENDING" | "CONFIRMED" | "REVERSED" | "REJECTED";
+  created_at: string;
+}
+
+interface MentorshipRecord {
+  id: string;
+  status: string;
+}
+
+const ACTION_ICONS: Record<string, string> = {
+  LISTING_CREATED: "solar:home-add-bold-duotone",
+  LISTING_VERIFIED: "solar:verified-check-bold-duotone",
+  BOOKING_CHECKED_IN: "solar:calendar-mark-bold-duotone",
+  REFERRED_BOOKING_CHECKED_IN: "solar:users-group-rounded-bold-duotone",
+  KYC_COMPLETED: "solar:shield-check-bold-duotone",
+  PROFILE_COMPLETED: "solar:user-bold-duotone",
+};
+
 const Home = () => {
   const [searchResult, setSearchResult] = useState<Property[]>([]);
   // const allAgents = topAgents;
@@ -163,20 +187,56 @@ const Home = () => {
   const [networkSummary, setNetworkSummary] = useState<AgentNetworkSummary | null>(null);
   const [networkLoading, setNetworkLoading] = useState(false);
   const [zoneSummary, setZoneSummary]       = useState<AgentZoneSummary | null>(null);
+  const [activityHistory, setActivityHistory] = useState<NetworkEvent[]>([]);
+  const [mentorshipData, setMentorshipData]   = useState<MentorshipRecord[]>([]);
+  const [walletData, setWalletData]           = useState<Record<string, any> | null>(null);
+  const [agentDataLoading, setAgentDataLoading] = useState(false);
 
   const fetchNetworkSummary = useCallback(async () => {
     setNetworkLoading(true);
     try {
       const [meRes, zoneRes] = await Promise.allSettled([
         axiosRequest.get(API_ROUTES.network.me),
-        axiosRequest.get(API_ROUTES.network.zoneMe),
+        axiosRequest.get(API_ROUTES.network.myZoneAssignments),
       ]);
       if (meRes.status === "fulfilled") setNetworkSummary(meRes.value?.data?.data ?? null);
-      if (zoneRes.status === "fulfilled") setZoneSummary(zoneRes.value?.data?.data ?? null);
+      if (zoneRes.status === "fulfilled") {
+        const body = zoneRes.value?.data?.data;
+        const assignments: AgentZoneSummary[] = body?.data ?? (Array.isArray(body) ? body : []);
+        const active = assignments.find((a) => a.status === "ACTIVE") ?? assignments[0] ?? null;
+        setZoneSummary(active);
+      }
     } catch {
       // fail silently
     } finally {
       setNetworkLoading(false);
+    }
+  }, []);
+
+  const fetchAgentData = useCallback(async () => {
+    setAgentDataLoading(true);
+    try {
+      const [historyRes, mentorshipRes, walletRes] = await Promise.allSettled([
+        axiosRequest.get(API_ROUTES.network.history, { params: { size: 10 } }),
+        axiosRequest.get(API_ROUTES.network.myMentorship),
+        axiosRequest.get(API_ROUTES.wallet.base),
+      ]);
+      if (historyRes.status === "fulfilled") {
+        const body = historyRes.value?.data?.data ?? historyRes.value?.data;
+        setActivityHistory(body?.items ?? []);
+      }
+      if (mentorshipRes.status === "fulfilled") {
+        const body = mentorshipRes.value?.data?.data;
+        setMentorshipData(body?.data ?? (Array.isArray(body) ? body : []));
+      }
+      if (walletRes.status === "fulfilled") {
+        const d = walletRes.value?.data?.data;
+        setWalletData(Array.isArray(d) ? (d[0] ?? null) : d);
+      }
+    } catch {
+      // fail silently
+    } finally {
+      setAgentDataLoading(false);
     }
   }, []);
 
@@ -220,8 +280,11 @@ const Home = () => {
   useEffect(() => {
     fetchProperties();
     fetchStatistics();
-    if (user?.role === "AGENT") fetchNetworkSummary();
-  }, [fetchProperties, fetchStatistics, fetchNetworkSummary, user?.role]);
+    if (user?.role === "AGENT") {
+      fetchNetworkSummary();
+      fetchAgentData();
+    }
+  }, [fetchProperties, fetchStatistics, fetchNetworkSummary, fetchAgentData, user?.role]);
 
   console.log("stats", stats);
   console.log(error)
@@ -527,8 +590,87 @@ const Home = () => {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
-                <div className={`p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md ${stats?.properties?.length === 0 && "flex items-center justify-center"}`}>
-                  {isStatLoading ? (
+                <div className={`p-[20px] min-h-[270px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md ${stats?.properties?.length === 0 && "flex items-center justify-center"}`}>
+                  {user?.role === "AGENT" ? (
+                    networkLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : networkSummary ? (() => {
+                      const tier = networkSummary.current_tier;
+                      const tierCfg = TIER_CONFIG[tier];
+                      const listingPct = `${(networkSummary.commission_listing_pct * 100).toFixed(1)}%`;
+                      const referralPct = `${(networkSummary.commission_referral_pct * 100).toFixed(1)}%`;
+                      const points30d = networkSummary.points_30d;
+                      const tierTarget = tier === "BRONZE" ? 80 : 200;
+                      const nextTierLabel = tier === "BRONZE" ? "Silver" : tier === "SILVER" ? "Gold" : null;
+                      const progressPct = Math.min(100, (points30d / tierTarget) * 100);
+                      const today = new Date();
+                      const daysUntilMonday = today.getDay() === 1 ? 7 : (8 - today.getDay()) % 7;
+                      const gracePeriod = networkSummary.grace_period_until
+                        ? new Date(networkSummary.grace_period_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                        : null;
+                      return (
+                        <div className="h-full flex flex-col justify-between">
+                          <div className="flex items-center justify-between">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold border ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
+                              <Icon icon={tierCfg.icon} width="16" />
+                              {tierCfg.label} Agent
+                            </span>
+                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${networkSummary.is_inactive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
+                              <Icon icon={networkSummary.is_inactive ? "solar:close-circle-bold-duotone" : "solar:check-circle-bold-duotone"} width="12" />
+                              {networkSummary.is_inactive ? "Inactive" : "Active"}
+                            </span>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-1 bg-gray-50 rounded-xl p-2.5 text-center">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Listing Comm.</p>
+                              <p className="text-base font-bold text-gray-900">{listingPct}</p>
+                            </div>
+                            <div className="flex-1 bg-gray-50 rounded-xl p-2.5 text-center">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Referral Comm.</p>
+                              <p className="text-base font-bold text-gray-900">{referralPct}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <p className="text-xs text-gray-500 font-medium">{points30d.toLocaleString()} / {tierTarget} pts</p>
+                              {nextTierLabel ? (
+                                <p className="text-xs font-semibold text-primary">{Math.max(0, tierTarget - points30d)} pts to {nextTierLabel}</p>
+                              ) : (
+                                <p className="text-xs font-semibold text-yellow-600">Maintaining Gold</p>
+                              )}
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2.5">
+                              <div
+                                className={`h-2.5 rounded-full transition-all ${tier === "GOLD" ? "bg-yellow-400" : "bg-primary"}`}
+                                style={{ width: `${progressPct}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Icon icon="solar:clock-circle-bold-duotone" width="14" className="text-gray-400" />
+                              <p className="text-xs text-gray-500">Eval in <span className="font-semibold text-gray-700">{daysUntilMonday} day{daysUntilMonday !== 1 ? "s" : ""}</span></p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {tier === "BRONZE" && gracePeriod && (
+                                <p className="text-xs text-amber-700 font-medium">Grace: {gracePeriod}</p>
+                              )}
+                              {(networkSummary.consecutive_misses ?? 0) > 0 && (
+                                <p className="text-xs text-red-500 font-semibold">{networkSummary.consecutive_misses} miss{networkSummary.consecutive_misses !== 1 ? "es" : ""}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })() : (
+                      <div className="flex flex-col items-center justify-center h-full text-center">
+                        <Icon icon="solar:chart-bold-duotone" width="32" className="text-gray-300 mb-2" />
+                        <p className="text-sm text-gray-400">No network data</p>
+                      </div>
+                    )
+                  ) : isStatLoading ? (
                     <Skeleton className="h-[200px] w-full rounded-md" />
                   ) : (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") ? (
                     stats?.properties?.length > 0 ? (
@@ -571,8 +713,85 @@ const Home = () => {
                 </div>
               </Grid>
               <Grid size={{ xs: 12, sm: 12, md: 6, lg: 6 }}>
-                <div className="p-[20px] h-[270px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
-                  {isStatLoading ? (
+                <div className="p-[20px] min-h-[270px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                  {user?.role === "AGENT" ? (
+                    networkLoading ? (
+                      <Skeleton className="h-[200px] w-full rounded-md" />
+                    ) : (() => {
+                      const tier = networkSummary?.current_tier ?? "BRONZE";
+                      const points30d = networkSummary?.points_30d ?? 0;
+                      const streakCount = networkSummary?.streak_count ?? 0;
+                      const walletCredit = points30d * 10;
+                      const zoneRole = zoneSummary?.role;
+                      const zoneRoleLabel = zoneRole === "AREA_MANAGER" ? "Area Manager" : zoneRole === "REGIONAL_LEAD" ? "Regional Lead" : null;
+                      return (
+                        <div className="flex flex-col justify-between h-full gap-3">
+                          <div className="flex items-center gap-2">
+                            <Icon icon="solar:wallet-bold-duotone" width="20" className="text-primary" />
+                            <h4 className="text-sm font-bold text-gray-800">Points & Earnings</h4>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-primary/5 rounded-xl p-3">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Points (30d)</p>
+                              <p className="text-2xl font-bold text-primary">{points30d.toLocaleString()}</p>
+                              <p className="text-[10px] text-gray-400">pts earned</p>
+                            </div>
+                            <div className="bg-amber-50 rounded-xl p-3">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Streak</p>
+                              <p className="text-2xl font-bold text-amber-600">{streakCount}</p>
+                              <p className="text-[10px] text-gray-400">period{streakCount !== 1 ? "s" : ""}</p>
+                            </div>
+                          </div>
+                          {zoneRoleLabel && zoneSummary && (
+                            <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Icon icon="solar:map-point-bold-duotone" width="14" className="text-blue-600" />
+                                  <p className="text-xs font-semibold text-blue-800">{zoneRoleLabel}</p>
+                                  {zoneSummary.zone?.name && <p className="text-[10px] text-blue-500 truncate max-w-[80px]">{zoneSummary.zone.name}</p>}
+                                </div>
+                                {zoneSummary.status && (
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${zoneSummary.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                                    {zoneSummary.status}
+                                  </span>
+                                )}
+                              </div>
+                              {typeof zoneSummary.threshold_progress_pct === "number" && (
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] text-blue-600">GBV threshold progress</p>
+                                    <p className="text-[10px] font-semibold text-blue-800">{zoneSummary.threshold_progress_pct.toFixed(0)}%</p>
+                                  </div>
+                                  <div className="w-full bg-blue-100 rounded-full h-1.5">
+                                    <div
+                                      className={`h-1.5 rounded-full transition-all ${zoneSummary.threshold_progress_pct >= 100 ? "bg-green-500" : "bg-blue-500"}`}
+                                      style={{ width: `${Math.min(zoneSummary.threshold_progress_pct, 100)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {typeof zoneSummary.projected_payout === "number" && (
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[10px] text-blue-600">Projected payout</p>
+                                  <p className="text-xs font-semibold text-emerald-700">₦{zoneSummary.projected_payout.toLocaleString()}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {walletData && typeof walletData.balance === "number" && (
+                            <div className="flex items-center justify-between px-1">
+                              <p className="text-xs text-gray-500">Wallet Balance</p>
+                              <p className="text-sm font-bold text-emerald-700">₦{walletData.balance.toLocaleString()}</p>
+                            </div>
+                          )}
+                          <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
+                            <p className="text-xs text-gray-600 font-medium">{points30d.toLocaleString()} pts · ₦{walletCredit.toLocaleString()} credited</p>
+                            <p className="text-[10px] text-gray-400">1pt = ₦10</p>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : isStatLoading ? (
                     <Skeleton className="h-[200px] w-full rounded-md" />
                   ) : stats?.users?.length > 0 ? (
                     <div>
@@ -602,210 +821,176 @@ const Home = () => {
             </Grid>
           </Grid>
           {user?.role === "OWNER" || user?.role === "ADMIN" ? (
-            <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }}>
-              <div className="h-full p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+            <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }} sx={{ display: "flex", flexDirection: "column" }}>
+              <div className="flex-1 p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                 <h3>Top Performing Agents</h3>
                 <Table columns={topAgentColumns} rows={stats?.topListings} getRowId={(row) => row.agent?.id} pagination={false} />
               </div>
             </Grid>
           ) : user?.role === "AGENT" ? (
-            <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }}>
-              <div className="h-full p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
-                <div className="flex items-center gap-2 mb-5">
-                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <Icon icon="solar:chart-bold-duotone" width="16" />
-                  </div>
-                  <h3 className="font-semibold text-gray-800">Network Overview</h3>
-                </div>
+            <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }} sx={{ display: "flex", flexDirection: "column" }}>
+              <div className="flex-1 p-[24px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md overflow-y-auto">
+                <div className="flex flex-col justify-between h-full">
 
+                {/* Mentorship */}
+                <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Icon icon="solar:users-group-two-rounded-bold-duotone" width="16" />
+                  </div>
+                  <h3 className="font-semibold text-gray-800 text-sm">Mentorship</h3>
+                </div>
                 {networkLoading ? (
-                  <div className="space-y-3">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />
+                  <div className="space-y-2 mb-5">
+                    {[...Array(2)].map((_, i) => (
+                      <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
                     ))}
                   </div>
-                ) : networkSummary ? (() => {
-                  const tier = networkSummary.current_tier;
-                  const tierCfg = TIER_CONFIG[tier];
-                  const listingPct = `${(networkSummary.commission_listing_pct * 100).toFixed(1)}%`;
-                  const referralPct = `${(networkSummary.commission_referral_pct * 100).toFixed(1)}%`;
-                  const gracePeriod = networkSummary.grace_period_until
-                    ? new Date(networkSummary.grace_period_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-                    : null;
+                ) : (() => {
+                  const tier = networkSummary?.current_tier ?? "BRONZE";
+                  const activeMentees = mentorshipData.filter((m) => m.status === "ACTIVE").length;
+                  const pausedMentees = mentorshipData.filter((m) => m.status === "PAUSED").length;
+                  const totalMentees = mentorshipData.length;
+                  const isEligible = tier === "GOLD" || tier === "SILVER";
                   return (
-                    <div className="space-y-4">
-                      {/* Points + Streak */}
-                      <div className="flex items-end justify-between">
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Points (Last 30d)</p>
-                          <p className="text-2xl font-bold text-gray-900">{networkSummary.points_30d.toLocaleString()} <span className="text-sm font-medium text-gray-400">pts</span></p>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Streak</p>
-                          <p className="text-2xl font-bold text-gray-900">{networkSummary.streak_count} <span className="text-sm font-medium text-gray-400">period{networkSummary.streak_count !== 1 ? "s" : ""}</span></p>
-                        </div>
-                      </div>
-
-                      <div className="h-px bg-gray-100" />
-
-                      {/* Stats grid */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Listing Comm.</p>
-                          <p className="text-sm font-semibold text-gray-800">{listingPct}</p>
-                        </div>
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Referral Comm.</p>
-                          <p className="text-sm font-semibold text-gray-800">{referralPct}</p>
-                        </div>
-                        {tier === "BRONZE" && gracePeriod && (
-                          <div className="space-y-0.5">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Grace Period Until</p>
-                            <p className="text-sm font-semibold text-amber-700">{gracePeriod}</p>
+                    <div className={`rounded-xl p-3 mb-5 border ${tier === "GOLD" ? "bg-yellow-50 border-yellow-100" : tier === "SILVER" ? "bg-slate-50 border-slate-200" : "bg-gray-50 border-gray-100"}`}>
+                      {isEligible ? (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <p className={`text-sm font-bold ${tier === "GOLD" ? "text-yellow-800" : "text-slate-700"}`}>
+                              {activeMentees} active mentee{activeMentees !== 1 ? "s" : ""}
+                            </p>
+                            {tier === "GOLD" && (
+                              <span className="text-[10px] font-semibold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full">0.5% override</span>
+                            )}
                           </div>
-                        )}
-                      </div>
-
-                      {/* Zone Assignment Summary */}
-                      {zoneSummary && (
-                        <>
-                          <div className="h-px bg-gray-100" />
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-1.5">
-                              <Icon icon="solar:map-point-bold-duotone" width="14" className="text-primary" />
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Zone Assignment</p>
+                          <p className={`text-[10px] ${tier === "GOLD" ? "text-yellow-600" : "text-slate-500"}`}>
+                            {tier === "GOLD"
+                              ? "Earn 0.5% of each active mentee's booking · paid by platform"
+                              : "Reach Gold to earn 0.5% override on mentees' bookings"}
+                          </p>
+                          {totalMentees > 0 && (
+                            <div className={`flex items-center gap-4 pt-2 border-t ${tier === "GOLD" ? "border-yellow-100" : "border-slate-200"}`}>
+                              <div className="text-center">
+                                <p className={`text-sm font-bold ${tier === "GOLD" ? "text-yellow-700" : "text-slate-600"}`}>{activeMentees}</p>
+                                <p className="text-[10px] text-gray-400">Active</p>
+                              </div>
+                              {pausedMentees > 0 && (
+                                <div className="text-center">
+                                  <p className="text-sm font-bold text-gray-500">{pausedMentees}</p>
+                                  <p className="text-[10px] text-gray-400">Paused</p>
+                                </div>
+                              )}
+                              <div className="text-center">
+                                <p className={`text-sm font-bold ${tier === "GOLD" ? "text-yellow-700" : "text-slate-600"}`}>{totalMentees}</p>
+                                <p className="text-[10px] text-gray-400">Total</p>
+                              </div>
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
-
-                              {/* Zone name + type */}
-                              {zoneSummary.zone?.name && (
-                                <div className="flex items-start justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">Zone</p>
-                                  <div className="text-right">
-                                    <p className="text-xs font-semibold text-gray-800 truncate">{zoneSummary.zone.name}</p>
-                                    {zoneSummary.zone.type && <p className="text-xs text-gray-400">{zoneSummary.zone.type}</p>}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Role */}
-                              {zoneSummary.role && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">Role</p>
-                                  <p className="text-xs font-semibold text-gray-800">
-                                    {zoneSummary.role === "AREA_MANAGER" ? "Area Manager" : zoneSummary.role === "REGIONAL_LEAD" ? "Regional Lead" : zoneSummary.role}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Status */}
-                              {zoneSummary.status && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">Status</p>
-                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                    zoneSummary.status === "ACTIVE"    ? "bg-green-100 text-green-700"  :
-                                    zoneSummary.status === "SUSPENDED" ? "bg-yellow-100 text-yellow-700" :
-                                    zoneSummary.status === "EXPIRED"   ? "bg-red-100 text-red-700"      :
-                                    "bg-gray-200 text-gray-600"
-                                  }`}>
-                                    {zoneSummary.status}
-                                  </span>
-                                </div>
-                              )}
-
-                              {/* Employment mode */}
-                              {zoneSummary.employment_mode && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">Mode</p>
-                                  <p className="text-xs font-semibold text-gray-800">
-                                    {zoneSummary.employment_mode === "COMMISSION_ONLY" ? "Commission Only" : "Salaried Overlay"}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Override rate */}
-                              {typeof zoneSummary.override_rate === "number" && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">Override Rate</p>
-                                  <p className="text-xs font-semibold text-gray-800">{(zoneSummary.override_rate * 100).toFixed(1)}%</p>
-                                </div>
-                              )}
-
-                              {/* GBV Threshold */}
-                              {typeof zoneSummary.monthly_gbv_threshold === "number" && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">GBV Threshold</p>
-                                  <p className="text-xs font-semibold text-gray-800">₦{zoneSummary.monthly_gbv_threshold.toLocaleString()}</p>
-                                </div>
-                              )}
-
-                              {/* Current month GBV + progress (from /network/zone/me) */}
-                              {typeof zoneSummary.current_month_gbv === "number" && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">This Month GBV</p>
-                                  <p className="text-xs font-semibold text-gray-800">₦{zoneSummary.current_month_gbv.toLocaleString()}</p>
-                                </div>
-                              )}
-                              {typeof zoneSummary.threshold_progress_pct === "number" && (
-                                <div className="space-y-1">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-xs text-gray-500">Threshold Progress</p>
-                                    <p className="text-xs font-semibold text-gray-800">{zoneSummary.threshold_progress_pct.toFixed(0)}%</p>
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div
-                                      className={`h-1.5 rounded-full transition-all ${zoneSummary.threshold_progress_pct >= 100 ? "bg-green-500" : "bg-primary"}`}
-                                      style={{ width: `${Math.min(zoneSummary.threshold_progress_pct, 100)}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Projected payout */}
-                              {typeof zoneSummary.projected_payout === "number" && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">Projected Payout</p>
-                                  <p className="text-xs font-semibold text-emerald-700">₦{zoneSummary.projected_payout.toLocaleString()}</p>
-                                </div>
-                              )}
-
-                              {/* Start / End dates */}
-                              {zoneSummary.start_date && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">Start Date</p>
-                                  <p className="text-xs font-semibold text-gray-800">
-                                    {new Date(zoneSummary.start_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                                  </p>
-                                </div>
-                              )}
-                              {zoneSummary.end_date && (
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs text-gray-500 shrink-0">End Date</p>
-                                  <p className="text-xs font-semibold text-gray-800">
-                                    {new Date(zoneSummary.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                                  </p>
-                                </div>
-                              )}
-
-                            </div>
-                          </div>
-                        </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center text-center py-2">
+                          <Icon icon="solar:lock-bold-duotone" width="24" className="text-gray-300 mb-1.5" />
+                          <p className="text-xs text-gray-500 font-medium">Available from Silver tier</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">Mentor junior agents · earn overrides at Gold</p>
+                        </div>
                       )}
                     </div>
                   );
-                })() : (
-                  <div className="flex flex-col items-center justify-center h-40 text-center">
-                    <Icon icon="solar:chart-bold-duotone" width="32" className="text-gray-300 mb-2" />
-                    <p className="text-sm text-gray-400">No network data available</p>
+                })()}
+
+                </div>{/* end Mentorship group */}
+
+                {/* Tier Benefits */}
+                <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Icon icon="solar:medal-ribbons-star-bold-duotone" width="16" />
                   </div>
-                )}
+                  <h3 className="font-semibold text-gray-800 text-sm">Tier Benefits</h3>
+                </div>
+                <div className="space-y-2">
+                  {(["BRONZE", "SILVER", "GOLD"] as const).map((t) => {
+                    const cfg = TIER_CONFIG[t];
+                    const isCurrentTier = t === networkSummary?.current_tier;
+                    const commissions = t === "BRONZE" ? "2.0% / 1.5%" : t === "SILVER" ? "2.6% / 1.8%" : "3.0% / 2.0%";
+                    const multiplier = t === "BRONZE" ? "1×" : t === "SILVER" ? "1.25×" : "1.5×";
+                    return (
+                      <div key={t} className={`flex items-center justify-between p-2.5 rounded-xl border ${isCurrentTier ? `${cfg.bg} ${cfg.border}` : "bg-gray-50 border-gray-100"}`}>
+                        <div className="flex items-center gap-2">
+                          <Icon icon={cfg.icon} width="14" className={isCurrentTier ? cfg.color : "text-gray-400"} />
+                          <div>
+                            <p className={`text-xs font-semibold ${isCurrentTier ? cfg.color : "text-gray-500"}`}>{cfg.label}</p>
+                            <p className={`text-[10px] ${isCurrentTier ? cfg.color : "text-gray-400"}`}>{commissions}</p>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCurrentTier ? `${cfg.bg} ${cfg.color}` : "bg-gray-100 text-gray-400"}`}>
+                          {multiplier}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                </div>{/* end Tier Benefits group */}
+                </div>{/* end justify-between wrapper */}
+
               </div>
             </Grid>
           ) : null}
         </Grid>
       </div>
       <div className="p-[30px] mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
-        {loading ? (
+        {user?.role === "AGENT" ? (
+          <>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <Icon icon="solar:history-bold-duotone" width="14" />
+              </div>
+              <h4 className="text-sm font-semibold text-gray-800">Recent Activity</h4>
+            </div>
+            {agentDataLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : activityHistory.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[...activityHistory]
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0, 3)
+                  .map((event) => (
+                    <div key={event.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Icon icon={ACTION_ICONS[event.action_type] ?? "solar:star-bold-duotone"} width="16" className="text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-700 truncate">
+                          {event.action_type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(event.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                          </span>
+                          <span className="text-[10px] font-semibold text-primary">+{event.points_awarded} pts</span>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                            event.status === "CONFIRMED" ? "bg-green-100 text-green-700" :
+                            event.status === "PENDING"   ? "bg-yellow-100 text-yellow-700" :
+                            event.status === "REVERSED"  ? "bg-orange-100 text-orange-700" :
+                            "bg-red-100 text-red-700"
+                          }`}>
+                            {event.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 text-center py-6">No recent activity</p>
+            )}
+          </>
+        ) : loading ? (
           <Skeleton className="h-[300px] w-full rounded-md" />
         ) : (
           <>
@@ -819,7 +1004,7 @@ const Home = () => {
             </div>
             {searchResult?.length > 0 ? (
               <Table
-                columns={user?.role === "OWNER" ? propertyColumns : user?.role === "ADMIN" ? adminColumns : anAgentColumns}
+                columns={user?.role === "OWNER" ? propertyColumns : adminColumns}
                 rows={searchResult}
                 getRowId={(row) => row?.id}
                 pagination={false}
