@@ -161,7 +161,14 @@ interface NetworkEvent {
 
 interface MentorshipRecord {
   id: string;
+  mentor_id: string;
+  mentee_id: string;
   status: string;
+  started_at: string | null;
+  mentor?: { first_name?: string; last_name?: string; email?: string; profile?: { first_name?: string; last_name?: string } };
+  mentee?: { first_name?: string; last_name?: string; email?: string; profile?: { first_name?: string; last_name?: string } };
+  mentor_tier?: string;
+  mentee_tier?: string;
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
@@ -225,7 +232,7 @@ const Home = () => {
   const fetchAgentData = useCallback(async () => {
     setAgentDataLoading(true);
     try {
-      const [historyRes, mentorshipRes, walletRes] = await Promise.allSettled([
+      const [historyRes, mentorshipRes, walletListRes] = await Promise.allSettled([
         axiosRequest.get(API_ROUTES.network.history, { params: { size: 10 } }),
         axiosRequest.get(API_ROUTES.network.myMentorship),
         axiosRequest.get(API_ROUTES.wallet.base),
@@ -235,12 +242,30 @@ const Home = () => {
         setActivityHistory(body?.items ?? []);
       }
       if (mentorshipRes.status === "fulfilled") {
-        const body = mentorshipRes.value?.data?.data;
-        setMentorshipData(body?.data ?? (Array.isArray(body) ? body : []));
+        const body = mentorshipRes.value?.data?.data ?? mentorshipRes.value?.data;
+        setMentorshipData(body?.items ?? body?.data ?? (Array.isArray(body) ? body : []));
       }
-      if (walletRes.status === "fulfilled") {
-        const d = walletRes.value?.data?.data;
-        setWalletData(Array.isArray(d) ? (d[0] ?? null) : d);
+      if (walletListRes.status === "fulfilled") {
+        const raw = walletListRes.value?.data?.data;
+        // handle paginated list, plain array, or single object
+        const firstWallet = raw?.items?.[0] ?? (Array.isArray(raw) ? raw[0] : raw) ?? null;
+        const walletId: string | undefined = firstWallet?.id;
+        console.log("[wallet] base response:", raw, "| walletId:", walletId);
+        if (walletId) {
+          try {
+            const detailRes = await axiosRequest.get(API_ROUTES.wallet.details(walletId));
+            const detail = detailRes?.data?.data;
+            console.log("[wallet] detail response:", detail);
+            setWalletData(detail ?? firstWallet);
+          } catch (e) {
+            console.error("[wallet] detail fetch failed:", e);
+            setWalletData(firstWallet);
+          }
+        } else {
+          setWalletData(firstWallet);
+        }
+      } else {
+        console.error("[wallet] base fetch failed:", walletListRes.reason);
       }
     } catch {
       // fail silently
@@ -571,9 +596,9 @@ const Home = () => {
   return (
     <div className="full py-6">
       <div className="mb-6">
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "AGENT" ? 9 : 12, }}>
-            <Grid container spacing={2}>
+        <Grid container spacing={2} sx={{ alignItems: "stretch" }}>
+          <Grid size={{ xs: 12, sm: 12, md: 12, lg: user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "AGENT" ? 9 : 12, }} sx={{ display: "flex", flexDirection: "column" }}>
+            <Grid container spacing={2} sx={{ flex: 1 }}>
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
                 <StatsCard
                   title="Total Revenue"
@@ -731,8 +756,8 @@ const Home = () => {
                       const points30d = networkSummary?.points_30d ?? 0;
                       const streakCount = networkSummary?.streak_count ?? 0;
                       const walletCredit = points30d * 10;
-                      const zoneRole = zoneSummary?.role;
-                      const zoneRoleLabel = zoneRole === "AREA_MANAGER" ? "Area Manager" : zoneRole === "REGIONAL_LEAD" ? "Regional Lead" : null;
+                      // const zoneRole = zoneSummary?.role; // phase 2
+                      // const zoneRoleLabel = zoneRole === "AREA_MANAGER" ? "Area Manager" : zoneRole === "REGIONAL_LEAD" ? "Regional Lead" : null; // phase 2
                       return (
                         <div className="flex flex-col justify-between h-full gap-3">
                           <div className="flex items-center gap-2">
@@ -751,50 +776,10 @@ const Home = () => {
                               <p className="text-[10px] text-gray-400">period{streakCount !== 1 ? "s" : ""}</p>
                             </div>
                           </div>
-                          {zoneRoleLabel && zoneSummary && (
-                            <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <Icon icon="solar:map-point-bold-duotone" width="14" className="text-blue-600" />
-                                  <p className="text-xs font-semibold text-blue-800">{zoneRoleLabel}</p>
-                                  {zoneSummary.zone?.name && <p className="text-[10px] text-blue-500 truncate max-w-[80px]">{zoneSummary.zone.name}</p>}
-                                </div>
-                                {zoneSummary.status && (
-                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${zoneSummary.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                                    {zoneSummary.status}
-                                  </span>
-                                )}
-                              </div>
-                              {typeof zoneSummary.threshold_progress_pct === "number" && (
-                                <div className="space-y-1">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-[10px] text-blue-600">GBV threshold progress</p>
-                                    <p className="text-[10px] font-semibold text-blue-800">{zoneSummary.threshold_progress_pct.toFixed(0)}%</p>
-                                  </div>
-                                  <div className="w-full bg-blue-100 rounded-full h-1.5">
-                                    <div
-                                      className={`h-1.5 rounded-full transition-all ${zoneSummary.threshold_progress_pct >= 100 ? "bg-green-500" : "bg-blue-500"}`}
-                                      style={{ width: `${Math.min(zoneSummary.threshold_progress_pct, 100)}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                              {typeof zoneSummary.projected_payout === "number" && (
-                                <div className="flex items-center justify-between">
-                                  <p className="text-[10px] text-blue-600">Projected payout</p>
-                                  <p className="text-xs font-semibold text-emerald-700">₦{zoneSummary.projected_payout.toLocaleString()}</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {walletData && typeof walletData.balance === "number" && (
-                            <div className="flex items-center justify-between px-1">
-                              <p className="text-xs text-gray-500">Wallet Balance</p>
-                              <p className="text-sm font-bold text-emerald-700">₦{walletData.balance.toLocaleString()}</p>
-                            </div>
-                          )}
+                          {/* zone role card — phase 2, not included */}
+                          {/* wallet balance moved to sidebar */}
                           <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
-                            <p className="text-xs text-gray-600 font-medium">{points30d.toLocaleString()} pts · ₦{walletCredit.toLocaleString()} credited</p>
+                            <p className="text-xs text-gray-600 font-medium">{points30d.toLocaleString()} pts · ₦{walletCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} credited</p>
                             <p className="text-[10px] text-gray-400">1pt = ₦10</p>
                           </div>
                         </div>
@@ -838,110 +823,113 @@ const Home = () => {
             </Grid>
           ) : user?.role === "AGENT" ? (
             <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }} sx={{ display: "flex", flexDirection: "column" }}>
-              <div className="flex-1 p-[24px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md overflow-y-auto">
-                <div className="flex flex-col justify-between h-full">
+              <div className="flex-1 p-[24px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md flex flex-col">
 
-                {/* Mentorship */}
-                <div>
+                {/* Current Mentorship */}
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <Icon icon="solar:users-group-two-rounded-bold-duotone" width="16" />
+                    <Icon icon="solar:users-group-rounded-bold-duotone" width="16" />
                   </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Mentorship</h3>
+                  <h3 className="font-semibold text-gray-800 text-sm">Current Mentorship</h3>
                 </div>
-                {networkLoading ? (
-                  <div className="space-y-2 mb-5">
-                    {[...Array(2)].map((_, i) => (
-                      <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
-                    ))}
-                  </div>
+                {agentDataLoading ? (
+                  <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
                 ) : (() => {
-                  const tier = networkSummary?.current_tier ?? "BRONZE";
-                  const activeMentees = mentorshipData.filter((m) => m.status === "ACTIVE").length;
-                  const pausedMentees = mentorshipData.filter((m) => m.status === "PAUSED").length;
-                  const totalMentees = mentorshipData.length;
-                  const isEligible = tier === "GOLD" || tier === "SILVER";
+                  const MENTORSHIP_STATUS: Record<string, { bg: string; text: string }> = {
+                    ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
+                    PENDING: { bg: "bg-yellow-100", text: "text-yellow-800" },
+                    PAUSED:  { bg: "bg-orange-100", text: "text-orange-800" },
+                    ENDED:   { bg: "bg-gray-100",   text: "text-gray-600"   },
+                  };
+                  const TIER_COLORS: Record<string, string> = {
+                    BRONZE: "text-amber-700",
+                    SILVER: "text-slate-600",
+                    GOLD:   "text-yellow-600",
+                  };
+                  const current =
+                    mentorshipData.find((m) => m.status === "ACTIVE") ??
+                    mentorshipData.find((m) => m.status === "PENDING") ??
+                    null;
+                  if (!current) return (
+                    <div className="flex flex-col items-center justify-center py-5 text-center">
+                      <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center mb-2">
+                        <Icon icon="solar:users-group-rounded-bold-duotone" width="20" className="text-primary/40" />
+                      </div>
+                      <p className="text-xs text-gray-400">No active mentorship</p>
+                    </div>
+                  );
+                  const isMentor = current.mentor_id === String(user?.id);
+                  const partner  = isMentor ? current.mentee : current.mentor;
+                  const partnerTier = isMentor ? current.mentee_tier : current.mentor_tier;
+                  const roleLabel   = isMentor ? "Your Mentee" : "Your Mentor";
+                  const partnerName =
+                    [partner?.first_name || partner?.profile?.first_name, partner?.last_name || partner?.profile?.last_name]
+                      .filter(Boolean).join(" ") || partner?.email || "—";
+                  const sc = MENTORSHIP_STATUS[current.status] ?? MENTORSHIP_STATUS.ENDED;
                   return (
-                    <div className={`rounded-xl p-3 mb-5 border ${tier === "GOLD" ? "bg-yellow-50 border-yellow-100" : tier === "SILVER" ? "bg-slate-50 border-slate-200" : "bg-gray-50 border-gray-100"}`}>
-                      {isEligible ? (
-                        <div className="space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <p className={`text-sm font-bold ${tier === "GOLD" ? "text-yellow-800" : "text-slate-700"}`}>
-                              {activeMentees} active mentee{activeMentees !== 1 ? "s" : ""}
+                    <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{roleLabel}</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
+                          {current.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Icon icon="gg:profile" width="16" className="text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{partnerName}</p>
+                          {partner?.email && <p className="text-[10px] text-gray-400 truncate">{partner.email}</p>}
+                          {partnerTier && (
+                            <p className={`text-[10px] font-semibold ${TIER_COLORS[partnerTier] ?? "text-gray-500"}`}>
+                              {partnerTier.charAt(0) + partnerTier.slice(1).toLowerCase()}
                             </p>
-                            {tier === "GOLD" && (
-                              <span className="text-[10px] font-semibold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full">0.5% override</span>
-                            )}
-                          </div>
-                          <p className={`text-[10px] ${tier === "GOLD" ? "text-yellow-600" : "text-slate-500"}`}>
-                            {tier === "GOLD"
-                              ? "Earn 0.5% of each active mentee's booking · paid by platform"
-                              : "Reach Gold to earn 0.5% override on mentees' bookings"}
-                          </p>
-                          {totalMentees > 0 && (
-                            <div className={`flex items-center gap-4 pt-2 border-t ${tier === "GOLD" ? "border-yellow-100" : "border-slate-200"}`}>
-                              <div className="text-center">
-                                <p className={`text-sm font-bold ${tier === "GOLD" ? "text-yellow-700" : "text-slate-600"}`}>{activeMentees}</p>
-                                <p className="text-[10px] text-gray-400">Active</p>
-                              </div>
-                              {pausedMentees > 0 && (
-                                <div className="text-center">
-                                  <p className="text-sm font-bold text-gray-500">{pausedMentees}</p>
-                                  <p className="text-[10px] text-gray-400">Paused</p>
-                                </div>
-                              )}
-                              <div className="text-center">
-                                <p className={`text-sm font-bold ${tier === "GOLD" ? "text-yellow-700" : "text-slate-600"}`}>{totalMentees}</p>
-                                <p className="text-[10px] text-gray-400">Total</p>
-                              </div>
-                            </div>
                           )}
                         </div>
-                      ) : (
-                        <div className="flex flex-col items-center text-center py-2">
-                          <Icon icon="solar:lock-bold-duotone" width="24" className="text-gray-300 mb-1.5" />
-                          <p className="text-xs text-gray-500 font-medium">Available from Silver tier</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">Mentor junior agents · earn overrides at Gold</p>
-                        </div>
+                      </div>
+                      {current.started_at && (
+                        <p className="text-[10px] text-gray-400">
+                          Since {new Date(current.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
                       )}
                     </div>
                   );
                 })()}
 
-                </div>{/* end Mentorship group */}
-
-                {/* Tier Benefits */}
-                <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <Icon icon="solar:medal-ribbons-star-bold-duotone" width="16" />
+                {/* Wallet Balance */}
+                <div className="mt-auto pt-5 border-t border-gray-100">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                      <Icon icon="solar:wallet-bold-duotone" width="16" className="text-emerald-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-800 text-sm">Wallet</h3>
                   </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Tier Benefits</h3>
-                </div>
-                <div className="space-y-2">
-                  {(["BRONZE", "SILVER", "GOLD"] as const).map((t) => {
-                    const cfg = TIER_CONFIG[t];
-                    const isCurrentTier = t === networkSummary?.current_tier;
-                    const commissions = t === "BRONZE" ? "2.0% / 1.5%" : t === "SILVER" ? "2.6% / 1.8%" : "3.0% / 2.0%";
-                    const multiplier = t === "BRONZE" ? "1×" : t === "SILVER" ? "1.25×" : "1.5×";
-                    return (
-                      <div key={t} className={`flex items-center justify-between p-2.5 rounded-xl border ${isCurrentTier ? `${cfg.activeBg} ${cfg.activeBorder}` : "bg-gray-50 border-gray-100"}`}>
-                        <div className="flex items-center gap-2">
-                          <Icon icon={cfg.icon} width="14" className={isCurrentTier ? cfg.activeColor : "text-gray-400"} />
-                          <div>
-                            <p className={`text-xs font-semibold ${isCurrentTier ? cfg.activeColor : "text-gray-500"}`}>{cfg.label}</p>
-                            <p className={`text-[10px] ${isCurrentTier ? "text-white/75" : "text-gray-400"}`}>{commissions}</p>
-                          </div>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCurrentTier ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"}`}>
-                          {multiplier}
-                        </span>
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 space-y-3">
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Available Balance</p>
+                      {agentDataLoading ? (
+                        <div className="h-7 w-32 bg-emerald-100 rounded animate-pulse" />
+                      ) : (
+                        <p className="text-2xl font-bold text-emerald-700">
+                          ₦{Number(walletData?.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="border-t border-emerald-100 pt-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Pending Cash</p>
+                        {agentDataLoading ? (
+                          <div className="h-4 w-20 bg-emerald-100 rounded animate-pulse" />
+                        ) : (
+                          <p className="text-sm font-semibold text-amber-600">
+                            ₦{Number(walletData?.pending_cash ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        )}
                       </div>
-                    );
-                  })}
+                    </div>
+                  </div>
                 </div>
-                </div>{/* end Tier Benefits group */}
-                </div>{/* end justify-between wrapper */}
 
               </div>
             </Grid>
