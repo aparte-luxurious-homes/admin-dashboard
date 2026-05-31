@@ -3,6 +3,9 @@
 import Table from "../../../components/table/table";
 import { useEffect, useCallback } from "react";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useSelector } from "react-redux";
+import { RootState } from "@/src/lib/store";
+import { AgentNetworkRole } from "@/src/lib/enums";
 import { useState } from "react";
 import axiosRequest from "@/src/lib/api";
 import { TableSearch } from "../../../components/table/tableAction";
@@ -123,23 +126,29 @@ interface AgentNetworkSummary {
   is_inactive: boolean;
 }
 
+interface AgentZoneAssignment {
+  id: string;
+  role: AgentNetworkRole;
+  status: string;
+  override_rate: number;
+  monthly_gbv_threshold: number;
+  employment_mode: "COMMISSION_ONLY" | "SALARIED_OVERLAY";
+  start_date: string | null;
+  end_date: string | null;
+  days_active: number;
+  days_remaining: number;
+  zone?: { id?: string; name?: string; type?: string };
+}
+
 interface AgentZoneSummary {
-  id?: string;
-  role?: string;
-  status?: string;
-  override_rate?: number;
-  monthly_gbv_threshold?: number;
-  employment_mode?: "COMMISSION_ONLY" | "SALARIED_OVERLAY";
-  start_date?: string | null;
-  end_date?: string | null;
-  current_month_gbv?: number;
-  threshold_progress_pct?: number;
-  projected_payout?: number;
-  zone?: {
-    name?: string;
-    type?: string;
-    status?: string;
-  };
+  zone: { id: string; name: string; type: string; parent_zone_id: string | null };
+  assignment: AgentZoneAssignment;
+  current_tier: "BRONZE" | "SILVER" | "GOLD";
+  total_agents_in_zone: number;
+  current_month_gbv: number;
+  threshold_progress_pct: number;
+  threshold_met: boolean;
+  projected_payout: number;
 }
 
 const TIER_CONFIG = {
@@ -200,6 +209,8 @@ const Home = () => {
   const [range, setRange] = useState<string>("year");
   const { user, isFetching } = useAuth();
 
+  const agentNetworkRole = useSelector((state: RootState) => state.auth.agentNetworkRole);
+
   const [networkSummary, setNetworkSummary] = useState<AgentNetworkSummary | null>(null);
   const [networkLoading, setNetworkLoading] = useState(false);
   const [zoneSummary, setZoneSummary]       = useState<AgentZoneSummary | null>(null);
@@ -208,19 +219,23 @@ const Home = () => {
   const [walletData, setWalletData]           = useState<Record<string, any> | null>(null);
   const [agentDataLoading, setAgentDataLoading] = useState(false);
 
+  // True as soon as either Redux (cookie/layout fetch) OR the page's own zone fetch confirms AM/RL
+  const isZoneManager =
+    agentNetworkRole === AgentNetworkRole.AREA_MANAGER ||
+    agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD ||
+    zoneSummary?.assignment?.role === AgentNetworkRole.AREA_MANAGER ||
+    zoneSummary?.assignment?.role === AgentNetworkRole.REGIONAL_LEAD;
+
   const fetchNetworkSummary = useCallback(async () => {
     setNetworkLoading(true);
     try {
       const [meRes, zoneRes] = await Promise.allSettled([
         axiosRequest.get(API_ROUTES.network.me),
-        axiosRequest.get(API_ROUTES.network.myZoneAssignments),
+        axiosRequest.get(API_ROUTES.network.zoneMe),
       ]);
       if (meRes.status === "fulfilled") setNetworkSummary(meRes.value?.data?.data ?? null);
       if (zoneRes.status === "fulfilled") {
-        const body = zoneRes.value?.data?.data;
-        const assignments: AgentZoneSummary[] = body?.data ?? (Array.isArray(body) ? body : []);
-        const active = assignments.find((a) => a.status === "ACTIVE") ?? assignments[0] ?? null;
-        setZoneSummary(active);
+        setZoneSummary(zoneRes.value?.data?.data ?? null);
       }
     } catch {
       // fail silently
@@ -756,8 +771,6 @@ const Home = () => {
                       const points30d = networkSummary?.points_30d ?? 0;
                       const streakCount = networkSummary?.streak_count ?? 0;
                       const walletCredit = points30d * 10;
-                      // const zoneRole = zoneSummary?.role; // phase 2
-                      // const zoneRoleLabel = zoneRole === "AREA_MANAGER" ? "Area Manager" : zoneRole === "REGIONAL_LEAD" ? "Regional Lead" : null; // phase 2
                       return (
                         <div className="flex flex-col justify-between h-full gap-3">
                           <div className="flex items-center gap-2">
@@ -776,7 +789,6 @@ const Home = () => {
                               <p className="text-[10px] text-gray-400">period{streakCount !== 1 ? "s" : ""}</p>
                             </div>
                           </div>
-                          {/* zone role card — phase 2, not included */}
                           {/* wallet balance moved to sidebar */}
                           <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
                             <p className="text-xs text-gray-600 font-medium">{points30d.toLocaleString()} pts · ₦{walletCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} credited</p>
@@ -825,16 +837,8 @@ const Home = () => {
             <Grid size={{ xs: 12, sm: 12, md: 12, lg: 3 }} sx={{ display: "flex", flexDirection: "column" }}>
               <div className="flex-1 p-[24px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md flex flex-col">
 
-                {/* Current Mentorship */}
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <Icon icon="solar:users-group-rounded-bold-duotone" width="16" />
-                  </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Current Mentorship</h3>
-                </div>
-                {agentDataLoading ? (
-                  <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-                ) : (() => {
+                {/* Side card top section: Zone card / Mentees summary / Current mentor */}
+                {(() => {
                   const MENTORSHIP_STATUS: Record<string, { bg: string; text: string }> = {
                     ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
                     PENDING: { bg: "bg-yellow-100", text: "text-yellow-800" },
@@ -846,54 +850,187 @@ const Home = () => {
                     SILVER: "text-slate-600",
                     GOLD:   "text-yellow-600",
                   };
-                  const current =
-                    mentorshipData.find((m) => m.status === "ACTIVE") ??
-                    mentorshipData.find((m) => m.status === "PENDING") ??
-                    null;
-                  if (!current) return (
-                    <div className="flex flex-col items-center justify-center py-5 text-center">
-                      <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center mb-2">
-                        <Icon icon="solar:users-group-rounded-bold-duotone" width="20" className="text-primary/40" />
-                      </div>
-                      <p className="text-xs text-gray-400">No active mentorship</p>
-                    </div>
-                  );
-                  const isMentor = current.mentor_id === String(user?.id);
-                  const partner  = isMentor ? current.mentee : current.mentor;
-                  const partnerTier = isMentor ? current.mentee_tier : current.mentor_tier;
-                  const roleLabel   = isMentor ? "Your Mentee" : "Your Mentor";
-                  const partnerName =
-                    [partner?.first_name || partner?.profile?.first_name, partner?.last_name || partner?.profile?.last_name]
-                      .filter(Boolean).join(" ") || partner?.email || "—";
-                  const sc = MENTORSHIP_STATUS[current.status] ?? MENTORSHIP_STATUS.ENDED;
-                  return (
-                    <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{roleLabel}</p>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
-                          {current.status}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Icon icon="gg:profile" width="16" className="text-primary" />
+
+                  /* ── AM / RL: Zone card ── */
+                  if (isZoneManager) {
+                    const assignmentRole = zoneSummary?.assignment?.role ?? agentNetworkRole;
+                    const roleLabel = assignmentRole === AgentNetworkRole.AREA_MANAGER ? "Area Manager" : "Regional Lead";
+                    const roleIcon  = assignmentRole === AgentNetworkRole.AREA_MANAGER
+                      ? "solar:city-bold-duotone"
+                      : "solar:global-bold-duotone";
+                    const status      = zoneSummary?.assignment?.status;
+                    const daysLeft    = zoneSummary?.assignment?.days_remaining;
+                    const totalAgents = zoneSummary?.total_agents_in_zone ?? 0;
+
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                            <Icon icon={roleIcon} width="16" />
+                          </div>
+                          <h3 className="font-semibold text-gray-800 text-sm">Zone Overview</h3>
+                          {networkLoading && <div className="ml-auto h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{partnerName}</p>
-                          {partner?.email && <p className="text-[10px] text-gray-400 truncate">{partner.email}</p>}
-                          {partnerTier && (
-                            <p className={`text-[10px] font-semibold ${TIER_COLORS[partnerTier] ?? "text-gray-500"}`}>
-                              {partnerTier.charAt(0) + partnerTier.slice(1).toLowerCase()}
+
+                        {networkLoading && !zoneSummary ? (
+                          <div className="space-y-2">
+                            <div className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+                            <div className="h-10 bg-gray-100 rounded-xl animate-pulse" />
+                            <div className="h-8 bg-gray-100 rounded-xl animate-pulse" />
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {/* Role badge + zone name */}
+                            <div className="bg-primary/5 rounded-xl p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
+                                  {roleLabel}
+                                </span>
+                                {status && (
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                    {status}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {zoneSummary?.zone?.name ?? "—"}
+                                {zoneSummary?.zone?.type && (
+                                  <span className="ml-1 text-[10px] font-medium text-gray-400 uppercase">{zoneSummary.zone.type}</span>
+                                )}
+                              </p>
+                              <div className="flex items-center justify-between text-[10px] text-gray-400">
+                                <span>{totalAgents} agent{totalAgents !== 1 ? "s" : ""} in zone</span>
+                                {daysLeft != null && <span>{daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining</span>}
+                              </div>
+                            </div>
+
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  const tier = networkSummary?.current_tier ?? "BRONZE";
+
+                  /* ── GOLD (no zone): Mentees summary ── */
+                  if (tier === "GOLD") {
+                    const activeMentees = mentorshipData.filter(
+                      (m) => m.mentor_id === String(user?.id) && (m.status === "ACTIVE" || m.status === "PAUSED")
+                    );
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                            <Icon icon="solar:users-group-rounded-bold-duotone" width="16" />
+                          </div>
+                          <h3 className="font-semibold text-gray-800 text-sm">Your Mentees</h3>
+                          {agentDataLoading && <div className="ml-auto h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
+                        </div>
+                        {agentDataLoading ? (
+                          <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                        ) : activeMentees.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-5 text-center">
+                            <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center mb-2">
+                              <Icon icon="solar:users-group-rounded-bold-duotone" width="20" className="text-primary/40" />
+                            </div>
+                            <p className="text-xs text-gray-400">No active mentees yet</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                              {activeMentees.length} active mentee{activeMentees.length !== 1 ? "s" : ""}
                             </p>
-                          )}
+                            {activeMentees.slice(0, 4).map((m) => {
+                              const mentee = m.mentee;
+                              const name = [mentee?.first_name || mentee?.profile?.first_name, mentee?.last_name || mentee?.profile?.last_name]
+                                .filter(Boolean).join(" ") || mentee?.email || "—";
+                              const sc = MENTORSHIP_STATUS[m.status] ?? MENTORSHIP_STATUS.ENDED;
+                              return (
+                                <div key={m.id} className="flex items-center gap-2.5 bg-gray-50 rounded-xl p-2.5">
+                                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <Icon icon="gg:profile" width="13" className="text-primary" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-gray-900 truncate">{name}</p>
+                                    {m.mentee_tier && (
+                                      <p className={`text-[10px] font-semibold ${TIER_COLORS[m.mentee_tier] ?? "text-gray-500"}`}>
+                                        {m.mentee_tier.charAt(0) + m.mentee_tier.slice(1).toLowerCase()}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
+                                    {m.status}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            {activeMentees.length > 4 && (
+                              <p className="text-[10px] text-gray-400 text-center">+{activeMentees.length - 4} more</p>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  /* ── BRONZE / SILVER: Current mentor only ── */
+                  const mentorRecord = mentorshipData.find(
+                    (m) => m.mentee_id === String(user?.id) && (m.status === "ACTIVE" || m.status === "PENDING")
+                  );
+                  return (
+                    <>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                          <Icon icon="solar:users-group-rounded-bold-duotone" width="16" />
                         </div>
+                        <h3 className="font-semibold text-gray-800 text-sm">Your Mentor</h3>
+                        {agentDataLoading && <div className="ml-auto h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
                       </div>
-                      {current.started_at && (
-                        <p className="text-[10px] text-gray-400">
-                          Since {new Date(current.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
-                      )}
-                    </div>
+                      {agentDataLoading ? (
+                        <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                      ) : !mentorRecord ? (
+                        <div className="flex flex-col items-center justify-center py-5 text-center">
+                          <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center mb-2">
+                            <Icon icon="solar:users-group-rounded-bold-duotone" width="20" className="text-primary/40" />
+                          </div>
+                          <p className="text-xs text-gray-400">No mentor assigned</p>
+                        </div>
+                      ) : (() => {
+                        const mentor = mentorRecord.mentor;
+                        const mentorName = [mentor?.first_name || mentor?.profile?.first_name, mentor?.last_name || mentor?.profile?.last_name]
+                          .filter(Boolean).join(" ") || mentor?.email || "—";
+                        const sc = MENTORSHIP_STATUS[mentorRecord.status] ?? MENTORSHIP_STATUS.ENDED;
+                        return (
+                          <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Your Mentor</p>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
+                                {mentorRecord.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <Icon icon="gg:profile" width="16" className="text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{mentorName}</p>
+                                {mentor?.email && <p className="text-[10px] text-gray-400 truncate">{mentor.email}</p>}
+                                {mentorRecord.mentor_tier && (
+                                  <p className={`text-[10px] font-semibold ${TIER_COLORS[mentorRecord.mentor_tier] ?? "text-gray-500"}`}>
+                                    {mentorRecord.mentor_tier.charAt(0) + mentorRecord.mentor_tier.slice(1).toLowerCase()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {mentorRecord.started_at && (
+                              <p className="text-[10px] text-gray-400">
+                                Since {new Date(mentorRecord.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </>
                   );
                 })()}
 

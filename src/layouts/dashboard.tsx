@@ -8,19 +8,20 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { useAuth } from "../hooks/useAuth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { IoMenu, IoClose } from "react-icons/io5";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useQueryClient } from "@tanstack/react-query";
-import { clearUser } from "../lib/slices/authSlice";
+import { clearUser, setAgentNetworkRole } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
 import axiosRequest from "../lib/api";
 import { API_ROUTES } from "../lib/routes/endpoints";
-import { UserRole } from "../lib/enums";
+import { AgentNetworkRole, UserRole } from "../lib/enums";
+import { RootState } from "../lib/store";
 
 const TIER_CONFIG = {
   BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300", icon: "solar:medal-ribbons-star-bold-duotone" },
@@ -38,16 +39,56 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "?";
 
   const [agentTier, setAgentTier] = useState<"BRONZE" | "SILVER" | "GOLD" | null>(null);
+  const agentNetworkRole = useSelector((state: RootState) => state.auth.agentNetworkRole);
 
   useEffect(() => {
     if (user?.role !== UserRole.AGENT) return;
-    axiosRequest.get(API_ROUTES.network.me)
-      .then((res) => {
-        const tier = res?.data?.data?.current_tier;
+
+    // Restore from cookie immediately so nav doesn't flicker
+    const cookieRole = Cookies.get("networkRole");
+    if (cookieRole === AgentNetworkRole.AREA_MANAGER || cookieRole === AgentNetworkRole.REGIONAL_LEAD) {
+      dispatch(setAgentNetworkRole(cookieRole as AgentNetworkRole));
+    }
+
+    Promise.allSettled([
+      axiosRequest.get(API_ROUTES.network.me),
+      axiosRequest.get(API_ROUTES.network.zoneMe),
+    ]).then(([tierRes, zoneRes]) => {
+      if (tierRes.status === "fulfilled") {
+        const tier = tierRes.value?.data?.data?.current_tier;
         if (tier) setAgentTier(tier);
-      })
-      .catch(() => {});
-  }, [user?.role]);
+      }
+      if (zoneRes.status === "fulfilled") {
+        const role = zoneRes.value?.data?.data?.assignment?.role as AgentNetworkRole | undefined;
+        const resolved = role === AgentNetworkRole.AREA_MANAGER || role === AgentNetworkRole.REGIONAL_LEAD
+          ? role
+          : null;
+        dispatch(setAgentNetworkRole(resolved));
+        if (resolved) {
+          Cookies.set("networkRole", resolved, { expires: 1 });
+        } else {
+          Cookies.remove("networkRole");
+        }
+      }
+    }).catch(() => {});
+  }, [user?.role, dispatch]);
+
+  const isZoneManager = agentNetworkRole === AgentNetworkRole.AREA_MANAGER || agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD;
+
+  const effectiveNavLinks = useMemo(() => {
+    if (!isZoneManager) return NAV_LINKS;
+    return NAV_LINKS.map((link) => {
+      if (link.pathName !== "booking-management") return link;
+      return {
+        ...link,
+        children: link.children?.map((child) =>
+          child.pathName === "booking-disputes"
+            ? { ...child, allow: [...child.allow, UserRole.AGENT] }
+            : child
+        ),
+      };
+    });
+  }, [isZoneManager]);
 
   // Handle click to navigate
   const handleClick = () => {
@@ -183,7 +224,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                             [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-teal-800
                         `}
           >
-            {NAV_LINKS.map((el, index) =>
+            {effectiveNavLinks.map((el, index) =>
               el.allow.includes(user?.role) ? (
                 <SideNav
                   key={index}

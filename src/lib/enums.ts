@@ -17,3 +17,8 @@ export enum Gender {
     FEMALE = 'FEMALE',
     OTHER = 'OTHER',
 }
+
+export enum AgentNetworkRole {
+    AREA_MANAGER = 'AREA_MANAGER',
+    REGIONAL_LEAD = 'REGIONAL_LEAD',
+}
