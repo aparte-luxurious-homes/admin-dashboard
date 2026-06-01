@@ -122,6 +122,7 @@ export const PAGE_ROUTES = {
             },
             zones: {
                 base: '/network/zones',
+                create: '/network/zones/create',
                 details: (id: string) => `/network/zones/${id}`,
             },
             zoneAssignments: {

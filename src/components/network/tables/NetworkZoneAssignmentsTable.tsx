@@ -453,10 +453,7 @@ export default function NetworkZoneAssignmentsTable() {
                                     const resolvedUser = resolveAssignmentUser(a, agents);
                                     return (
                                         <tr key={a.id} className="hover:bg-gray-50 transition-colors cursor-pointer"
-                                            onClick={() => isAdmin
-                                                ? router.push(PAGE_ROUTES.dashboard.network.zoneAssignments.details(a.id))
-                                                : setViewAssignment(a)
-                                            }
+                                            onClick={() => router.push(PAGE_ROUTES.dashboard.network.zoneAssignments.details(a.id))}
                                         >
                                             <td className="px-6 py-4">
                                                 <p className="text-sm font-medium text-gray-900">{resolvedZone?.name ?? "—"}</p>

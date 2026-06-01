@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/src/hooks/useAuth";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import Grid from "@mui/material/Grid2";
@@ -13,6 +14,16 @@ import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { formatDate } from "@/src/lib/utils";
+import type { ViewBBox } from "@/src/components/network/BBoxMapViewer";
+
+const BBoxMapViewer = dynamic(() => import("@/src/components/network/BBoxMapViewer"), {
+    ssr: false,
+    loading: () => (
+        <div className="flex items-center justify-center" style={{ height: 420 }}>
+            <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+    ),
+});
 
 type Role = "AREA_MANAGER" | "REGIONAL_LEAD";
 type EmploymentMode = "COMMISSION_ONLY" | "SALARIED_OVERLAY";
@@ -45,6 +56,12 @@ interface ZoneAssignment {
         status?: string;
         parent_zone_id?: string | null;
         parent_zone?: { name: string; type: string } | null;
+        resolver_config?: {
+            city?: string;
+            state?: string;
+            country?: string;
+            bbox?: { lat_min?: number; lat_max?: number; lng_min?: number; lng_max?: number };
+        } | null;
     };
 }
 
@@ -71,7 +88,7 @@ const ASSIGNMENT_STATUSES: AssignmentStatus[] = ["ACTIVE", "SUSPENDED", "ENDED",
 function agentDisplayName(user?: ZoneAssignment["user"]): string {
     const first = user?.first_name ?? "";
     const last  = user?.last_name  ?? "";
-    return [first, last].filter(Boolean).join(" ") || user?.email || "--/--";
+    return [first, last].filter(Boolean).join(" ") || user?.email || "—";
 }
 
 function formatNGN(amount: number) {
@@ -97,6 +114,7 @@ export default function ZoneAssignmentDetailPage() {
     const [editStatus, setEditStatus]           = useState<AssignmentStatus>("ACTIVE");
     const [isSaving, setIsSaving]               = useState(false);
     const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+    const [showViewMap, setShowViewMap]         = useState(false);
 
     const fetchAssignment = useCallback(async () => {
         if (!id) return;
@@ -178,7 +196,7 @@ export default function ZoneAssignmentDetailPage() {
             <div className="mt-0">
                 <div className="flex justify-between items-center mb-[50px] mt-[10px]">
                     <h3 className="font-semibold">Assignment Details</h3>
-                    {!isEditing && (
+                    {isAdmin && !isEditing && (
                         <button
                             onClick={() => setIsEditing(true)}
                             disabled={isLoading || !assignment}
@@ -213,15 +231,16 @@ export default function ZoneAssignmentDetailPage() {
                     <>
                     <Grid container spacing={4}>
 
-                        {/* Agent Card */}
-                        <Grid size={{ xs: 12, md: 6 }}>
+                        {/* Agent Card — admin only */}
+                        {isAdmin && (
+                        <Grid size={{ xs: 12 }}>
                             <div className="flex items-center gap-2 mb-4">
                                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                                     <Icon icon="solar:user-bold-duotone" width="20" />
                                 </div>
                                 <h4 className="text-lg font-bold text-gray-800">Agent</h4>
                             </div>
-                            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 h-full">
+                            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
                                 <div className="flex items-center gap-4">
                                     <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
                                         {user?.profile_image ? (
@@ -240,49 +259,9 @@ export default function ZoneAssignmentDetailPage() {
                                 </div>
                             </div>
                         </Grid>
+                        )}
 
-                        {/* Zone Card */}
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                    <Icon icon="solar:map-point-bold-duotone" width="20" />
-                                </div>
-                                <h4 className="text-lg font-bold text-gray-800">Zone</h4>
-                            </div>
-                            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 h-full">
-                                {zone ? (
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-base font-semibold text-gray-900">{zone.name}</p>
-                                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                                {zoneTypeCfg && (
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${zoneTypeCfg.bg} ${zoneTypeCfg.text} ${zoneTypeCfg.border}`}>
-                                                        {zone.type}
-                                                    </span>
-                                                )}
-                                                {zone.status && (
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${zone.status === "ACTIVE" ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
-                                                        {zone.status}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {(zone.parent_zone || zone.parent_zone_id) && (
-                                            <div className="space-y-0.5">
-                                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Parent Zone</p>
-                                                <p className="text-sm text-gray-700">
-                                                    {zone.parent_zone ? `${zone.parent_zone.name} (${zone.parent_zone.type})` : zone.parent_zone_id}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-gray-400 italic">Zone information unavailable</p>
-                                )}
-                            </div>
-                        </Grid>
-
-                        {/* Assignment Details */}
+                        {/* Assignment Information */}
                         <Grid size={{ xs: 12 }}>
                             <div className="flex items-center gap-2 mb-4">
                                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -290,7 +269,7 @@ export default function ZoneAssignmentDetailPage() {
                                 </div>
                                 <h4 className="text-lg font-bold text-gray-800">Assignment Information</h4>
                             </div>
-                            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+                            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                                     <div className="space-y-1.5">
@@ -406,6 +385,119 @@ export default function ZoneAssignmentDetailPage() {
                                     </div>
 
                                 </div>
+
+                                {/* Zone Information — inside the assignment card */}
+                                {zone && (
+                                    <div className="pt-5 border-t border-gray-200">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                    <Icon icon="solar:map-point-bold-duotone" width="16" />
+                                                </div>
+                                                <p className="text-sm font-bold text-gray-700 uppercase tracking-wider">Zone</p>
+                                            </div>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => router.push(PAGE_ROUTES.dashboard.network.zones.details(zone.id))}
+                                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors"
+                                                >
+                                                    <Icon icon="mdi:open-in-new" width="13" />
+                                                    View Zone
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Zone Name</p>
+                                                <p className="text-sm font-medium text-gray-900">{zone.name}</p>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Zone Type</p>
+                                                {zoneTypeCfg && (
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${zoneTypeCfg.bg} ${zoneTypeCfg.text} ${zoneTypeCfg.border}`}>
+                                                        {zone.type}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {zone.status && (
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Zone Status</p>
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${zone.status === "ACTIVE" ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
+                                                        {zone.status}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {(zone.parent_zone || zone.parent_zone_id) && (
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Parent Zone</p>
+                                                    <p className="text-sm font-medium text-gray-900">
+                                                        {zone.parent_zone
+                                                            ? `${zone.parent_zone.name} (${zone.parent_zone.type})`
+                                                            : zone.parent_zone_id}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Resolver config */}
+                                        {zone.resolver_config && (() => {
+                                            const rc = zone.resolver_config!;
+                                            const hasAddress = rc.city || rc.state || rc.country;
+                                            const hasBbox    = rc.bbox && Object.values(rc.bbox).some((v) => v !== undefined);
+                                            if (!hasAddress && !hasBbox) return null;
+                                            return (
+                                                <div className="mt-5 space-y-3">
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Resolver Config</p>
+                                                    <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+                                                        {hasAddress && (
+                                                            <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
+                                                                {(["city", "state", "country"] as const).map((k) => (
+                                                                    <div key={k} className="px-4 py-3 space-y-0.5">
+                                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{k}</p>
+                                                                        <p className="text-sm font-medium text-gray-800 truncate">
+                                                                            {rc[k] || <span className="text-gray-300">—</span>}
+                                                                        </p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {hasBbox && (
+                                                            <div className="px-4 py-3 space-y-2.5">
+                                                                <div className="flex items-center justify-between">
+                                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Bounding Box</p>
+                                                                    <button
+                                                                        onClick={() => setShowViewMap(true)}
+                                                                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors"
+                                                                    >
+                                                                        <Icon icon="mdi:map-outline" width="13" />
+                                                                        View on Map
+                                                                    </button>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                                    {[
+                                                                        { label: "Lat min", val: rc.bbox!.lat_min },
+                                                                        { label: "Lat max", val: rc.bbox!.lat_max },
+                                                                        { label: "Lng min", val: rc.bbox!.lng_min },
+                                                                        { label: "Lng max", val: rc.bbox!.lng_max },
+                                                                    ].filter(({ val }) => val !== undefined).map(({ label, val }) => (
+                                                                        <div key={label} className="bg-gray-50 rounded-lg p-2.5">
+                                                                            <p className="text-[10px] font-semibold text-gray-400 uppercase">{label}</p>
+                                                                            <p className="text-sm font-bold text-gray-800 mt-0.5">{val}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
                             </div>
                         </Grid>
 
@@ -433,6 +525,30 @@ export default function ZoneAssignmentDetailPage() {
                 )}
             </div>
         </div>
+
+        {/* View on Map modal */}
+        {showViewMap && zone?.resolver_config?.bbox && (() => {
+            const b = zone.resolver_config!.bbox as ViewBBox;
+            return (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                            <div>
+                                <h3 className="text-base font-semibold text-gray-900">{zone.name}</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {[zone.resolver_config!.city, zone.resolver_config!.state, zone.resolver_config!.country]
+                                        .filter(Boolean).join(", ") || "Zone boundary"}
+                                </p>
+                            </div>
+                            <button onClick={() => setShowViewMap(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                <Icon icon="lucide:x" width="18" className="text-gray-500" />
+                            </button>
+                        </div>
+                        <BBoxMapViewer bbox={b} />
+                    </div>
+                </div>
+            );
+        })()}
 
         {showSaveConfirm && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

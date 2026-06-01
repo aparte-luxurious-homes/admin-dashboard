@@ -40,10 +40,30 @@ function TypeBadge({ type }: { type: ZoneType }) {
     );
 }
 
+function buildResolverConfig(
+    city: string, state: string, country: string,
+    latMin: string, latMax: string, lngMin: string, lngMax: string
+): Record<string, any> | null {
+    const obj: Record<string, any> = {};
+    if (city.trim())    obj.city    = city.trim();
+    if (state.trim())   obj.state   = state.trim();
+    if (country.trim()) obj.country = country.trim();
+    const bboxAny = [latMin, latMax, lngMin, lngMax].some((v) => v.trim() !== "");
+    if (bboxAny) {
+        const bbox: Record<string, number> = {};
+        if (latMin.trim() !== "") bbox.lat_min = parseFloat(latMin);
+        if (latMax.trim() !== "") bbox.lat_max = parseFloat(latMax);
+        if (lngMin.trim() !== "") bbox.lng_min = parseFloat(lngMin);
+        if (lngMax.trim() !== "") bbox.lng_max = parseFloat(lngMax);
+        obj.bbox = bbox;
+    }
+    return Object.keys(obj).length > 0 ? obj : null;
+}
+
 export default function NetworkZonesTable() {
     const router = useRouter();
     const [zones, setZones]         = useState<Zone[]>([]);
-    const [allZones, setAllZones]   = useState<Zone[]>([]); // for parent-zone select
+    const [allZones, setAllZones]   = useState<Zone[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [page, setPage]           = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -54,29 +74,26 @@ export default function NetworkZonesTable() {
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const [viewZone, setViewZone]           = useState<Zone | null>(null);
 
-    // Create
-    const [showCreateModal, setShowCreateModal]     = useState(false);
-    const [showCreateConfirm, setShowCreateConfirm] = useState(false);
-    const [createName, setCreateName]               = useState("");
-    const [createType, setCreateType]               = useState<ZoneType>("CITY");
-    const [createParentId, setCreateParentId]       = useState("");
-    const [createResolverJson, setCreateResolverJson] = useState("");
-    const [createJsonError, setCreateJsonError]     = useState("");
-    const [isCreating, setIsCreating]               = useState(false);
 
-    // Edit
-    const [editZone, setEditZone]                   = useState<Zone | null>(null);
-    const [showEditConfirm, setShowEditConfirm]     = useState(false);
-    const [editName, setEditName]                   = useState("");
-    const [editType, setEditType]                   = useState<ZoneType>("CITY");
-    const [editParentId, setEditParentId]           = useState("");
-    const [editResolverJson, setEditResolverJson]   = useState("");
-    const [editJsonError, setEditJsonError]         = useState("");
-    const [isSaving, setIsSaving]                   = useState(false);
+    // ── Edit ────────────────────────────────────────────────────────────────
+    const [editZone, setEditZone]               = useState<Zone | null>(null);
+    const [showEditConfirm, setShowEditConfirm] = useState(false);
+    const [editName, setEditName]               = useState("");
+    const [editType, setEditType]               = useState<ZoneType>("CITY");
+    const [editParentId, setEditParentId]       = useState("");
+    const [isSaving, setIsSaving]               = useState(false);
+    // resolver config fields
+    const [editCity, setEditCity]               = useState("");
+    const [editState, setEditState]             = useState("");
+    const [editCountry, setEditCountry]         = useState("");
+    const [editLatMin, setEditLatMin]           = useState("");
+    const [editLatMax, setEditLatMax]           = useState("");
+    const [editLngMin, setEditLngMin]           = useState("");
+    const [editLngMax, setEditLngMax]           = useState("");
 
-    // Delete
-    const [deleteTarget, setDeleteTarget]           = useState<Zone | null>(null);
-    const [isDeleting, setIsDeleting]               = useState(false);
+    // ── Delete ──────────────────────────────────────────────────────────────
+    const [deleteTarget, setDeleteTarget] = useState<Zone | null>(null);
+    const [isDeleting, setIsDeleting]     = useState(false);
 
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +101,7 @@ export default function NetworkZonesTable() {
         setIsLoading(true);
         try {
             const params: Record<string, any> = { page, size: 20 };
-            if (typeFilter)  params.type = typeFilter;
+            if (typeFilter)  params.type   = typeFilter;
             if (nameSearch)  params.search = nameSearch;
             const res = await axiosRequest.get(API_ROUTES.network.configs.zones.base, { params });
             const data = res?.data?.data ?? res?.data;
@@ -101,7 +118,6 @@ export default function NetworkZonesTable() {
 
     useEffect(() => { fetchZones(); }, [fetchZones]);
 
-    // Load all zones once for parent-zone select
     useEffect(() => {
         axiosRequest.get(API_ROUTES.network.configs.zones.base, { params: { page: 1, size: 200 } })
             .then((res) => {
@@ -127,61 +143,26 @@ export default function NetworkZonesTable() {
         setModalPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
     };
 
-    const parseJson = (raw: string): [Record<string, any> | null, string] => {
-        if (!raw.trim()) return [null, ""];
-        try { return [JSON.parse(raw), ""]; } catch { return [null, "Invalid JSON"]; }
-    };
-
-    const resetCreate = () => {
-        setShowCreateModal(false);
-        setShowCreateConfirm(false);
-        setCreateName("");
-        setCreateType("CITY");
-        setCreateParentId("");
-        setCreateResolverJson("");
-        setCreateJsonError("");
-    };
-
-    const handleCreate = async () => {
-        const [resolver, err] = parseJson(createResolverJson);
-        if (err) { setCreateJsonError(err); return; }
-        setIsCreating(true);
-        try {
-            await toast.promise(
-                axiosRequest.post(API_ROUTES.network.configs.zones.base, {
-                    type: createType,
-                    name: createName.trim(),
-                    ...(createParentId ? { parent_zone_id: createParentId } : {}),
-                    ...(resolver       ? { resolver_config: resolver }       : {}),
-                }),
-                {
-                    loading: "Creating zone...",
-                    success: "Zone created",
-                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to create zone",
-                }
-            );
-            resetCreate();
-            fetchZones();
-        } catch {
-        } finally {
-            setIsCreating(false);
-        }
-    };
 
     const openEdit = (zone: Zone) => {
         setEditZone(zone);
         setEditName(zone.name);
         setEditType(zone.type);
         setEditParentId(zone.parent_zone_id ?? "");
-        setEditResolverJson(zone.resolver_config ? JSON.stringify(zone.resolver_config, null, 2) : "");
-        setEditJsonError("");
+        const cfg = zone.resolver_config ?? {};
+        setEditCity(cfg.city ?? "");
+        setEditState(cfg.state ?? "");
+        setEditCountry(cfg.country ?? "");
+        setEditLatMin(cfg.bbox?.lat_min?.toString() ?? "");
+        setEditLatMax(cfg.bbox?.lat_max?.toString() ?? "");
+        setEditLngMin(cfg.bbox?.lng_min?.toString() ?? "");
+        setEditLngMax(cfg.bbox?.lng_max?.toString() ?? "");
         setSelectedRow(null);
     };
 
     const handleEdit = async () => {
         if (!editZone) return;
-        const [resolver, err] = parseJson(editResolverJson);
-        if (err) { setEditJsonError(err); return; }
+        const resolver = buildResolverConfig(editCity, editState, editCountry, editLatMin, editLatMax, editLngMin, editLngMax);
         setIsSaving(true);
         try {
             await toast.promise(
@@ -189,7 +170,7 @@ export default function NetworkZonesTable() {
                     type: editType,
                     name: editName.trim(),
                     ...(editParentId ? { parent_zone_id: editParentId } : {}),
-                    ...(resolver     ? { resolver_config: resolver }    : {}),
+                    resolver_config: resolver,
                 }),
                 {
                     loading: "Saving changes...",
@@ -234,6 +215,7 @@ export default function NetworkZonesTable() {
 
     const contextZone = selectedRow !== null ? zones[selectedRow] : null;
 
+
     return (
         <div className="p-6">
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -244,7 +226,7 @@ export default function NetworkZonesTable() {
                         <p className="text-sm text-gray-500 mt-1">Define cities, areas, and regions for zone-based management and payouts</p>
                     </div>
                     <button
-                        onClick={() => setShowCreateModal(true)}
+                        onClick={() => router.push(PAGE_ROUTES.dashboard.network.zones.create)}
                         className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                     >
                         <Icon icon="mdi:plus" width="16" />
@@ -378,72 +360,6 @@ export default function NetworkZonesTable() {
                 </div>
             )}
 
-            {/* Create modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Create Zone</h3>
-                                <p className="text-xs text-gray-500 mt-0.5">Define a geographic city, area, or region</p>
-                            </div>
-                            <button onClick={resetCreate} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                                <Icon icon="lucide:x" width="18" className="text-gray-500" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-5 overflow-y-auto">
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Zone Name</label>
-                                <input type="text" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Lagos Island" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Type</label>
-                                <select value={createType} onChange={(e) => setCreateType(e.target.value as ZoneType)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50">
-                                    <option value="CITY">CITY</option>
-                                    <option value="AREA">AREA</option>
-                                    <option value="REGION">REGION</option>
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Parent Zone <span className="font-normal text-gray-400">(optional)</span></label>
-                                <select value={createParentId} onChange={(e) => setCreateParentId(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50">
-                                    <option value="">None</option>
-                                    {allZones.map((z) => <option key={z.id} value={z.id}>{z.name} ({z.type})</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Resolver Config <span className="font-normal text-gray-400">(optional JSON)</span></label>
-                                <textarea rows={4} value={createResolverJson} onChange={(e) => { setCreateResolverJson(e.target.value); setCreateJsonError(""); }} placeholder={'{\n  "postcodes": ["101001"],\n  "city_keywords": ["Lagos Island"]\n}'} className={`w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-xs font-mono bg-gray-50/50 resize-none ${createJsonError ? "border-red-400" : "border-gray-200"}`} />
-                                {createJsonError && <p className="text-xs text-red-500">{createJsonError}</p>}
-                            </div>
-                        </div>
-                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
-                            <button onClick={resetCreate} className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
-                            <button onClick={() => { if (!createName.trim()) { toast.error("Zone name is required"); return; } const [, err] = parseJson(createResolverJson); if (err) { setCreateJsonError(err); return; } setShowCreateConfirm(true); }} className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
-                                <Icon icon="mdi:plus" width="14" /> Create
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Create confirm */}
-            {showCreateConfirm && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-                        <div className="p-6">
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4"><Icon icon="mdi:map-marker-plus-outline" width="24" className="text-primary" /></div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Create zone?</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed">Create <span className="font-semibold text-gray-700">{createName}</span> as a <span className="font-semibold text-gray-700">{createType}</span> zone{createParentId ? ` under ${parentName(createParentId)}` : ""}.</p>
-                        </div>
-                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
-                            <button onClick={() => setShowCreateConfirm(false)} className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
-                            <button onClick={() => { setShowCreateConfirm(false); handleCreate(); }} disabled={isCreating} className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20">Yes, create</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Edit modal */}
             {editZone && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -475,15 +391,44 @@ export default function NetworkZonesTable() {
                                     {allZones.filter((z) => z.id !== editZone?.id).map((z) => <option key={z.id} value={z.id}>{z.name} ({z.type})</option>)}
                                 </select>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Resolver Config <span className="font-normal text-gray-400">(optional JSON)</span></label>
-                                <textarea rows={5} value={editResolverJson} onChange={(e) => { setEditResolverJson(e.target.value); setEditJsonError(""); }} className={`w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-xs font-mono bg-gray-50/50 resize-none ${editJsonError ? "border-red-400" : "border-gray-200"}`} />
-                                {editJsonError && <p className="text-xs text-red-500">{editJsonError}</p>}
+                            <div className="space-y-3">
+                                <p className="text-sm font-semibold text-gray-700">Resolver Config <span className="font-normal text-gray-400">(optional)</span></p>
+                                <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
+                                    {[
+                                        { label: "City",    value: editCity,    set: setEditCity,    ph: "e.g. Lagos Island" },
+                                        { label: "State",   value: editState,   set: setEditState,   ph: "e.g. Lagos"        },
+                                        { label: "Country", value: editCountry, set: setEditCountry, ph: "e.g. Nigeria"      },
+                                    ].map(({ label, value, set, ph }) => (
+                                        <div key={label} className="space-y-1">
+                                            <label className="text-xs font-medium text-gray-500">{label}</label>
+                                            <input type="text" value={value} onChange={(e) => set(e.target.value)} placeholder={ph} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white" />
+                                        </div>
+                                    ))}
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-medium text-gray-500">Bounding Box</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[
+                                                { label: "Lat min", value: editLatMin, set: setEditLatMin, ph: "e.g. 6.42" },
+                                                { label: "Lat max", value: editLatMax, set: setEditLatMax, ph: "e.g. 6.48" },
+                                                { label: "Lng min", value: editLngMin, set: setEditLngMin, ph: "e.g. 3.38" },
+                                                { label: "Lng max", value: editLngMax, set: setEditLngMax, ph: "e.g. 3.42" },
+                                            ].map(({ label, value, set, ph }) => (
+                                                <div key={label} className="space-y-1">
+                                                    <label className="text-xs font-medium text-gray-500">{label}</label>
+                                                    <input type="number" step="any" value={value} onChange={(e) => set(e.target.value)} placeholder={ph} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
                             <button onClick={() => setEditZone(null)} className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
-                            <button onClick={() => { if (!editName.trim()) { toast.error("Name is required"); return; } const [, err] = parseJson(editResolverJson); if (err) { setEditJsonError(err); return; } setShowEditConfirm(true); }} className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
+                            <button
+                                onClick={() => { if (!editName.trim()) { toast.error("Name is required"); return; } setShowEditConfirm(true); }}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                            >
                                 <Icon icon="mdi:content-save" width="14" /> Save
                             </button>
                         </div>

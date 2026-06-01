@@ -904,6 +904,17 @@ const Home = () => {
                               </div>
                             </div>
 
+                            {/* View full zone assignment detail */}
+                            {zoneSummary?.assignment?.id && (
+                              <Link
+                                href={`/network/zone-assignments/${zoneSummary.assignment.id}`}
+                                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors group"
+                              >
+                                <Icon icon="solar:map-point-bold-duotone" width="14" className="text-gray-400 shrink-0" />
+                                <p className="text-xs font-semibold text-gray-600">View Zone Details</p>
+                                <Icon icon="solar:arrow-right-linear" width="12" className="text-gray-400 ml-auto group-hover:translate-x-0.5 transition-transform" />
+                              </Link>
+                            )}
                           </div>
                         )}
                       </>
