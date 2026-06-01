@@ -15,10 +15,7 @@ import {
 } from "@/src/lib/request-handlers/propertyMgt";
 import { GetUnitAvailability } from "@/src/lib/request-handlers/unitMgt";
 import { useEffect, useState, useMemo, useCallback } from "react";
-import {
-  IProperty,
-  IPropertyUnit,
-} from "../../properties-mgt/types";
+import { IProperty, IPropertyUnit } from "../../properties-mgt/types";
 import { IUser } from "@/src/lib/types";
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
 import { IoLocationOutline } from "react-icons/io5";
@@ -61,7 +58,9 @@ export default function CreateBookingView() {
 
   // Duplicate detection state for New Guest form
   const [newGuestLookupTerm, setNewGuestLookupTerm] = useState<string>("");
-  const [duplicateGuestMatch, setDuplicateGuestMatch] = useState<any | null>(null);
+  const [duplicateGuestMatch, setDuplicateGuestMatch] = useState<any | null>(
+    null,
+  );
   const [duplicateDismissed, setDuplicateDismissed] = useState<boolean>(false);
 
   // Queries — booking-on-behalf needs the full public catalog, not the
@@ -134,7 +133,7 @@ export default function CreateBookingView() {
       guest_last_name: "",
       guest_email: "",
       guest_phone: "",
-      agent_custom_fee: 5000.00
+      agent_custom_fee: (0).toFixed(2),
     },
     onSubmit: async (values) => {
       if (!selectedProperty) {
@@ -193,7 +192,7 @@ export default function CreateBookingView() {
         end_date: formatDateToYYYYMMDD(values.end_date!),
         // Ensure user_id is null if we are creating a new guest
         user_id: isNewGuest ? null : values.user_id,
-        total_price: values.total_price + values.agent_custom_fee
+        total_price: values.total_price + values.agent_custom_fee,
       };
 
       // Don't send empty referral_code — omit the key entirely
@@ -221,11 +220,11 @@ export default function CreateBookingView() {
             // read (so a refresh doesn't show stale prompts).
             if (data.payment_link) {
               const guestEmail = isNewGuest
-                ? (formik.values.guest_email || null)
-                : (selectedUser?.email || null);
+                ? formik.values.guest_email || null
+                : selectedUser?.email || null;
               const guestPhone = isNewGuest
-                ? (formik.values.guest_phone || null)
-                : (selectedUser?.phone || null);
+                ? formik.values.guest_phone || null
+                : selectedUser?.phone || null;
               const propName = selectedProperty?.name ?? "your booking";
               const waMessage = encodeURIComponent(
                 `Hi! Your Aparté booking ${data.booking_id} at ${propName} is ready. Pay here: ${data.payment_link}`,
@@ -374,7 +373,8 @@ export default function CreateBookingView() {
       setDuplicateDismissed(false);
       const trimmed = value.trim();
       const isEmail = field === "guest_email";
-      const isValidEmail = isEmail && trimmed.includes("@") && trimmed.length >= 5;
+      const isValidEmail =
+        isEmail && trimmed.includes("@") && trimmed.length >= 5;
       const isValidPhone = !isEmail && trimmed.replace(/\D/g, "").length >= 7;
       if (isValidEmail || isValidPhone) {
         setNewGuestLookupTerm(trimmed);
@@ -388,18 +388,21 @@ export default function CreateBookingView() {
   );
 
   // Handle admin choosing to use the detected duplicate as the booking guest
-  const handleUseDuplicateGuest = useCallback((guest: any) => {
-    handleGuestSelect(guest);
-    setIsNewGuest(false);
-    setDuplicateGuestMatch(null);
-    setDuplicateDismissed(false);
-    setNewGuestLookupTerm("");
-    formik.setFieldValue("guest_first_name", "");
-    formik.setFieldValue("guest_last_name", "");
-    formik.setFieldValue("guest_email", "");
-    formik.setFieldValue("guest_phone", "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleGuestSelect]);
+  const handleUseDuplicateGuest = useCallback(
+    (guest: any) => {
+      handleGuestSelect(guest);
+      setIsNewGuest(false);
+      setDuplicateGuestMatch(null);
+      setDuplicateDismissed(false);
+      setNewGuestLookupTerm("");
+      formik.setFieldValue("guest_first_name", "");
+      formik.setFieldValue("guest_last_name", "");
+      formik.setFieldValue("guest_email", "");
+      formik.setFieldValue("guest_phone", "");
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [handleGuestSelect],
+  );
 
   const { values, setFieldValue } = formik;
 
@@ -422,7 +425,8 @@ export default function CreateBookingView() {
           selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0,
         );
 
-        const firstPrice = days * Number(values.unit_count || 1) * Number(pricePerNight);
+        const firstPrice =
+          days * Number(values.unit_count || 1) * Number(pricePerNight);
         const grandPrice = firstPrice + cautionFee;
 
         // Only update if the price has changed to avoid unnecessary re-renders
@@ -454,7 +458,13 @@ export default function CreateBookingView() {
         setFieldValue("referral_code", agentCode.toUpperCase());
       }
     }
-  }, [user, values.user_id, values.guest_email, values.referral_code, setFieldValue]);
+  }, [
+    user,
+    values.user_id,
+    values.guest_email,
+    values.referral_code,
+    setFieldValue,
+  ]);
 
   // Memoize blocked dates from live availability (accounts for active bookings occupancy)
   const blockedDates = useMemo(() => {
@@ -519,7 +529,7 @@ export default function CreateBookingView() {
   };
 
   // const [units,setUnits] = useState(formik.values.unit_count);
-  const handleUnitChange = (e: React.ChangeEvent<HTMLInputElement>)=> {
+  const handleUnitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const max = selectedUnit?.count ?? 1;
 
@@ -527,15 +537,19 @@ export default function CreateBookingView() {
       formik.setFieldValue("unit_count", "");
       return;
     }
-    if (Number(val )< 1) {
+    if (Number(val) < 1) {
       formik.setFieldValue("unit_count", 1);
-    } else if (Number(val )> max) {
+    } else if (Number(val) > max) {
       toast.error(`Only ${max} units available`);
       formik.setFieldValue("unit_count", max);
     } else {
       formik.setFieldValue("unit_count", val);
     }
-  }
+  };
+
+  useEffect(() => {
+      console.log(formik.values.agent_custom_fee);
+  }, [formik.values.agent_custom_fee]);
 
   return (
     <section className="bg-zinc-50 min-h-screen p-4 md:p-8">
@@ -861,14 +875,18 @@ export default function CreateBookingView() {
                               placeholder="guest@example.com"
                               value={formik.values.guest_email}
                               onChange={(e) =>
-                                handleNewGuestFieldChange("guest_email", e.target.value)
+                                handleNewGuestFieldChange(
+                                  "guest_email",
+                                  e.target.value,
+                                )
                               }
                             />
-                            {newGuestLookupLoading && formik.values.guest_email && (
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <Spinner />
-                              </div>
-                            )}
+                            {newGuestLookupLoading &&
+                              formik.values.guest_email && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <Spinner />
+                                </div>
+                              )}
                           </div>
                         </div>
                         <div className="space-y-1">
@@ -882,14 +900,19 @@ export default function CreateBookingView() {
                               placeholder="+234..."
                               value={formik.values.guest_phone}
                               onChange={(e) =>
-                                handleNewGuestFieldChange("guest_phone", e.target.value)
+                                handleNewGuestFieldChange(
+                                  "guest_phone",
+                                  e.target.value,
+                                )
                               }
                             />
-                            {newGuestLookupLoading && formik.values.guest_phone && !formik.values.guest_email && (
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <Spinner />
-                              </div>
-                            )}
+                            {newGuestLookupLoading &&
+                              formik.values.guest_phone &&
+                              !formik.values.guest_email && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <Spinner />
+                                </div>
+                              )}
                           </div>
                         </div>
                       </div>
@@ -906,16 +929,23 @@ export default function CreateBookingView() {
                                 Guest already exists in the system
                               </p>
                               <p className="text-xs text-amber-700 mt-0.5">
-                                A guest record matching this email or phone was found:
+                                A guest record matching this email or phone was
+                                found:
                               </p>
                               <div className="mt-2 p-2.5 bg-white border border-amber-200 rounded-md">
                                 <p className="text-sm font-medium text-zinc-900">
-                                  {[duplicateGuestMatch.first_name, duplicateGuestMatch.last_name]
+                                  {[
+                                    duplicateGuestMatch.first_name,
+                                    duplicateGuestMatch.last_name,
+                                  ]
                                     .filter(Boolean)
                                     .join(" ") || "Guest"}
                                 </p>
                                 <p className="text-xs text-zinc-500 mt-0.5">
-                                  {[duplicateGuestMatch.email, duplicateGuestMatch.phone]
+                                  {[
+                                    duplicateGuestMatch.email,
+                                    duplicateGuestMatch.phone,
+                                  ]
                                     .filter(Boolean)
                                     .join(" \u00b7 ")}
                                 </p>
@@ -925,7 +955,9 @@ export default function CreateBookingView() {
                           <div className="flex items-center gap-2 pt-1">
                             <button
                               type="button"
-                              onClick={() => handleUseDuplicateGuest(duplicateGuestMatch)}
+                              onClick={() =>
+                                handleUseDuplicateGuest(duplicateGuestMatch)
+                              }
                               className="flex-1 h-9 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 transition-colors"
                             >
                               Use Existing Guest Profile
@@ -981,9 +1013,9 @@ export default function CreateBookingView() {
                         </label>
                         <div className="relative">
                           <input
-                           type="text"
-                           inputMode="numeric"
-                           pattern="[0-9]*"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             min="1"
                             disabled={!selectedUnit}
                             placeholder="0"
@@ -1063,11 +1095,15 @@ export default function CreateBookingView() {
                     {selectedUnit?.name || "-"}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between w-full text-sm">
                   <span className="text-zinc-500">Agent Custom Fee</span>
-                  <span className="text-zinc-900 font-medium">
-                    {formik.values?.agent_custom_fee || (5000).toFixed(2)}
-                  </span>
+                  <input
+                    className="outline-none border-b w-[30%] text-right"
+                    value={formik.values.agent_custom_fee}
+                    onChange={(e) => formik.setFieldValue("agent_custom_fee",e.target.value)}
+                    type="text"
+                  />
+                  {/* {formik.values?.agent_custom_fee || (5000).toFixed(2)} */}
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Dates</span>
@@ -1131,8 +1167,12 @@ export default function CreateBookingView() {
                 <div className="border-t border-zinc-200 mt-2 pt-3 flex justify-between items-center">
                   <span className="font-semibold text-zinc-900">Total</span>
                   <span className="text-xl font-bold text-primary">
-                    {formik.values.total_price ? formatMoney(formik.values.total_price + formik.values.agent_custom_fee) : formatMoney(formik.values.total_price)}
-                    {/* {formatMoney(formik.values.total_price + formik.values.agent_custom_fee)} */}
+                    {formik.values.total_price
+                      ? formatMoney(
+                          formik.values.total_price +
+                            Number(formik.values.agent_custom_fee)
+                        )
+                      : formatMoney(formik.values.total_price)}
                   </span>
                 </div>
               </div>
@@ -1141,7 +1181,9 @@ export default function CreateBookingView() {
               <div className="mb-6">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-1.5">
                   Referral Code
-                  <span className="ml-1 text-zinc-400 font-normal normal-case">(optional)</span>
+                  <span className="ml-1 text-zinc-400 font-normal normal-case">
+                    (optional)
+                  </span>
                 </label>
                 <div className="relative">
                   <input
@@ -1182,7 +1224,8 @@ export default function CreateBookingView() {
                   )}
                 </div>
                 <p className="text-xs text-zinc-400 mt-1 leading-snug">
-                  Applying this code will attribute this booking to the referrer.
+                  Applying this code will attribute this booking to the
+                  referrer.
                 </p>
               </div>
 
@@ -1202,7 +1245,8 @@ export default function CreateBookingView() {
                       onClick={() => {
                         const next = !formik.values.mark_as_paid;
                         formik.setFieldValue("mark_as_paid", next);
-                        if (next) formik.setFieldValue("send_payment_link", false);
+                        if (next)
+                          formik.setFieldValue("send_payment_link", false);
                       }}
                     >
                       <input
@@ -1221,13 +1265,18 @@ export default function CreateBookingView() {
                       they have no other way to collect payment from the guest. */}
                   {isAgent ? (
                     <div className="flex items-start gap-3 p-3 rounded-lg border bg-teal-50 border-teal-200">
-                      <Icon icon="mdi:email-send-outline" className="mt-0.5 text-teal-700 text-lg" />
+                      <Icon
+                        icon="mdi:email-send-outline"
+                        className="mt-0.5 text-teal-700 text-lg"
+                      />
                       <div className="flex-1">
                         <span className="text-sm font-medium text-teal-900 block">
                           Payment link will be sent to guest
                         </span>
                         <span className="text-xs text-teal-700 block mt-0.5">
-                          We'll email + SMS the guest a checkout URL when you confirm. You also get a copyable link to share on WhatsApp.
+                          We'll email + SMS the guest a checkout URL when you
+                          confirm. You also get a copyable link to share on
+                          WhatsApp.
                         </span>
                       </div>
                     </div>
@@ -1258,7 +1307,8 @@ export default function CreateBookingView() {
                           Send payment link to guest
                         </span>
                         <span className="text-xs text-zinc-500 block mt-0.5">
-                          Emails and SMSes the guest a checkout URL. You also get a copyable link to share on WhatsApp.
+                          Emails and SMSes the guest a checkout URL. You also
+                          get a copyable link to share on WhatsApp.
                         </span>
                       </div>
                     </div>
@@ -1398,11 +1448,11 @@ export default function CreateBookingView() {
                 <p className="text-xs text-center text-amber-600 mt-2 font-medium">
                   Resolve the duplicate guest before proceeding
                 </p>
-              ) : (!selectedProperty ||
+              ) : !selectedProperty ||
                 !selectedUnit ||
                 (!isNewGuest && !selectedUser) ||
                 (isNewGuest && !formik.values.guest_email) ||
-                !formik.values.start_date) ? (
+                !formik.values.start_date ? (
                 <p className="text-xs text-center text-zinc-400 mt-2">
                   Complete all fields to proceed
                 </p>
