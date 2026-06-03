@@ -18,6 +18,7 @@ import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
 import { GetGatewayBalances } from "../lib/request-handlers/integrationsMgt";
 import { UserRole } from "../lib/enums";
+import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
 import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
 
@@ -164,6 +165,14 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     window.location.replace("/auth/login");
   };
 
+  // Re-open the cookie-consent banner. Clearing + reloading re-evaluates the
+  // analytics gate from scratch, so already-loaded scripts stop and the banner
+  // shows again for a fresh choice.
+  const openCookieSettings = () => {
+    clearConsent();
+    window.location.reload();
+  };
+
   return (
     <MobileMenuContext.Provider value={mobileMenuCtx}>
     <div className="h-screen size-full relative">
@@ -232,8 +241,18 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               ) : null
             )}
           </div>
-          {/* Footer: Logout only — extra bottom padding on mobile to clear the bottom nav */}
+          {/* Footer: Cookie settings (production only) + Logout — extra bottom
+              padding on mobile to clear the bottom nav */}
           <div className="absolute bottom-0 w-full flex flex-col items-center border-t-2 border-teal-700/70 bg-primary pb-16 md:pb-0">
+            {ANALYTICS_CONFIGURED && (
+              <button
+                onClick={openCookieSettings}
+                className="text-left flex gap-4 pl-7 py-3 hover:bg-teal-600/60 w-full text-white/70 hover:text-white items-center"
+              >
+                <Icon icon="mdi:cookie-outline" width="18" height="18" />
+                <span className="text-sm">Cookie settings</span>
+              </button>
+            )}
             <button
               onClick={handleLogOut}
               className="text-left flex gap-4 pl-7 py-4 hover:bg-teal-600/60 w-full text-white min-h-[56px] items-center"
@@ -260,9 +279,11 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             <AutoBreadcrumb />
           </div>
           <div className="w-full md:w-1/2 xl:w-2/3 flex justify-end gap-2 sm:gap-3 items-center">
-            {/* Gateway Balances — admin only */}
+            {/* Gateway Balances — admin only.
+                data-clarity-mask: keep merchant balances out of Clarity session
+                recordings (defense in depth on top of project-level mask mode). */}
             {isAdmin && (
-              <div className="hidden lg:flex items-center gap-3 mr-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
+              <div data-clarity-mask="true" className="hidden lg:flex items-center gap-3 mr-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
                 {gatewayLoading ? (
                   <div className="flex items-center gap-3">
                     <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
