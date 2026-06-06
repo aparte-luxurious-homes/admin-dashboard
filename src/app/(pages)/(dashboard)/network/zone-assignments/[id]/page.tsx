@@ -110,7 +110,6 @@ export default function ZoneAssignmentDetailPage() {
     const [editRate, setEditRate]               = useState(0);
     const [editThreshold, setEditThreshold]     = useState(0);
     const [editMode, setEditMode]               = useState<EmploymentMode>("COMMISSION_ONLY");
-    const [editEndDate, setEditEndDate]         = useState("");
     const [editStatus, setEditStatus]           = useState<AssignmentStatus>("ACTIVE");
     const [isSaving, setIsSaving]               = useState(false);
     const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -129,7 +128,6 @@ export default function ZoneAssignmentDetailPage() {
             setEditRate(parseFloat((data.override_rate * 100).toFixed(4)));
             setEditThreshold(data.monthly_gbv_threshold);
             setEditMode(data.employment_mode);
-            setEditEndDate(data.end_date ?? "");
             setEditStatus(data.status ?? "ACTIVE");
         } catch (error: any) {
             toast.error(error?.response?.data?.detail || error?.response?.data?.message || "Failed to fetch assignment");
@@ -150,7 +148,6 @@ export default function ZoneAssignmentDetailPage() {
                     monthly_gbv_threshold: editThreshold,
                     employment_mode: editMode,
                     status: editStatus,
-                    ...(editEndDate ? { end_date: editEndDate } : {}),
                 }),
                 {
                     loading: "Saving changes...",
@@ -171,7 +168,6 @@ export default function ZoneAssignmentDetailPage() {
             setEditRate(parseFloat((assignment.override_rate * 100).toFixed(4)));
             setEditThreshold(assignment.monthly_gbv_threshold);
             setEditMode(assignment.employment_mode);
-            setEditEndDate(assignment.end_date ?? "");
             setEditStatus(assignment.status ?? "ACTIVE");
         }
         setIsEditing(false);
@@ -349,22 +345,11 @@ export default function ZoneAssignmentDetailPage() {
                                         )}
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            End Date <span className="normal-case font-normal text-gray-400">(optional)</span>
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">End Date</p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {assignment.end_date ? formatDate(assignment.end_date) : "—"}
                                         </p>
-                                        {isEditing ? (
-                                            <input
-                                                type="date"
-                                                value={editEndDate}
-                                                onChange={(e) => setEditEndDate(e.target.value)}
-                                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white"
-                                            />
-                                        ) : (
-                                            <p className="text-sm font-medium text-gray-900">
-                                                {assignment.end_date ? formatDate(assignment.end_date) : "—"}
-                                            </p>
-                                        )}
                                     </div>
 
                                     <div className="space-y-1">
@@ -377,11 +362,6 @@ export default function ZoneAssignmentDetailPage() {
                                     <div className="space-y-1">
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Created At</p>
                                         <p className="text-sm font-medium text-gray-900">{formatDate(assignment.created_at)}</p>
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Updated</p>
-                                        <p className="text-sm font-medium text-gray-900">{formatDate(assignment.updated_at)}</p>
                                     </div>
 
                                 </div>
