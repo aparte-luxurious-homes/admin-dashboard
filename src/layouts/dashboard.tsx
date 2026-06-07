@@ -13,6 +13,7 @@ import { IoMenu, IoClose } from "react-icons/io5";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import axiosRequest from "../lib/api";
+import { API_ROUTES } from "../lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
@@ -21,9 +22,6 @@ import { UserRole } from "../lib/enums";
 import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
 import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
-import axiosRequest from "../lib/api";
-import { API_ROUTES } from "../lib/routes/endpoints";
-import { UserRole } from "../lib/enums";
 
 const TIER_CONFIG = {
   BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300", icon: "solar:medal-ribbons-star-bold-duotone" },
