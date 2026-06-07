@@ -18,6 +18,7 @@ interface TopAgent {
     isActiveAgent?: boolean | null;
     verificationRatePct?: string | null;
     bookingsThisWeek?: number | null;
+    points30d?: number | null;
     // Backwards-compat aliases
     weeklyVerifications?: number;
     weeklyListings?: number;
@@ -103,6 +104,14 @@ const TopAgentsCard = ({ isLoading, topListings, showWeeklyMetrics }: TopAgentsC
                                                     title="Has at least one verified APARTMENT or HOTEL listing"
                                                 >
                                                     Active
+                                                </span>
+                                            )}
+                                            {showFrameworkMetrics && row.points30d != null && (
+                                                <span
+                                                    className="shrink-0 text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded"
+                                                    title="Points earned in the last 30 days"
+                                                >
+                                                    {row.points30d} pts
                                                 </span>
                                             )}
                                         </div>
