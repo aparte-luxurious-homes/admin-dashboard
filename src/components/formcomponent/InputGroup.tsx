@@ -15,6 +15,7 @@ interface InputGroupProps {
   disabled?: boolean;
   multiline?: boolean;
   rows?: number;
+  inputClassName?: string;
 }
 
 const InputGroup: React.FC<InputGroupProps> = ({
@@ -32,6 +33,7 @@ const InputGroup: React.FC<InputGroupProps> = ({
   defaultValue,
   disabled = false,
   rows = 4,
+  inputClassName = "",
 }) => {
   return (
     <div className="text-left">
@@ -56,7 +58,7 @@ const InputGroup: React.FC<InputGroupProps> = ({
           placeholder={placeHolder}
           defaultValue={defaultValue}
           disabled={disabled}
-          className="w-full h-[46px] box-border pl-2.5 pr-2.5 border border-[#d1d5db] mt-1 rounded-lg bg-white text-[#667185]"
+          className={`w-full h-[46px] box-border pl-2.5 pr-2.5 border border-[#d1d5db] mt-1 rounded-lg bg-white text-[#667185] ${inputClassName}`}
         />
       )}
     </div>

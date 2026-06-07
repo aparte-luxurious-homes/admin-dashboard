@@ -141,8 +141,21 @@ export function UploadPropertyUnitMedia() {
     });
 }
 
+export function DeleteUnitMedia() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId, mediaId }: { propertyId: string | number, unitId: string | number, mediaId: string | number }) =>
+            axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.deleteMedia(propertyId, unitId, mediaId)),
 
-export function GetUnitAvailability(propertyId: string | number, unitId: string | number, startDate?: string, endDate?: string) {
+        onSuccess: (_, { propertyId, unitId }) => {
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
+        },
+    });
+}
+
+
+export function GetUnitAvailability(propertyId: string | number, unitId: string | number, startDate?: string, endDate?: string, enabled = true) {
     return useQuery({
         queryKey: [PropertyUnitRequestKeys.availability, propertyId, unitId, startDate, endDate],
         queryFn: () => {
@@ -153,6 +166,7 @@ export function GetUnitAvailability(propertyId: string | number, unitId: string 
             if (params.toString()) url += `?${params.toString()}`;
             return axiosRequest.get(url);
         },
+        enabled: enabled && !!propertyId && !!unitId,
         refetchOnWindowFocus: true,
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
