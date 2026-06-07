@@ -25,13 +25,13 @@ axiosRequest.interceptors.request.use((config) => {
   // 2. Ensure baseURL has NO trailing slash for consistent combination
   config.baseURL = config.baseURL?.replace(/\/+$/, "");
 
-  // 3. Ensure url has NO leading slash to prevent Axios's path replacement behavior
-  if (config.url?.startsWith("/")) {
-    config.url = config.url.substring(1);
+  // Ensure url always has a leading slash so Axios appends it correctly to baseURL
+  if (config.url && !config.url.startsWith("/")) {
+    config.url = `/${config.url}`;
   }
 
   if (process.env.NEXT_PUBLIC_NODE_ENV !== 'production') {
-    console.log(`[Axios] Final Request URL: ${config.baseURL}/${config.url}`);
+    console.log(`[Axios] Final Request URL: ${config.baseURL}${config.url}`);
   }
 
   const token = Cookies.get("token");
@@ -64,10 +64,40 @@ axiosRequest.interceptors.request.use((config) => {
 // Flag to prevent multiple simultaneous redirects
 let isRedirecting = false;
 
-// 🔹 Handle token expiration (401 errors)
+// 🔹 Handle token expiration (401 errors) + PROFILE_INCOMPLETE (403) redirects
 axiosRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // PROFILE_INCOMPLETE — last-resort handler. Most call sites (property
+    // create, booking-on-behalf) render an inline dialog, so the user
+    // already has context. This interceptor only fires for stray fetches
+    // that aren't wrapped by a page-level handler.
+    if (error.response?.status === 403) {
+      const detail = error.response?.data?.detail;
+      const code = typeof detail === "object" ? detail?.code : undefined;
+      if (code === "PROFILE_INCOMPLETE") {
+        const currentPath =
+          typeof window !== "undefined" ? window.location.pathname : "";
+        if (!currentPath.startsWith("/settings/personal-info")) {
+          try {
+            const { default: toast } = await import("react-hot-toast");
+            toast.error(
+              detail?.message || "Please complete your profile to continue.",
+              { duration: 5000 }
+            );
+          } catch {
+            // toast import failed (very rare) — fall through to redirect
+          }
+          if (typeof window !== "undefined") {
+            setTimeout(() => {
+              window.location.href = "/settings/personal-info?from=incomplete";
+            }, 600);
+          }
+        }
+        return Promise.reject(error);
+      }
+    }
+
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       const requestUrl: string = error.config?.url || '';

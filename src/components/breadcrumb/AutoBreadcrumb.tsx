@@ -11,6 +11,18 @@ function toTitleCase(segment: string): string {
     .join(" ");
 }
 
+// Section-only path segments — no `page.tsx` exists at these paths under
+// src/app/(pages)/(dashboard)/, so rendering them as <Link> causes Next.js
+// to prefetch a non-existent route and 404. Render as plain text instead.
+// Sync with the dashboard route tree if a new section is added.
+const NON_NAVIGABLE_SEGMENTS = new Set<string>([
+  "booking-management",
+  "notifications",
+  "property-management",
+  "transactions",
+  "user-management",
+]);
+
 export default function AutoBreadcrumb(): React.JSX.Element {
   const pathname = usePathname();
   const segments = (pathname || "/").split("/").filter(Boolean);
@@ -18,15 +30,18 @@ export default function AutoBreadcrumb(): React.JSX.Element {
   const crumbs = segments.map((seg, idx) => {
     const href = "/" + segments.slice(0, idx + 1).join("/");
     const isLast = idx === segments.length - 1;
+    const isNavigable = !NON_NAVIGABLE_SEGMENTS.has(seg);
     const label = toTitleCase(seg);
     return (
       <span key={href} className="inline-flex items-center text-sm">
-        {!isLast ? (
+        {!isLast && isNavigable ? (
           <Link href={href} className="text-zinc-600 hover:text-primary no-underline">
             {label}
           </Link>
         ) : (
-          <span className="text-primary font-medium">{label}</span>
+          <span className={isLast ? "text-primary font-medium" : "text-zinc-600"}>
+            {label}
+          </span>
         )}
         {!isLast && <span className="px-2 text-zinc-400">›</span>}
       </span>

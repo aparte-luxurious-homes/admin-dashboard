@@ -5,6 +5,13 @@ const nextConfig: NextConfig = {
   /* config options here */
   output: 'standalone',
   images: {
+    // Bypass Vercel's Image Optimization API entirely. Images are served
+    // straight from their origin (Cloudinary / GCS) — both already provide
+    // CDN + transformations, so Vercel's optimizer adds cost (402 once the
+    // monthly quota is exhausted) without meaningful upside. Re-enable
+    // selectively in the future via a custom `loader` if we want Vercel/
+    // Cloudinary-backed responsive sizing.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

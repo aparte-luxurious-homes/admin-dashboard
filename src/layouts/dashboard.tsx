@@ -8,16 +8,19 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { useAuth } from "../hooks/useAuth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { IoMenu, IoClose } from "react-icons/io5";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
-import { useDispatch } from "react-redux";
-import { useQueryClient } from "@tanstack/react-query";
-import { clearUser } from "../lib/slices/authSlice";
+import axiosRequest from "../lib/api";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
+import { GetGatewayBalances } from "../lib/request-handlers/integrationsMgt";
+import { UserRole } from "../lib/enums";
+import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
+import { MobileMenuContext } from "../contexts/MobileMenuContext";
+import BottomNav from "../components/mobile/BottomNav";
 import axiosRequest from "../lib/api";
 import { API_ROUTES } from "../lib/routes/endpoints";
 import { UserRole } from "../lib/enums";
@@ -33,9 +36,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const currentRoute = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const dispatch = useDispatch();
-  const queryClient = useQueryClient();
   const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "?";
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN
+    || user?.role === UserRole.OPERATIONS_ADMIN || user?.role === UserRole.ANALYST;
+  const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances(isAdmin);
 
   const [agentTier, setAgentTier] = useState<"BRONZE" | "SILVER" | "GOLD" | null>(null);
 
@@ -60,23 +64,23 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = Cookies.get("token");
 
-    console.log('[Dashboard] Auth check:', {
-      hasToken: !!token,
-      hasUser: !!user,
-      userId: user?.id,
-      isFetching
-    });
+    // console.log('[Dashboard] Auth check:', {
+    //   hasToken: !!token,
+    //   hasUser: !!user,
+    //   userId: user?.id,
+    //   isFetching
+    // });
 
     // If no token and no user in Redux, redirect to login
     if (!token && !user) {
-      console.log('[Dashboard] No token and no user - redirecting to login');
+      // console.log('[Dashboard] No token and no user - redirecting to login');
       router.replace(PAGE_ROUTES.auth.login);
       return;
     }
 
     // If we have user data (either from Redux persistence or fresh fetch), show dashboard
     if (user && user.id) {
-      console.log('[Dashboard] User authenticated:', user.email);
+      // console.log('[Dashboard] User authenticated:', user.email);
       setIsCheckingAuth(false);
       return;
     }
@@ -84,10 +88,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     // If we have a token but no user, wait briefly for fetch to complete
     if (token && !user) {
       if (isFetching) {
-        console.log('[Dashboard] Token exists, fetching user...');
+        // console.log('[Dashboard] Token exists, fetching user...');
         setIsCheckingAuth(true);
       } else {
-        console.log('[Dashboard] Token exists but no user and not fetching - might be invalid token');
+        // console.log('[Dashboard] Token exists but no user and not fetching - might be invalid token');
         // Give it a moment for query to start
         const timeout = setTimeout(() => {
           // Re-check token and user after timeout
@@ -95,7 +99,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
           const currentUser = user;
 
           if (currentToken && !currentUser) {
-            console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
+            // console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
             Cookies.remove("token");
             router.replace(PAGE_ROUTES.auth.login);
           }
@@ -107,6 +111,44 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, isFetching, router]);
 
+  const mobileMenuCtx = useMemo(
+    () => ({
+      isOpen: isMobileMenuOpen,
+      open: () => setIsMobileMenuOpen(true),
+      close: () => setIsMobileMenuOpen(false),
+    }),
+    [isMobileMenuOpen]
+  );
+
+  // Route-level RBAC: if the current path matches a NAV_LINK entry whose `allow`
+  // list excludes the current user's role, kick them back to the dashboard root.
+  // Covers direct URL access (sidebar filtering alone doesn't stop /transactions/withdrawals
+  // from rendering for an OWNER who types the URL).
+  useEffect(() => {
+    if (!user || !currentRoute) return;
+
+    const role = user.role as UserRole;
+    for (const link of NAV_LINKS) {
+      if (link.children && link.children.length > 0) {
+        for (const child of link.children) {
+          if (child.link !== "#" && currentRoute.startsWith(child.link)) {
+            if (child.allow.length > 0 && !child.allow.includes(role)) {
+              toast.error("You don't have access to that page");
+              router.replace(PAGE_ROUTES.dashboard.base);
+              return;
+            }
+          }
+        }
+      } else if (link.link !== "#" && currentRoute.startsWith(link.link) && link.link !== PAGE_ROUTES.dashboard.base) {
+        if (link.allow.length > 0 && !link.allow.includes(role)) {
+          toast.error("You don't have access to that page");
+          router.replace(PAGE_ROUTES.dashboard.base);
+          return;
+        }
+      }
+    }
+  }, [user, currentRoute, router]);
+
   // Show loader while checking authentication or fetching user
   if (isCheckingAuth || (isFetching && !user)) {
     return <Loader message="Loading dashboard..." />;
@@ -117,31 +159,49 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  const handleLogOut = () => {
-    Promise.all([
-      Promise.resolve(Cookies.remove("token")),
-      Promise.resolve(dispatch(clearUser())),
-      queryClient.removeQueries({ queryKey: ["authUser"] }),
-    ]).then(() => {
-      // Redirect to the login page after all actions complete
-      window.location.href = "/auth/login";
-      toast.success("You have been logged out", {
-        duration: 3000,
-        style: {
-          maxWidth: "500px",
-          width: "max-content",
-        },
-      })
-    });
+  const handleLogOut = async () => {
+    try {
+      await axiosRequest.post("/auth/logout");
+    } catch {
+      // Proceed with client-side logout even if API call fails
+    }
+
+    // Clear cookie first so any in-flight check sees no token
+    Cookies.remove("token", { path: "/" });
+
+    // Synchronously clear redux-persist storage. persistor.purge() is async
+    // and races the navigation; clearing localStorage directly is reliable.
+    try {
+      localStorage.removeItem("persist:auth");
+    } catch {
+      /* ignore (SSR / privacy mode) */
+    }
+
+    // Hard navigation with replace() — does NOT add a history entry, which
+    // prevents the back-forward refresh loop. We deliberately skip dispatch
+    // (clearUser) and queryClient.removeQueries here: those trigger a
+    // Dashboard re-render whose auth-check effect fires a competing
+    // router.replace() before window.location takes over. After
+    // window.location.replace the JS context tears down anyway.
+    window.location.replace("/auth/login");
+  };
+
+  // Re-open the cookie-consent banner. Clearing + reloading re-evaluates the
+  // analytics gate from scratch, so already-loaded scripts stop and the banner
+  // shows again for a fresh choice.
+  const openCookieSettings = () => {
+    clearConsent();
+    window.location.reload();
   };
 
   return (
+    <MobileMenuContext.Provider value={mobileMenuCtx}>
     <div className="h-screen size-full relative">
-      {/* Mobile Menu Toggle */}
+      {/* Mobile Menu Toggle — hidden on small screens where bottom nav is shown */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-lg bg-primary text-white hover:bg-primary/90 
-                   shadow-lg active:scale-95 transition-transform min-w-[48px] min-h-[48px] flex items-center justify-center"
+        className="hidden md:flex lg:hidden fixed top-4 left-4 z-50 p-3 rounded-lg bg-primary text-white hover:bg-primary/90
+                   shadow-lg active:scale-95 transition-transform min-w-[48px] min-h-[48px] items-center justify-center"
         aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
       >
         {isMobileMenuOpen ? <IoClose size={28} /> : <IoMenu size={28} />}
@@ -168,6 +228,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 height={170}
                 width={170}
               />
+              {user?.role === "ADMIN" ? (
               <Image
                 src="/svg/admin_text.svg"
                 alt="admin"
@@ -175,6 +236,11 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 height={30}
                 width={30}
               />
+              ) : user?.role === "AGENT" ? (
+                <h3 className="absolute right-0.5 font-tt-firs-neue-trl">
+                  AGENT
+                </h3>
+              ) : null}
             </div>
           </div>
           <div
@@ -196,8 +262,18 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               ) : null
             )}
           </div>
-          {/* Footer: Logout only */}
-          <div className="absolute bottom-0 w-full flex items-center border-t-2 border-teal-700/70 bg-primary">
+          {/* Footer: Cookie settings (production only) + Logout — extra bottom
+              padding on mobile to clear the bottom nav */}
+          <div className="absolute bottom-0 w-full flex flex-col items-center border-t-2 border-teal-700/70 bg-primary pb-16 md:pb-0">
+            {ANALYTICS_CONFIGURED && (
+              <button
+                onClick={openCookieSettings}
+                className="text-left flex gap-4 pl-7 py-3 hover:bg-teal-600/60 w-full text-white/70 hover:text-white items-center"
+              >
+                <Icon icon="mdi:cookie-outline" width="18" height="18" />
+                <span className="text-sm">Cookie settings</span>
+              </button>
+            )}
             <button
               onClick={handleLogOut}
               className="text-left flex gap-4 pl-7 py-4 hover:bg-teal-600/60 w-full text-white min-h-[56px] items-center"
@@ -216,14 +292,51 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                 transition-all duration-300 ease-in-out flex flex-col h-screen overflow-hidden
             `}
       >
-        <div className="w-full h-20 flex-shrink-0 flex justify-between items-center px-4 sm:px-6 lg:px-10 bg-white border-b border-b-zinc-200/80">
-          {/* Spacer for mobile menu button */}
-          <div className="w-12 lg:hidden"></div>
+        <div className="w-full h-14 md:h-20 flex-shrink-0 flex justify-between items-center px-4 sm:px-6 lg:px-10 bg-white border-b border-b-zinc-200/80">
+          {/* Spacer for tablet menu button (hidden on mobile where bottom nav is used) */}
+          <div className="hidden md:block lg:hidden w-12"></div>
 
           <div className="w-1/2 hidden md:block">
             <AutoBreadcrumb />
           </div>
-          <div className="w-full md:w-1/2 xl:w-1/3 flex justify-end gap-2 sm:gap-3 items-center">
+          <div className="w-full md:w-1/2 xl:w-2/3 flex justify-end gap-2 sm:gap-3 items-center">
+            {/* Gateway Balances — admin only.
+                data-clarity-mask: keep merchant balances out of Clarity session
+                recordings (defense in depth on top of project-level mask mode). */}
+            {isAdmin && (
+              <div data-clarity-mask="true" className="hidden lg:flex items-center gap-3 mr-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
+                {gatewayLoading ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
+                    <div className="w-px h-4 bg-gray-200" />
+                    <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ) : (() => {
+                  const balances = gatewayData?.data?.data ?? {};
+                  const fmt = (n: number) => new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
+                  return (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${balances.paystack?.isAvailable ? "bg-green-500" : "bg-red-400"}`} />
+                        <span className="text-[10px] font-medium text-gray-500">PS</span>
+                        <span className="text-xs font-bold text-gray-800">
+                          {balances.paystack?.isAvailable ? fmt(balances.paystack.available) : "N/A"}
+                        </span>
+                      </div>
+                      <div className="w-px h-4 bg-gray-200" />
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${balances.monnify?.isAvailable ? "bg-green-500" : "bg-red-400"}`} />
+                        <span className="text-[10px] font-medium text-gray-500">MN</span>
+                        <span className="text-xs font-bold text-gray-800">
+                          {balances.monnify?.isAvailable ? fmt(balances.monnify.available) : "N/A"}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
             {agentTier && (() => {
               const cfg = TIER_CONFIG[agentTier];
               return (
@@ -258,8 +371,11 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
-        <div className="px-4 sm:px-6 md:px-10 py-6 sm:py-8 w-full flex-1 overflow-y-auto">{children}</div>
+        <div className="px-2 sm:px-1 md:px-1 py-2 sm:py-1 pb-20 md:pb-2 w-full flex-1 overflow-y-auto">{children}</div>
       </div>
+
+      {/* Bottom Navigation — mobile only */}
+      <BottomNav />
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
@@ -269,5 +385,6 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         />
       )}
     </div>
+    </MobileMenuContext.Provider>
   );
 }
