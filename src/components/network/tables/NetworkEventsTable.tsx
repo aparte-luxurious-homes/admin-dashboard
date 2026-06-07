@@ -41,6 +41,7 @@ interface ActionButton {
 
 interface Agent {
     id: string;
+    email?: string | null;
     profile?: { first_name?: string | null; last_name?: string | null; firstName?: string | null; lastName?: string | null };
     first_name?: string | null;
     last_name?: string | null;
@@ -366,10 +367,10 @@ export default function NetworkEventsTable() {
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     <th className="px-6 py-3 text-left">Action</th>
+                                    <th className="px-6 py-3 text-left">Agent</th>
                                     <th className="px-6 py-3 text-left">Status</th>
                                     <th className="px-6 py-3 text-left">Points</th>
                                     <th className="px-6 py-3 text-left">Entity</th>
-                                    <th className="px-6 py-3 text-left">Adjustment</th>
                                     <th className="px-6 py-3 text-left">Remitted</th>
                                     <th className="px-6 py-3 text-left">Created At</th>
                                     <th className="px-6 py-3 text-right">Actions</th>
@@ -388,6 +389,19 @@ export default function NetworkEventsTable() {
                                                 {formatActionType(event.action_type)}
                                             </td>
                                             <td className="px-6 py-4">
+                                                {(() => {
+                                                    const agent = agents.find((a) => a.id === event.agent_id);
+                                                    return agent ? (
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-medium text-gray-900 truncate">{agentFullName(agent)}</p>
+                                                            <p className="text-xs text-gray-500 truncate">{agent.email ?? "—"}</p>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400 font-mono">{event.agent_id.slice(0, 8)}…</span>
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusCfg.bg} ${statusCfg.text}`}>
                                                     {event.status}
                                                 </span>
@@ -399,11 +413,6 @@ export default function NetworkEventsTable() {
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-700">
                                                 {formatEntityType(event.entity_type)}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${event.adjustment_direction === "ADDITION" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                                    {event.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}
-                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${event.is_remitted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>

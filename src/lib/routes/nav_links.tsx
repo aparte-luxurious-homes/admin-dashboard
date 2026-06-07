@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import { IoIosGitNetwork } from "react-icons/io";
 import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon, RateIcon, PriceTagIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
@@ -105,7 +106,7 @@ export const NAV_LINKS: ILink[] = [
         name: 'Network',
         pathName: 'network',
         link: PAGE_ROUTES.dashboard.network.history.base,
-        icon: <UsersIcon className={"w-5"} color={"white"} />,
+        icon: <IoIosGitNetwork size={20} color="white" />,
         allow: [UserRole.AGENT],
         secondary: true,
         children: [
@@ -127,7 +128,7 @@ export const NAV_LINKS: ILink[] = [
         name: 'Network Management',
         pathName: 'network',
         link: PAGE_ROUTES.dashboard.network.events.base,
-        icon: <UsersIcon className={"w-5"} color={"white"} />,
+        icon: <IoIosGitNetwork size={20} color="white" />,
         allow: [UserRole.ADMIN],
         secondary: true,
         children: [
