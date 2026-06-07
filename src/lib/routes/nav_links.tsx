@@ -115,6 +115,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.network.history.base,
                 allow: [UserRole.AGENT],
             },
+            {
+                name: 'Actions',
+                pathName: 'actions',
+                link: PAGE_ROUTES.dashboard.network.configs.actions.base,
+                allow: [UserRole.AGENT],
+            },
         ]
     },
     {

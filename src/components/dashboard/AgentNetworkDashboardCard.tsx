@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import Grid from "@mui/material/Grid2";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { formatDate } from "@/src/lib/utils";
 
 interface AgentNetworkSummary {
@@ -312,7 +314,7 @@ export default function AgentNetworkDashboardCard() {
                         </div>
                         <h3 className="font-semibold text-gray-800 text-sm">Tier Benefits</h3>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 mb-4">
                         {(["BRONZE", "SILVER", "GOLD"] as const).map((t) => {
                             const cfg = TIER_CONFIG[t];
                             const isCurrentTier = t === networkSummary?.current_tier;
@@ -335,8 +337,20 @@ export default function AgentNetworkDashboardCard() {
                         })}
                     </div>
 
+                    {/* Actions link */}
+                    <Link
+                        href={PAGE_ROUTES.dashboard.network.configs.actions.base}
+                        className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50 hover:bg-primary/5 hover:border-primary/20 transition-colors mb-4 group"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Icon icon="solar:bolt-bold-duotone" width="14" className="text-primary shrink-0" />
+                            <p className="text-[11px] font-semibold text-gray-600 group-hover:text-primary transition-colors">Earning Actions</p>
+                        </div>
+                        <Icon icon="lucide:arrow-right" width="12" className="text-gray-400 group-hover:text-primary transition-colors" />
+                    </Link>
+
                     {/* Wallet Balance */}
-                    <div className="mt-auto pt-5 border-t border-gray-100">
+                    <div className="pt-5 border-t border-gray-100">
                         <div className="flex items-center gap-2 mb-3">
                             <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
                                 <Icon icon="solar:wallet-bold-duotone" width="16" className="text-emerald-600" />
