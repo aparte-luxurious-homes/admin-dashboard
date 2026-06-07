@@ -11,6 +11,20 @@ enum BookingRequestKeys {
     deleteBooking = "deleteBooking",
     retryBookingPayment = "retryBookingPayment",
     uploadPaymentProof = "uploadPaymentProof",
+    approvalPendingCount = "approvalPendingCount",
+}
+
+export function GetApprovalPendingCount() {
+    return useQuery({
+        queryKey: [BookingRequestKeys.approvalPendingCount],
+        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.base}?status=APPROVAL_PENDING&page=1&size=1`),
+        select: (resp: any): number => {
+            const total = resp?.data?.data?.total ?? resp?.data?.total ?? 0;
+            return typeof total === 'number' ? total : Number(total) || 0;
+        },
+        staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: true,
+    });
 }
 
 export function UploadPaymentProof() {
@@ -29,6 +43,27 @@ export function UploadPaymentProof() {
                     return data;
                 },
             }),
+    });
+}
+
+export function GuestLookup(search?: string) {
+    // Uses the /bookings/guests/directory endpoint — broader scope than the
+    // referrer-restricted /bookings/guest-lookup. Returns {id, first_name,
+    // email, phone} only so agents can book on behalf of any guest, not just
+    // their own referrals. Response shape nests {meta, data} inside `data`.
+    return useQuery({
+        queryKey: ['guestDirectory', search],
+        queryFn: () =>
+            axiosRequest.get(
+                `${API_ROUTES.bookings.guestsDirectory}?search=${encodeURIComponent(search!)}&size=10`
+            ),
+        enabled: !!search && search.length >= 2,
+        select: (resp: any) => {
+            // Normalize to the shape CreateBookingView expects: { data: { data: Guest[] } }
+            const inner = resp?.data?.data;
+            const guests = Array.isArray(inner?.data) ? inner.data : Array.isArray(inner) ? inner : [];
+            return { data: { data: guests } };
+        },
     });
 }
 
@@ -135,6 +170,47 @@ export function RetryBookingPayment() {
     });
 }
 
+// Admin remediation: attach a gateway-side payment reference (copied from
+// Paystack/Monnify/Flutterwave dashboard) to a stuck booking and finalize it.
+// Use when RetryBookingPayment can't resolve because the booking is stuck on
+// an abandoned alternate payment-link reference. Backend gates this to
+// {SUPER_ADMIN, ADMIN, OPERATIONS_ADMIN}.
+export function ReconcileBookingPayment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId, provider, payment_reference }: {
+            bookingId: string | number;
+            provider: "PAYSTACK" | "MONNIFY" | "FLUTTERWAVE";
+            payment_reference: string;
+        }) => axiosRequest.post(
+            API_ROUTES.bookings.reconcilePayment(bookingId),
+            { provider, payment_reference },
+        ),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function ResendPaymentLink() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        // `notify=false` returns a fresh checkout URL without emailing or
+        // SMSing the guest — used by the "Pay on Behalf" flow where the
+        // agent is handling payment themselves.
+        mutationFn: ({ bookingId, notify = true }: { bookingId: string | number; notify?: boolean }) =>
+            axiosRequest.post(
+                `${API_ROUTES.bookings.details(String(bookingId))}/payment-link/resend?notify=${notify ? "true" : "false"}`,
+            ),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+
+    });
+}
+
 export function CheckInBooking() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -162,8 +238,8 @@ export function CheckOutBooking() {
 export function RefundCautionFee() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`),
+        mutationFn: ({ bookingId, payload }: { bookingId: string | number, payload: { should_refund: boolean, notes?: string } }) =>
+            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`, payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
@@ -188,6 +264,30 @@ export function ApproveCancellation() {
     return useMutation({
         mutationFn: ({ bookingId }: { bookingId: string | number }) =>
             axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/approve-cancellation`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function ApproveBookingRequest() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+            axiosRequest.post(API_ROUTES.bookings.approveRequest(String(bookingId))),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
+            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
+        },
+    });
+}
+
+export function RejectBookingRequest() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ bookingId, reason }: { bookingId: string | number, reason?: string }) =>
+            axiosRequest.post(API_ROUTES.bookings.rejectRequest(String(bookingId)), { reason }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
             queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });

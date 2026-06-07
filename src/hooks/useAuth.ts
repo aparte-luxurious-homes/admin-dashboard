@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import axiosRequest from "@/lib/api";
 import { setUser, clearUser } from "@/lib/slices/authSlice";
 import { useEffect } from "react";
-// import { BASE_API_URL } from "../lib/routes/endpoints";
+import { API_ROUTES } from "../lib/routes/endpoints";
 import { ILoginResponse, IUser, IBaseResponse } from "../lib/types";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
@@ -36,8 +36,6 @@ export const useAuth = () => {
   // Debug: Log all cookies
   useEffect(() => {
     const allCookies = document.cookie;
-    console.log('[useAuth] All cookies:', allCookies);
-    console.log('[useAuth] Token from Cookies.get:', token);
   }, [token]);
 
   const { data, isFetching, error } = useQuery({
@@ -53,7 +51,7 @@ export const useAuth = () => {
   // Sync Redux only if data exists and is different from the current user
   useEffect(() => {
     if (data && data.id && data.id !== user?.id) {
-      console.log('[useAuth] Setting user in Redux:', data.email);
+      // console.log('[useAuth] Setting user in Redux:', data.email);
       dispatch(setUser(data));
     }
   }, [data, dispatch, user]);
@@ -67,7 +65,7 @@ export const useAuth = () => {
 
   // Log current auth state
   useEffect(() => {
-    console.log('[useAuth] Current state - User:', user?.email || 'None', 'Token:', !!token, 'Fetching:', isFetching);
+    // console.log('[useAuth] Current state - User:', user?.email || 'None', 'Token:', !!token, 'Fetching:', isFetching);
   }, [user, token, isFetching]);
 
   return { user, isFetching };
@@ -118,61 +116,147 @@ export const useLogin = () => {
         cookieOptions.domain = domain;
       }
 
-      console.log('[useLogin] Setting token cookie with options:', cookieOptions);
-      console.log('[useLogin] Current location:', { hostname, protocol: window.location.protocol });
+      // console.log('[useLogin] Setting token cookie with options:', cookieOptions);
+      // console.log('[useLogin] Current location:', { hostname, protocol: window.location.protocol });
 
       // Try setting the cookie
       Cookies.set("token", payload.authorization.token, cookieOptions);
 
       // Verify cookie was set
       const verifyToken = Cookies.get("token");
-      console.log('[useLogin] Token verification after set:', verifyToken ? 'Token set successfully' : 'ERROR: Token not set!');
-      console.log('[useLogin] document.cookie after set:', document.cookie);
+      // console.log('[useLogin] Token verification after set:', verifyToken ? 'Token set successfully' : 'ERROR: Token not set!');
+      // console.log('[useLogin] document.cookie after set:', document.cookie);
 
       // If token still not set, try without domain
       if (!verifyToken && domain) {
-        console.warn('[useLogin] Token not set with domain, trying without domain...');
+        // console.warn('[useLogin] Token not set with domain, trying without domain...');
         const fallbackOptions = { ...cookieOptions };
         delete fallbackOptions.domain;
         Cookies.set("token", payload.authorization.token, fallbackOptions);
         const recheckToken = Cookies.get("token");
-        console.log('[useLogin] Fallback token check:', recheckToken ? 'Success!' : 'Still failed');
+        // console.log('[useLogin] Fallback token check:', recheckToken ? 'Success!' : 'Still failed');
       }
 
       return payload.user;
     },
     onSuccess: async (user) => {
-      console.log('[useLogin] Login successful, setting user:', user.email);
+      // console.log('[useLogin] Login successful, setting user:', user.email);
 
       // Verify token is still there before proceeding
       const tokenCheck = Cookies.get("token");
-      console.log('[useLogin] Token check before state update:', tokenCheck ? 'Token exists' : 'ERROR: Token missing!');
+      // console.log('[useLogin] Token check before state update:', tokenCheck ? 'Token exists' : 'ERROR: Token missing!');
 
       // Update state before navigation
       dispatch(setUser(user));
       queryClient.setQueryData(["authUser"], user);
 
-      console.log('[useLogin] State updated, waiting for persistence...');
+      // console.log('[useLogin] State updated, waiting for persistence...');
 
       // Small delay to ensure state is persisted
       await new Promise(resolve => setTimeout(resolve, 200));
 
       // Final token verification before navigation
       const finalTokenCheck = Cookies.get("token");
-      console.log('[useLogin] Final token check before navigation:', finalTokenCheck ? 'Token exists' : 'ERROR: Token missing!');
-      console.log('[useLogin] All cookies before navigation:', document.cookie);
+      // console.log('[useLogin] Final token check before navigation:', finalTokenCheck ? 'Token exists' : 'ERROR: Token missing!');
+      // console.log('[useLogin] All cookies before navigation:', document.cookie);
 
-      console.log('[useLogin] Navigating to dashboard...');
+      // console.log('[useLogin] Navigating to dashboard...');
 
       // Use replace instead of push to prevent back navigation to login
       router.replace(PAGE_ROUTES.dashboard.base);
     },
     onError: (error: any) => {
       // Remove token if there's an error
-      console.log('[useLogin] Login error, removing token');
+      // console.log('[useLogin] Login error, removing token');
       Cookies.remove("token");
-      console.error('[useLogin] Login failed:', error);
+      // console.error('[useLogin] Login failed:', error);
     }
+  });
+};
+
+// 🔹 Phone-OTP request (resend SMS)
+export const useRequestPhoneOtp = () => {
+  return useMutation({
+    mutationFn: async ({ phone }: { phone: string }) => {
+      const response = await axiosRequest.post(API_ROUTES.auth.requestPhoneOtp, { phone });
+      return response.data;
+    },
+  });
+};
+
+// 🔹 Phone-OTP request via email (DND fallback)
+export const useRequestPhoneOtpViaEmail = () => {
+  return useMutation({
+    mutationFn: async ({ phone }: { phone: string }) => {
+      const response = await axiosRequest.post(
+        API_ROUTES.auth.requestPhoneOtpViaEmail,
+        { phone }
+      );
+      return response.data;
+    },
+  });
+};
+
+// 🔹 Phone-OTP verify (completes login, mirrors useLogin's onSuccess)
+export const useVerifyPhoneOtp = () => {
+  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async ({ phone, otp }: { phone: string; otp: string }) => {
+      const response = await axiosRequest.post<IBaseResponse<ILoginResponse> | ILoginResponse>(
+        API_ROUTES.auth.verifyPhoneOtp,
+        { phone, otp }
+      );
+
+      const raw = response.data as any;
+      const payload: ILoginResponse = raw?.data?.user ? raw.data : raw;
+
+      if (!payload?.user || !payload?.authorization) {
+        throw new Error("Invalid verify response from server");
+      }
+
+      if (payload.user.role === UserRole.GUEST) {
+        throw new Error(
+          "Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support."
+        );
+      }
+
+      const isProduction = window.location.protocol === "https:";
+      const hostname = window.location.hostname;
+      const domain = hostname.includes("aparte.ng") ? ".aparte.ng" : undefined;
+
+      const cookieOptions: any = {
+        expires: 7,
+        secure: isProduction,
+        sameSite: "Lax" as const,
+        path: "/",
+      };
+      if (domain) cookieOptions.domain = domain;
+
+      Cookies.set("token", payload.authorization.token, cookieOptions);
+
+      const verifyToken = Cookies.get("token");
+      if (!verifyToken && domain) {
+        const fallbackOptions = { ...cookieOptions };
+        delete fallbackOptions.domain;
+        Cookies.set("token", payload.authorization.token, fallbackOptions);
+      }
+
+      return payload.user;
+    },
+    onSuccess: async (user) => {
+      dispatch(setUser(user));
+      queryClient.setQueryData(["authUser"], user);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      router.replace(PAGE_ROUTES.dashboard.base);
+    },
+    onError: () => {
+      // Don't remove the cookie here — the user just hasn't completed verification
+      // yet. They may retry the OTP. The login mutation already cleared any stale
+      // token before this flow began.
+    },
   });
 };
 

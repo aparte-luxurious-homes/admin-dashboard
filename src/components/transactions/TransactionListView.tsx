@@ -15,9 +15,14 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import autoTable from "jspdf-autotable";
 import { formatDate, formatMoney } from "@/src/lib/utils";
+import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
+import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
+import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
+import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface Transaction {
     id: string;
+    wallet_id?: string;
     user_id: string | number;
     amount: string | number;
     currency: string;
@@ -37,6 +42,13 @@ interface Transaction {
     customerEmail?: string;
 }
 
+interface TransactionSummary {
+    total_credit: string;
+    total_debit: string;
+    net: string;
+    count: number;
+}
+
 interface TransactionListViewProps {
     title: string;
     description: string;
@@ -46,9 +58,19 @@ interface TransactionListViewProps {
         tx_type?: string;
         action?: string;
     };
+    /**
+     * Optional override for the row's detail-view href.
+     * Used by the "All Transactions" view to route each row to the appropriate
+     * existing category detail page (payments / withdrawals / refunds / etc.)
+     * instead of an `/all/{id}` route that doesn't exist.
+     * Defaults to `${basePath}/{tx.id}` when omitted.
+     */
+    resolveRowHref?: (tx: Transaction) => string;
 }
 
-const TransactionListView = ({ title, description, basePath, apiUrl, filters }: TransactionListViewProps) => {
+const TransactionListView = ({ title, description, basePath, apiUrl, filters, resolveRowHref }: TransactionListViewProps) => {
+    const getRowHref = (tx: Transaction) =>
+        resolveRowHref ? resolveRowHref(tx) : `${basePath}/${tx.id}`;
     const router = useRouter();
     const [data, setData] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
@@ -60,14 +82,24 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
     const [statusFilter, setStatusFilter] = useState<string>("");
     const [typeFilter, setTypeFilter] = useState<string>(filters?.tx_type || "");
     const [actionFilter, setActionFilter] = useState<string>(filters?.action || "");
+    const [gatewayFilter, setGatewayFilter] = useState<string>("");
     const [startDate, setStartDate] = useState<string>("");
     const [endDate, setEndDate] = useState<string>("");
     const [showFilters, setShowFilters] = useState(false);
+    const [summary, setSummary] = useState<TransactionSummary | null>(null);
 
     const [isOpen, setIsOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
+    const { canManageFinances } = usePermissions();
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
+
+    // Approval/Rejection Modal State
+    const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+    const [selectedTxForApproval, setSelectedTxForApproval] = useState<Transaction | null>(null);
+    const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
+    const [withdrawalModalInitialStep, setWithdrawalModalInitialStep] = useState<"confirm" | "otp">("confirm");
+    const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
 
     const handleDownload = (type: "CSV" | "PDF") => {
         if (type === "CSV") {
@@ -133,6 +165,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                     search: searchValue || undefined,
                     tx_type: typeFilter || undefined,
                     action: actionFilter || undefined,
+                    gateway: gatewayFilter || undefined,
                     status: statusFilter || undefined,
                     start_date: startDate || undefined,
                     end_date: endDate || undefined,
@@ -155,6 +188,10 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                 total = responseData.meta?.total || items.length;
             }
 
+            if (responseData.summary) {
+                setSummary(responseData.summary);
+            }
+
             setData(items);
             setRowCount(total);
         } catch (err: any) {
@@ -162,7 +199,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
         } finally {
             setLoading(false);
         }
-    }, [page, searchValue, apiUrl, typeFilter, actionFilter, statusFilter, startDate, endDate]);
+    }, [page, searchValue, apiUrl, typeFilter, actionFilter, gatewayFilter, statusFilter, startDate, endDate]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -180,6 +217,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
         setStatusFilter("");
         setTypeFilter(filters?.tx_type || "");
         setActionFilter(filters?.action || "");
+        setGatewayFilter("");
         setStartDate("");
         setEndDate("");
         setPage(1);
@@ -202,18 +240,65 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const handleApproveClick = (tx: Transaction) => {
+        setSelectedTxForApproval(tx);
+        if (tx.transaction_type === "WITHDRAWAL") {
+            setWithdrawalModalInitialStep("confirm");
+            setIsWithdrawalApprovalOpen(true);
+        } else {
+            setIsApproveModalOpen(true);
+        }
+        setSelectedRow(null); // Close context menu
+    };
+
     const detailButtons = [
         {
             label: "View Details",
             Icon: <LuEye />,
             onClick: () => {
                 if (selectedRow !== null) {
-                    router.push(`${basePath}/${data[selectedRow].id}`);
+                    router.push(getRowHref(data[selectedRow]));
                 }
                 setSelectedRow(null);
             },
         }
     ];
+
+    if (canManageFinances && selectedRow !== null && data[selectedRow]?.status === "PENDING_APPROVAL") {
+        const tx = data[selectedRow];
+        detailButtons.push({
+            label: tx.transaction_type === "WITHDRAWAL" ? "Approve Withdrawal" : "Approve Refund",
+            Icon: <Icon icon="mdi:check-circle-outline" />,
+            onClick: () => handleApproveClick(tx),
+        });
+        if (tx.transaction_type === "WITHDRAWAL") {
+            detailButtons.push({
+                label: "Reject Withdrawal",
+                Icon: <Icon icon="mdi:close-circle-outline" />,
+                onClick: () => {
+                    setSelectedTxForApproval(tx);
+                    setIsWithdrawalRejectionOpen(true);
+                    setSelectedRow(null);
+                },
+            });
+        }
+    }
+
+    if (canManageFinances && selectedRow !== null && data[selectedRow]?.status === "AWAITING_AUTHORIZATION") {
+        const tx = data[selectedRow];
+        if (tx.transaction_type === "WITHDRAWAL") {
+            detailButtons.push({
+                label: "Enter OTP",
+                Icon: <Icon icon="mdi:key-outline" />,
+                onClick: () => {
+                    setSelectedTxForApproval(tx);
+                    setWithdrawalModalInitialStep("otp");
+                    setIsWithdrawalApprovalOpen(true);
+                    setSelectedRow(null);
+                },
+            });
+        }
+    }
 
     return (
         <div className="p-6">
@@ -244,8 +329,8 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1 max-w-md relative">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                            <div className="flex-1 max-w-full sm:max-w-md relative">
                                 <input
                                     type="text"
                                     value={searchValue}
@@ -255,28 +340,30 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                 />
                                 <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                             </div>
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={`px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-white text-gray-700'}`}
-                            >
-                                <FilterIcon className="w-4 h-4" color={showFilters ? "#028090" : "#6B7280"} />
-                                <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
-                            </button>
-                            {(statusFilter || (typeFilter !== (filters?.tx_type || "")) || (actionFilter !== (filters?.action || "")) || startDate || endDate) && (
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <button
-                                    onClick={resetFilters}
-                                    className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-4"
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={`px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium transition-colors ${showFilters ? 'bg-primary/5 border-primary text-primary' : 'bg-white text-gray-700'}`}
                                 >
-                                    Reset Filters
+                                    <FilterIcon className="w-4 h-4" color={showFilters ? "#028090" : "#6B7280"} />
+                                    <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
                                 </button>
-                            )}
-                            <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
-                                Total Records: <span className="text-primary">{rowCount}</span>
+                                {(statusFilter || (typeFilter !== (filters?.tx_type || "")) || (actionFilter !== (filters?.action || "")) || gatewayFilter || startDate || endDate) && (
+                                    <button
+                                        onClick={resetFilters}
+                                        className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-4"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                )}
+                                <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
+                                    Total Records: <span className="text-primary">{rowCount}</span>
+                                </div>
                             </div>
                         </div>
 
                         {showFilters && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-white rounded-xl border border-gray-100 shadow-inner animate-in fade-in slide-in-from-top-2">
+                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 bg-white rounded-xl border border-gray-100 shadow-inner animate-in fade-in slide-in-from-top-2">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</label>
                                     <select
@@ -286,7 +373,10 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                     >
                                         <option value="">All Statuses</option>
                                         <option value="PENDING">Pending</option>
+                                        <option value="PENDING_APPROVAL">Pending Approval</option>
+                                        <option value="AWAITING_AUTHORIZATION">Awaiting OTP</option>
                                         <option value="SUCCESSFUL">Successful</option>
+                                        <option value="OFFLINE_REFUNDED">Offline Refunded</option>
                                         <option value="FAILED">Failed</option>
                                     </select>
                                 </div>
@@ -303,6 +393,8 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                         <option value="REFUND">Refund</option>
                                         <option value="BOOKING">Booking</option>
                                         <option value="WITHDRAWAL">Withdrawal</option>
+                                        <option value="ADJUSTMENT">Adjustment</option>
+                                        <option value="DISPUTE">Dispute</option>
                                     </select>
                                 </div>
                                 <div className="space-y-1">
@@ -316,6 +408,20 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                         <option value="">All Actions</option>
                                         <option value="CREDIT">Credit</option>
                                         <option value="DEBIT">Debit</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Gateway</label>
+                                    <select
+                                        value={gatewayFilter}
+                                        onChange={(e) => { setGatewayFilter(e.target.value); setPage(1); }}
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="">All Gateways</option>
+                                        <option value="SYSTEM">System (Internal)</option>
+                                        <option value="MONNIFY">Monnify</option>
+                                        <option value="PAYSTACK">Paystack</option>
+                                        <option value="FLUTTERWAVE">Flutterwave</option>
                                     </select>
                                 </div>
                                 <div className="space-y-1">
@@ -340,6 +446,40 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                         )}
                     </div>
                 </div>
+
+                {summary && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-6 py-4 border-b border-gray-200 bg-gray-50/30">
+                        <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+                                <Icon icon="mdi:arrow-down" className="text-green-600 w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Credit</p>
+                                <p className="text-lg font-semibold text-green-700">{formatMoney(summary.total_credit)}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                                <Icon icon="mdi:arrow-up" className="text-red-600 w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Debit</p>
+                                <p className="text-lg font-semibold text-red-700">{formatMoney(summary.total_debit)}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                                <Icon icon="mdi:scale-balance" className="text-blue-600 w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net</p>
+                                <p className={`text-lg font-semibold ${parseFloat(summary.net) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                    {formatMoney(summary.net)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="overflow-x-auto min-h-[400px]">
                     {loading ? (
@@ -368,7 +508,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                                     <tr
                                         key={tx.id}
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => router.push(`${basePath}/${tx.id}`)}
+                                        onClick={() => router.push(getRowHref(tx))}
                                     >
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                             {tx.reference?.substring(0, 18) || String(tx.id).substring(0, 8)}...
@@ -450,6 +590,55 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters }: 
                         </button>
                     ))}
                 </div>
+            )}
+
+            {/* Approval Modal */}
+            {selectedTxForApproval && (
+                <ApproveRefundModal
+                    isOpen={isApproveModalOpen}
+                    onClose={() => {
+                        setIsApproveModalOpen(false);
+                        setSelectedTxForApproval(null);
+                        fetchTransactions();
+                    }}
+                    transactionId={selectedTxForApproval.id}
+                    amount={selectedTxForApproval.amount}
+                    currency={selectedTxForApproval.currency}
+                />
+            )}
+
+            {selectedTxForApproval && selectedTxForApproval.transaction_type === "WITHDRAWAL" && (
+                <ApproveWithdrawalModal
+                    isOpen={isWithdrawalApprovalOpen}
+                    onClose={() => {
+                        setIsWithdrawalApprovalOpen(false);
+                        setSelectedTxForApproval(null);
+                        fetchTransactions();
+                    }}
+                    transactionId={selectedTxForApproval.id}
+                    userId={String(selectedTxForApproval.user_id)}
+                    email={selectedTxForApproval.user?.email || selectedTxForApproval.customer_email || selectedTxForApproval.customerEmail || ""}
+                    amount={selectedTxForApproval.amount}
+                    currency={selectedTxForApproval.currency}
+                    walletId={String(selectedTxForApproval.wallet_id || "")}
+                    initialStep={withdrawalModalInitialStep}
+                />
+            )}
+
+            {selectedTxForApproval && selectedTxForApproval.transaction_type === "WITHDRAWAL" && (
+                <RejectWithdrawalModal
+                    isOpen={isWithdrawalRejectionOpen}
+                    onClose={() => {
+                        setIsWithdrawalRejectionOpen(false);
+                        setSelectedTxForApproval(null);
+                        fetchTransactions();
+                    }}
+                    transactionId={selectedTxForApproval.id}
+                    email={selectedTxForApproval.user?.email || selectedTxForApproval.customer_email || selectedTxForApproval.customerEmail || ""}
+                    amount={selectedTxForApproval.amount}
+                    currency={selectedTxForApproval.currency}
+                    walletId={String(selectedTxForApproval.wallet_id || "")}
+                />
             )}
         </div>
     );
