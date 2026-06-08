@@ -6,12 +6,14 @@ import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import Grid from "@mui/material/Grid2";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/src/components/ui/skeleton";
 import BreadCrumb from "@/src/components/breadcrumb";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { formatDate } from "@/src/lib/utils";
+import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
 
 interface MentorshipUser {
     first_name?: string;
@@ -113,7 +115,9 @@ function AgentCard({ label, user, tier }: { label: string; user?: MentorshipUser
 export default function MentorshipDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const { user } = useAuth();
     const id     = String(params?.id ?? "");
+    const isAgent = user?.role === UserRole.AGENT;
 
     const [mentorship, setMentorship] = useState<Mentorship | null>(null);
     const [isLoading, setIsLoading]   = useState(false);
@@ -129,7 +133,10 @@ export default function MentorshipDetailPage() {
         if (!id) return;
         setIsLoading(true);
         try {
-            const response = await axiosRequest.get(API_ROUTES.network.mentorships.details(id));
+            const endpoint = isAgent
+                ? API_ROUTES.network.myMentorshipDetails(id)
+                : API_ROUTES.network.mentorships.details(id);
+            const response = await axiosRequest.get(endpoint);
             const data: Mentorship = response?.data?.data ?? response?.data;
             setMentorship(data);
             setEditStatus(data.status);
@@ -191,7 +198,7 @@ export default function MentorshipDetailPage() {
             <div className="mt-0">
                 <div className="flex justify-between items-center mb-[50px] mt-[10px]">
                     <h3 className="font-semibold">Mentorship Details</h3>
-                    {!isEditing && (
+                    {!isEditing && !isAgent && (
                         <button
                             onClick={() => setIsEditing(true)}
                             disabled={isLoading || !mentorship}

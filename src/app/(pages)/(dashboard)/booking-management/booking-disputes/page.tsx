@@ -1,10 +1,6 @@
-import BookingsTable from "@/src/components/booking-mgt/tables/bookings";
+import DisputesView from "@/src/components/disputes/DisputesView";
 
 export default function BookingDisputesPage() {
-    return (
-        <h2 className="">
-            <BookingsTable />
-        </h2>
-    );
+    return <DisputesView />;
 }
   

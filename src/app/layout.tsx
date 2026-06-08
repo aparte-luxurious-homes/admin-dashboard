@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import Loader from "@/src/components/loader";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import AnalyticsProvider from "@/components/analytics/analytics-provider";
 
 export const metadata: Metadata = {
   title: "Aparte Admin",
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`antialiased w-full`}
+        suppressHydrationWarning
       >
         <Providers>
           <Suspense fallback={<Loader />}>
@@ -29,6 +31,8 @@ export default function RootLayout({
         </Providers>
         <Analytics />
         <SpeedInsights />
+        {/* GA4 + Microsoft Clarity — consent-gated, production-only */}
+        <AnalyticsProvider />
       </body>
     </html>
   );

@@ -1,0 +1,10 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 31 7" width="31" height="7">
+	<style>
+		tspan { white-space:pre } 
+		.t0 { font-size: 24px;fill: #f4f4f4;font-weight: 400;font-family: "DejaVuSans", "DejaVu Sans" } 
+	</style>
+	<text id="AGENT" style="transform: matrix(.316,0,0,.316,3,5.684)">
+		<tspan x="0" y="0" class="t0">A</tspan><tspan  y="0" class="t0">G</tspan><tspan  y="0" class="t0">E</tspan><tspan  y="0" class="t0">N</tspan><tspan  y="0" class="t0">T
+</tspan>
+	</text>
+</svg>

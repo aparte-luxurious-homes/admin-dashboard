@@ -33,3 +33,14 @@ export interface PermissionSeedResponse {
     };
     role_assignments: Record<string, number | string>;
 }
+
+export interface PermissionCreatePayload {
+    name: string;
+    description?: string | null;
+    resource: string;
+    action: string;
+}
+
+export interface PermissionUpdatePayload {
+    description?: string | null;
+}
