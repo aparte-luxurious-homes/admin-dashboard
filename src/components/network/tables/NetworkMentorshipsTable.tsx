@@ -48,12 +48,26 @@ interface Mentorship {
 
 interface Agent {
     id: string;
+<<<<<<< HEAD
     email?: string | null;
     first_name?: string | null;
     last_name?: string | null;
     firstName?: string | null;
     lastName?: string | null;
     profile?: { first_name?: string | null; last_name?: string | null; firstName?: string | null; lastName?: string | null; email?: string | null };
+=======
+    first_name?: string;
+    last_name?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    profile?: {
+        first_name?: string;
+        last_name?: string;
+        firstName?: string;
+        lastName?: string;
+    };
+>>>>>>> 0314e6133b7c7f52cf4889d851584a58a712b7c5
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
@@ -82,7 +96,14 @@ function agentEmail(agent: Agent): string {
 }
 
 function agentDisplayName(agent: Agent): string {
+<<<<<<< HEAD
     return agentFullName(agent) || agentEmail(agent) || agent.id;
+=======
+    const firstName = agent.firstName ?? agent.first_name ?? agent.profile?.firstName ?? agent.profile?.first_name;
+    const lastName  = agent.lastName  ?? agent.last_name  ?? agent.profile?.lastName  ?? agent.profile?.last_name;
+    const name = [firstName, lastName].filter(Boolean).join(" ");
+    return name || agent.email || agent.id;
+>>>>>>> 0314e6133b7c7f52cf4889d851584a58a712b7c5
 }
 
 export default function NetworkMentorshipsTable() {

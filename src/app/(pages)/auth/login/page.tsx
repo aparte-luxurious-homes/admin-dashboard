@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Button from "@/src/components/button";
 import InputGroup from "../../../../components/formcomponent/InputGroup";
 import Image from "next/image";
-import AparteeText from "../../../../../public/svg/logo_text_white.svg";
+import Link from "next/link";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from "react-hot-toast";
 import Cookies from "js-cookie";
@@ -19,6 +19,7 @@ import Loader from "@/src/components/loader";
 import { UserRole } from "@/src/lib/enums";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import useValidator from "@/src/hooks/useValidator";
+import PhoneOtpModal from "@/src/components/auth/PhoneOtpModal";
 
 export default function Login() {
   const { mutate: loginMutation, isPending } = useLogin();
@@ -27,6 +28,7 @@ export default function Login() {
   const [validator, triggerValidation] = useValidator();
   const [passwordType, setPasswordType] = useState<string>("password");
   const [isTokenAuthenticating, setIsTokenAuthenticating] = useState(false);
+  const [phoneOtpPhone, setPhoneOtpPhone] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
@@ -112,6 +114,19 @@ export default function Login() {
         { email, password },
         {
           onError: (error: any) => {
+            // Phone verification gate: backend returns 401 with detail.code so
+            // the frontend can step the user through SMS-OTP entry instead of
+            // dead-ending on a generic toast.
+            const detail = error?.response?.data?.detail;
+            if (detail && typeof detail === "object" && detail.code === "PHONE_VERIFICATION_REQUIRED" && detail.phone) {
+              toast(detail.message || "Phone verification required.", {
+                icon: "📱",
+                duration: 4000,
+              });
+              setPhoneOtpPhone(detail.phone as string);
+              return;
+            }
+
             const errorMessage = error?.response?.data?.message ||
               (error.message?.includes('Access Denied') ? error.message : 'Login failed. Please check your credentials.');
 
@@ -192,21 +207,30 @@ export default function Login() {
             />
             {validator.message("email", email, "required|email")}
           </div>
-          <div>
+          <div className="relative">
             <InputGroup
               label="Password"
               required
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value.replace(/\s/g, ''))}
               inputType={passwordType}
               inputName="password"
+              inputClassName="pr-10"
             />
-            <div className="w-[26px] relative top-[-32px] ml-auto">
+            <button
+              type="button"
+              className="absolute right-3 top-10 flex h-9 w-9 items-center justify-center rounded-full text-[#101928] hover:text-[#124452]"
+              onClick={togglePassword}
+              aria-label={passwordType === "password" ? "Show password" : "Hide password"}
+            >
               {passwordType === "password" ? (
-                <Icon icon="mdi:eye-outline" className="text-black" onClick={togglePassword} />
+                <Icon icon="mdi:eye-outline" />
               ) : (
-                <Icon icon="f7:eye-slash" className="text-black" onClick={togglePassword} />
+                <Icon icon="f7:eye-slash" />
               )}
-            </div>
+            </button>
+            <Link href={PAGE_ROUTES.auth.passwordReset} className="text-xs text-[#124452] hover:underline mt-2 inline-block">
+              Forgot Password?
+            </Link>
             {validator.message("password", password, "required|min:6")}
           </div>
           <div className="mt-2 flex justify-center">
@@ -223,6 +247,12 @@ export default function Login() {
           </div>
         </form>
       </main>
+
+      <PhoneOtpModal
+        isOpen={!!phoneOtpPhone}
+        phone={phoneOtpPhone || ""}
+        onClose={() => setPhoneOtpPhone(null)}
+      />
     </div>
   );
 }

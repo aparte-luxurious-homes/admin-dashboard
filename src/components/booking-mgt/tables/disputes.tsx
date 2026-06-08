@@ -34,7 +34,7 @@ export default function VerificationsTable() {
             Icon: <LuEye />,
             onClick: () => {
                 router.push(
-                    PAGE_ROUTES.dashboard.propertyManagement.manageVerifications.details(1)
+                    PAGE_ROUTES.dashboard.propertyManagement.manageVerifications.base
                 )
                 setSelectedRow(0)
             },

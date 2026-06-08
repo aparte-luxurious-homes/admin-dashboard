@@ -47,13 +47,24 @@ export function formatDateToYYYYMMDD(dateString: string): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getDayDifference(date1: string, date2: string): number {
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
-  console.log(Math.abs(Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))))
-  return Math.abs(Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
+export function getDayDifference(date1: Date | string | null | undefined, date2: Date | string | null | undefined): number {
+  // Handle null/undefined inputs
+  if (!date1 || !date2) return 0;
+  
+  try {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    
+    const diffTime = Math.abs(d2.getTime() - d1.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    console.log('Day difference:', diffDays);
+    return diffDays;
+  } catch (error) {
+    console.error('Error calculating day difference:', error);
+    return 0;
+  }
 }
-
 
 export async function downloadScreenAsPDF({ name, element }: { name: string; element: RefObject<HTMLDivElement | null> }) {
   if (!element.current) return;
