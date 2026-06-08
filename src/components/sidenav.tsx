@@ -69,45 +69,6 @@ export default function SideNav({
                 onClick={() => !link.secondary && handleNavigation(link.link)}
                 className={`flex items-center gap-4 pt-3 pb-2 pl-3 xl:pl-6 rounded-md transition-colors
                                  hover:bg-white/10 focus:bg-white/10 active:bg-white/20 min-h-[48px]
-<<<<<<< HEAD
-                                 ${!link.secondary && route === '/' && link.name === 'Dashboard' && 'bg-white/10'}`}>
-                                {link.icon}
-                                <p className="text-base flex items-center pr-8 text-white/95">
-                                    {link.name}
-                                </p>
-                            </div>
-                        </div>
-                        {
-                            link.secondary &&
-                            <ArrowIcon
-                                className={`absolute top-[36%] right-4 transition-all ease-in-out ${open ? 'rotate-[90deg]' : 'rotate-[270deg]'} `}
-                                color="white"
-                            />
-                        }
-                    </div>
-                    <div className={`flex flex-col w-full transition-all ease-in-out duration-150 ${open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                        {
-                            link.secondary &&
-                            link.children?.map((child, index) =>
-                                child.allow.includes(role) ?
-                                    <Link
-                                        key={index}
-                                        href={child.link}
-                                        onClick={() => onNavigate?.()}
-                                        className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] py-2 rounded-md transition-colors
-                                     hover:bg-white/10 active:bg-white/20 min-h-[44px] ${getPathName(route, child.pathName) && 'bg-white/10'}`}>
-                                        <p className="text-[14px] text-white/90">
-                                            {child.name}
-                                        </p>
-                                    </Link>
-                                    :
-                                    null
-                            )
-                        }
-                    </div>
-                </div>
-            }
-=======
                                  ${!link.secondary && route === "/" && link.name === "Dashboard" && "bg-white/10"}`}
               >
                 {link.icon}
@@ -146,7 +107,6 @@ export default function SideNav({
                 ) : null,
               )}
           </div>
->>>>>>> 0314e6133b7c7f52cf4889d851584a58a712b7c5
         </div>
       }
     </div>

@@ -42,11 +42,7 @@ interface ActionButton {
 interface Agent {
     id: string;
     email?: string | null;
-<<<<<<< HEAD
     profile?: { first_name?: string | null; last_name?: string | null; firstName?: string | null; lastName?: string | null; email?: string | null };
-=======
-    profile?: { first_name?: string | null; last_name?: string | null; firstName?: string | null; lastName?: string | null };
->>>>>>> 0314e6133b7c7f52cf4889d851584a58a712b7c5
     first_name?: string | null;
     last_name?: string | null;
     firstName?: string | null;
