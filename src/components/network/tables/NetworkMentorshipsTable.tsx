@@ -50,7 +50,15 @@ interface Agent {
     id: string;
     first_name?: string;
     last_name?: string;
+    firstName?: string;
+    lastName?: string;
     email?: string;
+    profile?: {
+        first_name?: string;
+        last_name?: string;
+        firstName?: string;
+        lastName?: string;
+    };
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
@@ -69,7 +77,9 @@ function fullName(user?: MentorshipUser, fallback?: string): string {
 }
 
 function agentDisplayName(agent: Agent): string {
-    const name = [agent.first_name, agent.last_name].filter(Boolean).join(" ");
+    const firstName = agent.firstName ?? agent.first_name ?? agent.profile?.firstName ?? agent.profile?.first_name;
+    const lastName  = agent.lastName  ?? agent.last_name  ?? agent.profile?.lastName  ?? agent.profile?.last_name;
+    const name = [firstName, lastName].filter(Boolean).join(" ");
     return name || agent.email || agent.id;
 }
 
