@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/src/hooks/useAuth";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -55,7 +56,7 @@ interface ZoneAssignment {
         type: string;
         status?: string;
         parent_zone_id?: string | null;
-        parent_zone?: { name: string; type: string } | null;
+        parent_zone?: { id: string; name: string; type: string } | null;
         resolver_config?: {
             city?: string;
             state?: string;
@@ -105,6 +106,7 @@ export default function ZoneAssignmentDetailPage() {
 
     const [assignment, setAssignment] = useState<ZoneAssignment | null>(null);
     const [isLoading, setIsLoading]   = useState(false);
+    const [parentZoneData, setParentZoneData] = useState<{ id: string; name: string; type: string } | null>(null);
 
     const [isEditing, setIsEditing]             = useState(searchParams.get("edit") === "true");
     const [editRate, setEditRate]               = useState(0);
@@ -137,6 +139,23 @@ export default function ZoneAssignmentDetailPage() {
     }, [id]);
 
     useEffect(() => { fetchAssignment(); }, [fetchAssignment]);
+
+    // Fetch parent zone details when the API only returns parent_zone_id without the embedded object
+    useEffect(() => {
+        const pid = assignment?.zone?.parent_zone_id;
+        if (!pid) { setParentZoneData(null); return; }
+        // If the embedded parent_zone object is already present, use it directly
+        if (assignment?.zone?.parent_zone) {
+            setParentZoneData(assignment.zone.parent_zone);
+            return;
+        }
+        axiosRequest.get(API_ROUTES.network.configs.zones.details(pid))
+            .then((res) => {
+                const z = res?.data?.data ?? res?.data;
+                if (z?.id) setParentZoneData({ id: z.id, name: z.name, type: z.type });
+            })
+            .catch(() => { /* non-critical */ });
+    }, [assignment?.zone?.parent_zone_id, assignment?.zone?.parent_zone]);
 
     const handleSave = async () => {
         if (!assignment) return;
@@ -411,14 +430,26 @@ export default function ZoneAssignmentDetailPage() {
                                                 </div>
                                             )}
 
-                                            {(zone.parent_zone || zone.parent_zone_id) && (
+                                            {zone.parent_zone_id && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Parent Zone</p>
-                                                    <p className="text-sm font-medium text-gray-900">
-                                                        {zone.parent_zone
-                                                            ? `${zone.parent_zone.name} (${zone.parent_zone.type})`
-                                                            : zone.parent_zone_id}
-                                                    </p>
+                                                    {parentZoneData ? (
+                                                        isAdmin ? (
+                                                            <Link
+                                                                href={PAGE_ROUTES.dashboard.network.zones.details(parentZoneData.id)}
+                                                                className="inline-flex items-center gap-1 text-primary hover:underline font-medium text-sm"
+                                                            >
+                                                                {parentZoneData.name}
+                                                                <span className="text-xs font-normal text-gray-500">({parentZoneData.type})</span>
+                                                            </Link>
+                                                        ) : (
+                                                            <p className="text-sm font-medium text-gray-900">
+                                                                {parentZoneData.name} <span className="text-gray-500">({parentZoneData.type})</span>
+                                                            </p>
+                                                        )
+                                                    ) : (
+                                                        <p className="text-xs text-gray-400 font-mono">{zone.parent_zone_id}</p>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

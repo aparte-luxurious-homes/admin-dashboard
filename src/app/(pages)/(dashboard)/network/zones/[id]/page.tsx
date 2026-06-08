@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
@@ -381,9 +382,21 @@ export default function ZoneDetailPage() {
                                                     <option key={z.id} value={z.id}>{z.name} ({z.type})</option>
                                                 ))}
                                             </select>
-                                        ) : (
-                                            <p className="text-sm font-medium text-gray-900">{parentLabel(zone)}</p>
-                                        )}
+                                        ) : (() => {
+                                            const parent = zone.parent_zone ?? allZones.find((a) => a.id === zone.parent_zone_id);
+                                            const fallbackId = zone.parent_zone?.id ?? zone.parent_zone_id;
+                                            if (!fallbackId) return <p className="text-sm font-medium text-gray-400">—</p>;
+                                            if (!parent) return <p className="text-sm font-medium text-gray-400 text-xs font-mono">{fallbackId}</p>;
+                                            return (
+                                                <Link
+                                                    href={PAGE_ROUTES.dashboard.network.zones.details(parent.id)}
+                                                    className="inline-flex items-center gap-1 text-primary hover:underline font-medium text-sm"
+                                                >
+                                                    {parent.name}
+                                                    <span className="text-xs font-normal text-gray-500">({parent.type})</span>
+                                                </Link>
+                                            );
+                                        })()}
                                     </div>
 
                                     {/* Created At + Last Updated — always side by side */}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
@@ -207,10 +208,20 @@ export default function NetworkZonesTable() {
         }
     };
 
-    const parentName = (id?: string | null) => {
-        if (!id) return "—";
-        const z = allZones.find((z) => z.id === id);
-        return z ? `${z.name} (${z.type})` : id;
+    const parentZoneLink = (id?: string | null) => {
+        if (!id) return <span className="text-gray-400">—</span>;
+        const z = allZones.find((a) => a.id === id);
+        if (!z) return <span className="text-gray-400 text-xs font-mono">{id}</span>;
+        return (
+            <Link
+                href={PAGE_ROUTES.dashboard.network.zones.details(z.id)}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
+            >
+                {z.name}
+                <span className="text-xs font-normal text-gray-500">({z.type})</span>
+            </Link>
+        );
     };
 
     const contextZone = selectedRow !== null ? zones[selectedRow] : null;
@@ -278,7 +289,7 @@ export default function NetworkZonesTable() {
                                     <tr key={zone.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => router.push(PAGE_ROUTES.dashboard.network.zones.details(zone.id))}>
                                         <td className="px-6 py-4 text-sm font-medium text-gray-900">{zone.name}</td>
                                         <td className="px-6 py-4"><TypeBadge type={zone.type} /></td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">{parentName(zone.parent_zone_id)}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">{parentZoneLink(zone.parent_zone_id)}</td>
                                         <td className="px-6 py-4 text-sm text-gray-600">{zone.updated_at ? formatDate(zone.updated_at) : "—"}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end" onClick={(e) => handleDotsClick(e, index)}>
@@ -347,7 +358,7 @@ export default function NetworkZonesTable() {
                                     </span>
                                 ) : <p className="text-sm text-gray-400">—</p>}
                             </div>
-                            <div className="space-y-1"><p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Parent Zone</p><p className="text-sm text-gray-700">{parentName(viewZone.parent_zone_id)}</p></div>
+                            <div className="space-y-1"><p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Parent Zone</p><div className="text-sm">{parentZoneLink(viewZone.parent_zone_id)}</div></div>
                             {viewZone.resolver_config && (
                                 <div className="space-y-1">
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Resolver Config</p>
