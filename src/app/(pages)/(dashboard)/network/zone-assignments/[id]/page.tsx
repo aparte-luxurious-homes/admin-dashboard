@@ -86,6 +86,12 @@ const ZONE_TYPE_CONFIG: Record<string, { bg: string; text: string; border: strin
 
 const ASSIGNMENT_STATUSES: AssignmentStatus[] = ["ACTIVE", "SUSPENDED", "ENDED", "EXPIRED"];
 
+const TIER_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
+    BRONZE: { label: "Bronze", color: "text-amber-700",  bg: "bg-amber-50",   border: "border-amber-300",  icon: "solar:medal-ribbons-star-bold-duotone" },
+    SILVER: { label: "Silver", color: "text-slate-600",  bg: "bg-slate-100",  border: "border-slate-300",  icon: "solar:medal-ribbons-star-bold-duotone" },
+    GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50",  border: "border-yellow-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+};
+
 function agentDisplayName(user?: ZoneAssignment["user"]): string {
     const first = user?.first_name ?? "";
     const last  = user?.last_name  ?? "";
@@ -107,6 +113,7 @@ export default function ZoneAssignmentDetailPage() {
     const [assignment, setAssignment] = useState<ZoneAssignment | null>(null);
     const [isLoading, setIsLoading]   = useState(false);
     const [parentZoneData, setParentZoneData] = useState<{ id: string; name: string; type: string } | null>(null);
+    const [agentTier, setAgentTier] = useState<string | null>(null);
 
     const [isEditing, setIsEditing]             = useState(searchParams.get("edit") === "true");
     const [editRate, setEditRate]               = useState(0);
@@ -156,6 +163,16 @@ export default function ZoneAssignmentDetailPage() {
             })
             .catch(() => { /* non-critical */ });
     }, [assignment?.zone?.parent_zone_id, assignment?.zone?.parent_zone]);
+
+    useEffect(() => {
+        if (!isAdmin || !assignment?.user_id) { setAgentTier(null); return; }
+        axiosRequest.get(API_ROUTES.network.agents.tier(assignment.user_id))
+            .then((res) => {
+                const d = res?.data?.data ?? res?.data;
+                setAgentTier(d?.current_tier ?? null);
+            })
+            .catch(() => { /* non-critical */ });
+    }, [isAdmin, assignment?.user_id]);
 
     const handleSave = async () => {
         if (!assignment) return;
@@ -249,11 +266,20 @@ export default function ZoneAssignmentDetailPage() {
                         {/* Agent Card — admin only */}
                         {isAdmin && (
                         <Grid size={{ xs: 12 }}>
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                    <Icon icon="solar:user-bold-duotone" width="20" />
+                            <div className="flex items-center justify-between gap-2 mb-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                        <Icon icon="solar:user-bold-duotone" width="20" />
+                                    </div>
+                                    <h4 className="text-lg font-bold text-gray-800">Agent</h4>
                                 </div>
-                                <h4 className="text-lg font-bold text-gray-800">Agent</h4>
+                                <Link
+                                    href={`/user-management/agents/${assignment.user_id}`}
+                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors"
+                                >
+                                    <Icon icon="mdi:open-in-new" width="13" />
+                                    View Profile
+                                </Link>
                             </div>
                             <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
                                 <div className="flex items-center gap-4">
@@ -267,7 +293,18 @@ export default function ZoneAssignmentDetailPage() {
                                         )}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-semibold text-gray-900">{agentDisplayName(user)}</p>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="text-sm font-semibold text-gray-900">{agentDisplayName(user)}</p>
+                                            {agentTier && TIER_CONFIG[agentTier] && (() => {
+                                                const tc = TIER_CONFIG[agentTier];
+                                                return (
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${tc.bg} ${tc.color} ${tc.border}`}>
+                                                        <Icon icon={tc.icon} width="11" />
+                                                        {tc.label}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
                                         {user?.email && <p className="text-xs text-gray-500 mt-0.5">{user.email}</p>}
                                         {user?.phone && <p className="text-xs text-gray-400 mt-0.5">{user.phone}</p>}
                                     </div>

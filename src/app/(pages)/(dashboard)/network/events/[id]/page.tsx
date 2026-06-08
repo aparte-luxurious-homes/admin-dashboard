@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
@@ -61,6 +62,12 @@ interface AgentUser {
     kycStatus?: string;
 }
 
+const TIER_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+    BRONZE: { label: "Bronze", color: "text-amber-700",  bg: "bg-amber-50",  border: "border-amber-300"  },
+    SILVER: { label: "Silver", color: "text-slate-600",  bg: "bg-slate-100", border: "border-slate-300"  },
+    GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-300" },
+};
+
 const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string }> = {
     CONFIRMED: { bg: "bg-green-50",  text: "text-green-700",  border: "border-green-200" },
     PENDING:   { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
@@ -106,6 +113,7 @@ export default function NetworkEventDetail() {
 
     const [event, setEvent]           = useState<NetworkEvent | null>(null);
     const [agent, setAgent]           = useState<AgentUser | null>(null);
+    const [agentTier, setAgentTier]   = useState<string | null>(null);
     const [eventLoading, setEventLoading] = useState(false);
     const [agentLoading, setAgentLoading] = useState(false);
 
@@ -148,6 +156,16 @@ export default function NetworkEventDetail() {
     useEffect(() => {
         if (event?.agent_id) fetchAgent(event.agent_id);
     }, [event?.agent_id, fetchAgent]);
+
+    useEffect(() => {
+        if (!event?.agent_id) { setAgentTier(null); return; }
+        axiosRequest.get(API_ROUTES.network.agents.tier(event.agent_id))
+            .then((res) => {
+                const d = res?.data?.data ?? res?.data;
+                setAgentTier(d?.current_tier ?? null);
+            })
+            .catch(() => { /* non-critical */ });
+    }, [event?.agent_id]);
 
     const handleSave = async () => {
         if (!event) return;
@@ -224,11 +242,22 @@ export default function NetworkEventDetail() {
 
                         {/* Agent Card */}
                         <Grid size={{ xs: 12 }}>
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                    <Icon icon="solar:user-bold-duotone" width="20" />
+                            <div className="flex items-center justify-between gap-2 mb-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                        <Icon icon="solar:user-bold-duotone" width="20" />
+                                    </div>
+                                    <h4 className="text-lg font-bold text-gray-800">Agent</h4>
                                 </div>
-                                <h4 className="text-lg font-bold text-gray-800">Agent</h4>
+                                {agent?.id && (
+                                    <Link
+                                        href={`/user-management/agents/${agent.id}`}
+                                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors"
+                                    >
+                                        <Icon icon="mdi:open-in-new" width="13" />
+                                        View Profile
+                                    </Link>
+                                )}
                             </div>
                             {agentLoading ? (
                                 <Skeleton className="h-[100px] w-full rounded-2xl" />
@@ -250,7 +279,18 @@ export default function NetworkEventDetail() {
                                             )}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-semibold text-gray-900">{agent ? getAgentName(agent) : "--/--"}</p>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="text-sm font-semibold text-gray-900">{agent ? getAgentName(agent) : "--/--"}</p>
+                                                {agentTier && TIER_CONFIG[agentTier] && (() => {
+                                                    const tc = TIER_CONFIG[agentTier];
+                                                    return (
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${tc.bg} ${tc.color} ${tc.border}`}>
+                                                            <Icon icon="solar:medal-ribbons-star-bold-duotone" width="11" />
+                                                            {tc.label}
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </div>
                                             <p className="text-xs text-gray-500">{agent?.email || "--/--"}</p>
                                         </div>
                                     </div>
