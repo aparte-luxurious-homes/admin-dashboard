@@ -191,6 +191,15 @@ export const API_ROUTES = {
         stats: '/referrals/stats',
         list: '/referrals/list',
     },
+    reports: {
+        statements: {
+            base: '/reports/me/statements',
+            download: (year: string | number, month: string | number) => `/reports/me/statements/${year}/${month}/download`,
+        },
+        bookings: {
+            export: '/reports/bookings/export',
+        }
+    }
 };
 
 
