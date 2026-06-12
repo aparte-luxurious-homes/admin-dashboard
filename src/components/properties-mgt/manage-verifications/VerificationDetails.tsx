@@ -445,12 +445,15 @@ export default function VerificationDetails({
         { id: 'activity',  label: 'Activity', icon: 'mdi:history' },
     ];
 
+    const isVerificationAdmin =
+        user?.role === UserRole.ADMIN ||
+        user?.role === UserRole.SUPER_ADMIN ||
+        user?.role === UserRole.OPERATIONS_ADMIN;
     const canApprove =
-        verification?.status === PropertyVerificationStatus.PENDING &&
-        (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN);
+        verification?.status === PropertyVerificationStatus.PENDING && isVerificationAdmin;
     const canReject =
         verification?.status !== PropertyVerificationStatus.REJECTED &&
-        (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.AGENT);
+        (isVerificationAdmin || user?.role === UserRole.AGENT);
     const canReassign = user?.role !== UserRole.OWNER && user?.role !== UserRole.AGENT;
     const canVerifyAsAgent =
         verification?.status === PropertyVerificationStatus.PENDING && user?.role === UserRole.AGENT;
@@ -905,7 +908,7 @@ export default function VerificationDetails({
                 <section className='w-full px-4 sm:px-6 md:px-8 lg:px-10 pt-6 pb-4 sm:pb-5'>
                     <div className='flex items-baseline justify-between mb-2'>
                         <p className="text-sm sm:text-base font-medium text-zinc-900">Property Documents</p>
-                        {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && (
+                        {isVerificationAdmin && (
                             <p className='text-xs text-zinc-500'>Click the buttons on each card to approve or reject.</p>
                         )}
                     </div>
@@ -916,7 +919,7 @@ export default function VerificationDetails({
                                 const docStatus = String(doc.status || 'PENDING');
                                 const isMutatingThis = docUpdating && docMutatingId === docId;
                                 const canActOnDoc =
-                                    (user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) &&
+                                    isVerificationAdmin &&
                                     verification?.status !== PropertyVerificationStatus.REJECTED;
                                 return (
                                     <div key={index} className="p-4 bg-background/70 rounded-xl border border-zinc-100">
@@ -1323,7 +1326,7 @@ export default function VerificationDetails({
 
                         {/* Override toggles — visible only to admins, with a clear
                             warning when toggled on. */}
-                        {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN) && (
+                        {isVerificationAdmin && (
                             <div className='rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2'>
                                 <p className='text-sm font-semibold text-amber-900 flex items-center gap-1.5'>
                                     Bypass requirements (use with care)
