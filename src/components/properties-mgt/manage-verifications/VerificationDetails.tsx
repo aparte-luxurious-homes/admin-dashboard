@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import { IoLocationOutline } from 'react-icons/io5';
-import { formatDate } from '@/src/lib/utils';
+import { formatDate, maskId } from '@/src/lib/utils';
 import { VerificationBadge } from '../../badge';
 import { CalendarIcon } from '../../icons';
 import { IProperty, IPropertyVerification, PropertyVerificationStatus } from '../types';
@@ -862,11 +862,11 @@ export default function VerificationDetails({
                                 </div>
                                 <div>
                                     <p className="text-xs text-zinc-500 mb-1">BVN</p>
-                                    <p className="text-sm font-medium text-zinc-800">{property.owner.profile.bvn || 'Not provided'}</p>
+                                    <p data-clarity-mask="true" className="text-sm font-medium text-zinc-800">{property.owner.profile.bvn ? maskId(property.owner.profile.bvn) : 'Not provided'}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-zinc-500 mb-1">NIN</p>
-                                    <p className="text-sm font-medium text-zinc-800">{property.owner.profile.nin || 'Not provided'}</p>
+                                    <p data-clarity-mask="true" className="text-sm font-medium text-zinc-800">{property.owner.profile.nin ? maskId(property.owner.profile.nin) : 'Not provided'}</p>
                                 </div>
                                 {property.owner.profile.kycProvider && (
                                     <div>
