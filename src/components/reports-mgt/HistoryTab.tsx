@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { GetStatements, downloadReportFile } from "@/src/lib/request-handlers/reportsMgt";
+import { GetStatements, requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import toast from "react-hot-toast";
-import { FiDownload } from "react-icons/fi";
+import { FiDownload, FiExternalLink } from "react-icons/fi";
 import { format } from "date-fns";
 import TablePagination from "@/src/components/TablePagination";
 import Spinner from "@/src/components/ui/Spinner";
@@ -17,12 +17,13 @@ interface IStatement {
     bookings_count?: number;
     gross_revenue?: number;
     net_to_wallet?: number;
+    google_cloud_link?: string;
 }
 
-export default function StatementsTab() {
+export default function HistoryTab() {
     const { data: statementsData, isLoading, error } = GetStatements();
     const statements: IStatement[] = statementsData?.data?.data || [];
-    
+
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
     const [page, setPage] = useState(0);
@@ -42,13 +43,8 @@ export default function StatementsTab() {
         try {
             setDownloadingId(id);
             const url = API_ROUTES.reports.statements.download(year, month);
-            
-            // Format month name for filename
-            const date = new Date(year, month - 1);
-            const monthName = format(date, "MMMM");
-            const filename = `Statement_${monthName}_${year}.${formatType}`;
-            
-            await downloadReportFile(url, formatType, filename);
+
+            await requestReportDownload(url, formatType);
             toast.success(`${formatType.toUpperCase()} downloaded successfully`);
         } catch (err: any) {
             console.error("Download failed:", err);
@@ -66,7 +62,7 @@ export default function StatementsTab() {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex justify-between items-center mb-4">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800">Past Statements</h2>
+                        <h2 className="text-xl font-bold text-gray-800">History</h2>
                         <p className="text-sm text-gray-500">Download statements for any past month.</p>
                     </div>
                 </div>
@@ -76,7 +72,7 @@ export default function StatementsTab() {
                         <Spinner className="w-8 h-8 text-primary" />
                     </div>
                 ) : error ? (
-                    <div className="text-red-500 py-4">Failed to load statements. Please try again later.</div>
+                    <div className="text-red-500 py-4">Failed to load history. Please try again later.</div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm whitespace-nowrap">
@@ -94,23 +90,22 @@ export default function StatementsTab() {
                                         const date = new Date(stmt.year, stmt.month - 1);
                                         const monthYear = format(date, "MMMM yyyy");
                                         const deliveredDate = stmt.delivered_at ? format(new Date(stmt.delivered_at), "d MMM yyyy, hh:mm a") : "—";
-                                        
+
                                         return (
                                             <tr key={`${stmt.year}-${stmt.month}-${index}`} className="hover:bg-gray-50/50 transition-colors">
                                                 <td className="px-6 py-4 font-medium text-gray-900">{monthYear}</td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                                                        stmt.status === 'DELIVERED' ? 'bg-green-100 text-green-700' : 
-                                                        stmt.status === 'FAILED' ? 'bg-red-100 text-red-700' : 
-                                                        'bg-gray-100 text-gray-700'
-                                                    }`}>
+                                                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${stmt.status === 'DELIVERED' ? 'bg-green-100 text-green-700' :
+                                                        stmt.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                                                            'bg-gray-100 text-gray-700'
+                                                        }`}>
                                                         {stmt.status || 'Pending'}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-500">{deliveredDate}</td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-3">
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleDownload(stmt.year, stmt.month, 'pdf')}
                                                             disabled={downloadingId === `${stmt.year}-${stmt.month}-pdf`}
                                                             className="flex items-center gap-1.5 text-primary hover:text-primary/80 disabled:opacity-50 text-sm font-medium transition-colors"
@@ -123,7 +118,7 @@ export default function StatementsTab() {
                                                             PDF
                                                         </button>
                                                         <span className="text-gray-300">|</span>
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleDownload(stmt.year, stmt.month, 'csv')}
                                                             disabled={downloadingId === `${stmt.year}-${stmt.month}-csv`}
                                                             className="flex items-center gap-1.5 text-primary hover:text-primary/80 disabled:opacity-50 text-sm font-medium transition-colors"
@@ -135,6 +130,20 @@ export default function StatementsTab() {
                                                             )}
                                                             CSV
                                                         </button>
+                                                        {stmt.google_cloud_link && (
+                                                            <>
+                                                                <span className="text-gray-300">|</span>
+                                                                <a
+                                                                    href={stmt.google_cloud_link}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                                                                >
+                                                                    <FiExternalLink className="w-4 h-4" />
+                                                                    Open
+                                                                </a>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -149,7 +158,7 @@ export default function StatementsTab() {
                                 )}
                             </tbody>
                         </table>
-                        
+
                         {statements.length > 0 && (
                             <TablePagination
                                 component="div"

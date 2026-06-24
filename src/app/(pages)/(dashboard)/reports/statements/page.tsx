@@ -2,17 +2,17 @@
 
 import React, { useState } from "react";
 import BookingReportsTab from "@/src/components/reports-mgt/BookingReportsTab";
-import StatementsTab from "@/src/components/reports-mgt/StatementsTab";
+import HistoryTab from "@/src/components/reports-mgt/HistoryTab";
 import { InfoIcon } from "lucide-react";
 
-type TabId = 'reports' | 'statements';
+type TabId = 'reports' | 'history';
 
 export default function OwnerReportsPage() {
     const [activeTab, setActiveTab] = useState<TabId>('reports');
 
     const tabs = [
         { id: 'reports', label: 'Booking Reports' },
-        { id: 'statements', label: 'Statements' },
+        { id: 'history', label: 'History' },
     ] as const;
 
     return (
@@ -20,15 +20,15 @@ export default function OwnerReportsPage() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">
-                        {activeTab === 'reports' ? 'Reports' : 'Statements'}
+                        {activeTab === 'reports' ? 'Reports' : 'History'}
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        {activeTab === 'reports' 
+                        {activeTab === 'reports'
                             ? 'Generate and download reports of your bookings. Use filters below to customize your report.'
                             : 'View and download your monthly statements. Statements are automatically generated on the 1st of each month for the previous month\'s activity.'}
                     </p>
                 </div>
-                
+
                 <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors shrink-0">
                     <InfoIcon className="w-4 h-4" />
                     How {activeTab === 'reports' ? 'reports' : 'statements'} work
@@ -46,8 +46,8 @@ export default function OwnerReportsPage() {
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`
                                     whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                                    ${isActive 
-                                        ? 'border-primary text-primary' 
+                                    ${isActive
+                                        ? 'border-primary text-primary'
                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }
                                 `}
@@ -63,8 +63,8 @@ export default function OwnerReportsPage() {
             {/* Tab Content */}
             <div className="mt-4">
                 {activeTab === 'reports' && <BookingReportsTab />}
-                {/* StatementsTab only mounts when activeTab === 'statements', ensuring data isn't fetched prematurely */}
-                {activeTab === 'statements' && <StatementsTab />}
+                {/* HistoryTab only mounts when activeTab === 'history', ensuring data isn't fetched prematurely */}
+                {activeTab === 'history' && <HistoryTab />}
             </div>
         </div>
     );

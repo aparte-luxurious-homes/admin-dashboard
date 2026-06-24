@@ -15,49 +15,22 @@ export function GetStatements() {
 }
 
 /**
- * Utility to download a file from a given URL as a blob
+ * Utility to request a file download from the new GCS-based reporting endpoints
  */
-export async function downloadReportFile(url: string, format: string, defaultFilename: string) {
+export async function requestReportDownload(url: string, format: string) {
     try {
         const response = await axiosRequest.get(url, {
             params: { format },
-            responseType: 'blob', // Important: tells axios to handle binary data
         });
 
-        // Determine content type from response or fallback
-        const contentType = response.headers['content-type'] || 
-                            (format === 'pdf' ? 'application/pdf' : 
-                             format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
-                             'text/csv');
-
-        const blob = new Blob([response.data], { type: contentType });
-        const downloadUrl = window.URL.createObjectURL(blob);
+        const downloadUrl = response.data?.data?.download_url;
         
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        
-        // Try to get filename from content-disposition header if available
-        let filename = defaultFilename;
-        const disposition = response.headers['content-disposition'];
-        if (disposition && disposition.indexOf('attachment') !== -1) {
-            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-            const matches = filenameRegex.exec(disposition);
-            if (matches != null && matches[1]) { 
-                filename = matches[1].replace(/['"]/g, '');
-            }
+        if (!downloadUrl) {
+            throw new Error("Report generated, but download URL is missing.");
         }
-
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
         
-        // Cleanup
-        setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(downloadUrl);
-        }, 100);
-
-        return true;
+        window.open(downloadUrl, '_blank');
+        return downloadUrl;
     } catch (error) {
         console.error("Error downloading file:", error);
         throw error;

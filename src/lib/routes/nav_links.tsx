@@ -273,9 +273,9 @@ export const NAV_LINKS: ILink[] = [
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
             },
             {
-                name: 'Owner Reports',
-                pathName: 'owner-reports',
-                link: PAGE_ROUTES.dashboard.reports.ownerReports,
+                name: 'Statements',
+                pathName: 'statements',
+                link: PAGE_ROUTES.dashboard.reports.statements,
                 allow: [UserRole.OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
         ]

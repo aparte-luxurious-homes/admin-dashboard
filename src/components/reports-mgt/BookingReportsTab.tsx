@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { downloadReportFile } from "@/src/lib/request-handlers/reportsMgt";
+import { requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
 import { GetAllProperties } from "@/src/lib/request-handlers/propertyMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import toast from "react-hot-toast";
@@ -37,10 +37,9 @@ export default function BookingReportsTab() {
             if (paymentMethod) queryParams.append("payment_method", paymentMethod);
             
             const url = `${API_ROUTES.reports.bookings.export}?${queryParams.toString()}`;
-            const filename = `Booking_Report_${new Date().getTime()}.${formatType}`;
             
-            await downloadReportFile(url, formatType, filename);
-            toast.success(`${formatType.toUpperCase()} export downloaded successfully`);
+            await requestReportDownload(url, formatType);
+            toast.success(`${formatType.toUpperCase()} export generated successfully`);
         } catch (err: any) {
             console.error("Export failed:", err);
             const errorMsg = err?.response?.data?.message || err?.message || "Failed to export report";
