@@ -117,6 +117,7 @@ export const PAGE_ROUTES = {
         reports: {
             base: '/reports',
             agentPerformance: '/reports/agent-performance',
+            statements: '/reports/statements',
         },
         wallet: {
             base: '/wallet',

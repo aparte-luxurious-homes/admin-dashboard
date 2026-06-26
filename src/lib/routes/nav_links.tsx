@@ -263,7 +263,7 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'reports',
         link: PAGE_ROUTES.dashboard.reports.agentPerformance,
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST, UserRole.OWNER],
         secondary: true,
         children: [
             {
@@ -271,6 +271,12 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'agent-performance',
                 link: PAGE_ROUTES.dashboard.reports.agentPerformance,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
+            },
+            {
+                name: 'Statements',
+                pathName: 'statements',
+                link: PAGE_ROUTES.dashboard.reports.statements,
+                allow: [UserRole.OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
         ]
     },
