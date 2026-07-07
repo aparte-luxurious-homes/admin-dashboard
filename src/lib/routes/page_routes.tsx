@@ -121,6 +121,10 @@ export const PAGE_ROUTES = {
         },
         wallet: {
             base: '/wallet',
+        },
+        icalManagement: {
+            feeds: '/ical-management/feeds',
+            conflicts: '/ical-management/conflicts',
         }
     }
 }
