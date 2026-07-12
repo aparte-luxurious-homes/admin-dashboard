@@ -1,28 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
-import { GetStatements, requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
+import { GetStatementsHistory, requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import toast from "react-hot-toast";
 import { FiDownload, FiExternalLink } from "react-icons/fi";
 import { format } from "date-fns";
 import TablePagination from "@/src/components/TablePagination";
 import Spinner from "@/src/components/ui/Spinner";
+import { useAuth } from "@/src/hooks/useAuth";
+import { StatementHistoryItem } from "@/src/lib/types";
 
-interface IStatement {
-    year: number;
-    month: number;
-    status: string;
-    delivered_at: string;
-    bookings_count?: number;
-    gross_revenue?: number;
-    net_to_wallet?: number;
-    google_cloud_link?: string;
-}
-
-export default function HistoryTab() {
-    const { data: statementsData, isLoading, error } = GetStatements();
-    const statements: IStatement[] = statementsData?.data?.data || [];
+export default function HistoryTab({ targetOwnerId }: { targetOwnerId?: string }) {
+    const { user } = useAuth();
+    const ownerId = targetOwnerId || user?.id?.toString();
+    const { data: statementsData, isLoading, error } = GetStatementsHistory(ownerId);
+    const statements: StatementHistoryItem[] = statementsData?.data?.data || [];
 
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -39,16 +32,17 @@ export default function HistoryTab() {
     };
 
     const handleDownload = async (year: number, month: number, formatType: 'pdf' | 'csv') => {
+        if (!ownerId) return;
         const id = `${year}-${month}-${formatType}`;
         try {
             setDownloadingId(id);
-            const url = API_ROUTES.reports.statements.download(year, month);
+            const url = API_ROUTES.reports.statements.download(ownerId, year, month);
 
             await requestReportDownload(url, formatType);
             toast.success(`${formatType.toUpperCase()} downloaded successfully`);
         } catch (err: any) {
             console.error("Download failed:", err);
-            const errorMsg = err?.response?.data?.message || err?.message || "Failed to download statement";
+            const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Failed to download statement";
             toast.error(errorMsg);
         } finally {
             setDownloadingId(null);
@@ -68,8 +62,8 @@ export default function HistoryTab() {
                 </div>
 
                 {isLoading ? (
-                    <div className="flex justify-center py-10">
-                        <Spinner className="w-8 h-8 text-primary" />
+                    <div className="flex justify-center py-10 text-primary">
+                        <Spinner width="32" height="32" color="currentColor" />
                     </div>
                 ) : error ? (
                     <div className="text-red-500 py-4">Failed to load history. Please try again later.</div>
@@ -111,7 +105,7 @@ export default function HistoryTab() {
                                                             className="flex items-center gap-1.5 text-primary hover:text-primary/80 disabled:opacity-50 text-sm font-medium transition-colors"
                                                         >
                                                             {downloadingId === `${stmt.year}-${stmt.month}-pdf` ? (
-                                                                <Spinner className="w-4 h-4" />
+                                                                <Spinner width="16" height="16" />
                                                             ) : (
                                                                 <FiDownload className="w-4 h-4" />
                                                             )}
@@ -124,26 +118,12 @@ export default function HistoryTab() {
                                                             className="flex items-center gap-1.5 text-primary hover:text-primary/80 disabled:opacity-50 text-sm font-medium transition-colors"
                                                         >
                                                             {downloadingId === `${stmt.year}-${stmt.month}-csv` ? (
-                                                                <Spinner className="w-4 h-4" />
+                                                                <Spinner width="16" height="16" />
                                                             ) : (
                                                                 <FiDownload className="w-4 h-4" />
                                                             )}
                                                             CSV
                                                         </button>
-                                                        {stmt.google_cloud_link && (
-                                                            <>
-                                                                <span className="text-gray-300">|</span>
-                                                                <a
-                                                                    href={stmt.google_cloud_link}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-                                                                >
-                                                                    <FiExternalLink className="w-4 h-4" />
-                                                                    Open
-                                                                </a>
-                                                            </>
-                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -161,13 +141,10 @@ export default function HistoryTab() {
 
                         {statements.length > 0 && (
                             <TablePagination
-                                component="div"
-                                count={statements.length}
-                                page={page}
-                                onPageChange={handleChangePage}
-                                rowsPerPage={rowsPerPage}
-                                onRowsPerPageChange={handleChangeRowsPerPage}
-                                rowsPerPageOptions={[10, 25, 50]}
+                                total={statements.length}
+                                currentPage={page + 1}
+                                itemsPerPage={rowsPerPage}
+                                setPage={(p) => setPage(p - 1)}
                             />
                         )}
                     </div>

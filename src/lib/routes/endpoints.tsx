@@ -194,8 +194,9 @@ export const API_ROUTES = {
     },
     reports: {
         statements: {
-            base: '/reports/me/statements',
-            download: (year: string | number, month: string | number) => `/reports/me/statements/${year}/${month}/download`,
+            base: (ownerId: string) => `/reports/owners/${ownerId}/statements`,
+            download: (ownerId: string, year: string | number, month: string | number) => `/reports/owners/${ownerId}/statements/${year}/${month}/download`,
+            details: (ownerId: string, year: string | number, month: string | number) => `/reports/owners/${ownerId}/statements/${year}/${month}`,
         },
         bookings: {
             export: '/reports/bookings/export',

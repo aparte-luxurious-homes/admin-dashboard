@@ -10,7 +10,7 @@ import Spinner from "@/src/components/ui/Spinner";
 import { UserRole } from "@/src/lib/enums";
 import { useAuth } from "@/src/hooks/useAuth";
 
-export default function BookingReportsTab() {
+export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: string }) {
     const { user } = useAuth();
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -35,6 +35,7 @@ export default function BookingReportsTab() {
             if (propertyId) queryParams.append("property_id", propertyId);
             if (status) queryParams.append("status", status);
             if (paymentMethod) queryParams.append("payment_method", paymentMethod);
+            if (targetOwnerId) queryParams.append("target_owner_id", targetOwnerId);
             
             const url = `${API_ROUTES.reports.bookings.export}?${queryParams.toString()}`;
             
@@ -42,7 +43,7 @@ export default function BookingReportsTab() {
             toast.success(`${formatType.toUpperCase()} export generated successfully`);
         } catch (err: any) {
             console.error("Export failed:", err);
-            const errorMsg = err?.response?.data?.message || err?.message || "Failed to export report";
+            const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Failed to export report";
             toast.error(errorMsg);
         } finally {
             setExportingFormat(null);
@@ -135,7 +136,7 @@ export default function BookingReportsTab() {
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-700 rounded-md shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'pdf' ? <Spinner className="w-4 h-4 text-red-700" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'pdf' ? <Spinner width="16" height="16" color="currentColor" /> : <FiDownload className="w-4 h-4" />}
                         Export to PDF
                     </button>
                     
@@ -144,7 +145,7 @@ export default function BookingReportsTab() {
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-green-200 text-green-700 rounded-md shadow-sm hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'csv' ? <Spinner className="w-4 h-4 text-green-700" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'csv' ? <Spinner width="16" height="16" color="currentColor" /> : <FiDownload className="w-4 h-4" />}
                         Export to CSV
                     </button>
                     
@@ -153,7 +154,7 @@ export default function BookingReportsTab() {
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-md shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'xlsx' ? <Spinner className="w-4 h-4 text-blue-700" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'xlsx' ? <Spinner width="16" height="16" color="currentColor" /> : <FiDownload className="w-4 h-4" />}
                         Export to Excel (.xlsx)
                     </button>
                 </div>
