@@ -36,7 +36,10 @@ export default function BookingReportsTab() {
             if (status) queryParams.append("status", status);
             if (paymentMethod) queryParams.append("payment_method", paymentMethod);
             
-            const url = `${API_ROUTES.reports.bookings.export}?${queryParams.toString()}`;
+            const baseUrl = user?.role === 'AGENT' 
+                ? API_ROUTES.agents.bookings.export 
+                : API_ROUTES.reports.bookings.export;
+            const url = `${baseUrl}?${queryParams.toString()}`;
             
             await requestReportDownload(url, formatType);
             toast.success(`${formatType.toUpperCase()} export generated successfully`);
@@ -135,7 +138,7 @@ export default function BookingReportsTab() {
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-700 rounded-md shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'pdf' ? <Spinner className="w-4 h-4 text-red-700" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'pdf' ? <Spinner width="16" height="16" color="#b91c1c" /> : <FiDownload className="w-4 h-4" />}
                         Export to PDF
                     </button>
                     
@@ -144,7 +147,7 @@ export default function BookingReportsTab() {
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-green-200 text-green-700 rounded-md shadow-sm hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'csv' ? <Spinner className="w-4 h-4 text-green-700" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'csv' ? <Spinner width="16" height="16" color="#15803d" /> : <FiDownload className="w-4 h-4" />}
                         Export to CSV
                     </button>
                     
@@ -153,7 +156,7 @@ export default function BookingReportsTab() {
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-md shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'xlsx' ? <Spinner className="w-4 h-4 text-blue-700" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'xlsx' ? <Spinner width="16" height="16" color="#1d4ed8" /> : <FiDownload className="w-4 h-4" />}
                         Export to Excel (.xlsx)
                     </button>
                 </div>

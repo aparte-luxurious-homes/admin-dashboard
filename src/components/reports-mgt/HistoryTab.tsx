@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { FiDownload, FiExternalLink } from "react-icons/fi";
 import { format } from "date-fns";
 import TablePagination from "@/src/components/TablePagination";
+import { useAuth } from "@/src/hooks/useAuth";
 import Spinner from "@/src/components/ui/Spinner";
 
 interface IStatement {
@@ -21,7 +22,11 @@ interface IStatement {
 }
 
 export default function HistoryTab() {
-    const { data: statementsData, isLoading, error } = GetStatements();
+    const { user } = useAuth();
+    const isAgent = user?.role === 'AGENT';
+    const userType = isAgent ? 'agent' : 'owner';
+
+    const { data: statementsData, isLoading, error } = GetStatements(userType, user?.id?.toString());
     const statements: IStatement[] = statementsData?.data?.data || [];
 
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -42,7 +47,9 @@ export default function HistoryTab() {
         const id = `${year}-${month}-${formatType}`;
         try {
             setDownloadingId(id);
-            const url = API_ROUTES.reports.statements.download(year, month);
+            const url = isAgent 
+                ? API_ROUTES.agents.statements.download(user!.id.toString(), year, month)
+                : API_ROUTES.reports.statements.download(year, month);
 
             await requestReportDownload(url, formatType);
             toast.success(`${formatType.toUpperCase()} downloaded successfully`);
@@ -69,7 +76,7 @@ export default function HistoryTab() {
 
                 {isLoading ? (
                     <div className="flex justify-center py-10">
-                        <Spinner className="w-8 h-8 text-primary" />
+                        <Spinner width="32" height="32" color="#124452" />
                     </div>
                 ) : error ? (
                     <div className="text-red-500 py-4">Failed to load history. Please try again later.</div>
@@ -107,27 +114,19 @@ export default function HistoryTab() {
                                                     <div className="flex items-center justify-end gap-3">
                                                         <button
                                                             onClick={() => handleDownload(stmt.year, stmt.month, 'pdf')}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
                                                             disabled={downloadingId === `${stmt.year}-${stmt.month}-pdf`}
-                                                            className="flex items-center gap-1.5 text-primary hover:text-primary/80 disabled:opacity-50 text-sm font-medium transition-colors"
                                                         >
-                                                            {downloadingId === `${stmt.year}-${stmt.month}-pdf` ? (
-                                                                <Spinner className="w-4 h-4" />
-                                                            ) : (
-                                                                <FiDownload className="w-4 h-4" />
-                                                            )}
+                                                            {downloadingId === `${stmt.year}-${stmt.month}-pdf` ? <Spinner width="16" height="16" color="#b91c1c" /> : <FiDownload />}
                                                             PDF
                                                         </button>
                                                         <span className="text-gray-300">|</span>
                                                         <button
                                                             onClick={() => handleDownload(stmt.year, stmt.month, 'csv')}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors"
                                                             disabled={downloadingId === `${stmt.year}-${stmt.month}-csv`}
-                                                            className="flex items-center gap-1.5 text-primary hover:text-primary/80 disabled:opacity-50 text-sm font-medium transition-colors"
                                                         >
-                                                            {downloadingId === `${stmt.year}-${stmt.month}-csv` ? (
-                                                                <Spinner className="w-4 h-4" />
-                                                            ) : (
-                                                                <FiDownload className="w-4 h-4" />
-                                                            )}
+                                                            {downloadingId === `${stmt.year}-${stmt.month}-csv` ? <Spinner width="16" height="16" color="#124452" /> : <FiDownload />}
                                                             CSV
                                                         </button>
                                                         {stmt.google_cloud_link && (
@@ -161,13 +160,10 @@ export default function HistoryTab() {
 
                         {statements.length > 0 && (
                             <TablePagination
-                                component="div"
-                                count={statements.length}
-                                page={page}
-                                onPageChange={handleChangePage}
-                                rowsPerPage={rowsPerPage}
-                                onRowsPerPageChange={handleChangeRowsPerPage}
-                                rowsPerPageOptions={[10, 25, 50]}
+                                total={statements.length}
+                                itemsPerPage={rowsPerPage}
+                                currentPage={page + 1}
+                                setPage={(newPage) => setPage(newPage - 1)}
                             />
                         )}
                     </div>

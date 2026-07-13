@@ -201,6 +201,15 @@ export const API_ROUTES = {
             export: '/reports/bookings/export',
         }
     },
+    agents: {
+        statements: {
+            base: (agentId: string) => `/reports/agents/${agentId}/statements`,
+            download: (agentId: string, year: string | number, month: string | number) => `/reports/agents/${agentId}/statements/${year}/${month}/download`,
+        },
+        bookings: {
+            export: '/reports/agents/bookings/export',
+        }
+    },
     ical: {
         units: {
             outbound: (unitId: string | number) => `/ical/units/${unitId}/outbound`,

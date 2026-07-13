@@ -64,6 +64,78 @@ export interface IReferralInfo {
   link: string;
 }
 
+export interface MonthlyStatementData {
+  owner_id: string;
+  year: number;
+  month: number;
+  properties_count: number;
+  total_bookings: number;
+  total_nights: number;
+  gross_revenue: number;
+  platform_fees: number;
+  agent_fees: number;
+  net_earnings: number;
+  bookings: any[];
+}
+
+export interface AgentBookingReportItem {
+  booking_id: string;
+  property_name: string;
+  unit_name: string;
+  owner_name: string;
+  guest_name: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  nights: number;
+  guests: number;
+  status: string;
+  payment_method?: string;
+  gross_amount: number;
+  caution_fee: number;
+  agent_fee: number;
+  caution_refunded: string;
+}
+
+export interface AgentPropertyBreakdown {
+  property_name: string;
+  owner_name: string;
+  total_bookings: number;
+  nights_booked: number;
+  gross_revenue: number;
+  agent_commissions_earned: number;
+}
+
+export interface AgentFinancialSummary {
+  agent_id: string;
+  agent_name: string;
+  agent_email: string;
+  year: number;
+  month: number;
+  properties_count: number;
+  total_bookings: number;
+  nights_booked: number;
+  total_gross_amount: number;
+  total_caution_fees: number;
+  total_agent_fees: number;
+  excluded_non_ngn_count: number;
+  per_property_breakdown: AgentPropertyBreakdown[];
+  bookings: AgentBookingReportItem[];
+}
+
+export interface AgentAdHocReportSummary {
+  requested_by: string;
+  report_type: string;
+  date_range: string;
+  total_bookings: number;
+  nights_booked: number;
+  total_gross_amount: number;
+  total_caution_fees: number;
+  total_agent_fees: number;
+  excluded_non_ngn_count: number;
+  bookings: AgentBookingReportItem[];
+}
+
 export interface IAgentReferralStats {
   total_referrals: number;
   active_referrals: number;
