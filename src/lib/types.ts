@@ -233,3 +233,36 @@ export interface ILoginResponse {
   user: IUser;
   authorization: IAuthorization;
 }
+
+export interface IIcalFeed {
+  id: string;
+  unit_id: string | number;
+  direction: 'INBOUND' | 'OUTBOUND';
+  url: string;
+  label: string;
+  token?: string;
+  last_polled_at?: string;
+  last_status: 'OK' | 'ERROR' | 'BROKEN' | 'PENDING';
+  error_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IIcalConflict {
+  id: string;
+  unit_id: string | number;
+  aparte_booking_id: string | number;
+  external_uid: string;
+  status: 'UNRESOLVED' | 'RESOLVED';
+  resolved_at?: string;
+  resolved_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IExternalBookingGroup {
+  external_uid: string;
+  external_summary: string;
+  dates: string[];
+}

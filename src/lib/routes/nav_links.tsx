@@ -259,6 +259,28 @@ export const NAV_LINKS: ILink[] = [
         children: undefined,
     },
     {
+        name: 'iCal Sync',
+        pathName: 'ical-management',
+        link: PAGE_ROUTES.dashboard.icalManagement.feeds,
+        icon: <PropertiesIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+        secondary: true,
+        children: [
+            {
+                name: 'Platform Feeds',
+                pathName: 'feeds',
+                link: PAGE_ROUTES.dashboard.icalManagement.feeds,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
+            {
+                name: 'Conflicts',
+                pathName: 'conflicts',
+                link: PAGE_ROUTES.dashboard.icalManagement.conflicts,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
+        ]
+    },
+    {
         name: 'Reports',
         pathName: 'reports',
         link: PAGE_ROUTES.dashboard.reports.agentPerformance,

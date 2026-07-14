@@ -10,6 +10,7 @@ interface AvailabilityCalendarProps {
     propertyId: string | number;
     unitId: string | number;
     availability: IAvailability[];
+    externalBookings?: any[];
     onSave: (dates: ICreateAvailability[]) => void;
     isSaving?: boolean;
     defaultCount?: number;
@@ -19,6 +20,7 @@ interface AvailabilityCalendarProps {
 
 export default function AvailabilityCalendar({
     availability,
+    externalBookings = [],
     onSave,
     isSaving = false,
     defaultCount = 1,

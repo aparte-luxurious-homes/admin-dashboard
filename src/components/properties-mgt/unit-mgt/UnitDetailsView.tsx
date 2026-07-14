@@ -29,6 +29,8 @@ import toast from "react-hot-toast";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AvailabilityCalendar from "./AvailabilityCalendar";
 import { format, addMonths } from "date-fns";
+import CalendarSyncView from "./CalendarSyncView";
+import { GetExternalBookings } from "@/src/lib/request-handlers/icalMgt";
 
 export default function UnitDetailsView({ propertyId, unitId }: { propertyId: string | number, unitId: string | number }) {
     const dispatch = useDispatch();
@@ -48,6 +50,9 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
     const endDate = format(addMonths(new Date(), 3), 'yyyy-MM-dd');
     const { data: availabilityData } = GetUnitAvailability(propertyId, unitId, startDate, endDate);
     const { mutate: saveAvailability, isPending: isSavingAvailability } = CreateUnitAvailability();
+
+    const { data: externalBookingsData } = GetExternalBookings(unitId);
+    const externalBookings = externalBookingsData?.data?.data || [];
 
     const setQueryParam = (key: string, value: string) => {
         urlSearchParams.set(key, value);
@@ -288,6 +293,9 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                     )}
                                 </div>
                             </section>
+
+                            {/* Calendar Sync Section */}
+                            <CalendarSyncView unitId={unitId} />
                         </div>
 
                         {/* Sidebar Column */}
@@ -365,12 +373,12 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                             <span>Reserved</span>
                                         </div>
                                     </div>
-                                    <div className="w-full flex justify-center overflow-x-auto pb-2">
-                                        <div className="min-w-[280px] sm:min-w-[300px] md:min-w-[320px] lg:min-w-full">
-                                            <AvailabilityCalendar
+                                    <div className="min-w-[280px] sm:min-w-[300px] md:min-w-[320px] lg:min-w-full">
+                                        <AvailabilityCalendar
                                                 propertyId={propertyId}
                                                 unitId={unitId}
                                                 availability={availabilityData?.data?.data || []}
+                                                externalBookings={externalBookings}
                                                 defaultCount={propertyUnit?.count || 1}
                                                 isSaving={isSavingAvailability}
                                                 hideHeader={true}
@@ -387,7 +395,6 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                             />
                                         </div>
                                     </div>
-                                </div>
                             </div>
 
                             {/* Property Relationship Section */}
