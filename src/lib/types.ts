@@ -265,4 +265,73 @@ export interface IExternalBookingGroup {
   external_uid: string;
   external_summary: string;
   dates: string[];
-}
+}
+
+export interface StatementHistoryItem {
+  id: string;
+  owner_id: string;
+  year: number;
+  month: number;
+  status: string;
+  delivered_at?: string;
+  error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PropertyBreakdown {
+  property_name: string;
+  total_bookings: number;
+  nights_booked: number;
+  gross_revenue: number;
+  platform_fees_deducted: number;
+  agent_commissions_deducted: number;
+  referrer_payouts_deducted: number;
+  refunds_issued: number;
+  net_wallet_credit: number;
+}
+
+export interface BookingReportItem {
+  booking_id: string;
+  property_name: string;
+  unit_name: string;
+  guest_name: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  nights: number;
+  guests: number;
+  status: string;
+  payment_method?: string;
+  gross_amount: number;
+  platform_fee: number;
+  caution_fee: number;
+  agent_fee: number;
+  referrer_payout: number;
+  base_rent: number;
+  owner_earnings: number;
+  caution_refunded: string;
+}
+
+export interface MonthlyStatementData {
+  owner_id: string;
+  owner_name: string;
+  owner_email: string;
+  year: number;
+  month: number;
+  properties_count: number;
+  total_bookings: number;
+  nights_booked: number;
+  total_gross_amount: number;
+  total_platform_fees: number;
+  total_caution_fees: number;
+  total_agent_fees: number;
+  total_referrer_payouts: number;
+  total_refunds_issued: number;
+  total_base_rent: number;
+  total_owner_earnings: number;
+  excluded_non_ngn_count: number;
+  per_property_breakdown: PropertyBreakdown[];
+  bookings: BookingReportItem[];
+}
+

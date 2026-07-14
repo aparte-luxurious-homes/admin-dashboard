@@ -4,12 +4,23 @@ import { API_ROUTES } from "../routes/endpoints";
 
 export enum ReportsRequestKeys {
     statements = "getStatements",
+    statementDetails = "getStatementDetails",
 }
 
-export function GetStatements() {
+export function GetStatementsHistory(ownerId: string | undefined) {
     return useQuery({
-        queryKey: [ReportsRequestKeys.statements],
-        queryFn: () => axiosRequest.get(API_ROUTES.reports.statements.base),
+        queryKey: [ReportsRequestKeys.statements, ownerId],
+        queryFn: () => axiosRequest.get(API_ROUTES.reports.statements.base(ownerId!)),
+        enabled: !!ownerId,
+        refetchOnWindowFocus: true,
+    });
+}
+
+export function GetMonthlyStatementDetails(ownerId: string | undefined, year: number | string, month: number | string) {
+    return useQuery({
+        queryKey: [ReportsRequestKeys.statementDetails, ownerId, year, month],
+        queryFn: () => axiosRequest.get(API_ROUTES.reports.statements.details(ownerId!, year, month)),
+        enabled: !!ownerId && !!year && !!month,
         refetchOnWindowFocus: true,
     });
 }
