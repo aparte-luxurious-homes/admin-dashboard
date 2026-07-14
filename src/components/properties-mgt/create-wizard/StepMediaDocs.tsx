@@ -316,13 +316,10 @@ export default function StepMediaDocs({
         <div className="w-full bg-zinc-100 rounded-full h-2 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${coverage.covered === coverage.total ? "bg-emerald-500" : "bg-primary"}`}
-            style={{ width: `${coverage.percent}%` }}
           />
         </div>
         <p className="text-[11px] text-zinc-500">
-          Guests trust listings that show every room. Missing slots are flagged
-          for admin review \u2014 listings can still be created, but coverage
-          gaps slow down verification.
+          Guests trust listings that show every room. Missing slots are added to the admin review queue-listings can still be created, but coverage gaps slow down verification.
         </p>
       </div>
 

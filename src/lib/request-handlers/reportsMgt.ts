@@ -4,6 +4,7 @@ import { API_ROUTES } from "../routes/endpoints";
 
 export enum ReportsRequestKeys {
     statements = "getStatements",
+    statementDetails = "getStatementDetails",
 }
 
 export function GetStatements(userType: 'owner' | 'agent' = 'owner', agentId?: string) {
