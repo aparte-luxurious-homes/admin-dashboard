@@ -30,7 +30,7 @@ export const fetchUser = async (): Promise<IUser> => {
 
 export const useAuth = () => {
   const dispatch = useDispatch();
-  const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector((state: RootState) => state.auth.user); 
   const token = Cookies.get("token");
 
   // Debug: Log all cookies
