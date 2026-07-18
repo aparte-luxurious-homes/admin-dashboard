@@ -1,3 +1,5 @@
+"use client";
+
 import UserDetailView from "@/src/components/user-management/UserDetailView";
 import { RoleConfig } from "@/src/components/user-management/user-detail.types";
 
