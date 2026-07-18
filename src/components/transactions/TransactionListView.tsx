@@ -18,6 +18,7 @@ import { formatDate, formatMoney } from "@/src/lib/utils";
 import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
 import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
+import { ReverseWithdrawalModal } from "@/src/components/finance-mgt/modals/ReverseWithdrawalModal";
 import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface Transaction {
@@ -100,6 +101,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
     const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
     const [withdrawalModalInitialStep, setWithdrawalModalInitialStep] = useState<"confirm" | "otp">("confirm");
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
+    const [isWithdrawalReverseOpen, setIsWithdrawalReverseOpen] = useState(false);
 
     const handleDownload = (type: "CSV" | "PDF") => {
         if (type === "CSV") {
@@ -298,6 +300,27 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
                 },
             });
         }
+    }
+
+    // Reverse a withdrawal that did NOT pay out — payout stuck awaiting OTP, still
+    // in-flight (PENDING), or marked successful but failed at the provider. Refunds
+    // amount + fee to the user's wallet.
+    if (
+        canManageFinances &&
+        selectedRow !== null &&
+        data[selectedRow]?.transaction_type === "WITHDRAWAL" &&
+        ["AWAITING_AUTHORIZATION", "PENDING", "SUCCESSFUL"].includes(data[selectedRow]?.status ?? "")
+    ) {
+        const tx = data[selectedRow];
+        detailButtons.push({
+            label: "Reverse Withdrawal",
+            Icon: <Icon icon="mdi:backup-restore" />,
+            onClick: () => {
+                setSelectedTxForApproval(tx);
+                setIsWithdrawalReverseOpen(true);
+                setSelectedRow(null);
+            },
+        });
     }
 
     return (
@@ -638,6 +661,23 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
                     amount={selectedTxForApproval.amount}
                     currency={selectedTxForApproval.currency}
                     walletId={String(selectedTxForApproval.wallet_id || "")}
+                />
+            )}
+
+            {selectedTxForApproval && selectedTxForApproval.transaction_type === "WITHDRAWAL" && (
+                <ReverseWithdrawalModal
+                    isOpen={isWithdrawalReverseOpen}
+                    onClose={() => {
+                        setIsWithdrawalReverseOpen(false);
+                        setSelectedTxForApproval(null);
+                        fetchTransactions();
+                    }}
+                    transactionId={selectedTxForApproval.id}
+                    email={selectedTxForApproval.user?.email || selectedTxForApproval.customer_email || selectedTxForApproval.customerEmail || ""}
+                    amount={selectedTxForApproval.amount}
+                    currency={selectedTxForApproval.currency}
+                    walletId={String(selectedTxForApproval.wallet_id || "")}
+                    status={selectedTxForApproval.status}
                 />
             )}
         </div>

@@ -259,11 +259,33 @@ export const NAV_LINKS: ILink[] = [
         children: undefined,
     },
     {
+        name: 'iCal Sync',
+        pathName: 'ical-management',
+        link: PAGE_ROUTES.dashboard.icalManagement.feeds,
+        icon: <PropertiesIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+        secondary: true,
+        children: [
+            {
+                name: 'Platform Feeds',
+                pathName: 'feeds',
+                link: PAGE_ROUTES.dashboard.icalManagement.feeds,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
+            {
+                name: 'Conflicts',
+                pathName: 'conflicts',
+                link: PAGE_ROUTES.dashboard.icalManagement.conflicts,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
+        ]
+    },
+    {
         name: 'Reports',
         pathName: 'reports',
         link: PAGE_ROUTES.dashboard.reports.agentPerformance,
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST, UserRole.OWNER],
         secondary: true,
         children: [
             {
@@ -271,6 +293,12 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'agent-performance',
                 link: PAGE_ROUTES.dashboard.reports.agentPerformance,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
+            },
+            {
+                name: 'Statements',
+                pathName: 'statements',
+                link: PAGE_ROUTES.dashboard.reports.statements,
+                allow: [UserRole.OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
         ]
     },
