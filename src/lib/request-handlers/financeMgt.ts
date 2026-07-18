@@ -103,6 +103,28 @@ export function RejectWithdrawal() {
     });
 }
 
+export interface ReverseWithdrawalPayload {
+    transaction_id: string;
+    reason: string;
+    skip_provider_check: boolean;
+}
+
+// Reverse a withdrawal that did NOT pay out (AWAITING_AUTHORIZATION / PENDING /
+// SUCCESSFUL). Refunds amount + fee. By default the backend verifies the payout
+// did not settle with the provider; skip_provider_check bypasses that guard for
+// incidents already confirmed with the provider.
+export function ReverseWithdrawal() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: ReverseWithdrawalPayload }) =>
+            axiosRequest.post(API_ROUTES.wallet.reverseWithdrawal(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+
 export function AuthorizeDisbursement() {
     const queryClient = useQueryClient();
     return useMutation({

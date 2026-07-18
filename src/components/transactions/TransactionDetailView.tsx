@@ -13,6 +13,7 @@ import { Icon } from "@iconify/react";
 import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveRefundModal";
 import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
+import { ReverseWithdrawalModal } from "@/src/components/finance-mgt/modals/ReverseWithdrawalModal";
 import { Button } from "@/src/components/ui/button";
 import { usePermissions } from "@/src/hooks/usePermissions";
 
@@ -162,6 +163,7 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
+    const [isWithdrawalReverseOpen, setIsWithdrawalReverseOpen] = useState(false);
     const params = useParams();
     const id = params?.id;
     const { canManageFinances } = usePermissions();
@@ -193,6 +195,10 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const actionStyle = ACTION_STYLES[data?.action || ""] || "";
     const isPendingApproval = data?.status === "PENDING_APPROVAL";
     const isWithdrawal = data?.transaction_type === "WITHDRAWAL";
+    // Reverse applies to a payout that did NOT settle: stuck awaiting OTP, still
+    // in-flight, or marked successful but failed at the provider.
+    const canReverseWithdrawal =
+        isWithdrawal && ["AWAITING_AUTHORIZATION", "PENDING", "SUCCESSFUL"].includes(data?.status ?? "");
 
     return (
         <>
@@ -277,6 +283,19 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                                         >
                                             <Icon icon="mdi:check" className="mr-1" width="16" />
                                             {isWithdrawal ? "Approve Withdrawal" : "Approve Refund"}
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {/* Reverse — for payouts that did not settle (awaiting OTP / in-flight / provider-failed) */}
+                                {canReverseWithdrawal && canManageFinances && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <Button
+                                            onClick={() => setIsWithdrawalReverseOpen(true)}
+                                            className="bg-amber-600 text-white hover:bg-amber-700"
+                                        >
+                                            <Icon icon="mdi:backup-restore" className="mr-1" width="16" />
+                                            Reverse
                                         </Button>
                                     </div>
                                 )}
@@ -414,6 +433,19 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                         amount={data.amount}
                         currency={data.currency}
                         walletId={data.wallet_id}
+                    />
+                    <ReverseWithdrawalModal
+                        isOpen={isWithdrawalReverseOpen}
+                        onClose={() => {
+                            setIsWithdrawalReverseOpen(false);
+                            fetchData();
+                        }}
+                        transactionId={data.id}
+                        email={data.user?.email || ""}
+                        amount={data.amount}
+                        currency={data.currency}
+                        walletId={data.wallet_id}
+                        status={data.status}
                     />
                 </>
             )}

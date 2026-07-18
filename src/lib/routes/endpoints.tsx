@@ -136,6 +136,7 @@ export const API_ROUTES = {
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
         approveWithdrawal: (id: string | number) => `/wallets/${id}/approve-withdrawal`,
         rejectWithdrawal: (id: string | number) => `/wallets/${id}/reject-withdrawal`,
+        reverseWithdrawal: (id: string | number) => `/wallets/${id}/reverse-withdrawal`,
         authorizeDisbursement: (id: string | number) => `/wallets/${id}/authorize-disbursement`,
         resendDisbursementOtp: (id: string | number) => `/wallets/${id}/resend-disbursement-otp`,
         pendingWithdrawals: '/wallets/pending-withdrawals',
@@ -223,6 +224,34 @@ export const API_ROUTES = {
         stats: '/referrals/stats',
         list: '/referrals/list',
     },
+    reports: {
+        statements: {
+            base: (ownerId: string) => `/reports/owners/${ownerId}/statements`,
+            download: (ownerId: string, year: string | number, month: string | number) => `/reports/owners/${ownerId}/statements/${year}/${month}/download`,
+            details: (ownerId: string, year: string | number, month: string | number) => `/reports/owners/${ownerId}/statements/${year}/${month}`,
+        },
+        bookings: {
+            export: '/reports/bookings/export',
+        }
+    },
+    ical: {
+        units: {
+            outbound: (unitId: string | number) => `/ical/units/${unitId}/outbound`,
+            outboundRotate: (unitId: string | number) => `/ical/units/${unitId}/outbound/rotate`,
+            feeds: (unitId: string | number) => `/ical/units/${unitId}/feeds`,
+            feedAction: (unitId: string | number, feedId: string | number) => `/ical/units/${unitId}/feeds/${feedId}`,
+            syncFeed: (unitId: string | number, feedId: string | number) => `/ical/units/${unitId}/feeds/${feedId}/sync`,
+            externalBookings: (unitId: string | number) => `/ical/units/${unitId}/external-bookings`,
+        },
+        admin: {
+            feeds: '/ical/admin/feeds',
+            forcePoll: (feedId: string | number) => `/ical/admin/feeds/${feedId}/force-poll`,
+            disable: (feedId: string | number) => `/ical/admin/feeds/${feedId}/disable`,
+            enable: (feedId: string | number) => `/ical/admin/feeds/${feedId}/enable`,
+            conflicts: '/ical/admin/conflicts',
+            resolveConflict: '/ical/admin/conflicts/resolve',
+        }
+    }
 };
 
 
