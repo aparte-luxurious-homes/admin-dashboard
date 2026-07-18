@@ -20,6 +20,21 @@ export function areArraysEqual(arr1: any[], arr2: any[]): boolean {
   return arr1.sort().toString() === arr2.sort().toString();
 }
 
+/**
+ * Masks a sensitive identifier (e.g. NIN/BVN) for display, revealing only the
+ * first 2 and last 2 characters. Mirrors the masking already used in the KYC
+ * review panel so PII is never rendered in clear text in the admin UI.
+ */
+export function maskId(value: string | null | undefined): string {
+  if (!value) return "";
+  if (value.length <= 4) return value;
+  return (
+    value.slice(0, 2) +
+    "•".repeat(Math.max(0, value.length - 4)) +
+    value.slice(-2)
+  );
+}
+
 export function formatDate(dateString: string): string {
   if (!dateString) return "--/--";
   const date = new Date(dateString);

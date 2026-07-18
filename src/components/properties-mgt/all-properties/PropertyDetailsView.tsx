@@ -624,7 +624,7 @@ export default function PropertyDetailsView({
                                             <div>
                                                 <div className="flex items-center justify-between mb-2.5">
                                                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Owner</p>
-                                                    {user?.role === UserRole.ADMIN && !editMode && (
+                                                    {(user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.OPERATIONS_ADMIN) && !editMode && (
                                                         <button
                                                             onClick={() => setShowOwnerSelection(true)}
                                                             className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"

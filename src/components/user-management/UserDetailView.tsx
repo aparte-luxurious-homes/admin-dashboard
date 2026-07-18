@@ -13,6 +13,7 @@ import UserDetailsPanel from "./UserDetailsPanel";
 import UserEditDrawer from "./UserEditDrawer";
 import { useUserDetail } from "./useUserDetail";
 import { RoleConfig } from "./user-detail.types";
+import AgentNetworkCard from "./AgentNetworkCard";
 
 interface UserDetailViewProps {
   roleConfig: RoleConfig;
@@ -94,6 +95,9 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
               onCreateWallet={createWallet}
               isCreatingWallet={isCreatingWallet}
             />
+            {roleConfig.role === "AGENT" && id && (
+              <AgentNetworkCard userId={String(id)} />
+            )}
             <UserDetailsPanel user={user} />
             <KycReviewPanel user={user} onUpdate={refetch} />
             <KycHistoryTimeline userId={String(id)} />
