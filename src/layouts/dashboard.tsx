@@ -166,6 +166,13 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   // list excludes the current user's role, kick them back to the dashboard root.
   // Covers direct URL access (sidebar filtering alone doesn't stop /transactions/withdrawals
   // from rendering for an OWNER who types the URL).
+  //
+  // Some routes (e.g. /network/configs/actions) appear under more than one nav
+  // section with different `allow` lists (an agent-facing entry and an
+  // admin-facing one). Gather every entry matching the current path before
+  // deciding, so access is granted if ANY of them allows the role — otherwise
+  // whichever entry happens to come first in NAV_LINKS wins even when a later
+  // entry would have permitted the current user.
   useEffect(() => {
     if (!user || !currentRoute) return;
 
@@ -179,20 +186,22 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       if (link.children && link.children.length > 0) {
         for (const child of link.children) {
           if (child.link !== "#" && currentRoute.startsWith(child.link)) {
-            if (child.allow.length > 0 && !child.allow.includes(role)) {
-              toast.error("You don't have access to that page");
-              router.replace(PAGE_ROUTES.dashboard.base);
-              return;
-            }
+            matchingAllowLists.push(child.allow);
           }
         }
       } else if (link.link !== "#" && currentRoute.startsWith(link.link) && link.link !== PAGE_ROUTES.dashboard.base) {
-        if (link.allow.length > 0 && !link.allow.includes(role)) {
-          toast.error("You don't have access to that page");
-          router.replace(PAGE_ROUTES.dashboard.base);
-          return;
-        }
+        matchingAllowLists.push(link.allow);
       }
+    }
+
+    if (matchingAllowLists.length === 0) return;
+
+    const isAllowed = matchingAllowLists.some(
+      (allow) => allow.length === 0 || allow.includes(role)
+    );
+    if (!isAllowed) {
+      toast.error("You don't have access to that page");
+      router.replace(PAGE_ROUTES.dashboard.base);
     }
   }, [user, currentRoute, router, effectiveNavLinks]);
 

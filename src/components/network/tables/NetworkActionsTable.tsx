@@ -9,6 +9,8 @@ import { formatDate } from "@/src/lib/utils";
 import Loader from "@/src/components/loader";
 import { LuEye, LuPencil } from "react-icons/lu";
 import { toast } from "react-hot-toast";
+import { usePermissions } from "@/src/hooks/usePermissions";
+import { UserRole } from "@/src/lib/enums";
 
 interface ActionConfig {
     action_type: string;
@@ -27,6 +29,10 @@ function formatActionType(type: string) {
 }
 
 export default function NetworkActionsTable() {
+    const { role } = usePermissions();
+    // Mirrors the backend's require_operations_admin on PUT /configs/actions/{type} —
+    // SUPPORT_ADMIN can view (like any admin) but not edit action configs.
+    const canEditActions = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.OPERATIONS_ADMIN;
     const [actions, setActions]       = useState<ActionConfig[]>([]);
     const [isLoading, setIsLoading]   = useState(false);
 
@@ -129,7 +135,7 @@ export default function NetworkActionsTable() {
                                     <th className="px-6 py-3 text-left">Base Points</th>
                                     <th className="px-6 py-3 text-left">Status</th>
                                     <th className="px-6 py-3 text-left">Last Updated</th>
-                                    <th className="px-6 py-3 text-right">Actions</th>
+                                    {canEditActions && <th className="px-6 py-3 text-right">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -155,14 +161,16 @@ export default function NetworkActionsTable() {
                                             <td className="px-6 py-4 text-sm text-gray-700">
                                                 {formatDate(action.updated_at)}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div
-                                                    className="flex justify-end items-center"
-                                                    onClick={(e) => handleDotsClick(e, index)}
-                                                >
-                                                    <DotsIcon className="w-5 cursor-pointer hover:text-primary transition-colors text-gray-400" />
-                                                </div>
-                                            </td>
+                                            {canEditActions && (
+                                                <td className="px-6 py-4 text-right">
+                                                    <div
+                                                        className="flex justify-end items-center"
+                                                        onClick={(e) => handleDotsClick(e, index)}
+                                                    >
+                                                        <DotsIcon className="w-5 cursor-pointer hover:text-primary transition-colors text-gray-400" />
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
@@ -192,11 +200,11 @@ export default function NetworkActionsTable() {
                             Icon: <LuEye />,
                             onClick: () => { setViewAction(contextAction); setSelectedRow(null); },
                         },
-                        {
+                        ...(canEditActions ? [{
                             label: "Edit",
                             Icon: <LuPencil />,
                             onClick: () => openEdit(contextAction),
-                        },
+                        }] : []),
                     ].map((btn, idx) => (
                         <button
                             key={idx}
@@ -243,15 +251,17 @@ export default function NetworkActionsTable() {
                                 <p className="text-sm font-medium text-gray-900">{formatDate(viewAction.updated_at)}</p>
                             </div>
                         </div>
-                        <div className="px-6 pb-6 flex justify-end">
-                            <button
-                                onClick={() => { setViewAction(null); openEdit(viewAction); }}
-                                className="px-6 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                            >
-                                <Icon icon="mdi:pencil" width="14" />
-                                Edit
-                            </button>
-                        </div>
+                        {canEditActions && (
+                            <div className="px-6 pb-6 flex justify-end">
+                                <button
+                                    onClick={() => { setViewAction(null); openEdit(viewAction); }}
+                                    className="px-6 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                                >
+                                    <Icon icon="mdi:pencil" width="14" />
+                                    Edit
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
