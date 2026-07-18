@@ -177,6 +177,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     if (!user || !currentRoute) return;
 
     const role = user.role as UserRole;
+    const matchingAllowLists: UserRole[][] = [];
     for (const link of effectiveNavLinks) {
       // Skip nav sections the current role cannot see — prevents a shared child
       // link (e.g. /network/mentorship in both "Network" and "Network Management")
