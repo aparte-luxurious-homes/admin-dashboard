@@ -95,9 +95,13 @@ export default function NetworkEventsTable() {
     const [adjustAgentId, setAdjustAgentId]       = useState("");
     const [adjustPoints, setAdjustPoints]         = useState<number>(0);
     const [adjustReason, setAdjustReason]         = useState("");
-    const [adjustEntityType, setAdjustEntityType] = useState("");
-    const [adjustEntityId, setAdjustEntityId]     = useState("");
     const [isAdjusting, setIsAdjusting]           = useState(false);
+
+    // Related event — required link back to a specific prior AgentActivityEvent
+    // (e.g. an under-credited BOOKING_CHECKED_IN) that this adjustment corrects.
+    // Plain ID entry — the backend looks up and validates the event belongs
+    // to the selected agent.
+    const [relatedEventId, setRelatedEventId] = useState("");
 
     const [agents, setAgents]               = useState<Agent[]>([]);
     const [agentsLoading, setAgentsLoading] = useState(false);
@@ -230,14 +234,17 @@ export default function NetworkEventsTable() {
             toast.error("Reason is required");
             return;
         }
+        if (!relatedEventId.trim()) {
+            toast.error("Related Event ID is required");
+            return;
+        }
         setIsAdjusting(true);
         try {
             await toast.promise(
                 axiosRequest.post(API_ROUTES.network.agents.adjust(adjustAgentId.trim()), {
                     points: adjustPoints,
                     reason: adjustReason,
-                    entity_type: adjustEntityType.trim(),
-                    ...(adjustEntityId.trim() ? { entity_id: adjustEntityId.trim() } : {}),
+                    related_event_id: relatedEventId.trim(),
                 }),
                 {
                     loading: "Creating adjustment...",
@@ -250,8 +257,7 @@ export default function NetworkEventsTable() {
             setAdjustAgentId("");
             setAdjustPoints(0);
             setAdjustReason("");
-            setAdjustEntityType("");
-            setAdjustEntityId("");
+            setRelatedEventId("");
             setAgentSearch("");
             fetchEvents();
         } catch {
@@ -581,7 +587,7 @@ export default function NetworkEventsTable() {
                                 <p className="text-xs text-gray-500 mt-0.5">Award or deduct points for an agent</p>
                             </div>
                             <button
-                                onClick={() => { setShowAdjustModal(false); setShowAdjustConfirm(false); setAgentSearch(""); setAdjustAgentId(""); setAdjustEntityType(""); setAdjustEntityId(""); }}
+                                onClick={() => { setShowAdjustModal(false); setShowAdjustConfirm(false); setAgentSearch(""); setAdjustAgentId(""); setRelatedEventId(""); }}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             >
                                 <LuX className="w-5 h-5 text-gray-500" />
@@ -619,6 +625,9 @@ export default function NetworkEventsTable() {
                                                             setAdjustAgentId(a.id);
                                                             setAgentSearch(agentFullName(a));
                                                             setAgentDropdownOpen(false);
+                                                            // A related event picked for a previous agent no
+                                                            // longer applies once the agent changes.
+                                                            setRelatedEventId("");
                                                         }}
                                                         className="px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
                                                     >
@@ -643,33 +652,16 @@ export default function NetworkEventsTable() {
                                 />
                                 <p className="text-xs text-gray-400">Use a negative number to deduct points</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Entity Type</label>
-                                    <select
-                                        value={adjustEntityType}
-                                        onChange={(e) => setAdjustEntityType(e.target.value)}
-                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white"
-                                    >
-                                        <option value="">Select type…</option>
-                                        <option value="PROPERTY">PROPERTY</option>
-                                        <option value="BOOKING">BOOKING</option>
-                                        <option value="USER_KYC">USER KYC</option>
-                                        <option value="USER_PROFILE">USER PROFILE</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        Entity ID <span className="normal-case font-normal text-gray-400">(optional)</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={adjustEntityId}
-                                        onChange={(e) => setAdjustEntityId(e.target.value)}
-                                        placeholder="e.g. uuid or numeric ID"
-                                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
-                                    />
-                                </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Related Event ID</label>
+                                <input
+                                    type="text"
+                                    value={relatedEventId}
+                                    onChange={(e) => setRelatedEventId(e.target.value)}
+                                    placeholder="Event ID this adjustment corrects"
+                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                />
+                                <p className="text-xs text-gray-400">Must belong to the selected agent</p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</label>
@@ -684,7 +676,7 @@ export default function NetworkEventsTable() {
                         </div>
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
                             <button
-                                onClick={() => { setShowAdjustModal(false); setShowAdjustConfirm(false); setAgentSearch(""); setAdjustAgentId(""); setAdjustEntityType(""); setAdjustEntityId(""); }}
+                                onClick={() => { setShowAdjustModal(false); setShowAdjustConfirm(false); setAgentSearch(""); setAdjustAgentId(""); setRelatedEventId(""); }}
                                 className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
                             >
                                 Cancel
@@ -692,7 +684,9 @@ export default function NetworkEventsTable() {
                             <button
                                 onClick={() => {
                                     if (!adjustAgentId.trim()) { toast.error("Agent is required"); return; }
-                                    if (!adjustEntityType.trim()) { toast.error("Entity type is required"); return; }
+                                    if (!adjustPoints || adjustPoints === 0) { toast.error("Points must be a nonzero number"); return; }
+                                    if (!adjustReason.trim()) { toast.error("Reason is required"); return; }
+                                    if (!relatedEventId.trim()) { toast.error("Related Event ID is required"); return; }
                                     setShowAdjustConfirm(true);
                                 }}
                                 disabled={isAdjusting}
