@@ -9,7 +9,6 @@ import { format } from "date-fns";
 import TablePagination from "@/src/components/TablePagination";
 import { useAuth } from "@/src/hooks/useAuth";
 import Spinner from "@/src/components/ui/Spinner";
-import { useAuth } from "@/src/hooks/useAuth";
 import { StatementHistoryItem } from "@/src/lib/types";
 
 interface IStatement {
