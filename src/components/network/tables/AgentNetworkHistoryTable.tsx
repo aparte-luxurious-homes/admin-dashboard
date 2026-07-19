@@ -239,17 +239,17 @@ export default function AgentNetworkHistoryTable() {
                         </div>
                         <div className="p-6 grid grid-cols-2 gap-x-6 gap-y-5 max-h-[70vh] overflow-y-auto">
                             {([
-                                ["Status",      <span key="status" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).bg} ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).text}`}>{viewEvent.status}</span>],
-                                ["Points Awarded", <span key="points-awarded" className={`text-xl font-bold ${viewEvent.points_awarded >= 0 ? "text-green-600" : "text-red-600"}`}>{viewEvent.points_awarded >= 0 ? "+" : ""}{viewEvent.points_awarded}</span>],
-                                ["Base Points",  <span key="base-points" className="text-xl font-bold text-gray-900">{viewEvent.base_points}</span>],
-                                ["Multiplier",   <span key="multiplier" className="text-xl font-bold text-gray-900">{viewEvent.multiplier_applied}×</span>],
-                                ["Adjustment",   <span key="adjustment" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.adjustment_direction === "ADDITION" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{viewEvent.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}</span>],
-                                ["Entity",       formatEntityType(viewEvent.entity_type)],
-                                ["Remitted",     <span key="remitted" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.is_remitted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>{viewEvent.is_remitted ? "Yes" : "No"}</span>],
-                                ["Reason",       viewEvent.reason || "--/--"],
-                                ["Created At",   formatDate(viewEvent.created_at)],
-                                ["Updated At",   formatDate(viewEvent.updated_at)],
-                            ] as [string, ReactNode][]).map(([label, value]) => (
+                                { label: "Status",         value: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).bg} ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).text}`}>{viewEvent.status}</span> },
+                                { label: "Points Awarded",  value: <span className={`text-xl font-bold ${viewEvent.points_awarded >= 0 ? "text-green-600" : "text-red-600"}`}>{viewEvent.points_awarded >= 0 ? "+" : ""}{viewEvent.points_awarded}</span> },
+                                { label: "Base Points",     value: <span className="text-xl font-bold text-gray-900">{viewEvent.base_points}</span> },
+                                { label: "Multiplier",      value: <span className="text-xl font-bold text-gray-900">{viewEvent.multiplier_applied}×</span> },
+                                { label: "Adjustment",      value: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.adjustment_direction === "ADDITION" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{viewEvent.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}</span> },
+                                { label: "Entity",          value: formatEntityType(viewEvent.entity_type) },
+                                { label: "Remitted",        value: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.is_remitted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>{viewEvent.is_remitted ? "Yes" : "No"}</span> },
+                                { label: "Reason",          value: viewEvent.reason || "--/--" },
+                                { label: "Created At",      value: formatDate(viewEvent.created_at) },
+                                { label: "Updated At",      value: formatDate(viewEvent.updated_at) },
+                            ] as { label: string; value: React.ReactNode }[]).map(({ label, value }) => (
                                 <div key={label} className="space-y-1">
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
                                     <div className="text-sm font-medium text-gray-900">{value}</div>

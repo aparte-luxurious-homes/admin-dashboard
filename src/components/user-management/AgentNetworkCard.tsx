@@ -22,7 +22,10 @@ const TIER_CONFIG: Record<string, { label: string; color: string; bg: string; bo
     GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-300", icon: "solar:medal-ribbons-star-bold-duotone" },
 };
 
-const TIER_TARGET: Record<string, number> = { BRONZE: 80, SILVER: 200, GOLD: 200 };
+// TIER_TARGET / progress-toward-next-tier feed the promotion/demotion progress bar,
+// which is meaningless until the Phase 3 weekly tier-evaluation cron actually moves
+// agents between tiers. Re-enable alongside that work (PRD §17, Phase 3).
+// const TIER_TARGET: Record<string, number> = { BRONZE: 80, SILVER: 200, GOLD: 200 };
 
 export default function AgentNetworkCard({ userId }: { userId: string }) {
     const [data, setData]       = useState<AgentNetworkSummary | null>(null);
@@ -52,7 +55,7 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                 <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="space-y-2">
+                            <div key={i} className="flex flex-col justify-center space-y-2">
                                 <Skeleton className="h-3 w-20" />
                                 <Skeleton className="h-6 w-28" />
                             </div>
@@ -67,10 +70,10 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
 
     const tier     = data.current_tier;
     const tierCfg  = TIER_CONFIG[tier];
-    const target   = TIER_TARGET[tier] ?? 80;
     const pts      = data.points_30d ?? 0;
-    const progress = Math.min(100, (pts / target) * 100);
-    const nextTier = tier === "BRONZE" ? "Silver" : tier === "SILVER" ? "Gold" : null;
+    // const target   = TIER_TARGET[tier] ?? 80;
+    // const progress = Math.min(100, (pts / target) * 100);
+    // const nextTier = tier === "BRONZE" ? "Silver" : tier === "SILVER" ? "Gold" : null;
     const listPct  = `${(data.commission_listing_pct * 100).toFixed(1)}%`;
     const refPct   = `${(data.commission_referral_pct * 100).toFixed(1)}%`;
 
@@ -92,10 +95,10 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                 {/* Stats grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
                     {/* Tier */}
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col justify-center space-y-1.5">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tier</p>
                         {tierCfg ? (
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
                                 <Icon icon={tierCfg.icon} width="13" />
                                 {tierCfg.label}
                             </span>
@@ -105,25 +108,30 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                     </div>
 
                     {/* 30-day points */}
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col justify-center space-y-1.5">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Points (30d)</p>
                         <p className="text-xl font-bold text-gray-900">{pts.toLocaleString()}</p>
                     </div>
 
                     {/* Listing commission */}
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col justify-center space-y-1.5">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Listing Commission</p>
                         <p className="text-xl font-bold text-primary">{listPct}</p>
                     </div>
 
                     {/* Referral commission */}
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col justify-center space-y-1.5">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Referral Commission</p>
                         <p className="text-xl font-bold text-primary">{refPct}</p>
                     </div>
                 </div>
 
-                {/* Progress toward next tier */}
+                {/*
+                  Progress toward next tier — disabled until Phase 3 ships the weekly
+                  tier-evaluation cron. Nothing moves agents between tiers yet, so a
+                  "X pts to next tier" progress bar would be misleading. Re-enable
+                  alongside promotion/demotion (PRD §17, Phase 3).
+
                 {nextTier && (
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
@@ -144,6 +152,7 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                         Maintaining Gold — top tier
                     </p>
                 )}
+                */}
 
                 {/* Warnings */}
                 {(data.consecutive_misses ?? 0) > 0 && (
@@ -152,12 +161,18 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                         {data.consecutive_misses} consecutive evaluation miss{(data.consecutive_misses ?? 0) > 1 ? "es" : ""}
                     </p>
                 )}
+                {/*
+                  Grace period is a demotion-risk concept — meaningless until Phase 3's
+                  tier-evaluation cron can actually demote anyone. Re-enable alongside
+                  promotion/demotion (PRD §17, Phase 3).
+
                 {data.grace_period_until && (
                     <p className="mt-1.5 text-xs text-amber-700 font-medium flex items-center gap-1">
                         <Icon icon="mdi:clock-alert-outline" width="13" />
                         Grace period until {new Date(data.grace_period_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                 )}
+                */}
             </div>
         </div>
     );

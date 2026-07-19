@@ -193,6 +193,7 @@ export const API_ROUTES = {
         },
         me: `/network/me`,
         history: `/network/history`,
+        remit: `/jobs/remit-agent-points`,
         myMentorship: `/network/mentorship`,
         myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
         acceptMentorship: `/network/mentorship/accept`,
