@@ -117,10 +117,37 @@ export default function AgentNetworkDashboardCard() {
                         {/* Section 1: Network Standing — tier, points, commissions (mirrors
                             the admin read-only card in AgentNetworkCard.tsx). */}
                         <Grid size={{ xs: 12, md: 6 }}>
-                            <div className="p-[20px] min-h-[190px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                            <div className="p-[20px] min-h-[205px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                                 {networkLoading ? (
-                                    <div className="flex items-center justify-center h-full">
-                                        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    <div className="h-full flex flex-col justify-between">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex items-center gap-2">
+                                                <Skeleton className="w-8 h-8 rounded-lg" />
+                                                <Skeleton className="h-5 w-32" />
+                                                <Skeleton className="h-5 w-14 rounded-full" />
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                {[1, 2, 3].map((i) => (
+                                                    <div key={i} className="space-y-1.5">
+                                                        <Skeleton className="h-2.5 w-14" />
+                                                        <Skeleton className="h-6 w-16" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <Skeleton className="h-2.5 w-16" />
+                                                    <Skeleton className="h-2.5 w-20" />
+                                                </div>
+                                                <Skeleton className="h-2.5 w-full rounded-full" />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <Skeleton className="h-3 w-24" />
+                                                <Skeleton className="h-3 w-16" />
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : networkSummary ? (() => {
                                     const tier = networkSummary.current_tier;
@@ -215,9 +242,23 @@ export default function AgentNetworkDashboardCard() {
 
                         {/* Section 2: Points & Earnings */}
                         <Grid size={{ xs: 12, md: 6 }}>
-                            <div className="p-[20px] min-h-[190px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                            <div className="p-[20px] min-h-[205px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                                 {networkLoading ? (
-                                    <Skeleton className="h-[200px] w-full rounded-md" />
+                                    <div className="flex flex-col justify-between h-full gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <Skeleton className="w-5 h-5 rounded" />
+                                            <Skeleton className="h-4 w-32" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[1, 2].map((i) => (
+                                                <div key={i} className="rounded-xl p-3 bg-gray-100/60 space-y-2">
+                                                    <Skeleton className="h-2.5 w-16" />
+                                                    <Skeleton className="h-8 w-12" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <Skeleton className="h-10 w-full rounded-xl" />
+                                    </div>
                                 ) : (() => {
                                     const points30d = networkSummary?.points_30d ?? 0;
                                     const streakCount = networkSummary?.streak_count ?? 0;
@@ -229,15 +270,19 @@ export default function AgentNetworkDashboardCard() {
                                                 <h4 className="text-sm font-bold text-gray-800">Points & Earnings</h4>
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div className="bg-primary/5 rounded-xl p-3">
-                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Points (30d)</p>
-                                                    <p className="text-2xl font-bold text-primary">{points30d.toLocaleString()}</p>
-                                                    <p className="text-[10px] text-gray-400">pts earned</p>
+                                                <div className="relative overflow-hidden bg-primary/5 rounded-xl p-3 flex items-center">
+                                                    <Icon icon="mdi:coin" width="88" className="pointer-events-none absolute -right-4 -bottom-4 text-amber-500/10" />
+                                                    <div className="relative z-10 min-w-0">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider truncate">Points (30d)</p>
+                                                        <p className="text-4xl font-bold text-primary leading-tight">{points30d.toLocaleString()}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="bg-amber-50 rounded-xl p-3">
-                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Streak</p>
-                                                    <p className="text-2xl font-bold text-amber-600">{streakCount}</p>
-                                                    <p className="text-[10px] text-gray-400">period{streakCount !== 1 ? "s" : ""}</p>
+                                                <div className="relative overflow-hidden bg-amber-50 rounded-xl p-3 flex items-center">
+                                                    <Icon icon="mdi:lightning-bolt" width="88" className="pointer-events-none absolute -right-4 -bottom-4 text-yellow-500/10" />
+                                                    <div className="relative z-10 min-w-0">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider truncate">Streak</p>
+                                                        <p className="text-4xl font-bold text-amber-600 leading-tight">{streakCount}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
