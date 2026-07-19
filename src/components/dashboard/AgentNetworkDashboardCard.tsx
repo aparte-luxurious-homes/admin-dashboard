@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import Grid from "@mui/material/Grid2";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
@@ -108,146 +109,147 @@ export default function AgentNetworkDashboardCard() {
             {/* Main column */}
             <Grid size={{ xs: 12, lg: 9 }} sx={{ display: "flex", flexDirection: "column" }}>
                 <div className="flex-1 flex flex-col gap-3">
-                    {/* Section 1: Network Standing — tier, points, commissions (mirrors the
-                        admin read-only card in AgentNetworkCard.tsx). Tier-progress bar and
-                        eval countdown are dropped until Phase 3 ships the evaluation cron —
-                        nothing moves agents between tiers yet, so they'd be misleading. */}
-                    <div className="p-[20px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
-                        {networkLoading ? (
-                            <div className="flex items-center justify-center h-full">
-                                <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    {/* Top row: Tier card + Points & Earnings — restored for Phase 3 now
+                        that the weekly tier-evaluation cron is live (PRD §17, Phase 3),
+                        so the progress bar / eval countdown / earnings breakdown mean
+                        something again. */}
+                    <Grid container spacing={2}>
+                        {/* Section 1: Network Standing — tier, points, commissions (mirrors
+                            the admin read-only card in AgentNetworkCard.tsx). */}
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <div className="p-[20px] min-h-[190px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                                {networkLoading ? (
+                                    <div className="flex items-center justify-center h-full">
+                                        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                ) : networkSummary ? (() => {
+                                    const tier = networkSummary.current_tier;
+                                    const tierCfg = TIER_CONFIG[tier];
+                                    const listingPct = `${(networkSummary.commission_listing_pct * 100).toFixed(1)}%`;
+                                    const referralPct = `${(networkSummary.commission_referral_pct * 100).toFixed(1)}%`;
+                                    const points30d = networkSummary.points_30d;
+                                    const tierTarget = tier === "BRONZE" ? 80 : 200;
+                                    const nextTierLabel = tier === "BRONZE" ? "Silver" : tier === "SILVER" ? "Gold" : null;
+                                    const progressPct = Math.min(100, (points30d / tierTarget) * 100);
+                                    const today = new Date();
+                                    const daysUntilMonday = today.getDay() === 1 ? 7 : (8 - today.getDay()) % 7;
+                                    const gracePeriod = networkSummary.grace_period_until
+                                        ? new Date(networkSummary.grace_period_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                                        : null;
+                                    return (
+                                        <div className="h-full flex flex-col justify-between">
+                                            <div className="flex flex-col gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                                        <Icon icon="solar:chart-bold-duotone" width="18" />
+                                                    </div>
+                                                    <h4 className="text-base font-bold text-gray-800">Network Standing</h4>
+                                                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${networkSummary.is_inactive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
+                                                        <Icon icon={networkSummary.is_inactive ? "solar:close-circle-bold-duotone" : "solar:check-circle-bold-duotone"} width="11" />
+                                                        {networkSummary.is_inactive ? "Inactive" : "Active"}
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div className="flex flex-col justify-center space-y-1.5">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Tier</p>
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
+                                                            <Icon icon={tierCfg.icon} width="13" />
+                                                            {tierCfg.label}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-col justify-center space-y-1.5">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Listing Comm.</p>
+                                                        <p className="text-xl font-bold text-primary">{listingPct}</p>
+                                                    </div>
+                                                    <div className="flex flex-col justify-center space-y-1.5">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Referral Comm.</p>
+                                                        <p className="text-xl font-bold text-primary">{referralPct}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <p className="text-xs text-gray-500 font-medium">{points30d.toLocaleString()} / {tierTarget} pts</p>
+                                                        {nextTierLabel ? (
+                                                            <p className="text-xs font-semibold text-primary">{Math.max(0, tierTarget - points30d)} pts to {nextTierLabel}</p>
+                                                        ) : (
+                                                            <p className="text-xs font-semibold text-yellow-600">Maintaining Gold</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                                        <div
+                                                            className={`h-2.5 rounded-full transition-all ${tier === "GOLD" ? "bg-yellow-400" : "bg-primary"}`}
+                                                            style={{ width: `${progressPct}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Icon icon="solar:clock-circle-bold-duotone" width="14" className="text-gray-400" />
+                                                        <p className="text-xs text-gray-500">Eval in <span className="font-semibold text-gray-700">{daysUntilMonday} day{daysUntilMonday !== 1 ? "s" : ""}</span></p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {tier === "BRONZE" && gracePeriod && (
+                                                            <p className="text-xs text-amber-700 font-medium">Grace: {gracePeriod}</p>
+                                                        )}
+                                                        {(networkSummary.consecutive_misses ?? 0) > 0 && (
+                                                            <p className="text-xs text-red-500 font-semibold">{networkSummary.consecutive_misses} miss{networkSummary.consecutive_misses !== 1 ? "es" : ""}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })() : (
+                                    <div className="flex flex-col items-center justify-center h-full text-center">
+                                        <Icon icon="solar:chart-bold-duotone" width="32" className="text-gray-300 mb-2" />
+                                        <p className="text-sm text-gray-400">No network data</p>
+                                    </div>
+                                )}
                             </div>
-                        ) : networkSummary ? (() => {
-                            const tier = networkSummary.current_tier;
-                            const tierCfg = TIER_CONFIG[tier];
-                            const listingPct = `${(networkSummary.commission_listing_pct * 100).toFixed(1)}%`;
-                            const referralPct = `${(networkSummary.commission_referral_pct * 100).toFixed(1)}%`;
-                            const points30d = networkSummary.points_30d;
-                            const walletCredit = points30d * 10;
-                            return (
-                                <div className="h-full flex flex-col justify-between gap-4">
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                                <Icon icon="solar:chart-bold-duotone" width="18" />
-                                            </div>
-                                            <h4 className="text-base font-bold text-gray-800">Network Standing</h4>
-                                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${networkSummary.is_inactive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
-                                                <Icon icon={networkSummary.is_inactive ? "solar:close-circle-bold-duotone" : "solar:check-circle-bold-duotone"} width="11" />
-                                                {networkSummary.is_inactive ? "Inactive" : "Active"}
-                                            </span>
-                                        </div>
+                        </Grid>
 
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                            <div className="flex flex-col justify-center space-y-1.5">
-                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Tier</p>
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
-                                                    <Icon icon={tierCfg.icon} width="13" />
-                                                    {tierCfg.label}
-                                                </span>
+                        {/* Section 2: Points & Earnings */}
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <div className="p-[20px] min-h-[190px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                                {networkLoading ? (
+                                    <Skeleton className="h-[200px] w-full rounded-md" />
+                                ) : (() => {
+                                    const points30d = networkSummary?.points_30d ?? 0;
+                                    const streakCount = networkSummary?.streak_count ?? 0;
+                                    const walletCredit = points30d * 10;
+                                    return (
+                                        <div className="flex flex-col justify-between h-full gap-3">
+                                            <div className="flex items-center gap-2">
+                                                <Icon icon="solar:wallet-bold-duotone" width="20" className="text-primary" />
+                                                <h4 className="text-sm font-bold text-gray-800">Points & Earnings</h4>
                                             </div>
-                                            <div className="flex flex-col justify-center space-y-1.5">
-                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Points (30d)</p>
-                                                <p className="text-xl font-bold text-gray-900">{points30d.toLocaleString()}</p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="bg-primary/5 rounded-xl p-3">
+                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Points (30d)</p>
+                                                    <p className="text-2xl font-bold text-primary">{points30d.toLocaleString()}</p>
+                                                    <p className="text-[10px] text-gray-400">pts earned</p>
+                                                </div>
+                                                <div className="bg-amber-50 rounded-xl p-3">
+                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Streak</p>
+                                                    <p className="text-2xl font-bold text-amber-600">{streakCount}</p>
+                                                    <p className="text-[10px] text-gray-400">period{streakCount !== 1 ? "s" : ""}</p>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col justify-center space-y-1.5">
-                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Listing Comm.</p>
-                                                <p className="text-xl font-bold text-primary">{listingPct}</p>
-                                            </div>
-                                            <div className="flex flex-col justify-center space-y-1.5">
-                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Referral Comm.</p>
-                                                <p className="text-xl font-bold text-primary">{referralPct}</p>
+                                            <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
+                                                <p className="text-xs text-gray-600 font-medium">{points30d.toLocaleString()} pts · ₦{walletCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} credited</p>
+                                                <p className="text-[10px] text-gray-400">1pt = ₦10</p>
                                             </div>
                                         </div>
-
-                                        {(networkSummary.consecutive_misses ?? 0) > 0 && (
-                                            <p className="text-xs text-red-500 font-semibold flex items-center gap-1">
-                                                <Icon icon="mdi:alert-outline" width="13" />
-                                                {networkSummary.consecutive_misses} consecutive evaluation miss{(networkSummary.consecutive_misses ?? 0) > 1 ? "es" : ""}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
-                                        <p className="text-xs text-gray-600 font-medium">{points30d.toLocaleString()} pts · ₦{walletCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} credited</p>
-                                        <p className="text-[10px] text-gray-400">1pt = ₦10</p>
-                                    </div>
-                                </div>
-                            );
-                        })() : (
-                            <div className="flex flex-col items-center justify-center h-full text-center">
-                                <Icon icon="solar:chart-bold-duotone" width="32" className="text-gray-300 mb-2" />
-                                <p className="text-sm text-gray-400">No network data</p>
+                                    );
+                                })()}
                             </div>
-                        )}
-                    </div>
-
-                    {/*
-                      PRESERVED FOR PHASE 3 — do not delete, re-enable once the weekly
-                      tier-evaluation cron ships (PRD §17, Phase 3). Requires re-adding
-                      inside the IIFE above: tierTarget, nextTierLabel, progressPct
-                      (Math.min(100, (points30d / tierTarget) * 100)), today, and
-                      daysUntilMonday — all removed when this card was simplified for
-                      Phase 2 since nothing evaluates tiers yet.
-
-                    Progress bar toward next tier (goes after the stats grid):
-                    <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                            <p className="text-xs text-gray-500 font-medium">{points30d.toLocaleString()} / {tierTarget} pts</p>
-                            {nextTierLabel ? (
-                                <p className="text-xs font-semibold text-primary">{Math.max(0, tierTarget - points30d)} pts to {nextTierLabel}</p>
-                            ) : (
-                                <p className="text-xs font-semibold text-yellow-600">Maintaining Gold</p>
-                            )}
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-2.5">
-                            <div
-                                className={`h-2.5 rounded-full transition-all ${tier === "GOLD" ? "bg-yellow-400" : "bg-primary"}`}
-                                style={{ width: `${progressPct}%` }}
-                            />
-                        </div>
-                    </div>
-
-                    Eval countdown (goes alongside the consecutive-misses warning):
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                            <Icon icon="solar:clock-circle-bold-duotone" width="14" className="text-gray-400" />
-                            <p className="text-xs text-gray-500">Eval in <span className="font-semibold text-gray-700">{daysUntilMonday} day{daysUntilMonday !== 1 ? "s" : ""}</span></p>
-                        </div>
-                    </div>
-
-                    Standalone "Points & Earnings" card that used to sit beside the Tier
-                    card (md:4 width, with Tier card at md:8). Folded into the single
-                    wide card above for Phase 2 — restore as a sibling Grid item if this
-                    needs to be its own card again:
-                    <Grid size={{ xs: 12, md: 4 }}>
-                        <div className="p-[20px] min-h-[270px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
-                            {networkLoading ? (
-                                <Skeleton className="h-[200px] w-full rounded-md" />
-                            ) : (() => {
-                                const points30d = networkSummary?.points_30d ?? 0;
-                                const walletCredit = points30d * 10;
-                                return (
-                                    <div className="flex flex-col justify-between h-full gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <Icon icon="solar:wallet-bold-duotone" width="20" className="text-primary" />
-                                            <h4 className="text-sm font-bold text-gray-800">Points & Earnings</h4>
-                                        </div>
-                                        <div className="bg-primary/5 rounded-xl p-3">
-                                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Points (30d)</p>
-                                            <p className="text-2xl font-bold text-primary">{points30d.toLocaleString()}</p>
-                                            <p className="text-[10px] text-gray-400">pts earned</p>
-                                        </div>
-                                        <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
-                                            <p className="text-xs text-gray-600 font-medium">{points30d.toLocaleString()} pts · ₦{walletCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} credited</p>
-                                            <p className="text-[10px] text-gray-400">1pt = ₦10</p>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-                        </div>
+                        </Grid>
                     </Grid>
-                    */}
 
                     {/* Section 4: Recent Activity — flex-1 so it stretches to align with
                         the bottom of the sidebar's Tier Benefits / Wallet card */}
