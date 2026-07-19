@@ -37,7 +37,10 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
             if (paymentMethod) queryParams.append("payment_method", paymentMethod);
             if (targetOwnerId) queryParams.append("target_owner_id", targetOwnerId);
             
-            const url = `${API_ROUTES.reports.bookings.export}?${queryParams.toString()}`;
+            const baseUrl = user?.role === 'AGENT' 
+                ? API_ROUTES.agents.bookings.export 
+                : API_ROUTES.reports.bookings.export;
+            const url = `${baseUrl}?${queryParams.toString()}`;
             
             await requestReportDownload(url, formatType);
             toast.success(`${formatType.toUpperCase()} export generated successfully`);
