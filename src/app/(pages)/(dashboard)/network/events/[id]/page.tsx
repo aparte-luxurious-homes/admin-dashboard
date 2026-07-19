@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import Grid from "@mui/material/Grid2";

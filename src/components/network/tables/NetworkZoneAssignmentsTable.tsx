@@ -355,7 +355,11 @@ export default function NetworkZoneAssignmentsTable() {
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div>
                             <h1 className="text-xl font-semibold text-gray-900">Zone Assignments</h1>
-                            <p className="text-sm text-gray-500 mt-1">Assign Area Managers and Regional Leads to geographic zones</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {isAdmin
+                                    ? "Assign Area Managers and Regional Leads to geographic zones"
+                                    : "Your zone assignment and role details"}
+                            </p>
                         </div>
                         {isAdmin && (
                             <div className="flex items-center gap-2 flex-wrap">
