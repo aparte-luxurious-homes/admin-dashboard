@@ -17,6 +17,7 @@ interface ActionConfig {
     base_points: number;
     is_active: boolean;
     updated_at: string;
+    description?: string | null;
 }
 
 const STATUS_CONFIG = {
@@ -26,6 +27,14 @@ const STATUS_CONFIG = {
 
 function formatActionType(type: string) {
     return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function describeAction(action: Pick<ActionConfig, "description">) {
+    return action.description || "No description available for this action yet.";
+}
+
+function truncateDescription(description: string, maxLength = 60) {
+    return description.length > maxLength ? `${description.slice(0, maxLength)}...` : description;
 }
 
 export default function NetworkActionsTable() {
@@ -42,6 +51,7 @@ export default function NetworkActionsTable() {
     const [editAction, setEditAction]       = useState<ActionConfig | null>(null);
     const [editBasePoints, setEditBasePoints] = useState(0);
     const [editIsActive, setEditIsActive]     = useState(true);
+    const [editDescription, setEditDescription] = useState("");
     const [isSaving, setIsSaving]             = useState(false);
 
     const menuRef = useRef<HTMLDivElement>(null);
@@ -81,6 +91,7 @@ export default function NetworkActionsTable() {
     const openEdit = (action: ActionConfig) => {
         setEditBasePoints(action.base_points);
         setEditIsActive(action.is_active);
+        setEditDescription(action.description || "");
         setEditAction(action);
         setSelectedRow(null);
     };
@@ -92,7 +103,7 @@ export default function NetworkActionsTable() {
             await toast.promise(
                 axiosRequest.put(
                     API_ROUTES.network.configs.actions.update(editAction.action_type),
-                    { base_points: editBasePoints, is_active: editIsActive }
+                    { base_points: editBasePoints, is_active: editIsActive, description: editDescription }
                 ),
                 {
                     loading: "Saving...",
@@ -118,7 +129,11 @@ export default function NetworkActionsTable() {
                 {/* Header */}
                 <div className="p-6 border-b border-gray-200">
                     <h1 className="text-xl font-semibold text-gray-900">Action Configs</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage point values and active state for each agent action</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                        {canEditActions
+                            ? "Manage point values and active state for each agent action"
+                            : "See what actions earn you points and how many"}
+                    </p>
                 </div>
 
                 {/* Table */}
@@ -133,7 +148,8 @@ export default function NetworkActionsTable() {
                                 <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     <th className="px-6 py-3 text-left">Action Type</th>
                                     <th className="px-6 py-3 text-left">Base Points</th>
-                                    <th className="px-6 py-3 text-left">Status</th>
+                                    {canEditActions && <th className="px-6 py-3 text-left">Status</th>}
+                                    <th className={`px-6 py-3 text-left ${!canEditActions ? "w-[520px]" : ""}`}>Description</th>
                                     <th className="px-6 py-3 text-left">Last Updated</th>
                                     {canEditActions && <th className="px-6 py-3 text-right">Actions</th>}
                                 </tr>
@@ -153,10 +169,15 @@ export default function NetworkActionsTable() {
                                             <td className="px-6 py-4 text-xl font-bold text-gray-900">
                                                 {action.base_points}
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusCfg.bg} ${statusCfg.text}`}>
-                                                    {action.is_active ? "Active" : "Inactive"}
-                                                </span>
+                                            {canEditActions && (
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusCfg.bg} ${statusCfg.text}`}>
+                                                        {action.is_active ? "Active" : "Inactive"}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            <td className="px-6 py-4 text-sm text-gray-600" title={describeAction(action)}>
+                                                {truncateDescription(describeAction(action))}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-700">
                                                 {formatDate(action.updated_at)}
@@ -240,11 +261,17 @@ export default function NetworkActionsTable() {
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Base Points</p>
                                 <p className="text-xl font-bold text-gray-900">{viewAction.base_points}</p>
                             </div>
+                            {canEditActions && (
+                                <div className="space-y-1">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</p>
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewAction.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
+                                        {viewAction.is_active ? "Active" : "Inactive"}
+                                    </span>
+                                </div>
+                            )}
                             <div className="space-y-1">
-                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</p>
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewAction.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
-                                    {viewAction.is_active ? "Active" : "Inactive"}
-                                </span>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</p>
+                                <p className="text-sm text-gray-700">{describeAction(viewAction)}</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Updated</p>
@@ -305,6 +332,22 @@ export default function NetworkActionsTable() {
                                         <span className={`${editIsActive ? "translate-x-6" : "translate-x-1"} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
                                     </button>
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-semibold text-gray-700">Description</label>
+                                    <span className={`text-xs ${editDescription.length > 255 ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+                                        {editDescription.length}/255
+                                    </span>
+                                </div>
+                                <textarea
+                                    rows={3}
+                                    maxLength={255}
+                                    value={editDescription}
+                                    onChange={(e) => setEditDescription(e.target.value)}
+                                    placeholder="What does this action reward, and when?"
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-gray-50/50 transition-all resize-none"
+                                />
                             </div>
                         </div>
                         <div className="mt-2 pt-4 px-6 pb-6 border-t border-gray-100 flex justify-end gap-3">

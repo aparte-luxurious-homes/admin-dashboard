@@ -107,16 +107,47 @@ export default function AgentNetworkDashboardCard() {
     return (
         <Grid container spacing={2} sx={{ alignItems: "stretch" }}>
             {/* Main column */}
-            <Grid size={{ xs: 12, lg: 9 }}>
-                <div className="space-y-3">
-                    {/* Top row: Tier card + Points & Earnings */}
+            <Grid size={{ xs: 12, lg: 9 }} sx={{ display: "flex", flexDirection: "column" }}>
+                <div className="flex-1 flex flex-col gap-3">
+                    {/* Top row: Tier card + Points & Earnings — restored for Phase 3 now
+                        that the weekly tier-evaluation cron is live (PRD §17, Phase 3),
+                        so the progress bar / eval countdown / earnings breakdown mean
+                        something again. */}
                     <Grid container spacing={2}>
-                        {/* Section 1: Tier card */}
+                        {/* Section 1: Network Standing — tier, points, commissions (mirrors
+                            the admin read-only card in AgentNetworkCard.tsx). */}
                         <Grid size={{ xs: 12, md: 6 }}>
-                            <div className="p-[20px] min-h-[270px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                            <div className="p-[20px] min-h-[205px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                                 {networkLoading ? (
-                                    <div className="flex items-center justify-center h-full">
-                                        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    <div className="h-full flex flex-col justify-between">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex items-center gap-2">
+                                                <Skeleton className="w-8 h-8 rounded-lg" />
+                                                <Skeleton className="h-5 w-32" />
+                                                <Skeleton className="h-5 w-14 rounded-full" />
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                {[1, 2, 3].map((i) => (
+                                                    <div key={i} className="space-y-1.5">
+                                                        <Skeleton className="h-2.5 w-14" />
+                                                        <Skeleton className="h-6 w-16" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <Skeleton className="h-2.5 w-16" />
+                                                    <Skeleton className="h-2.5 w-20" />
+                                                </div>
+                                                <Skeleton className="h-2.5 w-full rounded-full" />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <Skeleton className="h-3 w-24" />
+                                                <Skeleton className="h-3 w-16" />
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : networkSummary ? (() => {
                                     const tier = networkSummary.current_tier;
@@ -134,54 +165,72 @@ export default function AgentNetworkDashboardCard() {
                                         : null;
                                     return (
                                         <div className="h-full flex flex-col justify-between">
-                                            <div className="flex items-center justify-between">
-                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold border ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
-                                                    <Icon icon={tierCfg.icon} width="16" />
-                                                    {tierCfg.label} Agent
-                                                </span>
-                                                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${networkSummary.is_inactive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
-                                                    <Icon icon={networkSummary.is_inactive ? "solar:close-circle-bold-duotone" : "solar:check-circle-bold-duotone"} width="12" />
-                                                    {networkSummary.is_inactive ? "Inactive" : "Active"}
-                                                </span>
-                                            </div>
-                                            <div className="flex gap-3">
-                                                <div className="flex-1 bg-gray-50 rounded-xl p-2.5 text-center">
-                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Listing Comm.</p>
-                                                    <p className="text-base font-bold text-gray-900">{listingPct}</p>
-                                                </div>
-                                                <div className="flex-1 bg-gray-50 rounded-xl p-2.5 text-center">
-                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Referral Comm.</p>
-                                                    <p className="text-base font-bold text-gray-900">{referralPct}</p>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center justify-between mb-1.5">
-                                                    <p className="text-xs text-gray-500 font-medium">{points30d.toLocaleString()} / {tierTarget} pts</p>
-                                                    {nextTierLabel ? (
-                                                        <p className="text-xs font-semibold text-primary">{Math.max(0, tierTarget - points30d)} pts to {nextTierLabel}</p>
-                                                    ) : (
-                                                        <p className="text-xs font-semibold text-yellow-600">Maintaining Gold</p>
-                                                    )}
-                                                </div>
-                                                <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                                    <div
-                                                        className={`h-2.5 rounded-full transition-all ${tier === "GOLD" ? "bg-yellow-400" : "bg-primary"}`}
-                                                        style={{ width: `${progressPct}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Icon icon="solar:clock-circle-bold-duotone" width="14" className="text-gray-400" />
-                                                    <p className="text-xs text-gray-500">Eval in <span className="font-semibold text-gray-700">{daysUntilMonday} day{daysUntilMonday !== 1 ? "s" : ""}</span></p>
-                                                </div>
+                                            <div className="flex flex-col gap-4">
                                                 <div className="flex items-center gap-2">
-                                                    {tier === "BRONZE" && gracePeriod && (
-                                                        <p className="text-xs text-amber-700 font-medium">Grace: {gracePeriod}</p>
+                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                                        <Icon icon="solar:chart-bold-duotone" width="18" />
+                                                    </div>
+                                                    <h4 className="text-base font-bold text-gray-800">Network Standing</h4>
+                                                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${networkSummary.is_inactive ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
+                                                        <Icon icon={networkSummary.is_inactive ? "solar:close-circle-bold-duotone" : "solar:check-circle-bold-duotone"} width="11" />
+                                                        {networkSummary.is_inactive ? "Inactive" : "Active"}
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div className="flex flex-col justify-center space-y-1.5">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Tier</p>
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
+                                                            <Icon icon={tierCfg.icon} width="13" />
+                                                            {tierCfg.label}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-col justify-center space-y-1.5">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Listing Comm.</p>
+                                                        <p className="text-xl font-bold text-primary">{listingPct}</p>
+                                                    </div>
+                                                    <div className="flex flex-col justify-center space-y-1.5">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Referral Comm.</p>
+                                                        <p className="text-xl font-bold text-primary">{referralPct}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <p className="text-xs text-gray-500 font-medium">{points30d.toLocaleString()} / {tierTarget} pts</p>
+                                                        {nextTierLabel ? (
+                                                            <p className="text-xs font-semibold text-primary">{Math.max(0, tierTarget - points30d)} pts to {nextTierLabel}</p>
+                                                        ) : (
+                                                            <p className="text-xs font-semibold text-yellow-600">Maintaining Gold</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                                        <div
+                                                            className={`h-2.5 rounded-full transition-all ${tier === "GOLD" ? "bg-yellow-400" : "bg-primary"}`}
+                                                            style={{ width: `${progressPct}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    {tier === "BRONZE" && points30d <= 0 && gracePeriod ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Icon icon="mdi:clock-alert-outline" width="14" className="text-amber-600" />
+                                                            <p className="text-xs text-amber-700 font-medium">Grace: {gracePeriod}</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Icon icon="solar:clock-circle-bold-duotone" width="14" className="text-gray-400" />
+                                                            <p className="text-xs text-gray-500">Eval in <span className="font-semibold text-gray-700">{daysUntilMonday} day{daysUntilMonday !== 1 ? "s" : ""}</span></p>
+                                                        </div>
                                                     )}
-                                                    {(networkSummary.consecutive_misses ?? 0) > 0 && (
-                                                        <p className="text-xs text-red-500 font-semibold">{networkSummary.consecutive_misses} miss{networkSummary.consecutive_misses !== 1 ? "es" : ""}</p>
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        {(networkSummary.consecutive_misses ?? 0) > 0 && (
+                                                            <p className="text-xs text-red-500 font-semibold">{networkSummary.consecutive_misses} miss{networkSummary.consecutive_misses !== 1 ? "es" : ""}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -197,9 +246,23 @@ export default function AgentNetworkDashboardCard() {
 
                         {/* Section 2: Points & Earnings */}
                         <Grid size={{ xs: 12, md: 6 }}>
-                            <div className="p-[20px] min-h-[270px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                            <div className="p-[20px] min-h-[205px] h-full border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                                 {networkLoading ? (
-                                    <Skeleton className="h-[200px] w-full rounded-md" />
+                                    <div className="flex flex-col justify-between h-full gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <Skeleton className="w-5 h-5 rounded" />
+                                            <Skeleton className="h-4 w-32" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[1, 2].map((i) => (
+                                                <div key={i} className="rounded-xl p-3 bg-gray-100/60 space-y-2">
+                                                    <Skeleton className="h-2.5 w-16" />
+                                                    <Skeleton className="h-8 w-12" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <Skeleton className="h-10 w-full rounded-xl" />
+                                    </div>
                                 ) : (() => {
                                     const points30d = networkSummary?.points_30d ?? 0;
                                     const streakCount = networkSummary?.streak_count ?? 0;
@@ -211,15 +274,19 @@ export default function AgentNetworkDashboardCard() {
                                                 <h4 className="text-sm font-bold text-gray-800">Points & Earnings</h4>
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div className="bg-primary/5 rounded-xl p-3">
-                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Points (30d)</p>
-                                                    <p className="text-2xl font-bold text-primary">{points30d.toLocaleString()}</p>
-                                                    <p className="text-[10px] text-gray-400">pts earned</p>
+                                                <div className="relative overflow-hidden bg-primary/5 rounded-xl p-3 flex items-center">
+                                                    <Icon icon="mdi:coin" width="88" className="pointer-events-none absolute -right-4 -bottom-4 text-amber-500/10" />
+                                                    <div className="relative z-10 min-w-0">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider truncate">Points (30d)</p>
+                                                        <p className="text-4xl font-bold text-primary leading-tight">{points30d.toLocaleString()}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="bg-amber-50 rounded-xl p-3">
-                                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Streak</p>
-                                                    <p className="text-2xl font-bold text-amber-600">{streakCount}</p>
-                                                    <p className="text-[10px] text-gray-400">period{streakCount !== 1 ? "s" : ""}</p>
+                                                <div className="relative overflow-hidden bg-amber-50 rounded-xl p-3 flex items-center">
+                                                    <Icon icon="mdi:lightning-bolt" width="88" className="pointer-events-none absolute -right-4 -bottom-4 text-yellow-500/10" />
+                                                    <div className="relative z-10 min-w-0">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider truncate">Streak</p>
+                                                        <p className="text-4xl font-bold text-amber-600 leading-tight">{streakCount}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between">
@@ -233,8 +300,9 @@ export default function AgentNetworkDashboardCard() {
                         </Grid>
                     </Grid>
 
-                    {/* Section 4: Recent Activity */}
-                    <div className="p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
+                    {/* Section 4: Recent Activity — flex-1 so it stretches to align with
+                        the bottom of the sidebar's Tier Benefits / Wallet card */}
+                    <div className="flex-1 p-[30px] border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
                         <div className="flex items-center gap-2 mb-4">
                             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                                 <Icon icon="solar:history-bold-duotone" width="14" />
