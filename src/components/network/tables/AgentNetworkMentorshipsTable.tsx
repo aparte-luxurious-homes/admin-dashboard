@@ -185,7 +185,7 @@ export default function AgentNetworkMentorshipsTable() {
     const tierBelow = agentTier ? TIER_BELOW[agentTier] : null;
 
     const canAccept = (m: Mentorship) =>
-        m.status === "PENDING" && m.mentee_id === user?.id && m.invited_by_mentor;
+        m.status === "PENDING" && m.mentee_id === String(user?.id ?? "") && m.invited_by_mentor;
 
     const fetchMentorships = useCallback(async () => {
         setIsLoading(true);
@@ -209,9 +209,10 @@ export default function AgentNetworkMentorshipsTable() {
 
     // Fetch full detail whenever the view modal opens
     useEffect(() => {
-        if (!viewMentorship) { setDetailMentorship(null); return; }
+        const id = viewMentorship?.id;
+        if (!id) { setDetailMentorship(null); return; }
         axiosRequest
-            .get(API_ROUTES.network.myMentorshipDetails(viewMentorship.id))
+            .get(API_ROUTES.network.myMentorshipDetails(id))
             .then((res) => {
                 const data: Mentorship = res?.data?.data ?? res?.data;
                 setDetailMentorship(data);
