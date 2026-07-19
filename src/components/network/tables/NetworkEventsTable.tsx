@@ -89,8 +89,6 @@ export default function NetworkEventsTable() {
     const [confirmEventId, setConfirmEventId]             = useState<string | null>(null);
     const [showRemitConfirm, setShowRemitConfirm]   = useState(false);
     const [isRemitting, setIsRemitting]             = useState(false);
-    const [showRemitConfirm, setShowRemitConfirm]   = useState(false);
-    const [isRemitting, setIsRemitting]             = useState(false);
 
     const [showAdjustModal, setShowAdjustModal]   = useState(false);
     const [showAdjustConfirm, setShowAdjustConfirm] = useState(false);
@@ -260,25 +258,6 @@ export default function NetworkEventsTable() {
             // handled by toast.promise
         } finally {
             setIsAdjusting(false);
-        }
-    };
-
-    const handleRemit = async () => {
-        setIsRemitting(true);
-        try {
-            await toast.promise(
-                axiosRequest.post(API_ROUTES.network.remit),
-                {
-                    loading: "Running remittance job...",
-                    success: "Remittance job completed successfully",
-                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Remittance job failed",
-                }
-            );
-            fetchEvents();
-        } catch {
-            // handled by toast.promise
-        } finally {
-            setIsRemitting(false);
         }
     };
 
