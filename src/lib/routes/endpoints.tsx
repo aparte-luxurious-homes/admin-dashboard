@@ -185,6 +185,7 @@ export const API_ROUTES = {
         },
         me: `/network/me`,
         history: `/network/history`,
+        remit: `/jobs/remit-agent-points`,
     },
     permissions: {
         base: '/permissions',

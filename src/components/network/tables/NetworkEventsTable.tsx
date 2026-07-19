@@ -86,7 +86,9 @@ export default function NetworkEventsTable() {
     const [selectedRow, setSelectedRow]     = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
 
-    const [confirmEventId, setConfirmEventId] = useState<string | null>(null);
+    const [confirmEventId, setConfirmEventId]       = useState<string | null>(null);
+    const [showRemitConfirm, setShowRemitConfirm]   = useState(false);
+    const [isRemitting, setIsRemitting]             = useState(false);
 
     const [showAdjustModal, setShowAdjustModal] = useState(false);
     const [adjustAgentId, setAdjustAgentId]     = useState("");
@@ -195,7 +197,15 @@ export default function NetworkEventsTable() {
 
     const handleAdjustSubmit = async () => {
         if (!adjustAgentId.trim()) {
-            toast.error("Agent ID is required");
+            toast.error("Select an agent");
+            return;
+        }
+        if (!adjustPoints || adjustPoints === 0) {
+            toast.error("Points must be a nonzero number");
+            return;
+        }
+        if (!adjustReason.trim()) {
+            toast.error("Reason is required");
             return;
         }
         setIsAdjusting(true);
@@ -221,6 +231,25 @@ export default function NetworkEventsTable() {
             // handled by toast.promise
         } finally {
             setIsAdjusting(false);
+        }
+    };
+
+    const handleRemit = async () => {
+        setIsRemitting(true);
+        try {
+            await toast.promise(
+                axiosRequest.post(API_ROUTES.network.remit),
+                {
+                    loading: "Running remittance job...",
+                    success: "Remittance job completed successfully",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Remittance job failed",
+                }
+            );
+            fetchEvents();
+        } catch {
+            // handled by toast.promise
+        } finally {
+            setIsRemitting(false);
         }
     };
 
@@ -262,13 +291,23 @@ export default function NetworkEventsTable() {
                             <h1 className="text-xl font-semibold text-gray-900">Network Events</h1>
                             <p className="text-sm text-gray-500 mt-1">Monitor and manage all agent activity events</p>
                         </div>
-                        <button
-                            onClick={() => setShowAdjustModal(true)}
-                            className="px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                        >
-                            <Icon icon="lucide:plus" width="16" height="16" />
-                            Manual Adjustment
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setShowRemitConfirm(true)}
+                                disabled={isRemitting}
+                                className="px-4 py-2.5 text-sm font-bold text-emerald-600 bg-transparent border border-emerald-600 rounded-xl hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                            >
+                                <Icon icon="lucide:coins" width="16" height="16" />
+                                Run Remittance
+                            </button>
+                            <button
+                                onClick={() => setShowAdjustModal(true)}
+                                className="px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                            >
+                                <Icon icon="lucide:plus" width="16" height="16" />
+                                Manual Adjustment
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
@@ -459,6 +498,41 @@ export default function NetworkEventsTable() {
                     </div>
                 )}
             </div>
+
+            {/* Remittance Confirmation Modal */}
+            {showRemitConfirm && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="p-6">
+                            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                                <Icon icon="lucide:coins" width="24" className="text-emerald-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Run Point Remittance?</h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                This will process all unremitted confirmed events and credit the naira equivalent of each agent&apos;s awarded points directly to their wallet. Only events that have not yet been remitted will be processed.
+                            </p>
+                            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-3">
+                                This action cannot be undone. Ensure all events have been reviewed before proceeding.
+                            </p>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowRemitConfirm(false)}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => { setShowRemitConfirm(false); handleRemit(); }}
+                                disabled={isRemitting}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-600/20"
+                            >
+                                Yes, run remittance
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Confirm Event Modal */}
             {confirmEventId && (
