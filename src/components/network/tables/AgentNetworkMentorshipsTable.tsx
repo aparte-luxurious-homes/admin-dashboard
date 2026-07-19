@@ -502,7 +502,7 @@ export default function AgentNetworkMentorshipsTable() {
             {/* View modal */}
             {viewMentorship && modalData && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[94vh] flex flex-col">
                         <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
                             <h3 className="text-lg font-semibold text-gray-900">Mentorship Details</h3>
                             <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -583,7 +583,7 @@ export default function AgentNetworkMentorshipsTable() {
             {showAcceptConfirm && acceptTarget && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-                        <div className="p-6">
+                        <div className="p-8 min-h-[260px] flex flex-col justify-center">
                             <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
                                 <Icon icon="mdi:handshake-outline" width="24" className="text-green-600" />
                             </div>
@@ -629,7 +629,7 @@ export default function AgentNetworkMentorshipsTable() {
                                 <Icon icon="lucide:x" width="18" className="text-gray-500" />
                             </button>
                         </div>
-                        <div className="p-6 space-y-5">
+                        <div className="p-8 space-y-6 min-h-[320px]">
                             {/* Explanation */}
                             <div className="flex gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
                                 <Icon icon="mdi:information-outline" width="18" className="text-blue-500 shrink-0 mt-0.5" />
@@ -671,7 +671,7 @@ export default function AgentNetworkMentorshipsTable() {
                                     </div>
 
                                     {candidateDropdownOpen && !candidatesLoading && (
-                                        <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+                                        <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-96 overflow-y-auto">
                                             {filteredCandidates.length > 0 ? filteredCandidates.map((c) => {
                                                 const img = profileImage(c);
                                                 return (
@@ -729,7 +729,7 @@ export default function AgentNetworkMentorshipsTable() {
             {showInviteConfirm && selectedCandidate && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-                        <div className="p-6">
+                        <div className="p-8 min-h-[260px] flex flex-col justify-center">
                             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                                 <Icon icon="mdi:account-plus-outline" width="24" className="text-primary" />
                             </div>
