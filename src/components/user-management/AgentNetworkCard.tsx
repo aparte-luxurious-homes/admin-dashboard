@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
+import { toast } from "react-hot-toast";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePermissions } from "@/src/hooks/usePermissions";
+import { UserRole } from "@/src/lib/enums";
 
 interface AgentNetworkSummary {
     current_tier: string;
@@ -23,13 +26,23 @@ const TIER_CONFIG: Record<string, { label: string; color: string; bg: string; bo
 };
 
 const TIER_TARGET: Record<string, number> = { BRONZE: 80, SILVER: 200, GOLD: 200 };
+const TIER_ORDER = ["BRONZE", "SILVER", "GOLD"] as const;
 
 export default function AgentNetworkCard({ userId }: { userId: string }) {
+    const { role } = usePermissions();
+    // Mirrors the backend's require_admin on PATCH /admin/network/agents/{id}/tier —
+    // only ADMIN/SUPER_ADMIN can override an agent's tier.
+    const canEditTier = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+
     const [data, setData]       = useState<AgentNetworkSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [failed, setFailed]   = useState(false);
 
-    useEffect(() => {
+    const [showEditTier, setShowEditTier] = useState(false);
+    const [selectedTier, setSelectedTier] = useState<string>("BRONZE");
+    const [isSavingTier, setIsSavingTier] = useState(false);
+
+    const fetchTier = useCallback(() => {
         if (!userId) return;
         setLoading(true);
         setFailed(false);
@@ -41,6 +54,33 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
             .catch(() => setFailed(true))
             .finally(() => setLoading(false));
     }, [userId]);
+
+    useEffect(() => { fetchTier(); }, [fetchTier]);
+
+    const openEditTier = () => {
+        setSelectedTier(data?.current_tier ?? "BRONZE");
+        setShowEditTier(true);
+    };
+
+    const handleSaveTier = async () => {
+        setIsSavingTier(true);
+        try {
+            await toast.promise(
+                axiosRequest.patch(API_ROUTES.network.agents.tier(userId), { current_tier: selectedTier }),
+                {
+                    loading: "Updating tier...",
+                    success: "Agent tier updated successfully",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to update tier",
+                }
+            );
+            setShowEditTier(false);
+            fetchTier();
+        } catch {
+            // handled by toast.promise
+        } finally {
+            setIsSavingTier(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -94,14 +134,26 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                     {/* Tier */}
                     <div className="flex flex-col justify-center space-y-1.5">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tier</p>
-                        {tierCfg ? (
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
-                                <Icon icon={tierCfg.icon} width="13" />
-                                {tierCfg.label}
-                            </span>
-                        ) : (
-                            <span className="text-sm font-medium text-gray-900">{tier}</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                            {tierCfg ? (
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border w-fit ${tierCfg.bg} ${tierCfg.color} ${tierCfg.border}`}>
+                                    <Icon icon={tierCfg.icon} width="13" />
+                                    {tierCfg.label}
+                                </span>
+                            ) : (
+                                <span className="text-sm font-medium text-gray-900">{tier}</span>
+                            )}
+                            {canEditTier && (
+                                <button
+                                    type="button"
+                                    onClick={openEditTier}
+                                    className="p-1 rounded-md text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                                    aria-label="Edit tier"
+                                >
+                                    <Icon icon="mdi:pencil" width="13" />
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* 30-day points */}
@@ -158,6 +210,75 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                     </p>
                 )}
             </div>
+
+            {/* Edit Tier Modal */}
+            {showEditTier && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Edit Tier</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Manually override this agent's tier</p>
+                            </div>
+                            <button
+                                onClick={() => setShowEditTier(false)}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <Icon icon="lucide:x" width="18" className="text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-3">
+                            <p className="text-xs text-gray-500">
+                                Commission rates auto-sync to the new tier. This is logged and visible to the agent.
+                            </p>
+                            <div className="grid grid-cols-3 gap-2">
+                                {TIER_ORDER.map((t) => {
+                                    const cfg = TIER_CONFIG[t];
+                                    const isSelected = selectedTier === t;
+                                    return (
+                                        <button
+                                            key={t}
+                                            type="button"
+                                            onClick={() => setSelectedTier(t)}
+                                            className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border-2 transition-colors ${
+                                                isSelected ? `${cfg.bg} ${cfg.border} ${cfg.color}` : "border-gray-200 text-gray-400 hover:border-gray-300"
+                                            }`}
+                                        >
+                                            <Icon icon={cfg.icon} width="20" />
+                                            <span className="text-xs font-bold">{cfg.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowEditTier(false)}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveTier}
+                                disabled={isSavingTier || selectedTier === data.current_tier}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                            >
+                                {isSavingTier ? (
+                                    <>
+                                        <Icon icon="mdi:loading" className="animate-spin" width="14" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon icon="mdi:content-save" width="14" />
+                                        Save
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
