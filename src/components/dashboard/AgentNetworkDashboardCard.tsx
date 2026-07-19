@@ -215,14 +215,18 @@ export default function AgentNetworkDashboardCard() {
                                                 </div>
 
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Icon icon="solar:clock-circle-bold-duotone" width="14" className="text-gray-400" />
-                                                        <p className="text-xs text-gray-500">Eval in <span className="font-semibold text-gray-700">{daysUntilMonday} day{daysUntilMonday !== 1 ? "s" : ""}</span></p>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {tier === "BRONZE" && gracePeriod && (
+                                                    {tier === "BRONZE" && points30d <= 0 && gracePeriod ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Icon icon="mdi:clock-alert-outline" width="14" className="text-amber-600" />
                                                             <p className="text-xs text-amber-700 font-medium">Grace: {gracePeriod}</p>
-                                                        )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Icon icon="solar:clock-circle-bold-duotone" width="14" className="text-gray-400" />
+                                                            <p className="text-xs text-gray-500">Eval in <span className="font-semibold text-gray-700">{daysUntilMonday} day{daysUntilMonday !== 1 ? "s" : ""}</span></p>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
                                                         {(networkSummary.consecutive_misses ?? 0) > 0 && (
                                                             <p className="text-xs text-red-500 font-semibold">{networkSummary.consecutive_misses} miss{networkSummary.consecutive_misses !== 1 ? "es" : ""}</p>
                                                         )}

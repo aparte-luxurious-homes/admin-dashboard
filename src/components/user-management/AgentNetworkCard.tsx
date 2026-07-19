@@ -113,6 +113,11 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
     const nextTier = tier === "BRONZE" ? "Silver" : tier === "SILVER" ? "Gold" : null;
     const listPct  = `${(data.commission_listing_pct * 100).toFixed(1)}%`;
     const refPct   = `${(data.commission_referral_pct * 100).toFixed(1)}%`;
+    const today           = new Date();
+    const daysUntilMonday = today.getDay() === 1 ? 7 : (8 - today.getDay()) % 7;
+    // Grace period only matters for a Bronze agent who hasn't earned any points yet
+    // this window — once they have points, the weekly eval countdown is more useful.
+    const showGracePeriod = tier === "BRONZE" && pts <= 0 && !!data.grace_period_until;
 
     return (
         <div className="mt-6 mb-6">
@@ -203,10 +208,15 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                         {data.consecutive_misses} consecutive evaluation miss{(data.consecutive_misses ?? 0) > 1 ? "es" : ""}
                     </p>
                 )}
-                {data.grace_period_until && (
+                {showGracePeriod ? (
                     <p className="mt-1.5 text-xs text-amber-700 font-medium flex items-center gap-1">
                         <Icon icon="mdi:clock-alert-outline" width="13" />
-                        Grace period until {new Date(data.grace_period_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        Grace period until {new Date(data.grace_period_until as string).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                ) : (
+                    <p className="mt-1.5 text-xs text-gray-500 font-medium flex items-center gap-1">
+                        <Icon icon="solar:clock-circle-bold-duotone" width="13" />
+                        Eval in {daysUntilMonday} day{daysUntilMonday !== 1 ? "s" : ""}
                     </p>
                 )}
             </div>
