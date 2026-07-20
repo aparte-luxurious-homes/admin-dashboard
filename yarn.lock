@@ -612,6 +612,13 @@
   resolved "https://registry.npmjs.org/@next/swc-darwin-x64/-/swc-darwin-x64-15.1.9.tgz"
   integrity sha512-fp0c1rB6jZvdSDhprOur36xzQvqelAkNRXM/An92sKjjtaJxjlqJR8jiQLQImPsClIu8amQn+ZzFwl1lsEf62w==
 
+"@next/third-parties@15.1.11":
+  version "15.1.11"
+  resolved "https://registry.npmjs.org/@next/third-parties/-/third-parties-15.1.11.tgz"
+  integrity sha512-U9Nn+8H4dfE6KTmML34zu+yj96NgDqdOaql29JVjmRa+rD6woxEX7H1G4TA8VoF8eNAkMw4m2z7wgfeQ7N8OjA==
+  dependencies:
+    third-party-capital "1.0.20"
+
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
   resolved "https://registry.npmjs.org/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz"
@@ -4122,7 +4129,7 @@ neo-async@^2.6.2:
   resolved "https://registry.npmjs.org/neo-async/-/neo-async-2.6.2.tgz"
   integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
 
-"next@^13.2.0 || ^14.0 || ^15.0.0-rc.0", "next@>= 13", next@15.1.11:
+"next@^13.0.0 || ^14.0.0 || ^15.0.0", "next@^13.2.0 || ^14.0 || ^15.0.0-rc.0", "next@>= 13", next@15.1.11:
   version "15.1.11"
   resolved "https://registry.npmjs.org/next/-/next-15.1.11.tgz"
   integrity sha512-UiVJaOGhKST58AadwbFUZThlNBmYhKqaCs8bVtm4plTxsgKq0mJ0zTsp7t7j/rzsbAEj9WcAMdZCztjByi4EoQ==
@@ -5320,6 +5327,11 @@ thenify-all@^1.0.0:
   integrity sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==
   dependencies:
     any-promise "^1.0.0"
+
+third-party-capital@1.0.20:
+  version "1.0.20"
+  resolved "https://registry.npmjs.org/third-party-capital/-/third-party-capital-1.0.20.tgz"
+  integrity sha512-oB7yIimd8SuGptespDAZnNkzIz+NWaJCu2RMsbs4Wmp9zSDUM8Nhi3s2OOcqYuv3mN4hitXc8DVx+LyUmbUDiA==
 
 tiny-case@^1.0.3:
   version "1.0.3"
