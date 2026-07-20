@@ -64,20 +64,6 @@ export interface IReferralInfo {
   link: string;
 }
 
-export interface MonthlyStatementData {
-  owner_id: string;
-  year: number;
-  month: number;
-  properties_count: number;
-  total_bookings: number;
-  total_nights: number;
-  gross_revenue: number;
-  platform_fees: number;
-  agent_fees: number;
-  net_earnings: number;
-  bookings: any[];
-}
-
 export interface AgentBookingReportItem {
   booking_id: string;
   property_name: string;
