@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
@@ -34,6 +34,7 @@ import {
   readWizardDraft,
   writeWizardDraft,
   clearWizardDraft,
+  STORAGE_KEY,
 } from "./wizardDraft";
 import {
   IAmenity,
@@ -46,12 +47,12 @@ import {
   WizardStep,
   PropertyFormValues,
   UnitFormValues,
-  createEmptyUnit,
   CategorizedMedia,
   PropertyMediaCategory,
 } from "./types";
 import { validatePropertyName } from "./nameValidator";
-import { STORAGE_KEY } from "./wizardDraft";
+import Modal from "../../modal/Modal";
+
 const libraries: any = ["places"];
 
 export default function CreatePropertyWizard() {
@@ -82,6 +83,7 @@ export default function CreatePropertyWizard() {
   const [showAmenityForm, setShowAmenityForm] = useState(false);
 
   //Discontinue State
+  const [showDiscontinueModal, setShowDiscontinueModal] = useState(false);
 
   // PROFILE_INCOMPLETE dialog state — surfaced when the backend rejects
   // POST /properties because the operator's profile lacks host-required fields.
@@ -184,14 +186,17 @@ export default function CreatePropertyWizard() {
   // Persist the JSON-serialisable parts of wizard state to localStorage
   // on every meaningful change. File state (media/docs) is intentionally
   // excluded — see wizardDraft.ts.
+  const [isDiscontinuing, setIsDiscontinuing] = useState(false);
   useEffect(() => {
+    if (isDiscontinuing) return;
+
     writeWizardDraft({
       values: formik.values,
       units,
       currentStep,
       highestStep,
     });
-  }, [formik.values, units, currentStep, highestStep]);
+  }, [formik.values, units, currentStep, highestStep, isDiscontinuing]);
 
   // Once per mount, if we actually restored something, surface a toast so
   // the user knows their previous work is back. Skipped when the draft
@@ -209,19 +214,27 @@ export default function CreatePropertyWizard() {
       toast.success("Welcome back — we restored your property draft.", {
         duration: 4500,
       });
+      setShowDiscontinueModal(true);
     }
   }, [draft]);
 
   const handleDiscontinueListing = () => {
+    setIsDiscontinuing(true);
+
+    formik.resetForm();
+
     clearWizardDraft();
+
     setDraft(null);
-    if (WizardStep.UNITS) {
-      goToStep(WizardStep.PROPERTY_DETAILS);
-      formik.resetForm();
-      return;
-    }
+    setShowDiscontinueModal(false);
+
+    setTimeout(() => {
+      router.push("/property-management/all-properties");
+    }, 200);
   };
 
+  const handleCloseShowDiscontinueModal = () => setShowDiscontinueModal(false);
+  const handleOpenShowDiscontinueModal = () => setShowDiscontinueModal(true);
   // Step validation
   const validateStep = (step: WizardStep): boolean => {
     switch (step) {
@@ -290,7 +303,7 @@ export default function CreatePropertyWizard() {
         const anyPropertyMedia = Object.values(propertyMedia).some(
           (files) => (files?.length ?? 0) > 0,
         );
-        if (!anyPropertyMedia) {
+        if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
           toast.error(
             "Please upload photos for at least one property category before creating",
           );
@@ -691,7 +704,7 @@ export default function CreatePropertyWizard() {
             onAddUnit={handleAddUnit}
             onEditUnit={handleEditUnit}
             onDeleteUnit={handleDeleteUnit}
-            onDiscontinueListing={handleDiscontinueListing}
+            onDiscontinueListing={handleOpenShowDiscontinueModal}
           />
         )}
 
@@ -751,6 +764,35 @@ export default function CreatePropertyWizard() {
         open={incompleteFields !== null}
         missingFields={incompleteFields ?? []}
         onClose={() => setIncompleteFields(null)}
+      />
+
+      <Modal
+        isOpen={showDiscontinueModal}
+        onClose={handleCloseShowDiscontinueModal}
+        title=""
+        content={
+          <div className="space-y-6">
+            <p className="text-center font-bold text-gray-700">
+              Do you want to discontinue this listing?
+            </p>
+
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={handleDiscontinueListing}
+                className="rounded-lg bg-red-600 px-6 py-2 text-white"
+              >
+                Yes
+              </button>
+
+              <button
+                onClick={handleCloseShowDiscontinueModal}
+                className="rounded-lg border px-6 py-2"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        }
       />
     </div>
   );
