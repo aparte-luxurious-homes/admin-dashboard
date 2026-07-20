@@ -7,16 +7,16 @@ export enum ReportsRequestKeys {
     statementDetails = "getStatementDetails",
 }
 
-export function GetStatements(userType: 'owner' | 'agent' = 'owner', agentId?: string) {
+export function GetStatements(userType: 'owner' | 'agent' = 'owner', userId?: string) {
     return useQuery({
-        queryKey: [ReportsRequestKeys.statements, userType, agentId],
+        queryKey: [ReportsRequestKeys.statements, userType, userId],
         queryFn: () => {
-            const url = userType === 'agent' && agentId 
-                ? API_ROUTES.agents.statements.base(agentId)
-                : API_ROUTES.reports.statements.base;
+            const url = userType === 'agent'
+                ? API_ROUTES.agents.statements.base(userId!)
+                : API_ROUTES.reports.statements.base(userId!);
             return axiosRequest.get(url);
         },
-        enabled: userType === 'owner' || !!agentId,
+        enabled: !!userId,
         refetchOnWindowFocus: true,
     });
 }

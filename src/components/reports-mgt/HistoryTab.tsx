@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { GetStatementsHistory, requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
+import { GetStatements, requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import toast from "react-hot-toast";
 import { FiDownload, FiExternalLink } from "react-icons/fi";
@@ -45,13 +45,13 @@ export default function HistoryTab() {
     };
 
     const handleDownload = async (year: number, month: number, formatType: 'pdf' | 'csv') => {
-        if (!ownerId) return;
+        if (!user?.id) return;
         const id = `${year}-${month}-${formatType}`;
         try {
             setDownloadingId(id);
-            const url = isAgent 
-                ? API_ROUTES.agents.statements.download(user!.id.toString(), year, month)
-                : API_ROUTES.reports.statements.download(year, month);
+            const url = isAgent
+                ? API_ROUTES.agents.statements.download(user.id.toString(), year, month)
+                : API_ROUTES.reports.statements.download(user.id.toString(), year, month);
 
             await requestReportDownload(url, formatType);
             toast.success(`${formatType.toUpperCase()} downloaded successfully`);
