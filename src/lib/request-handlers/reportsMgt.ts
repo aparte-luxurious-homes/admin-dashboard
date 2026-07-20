@@ -4,12 +4,19 @@ import { API_ROUTES } from "../routes/endpoints";
 
 export enum ReportsRequestKeys {
     statements = "getStatements",
+    statementDetails = "getStatementDetails",
 }
 
-export function GetStatements() {
+export function GetStatements(userType: 'owner' | 'agent' = 'owner', agentId?: string) {
     return useQuery({
-        queryKey: [ReportsRequestKeys.statements],
-        queryFn: () => axiosRequest.get(API_ROUTES.reports.statements.base),
+        queryKey: [ReportsRequestKeys.statements, userType, agentId],
+        queryFn: () => {
+            const url = userType === 'agent' && agentId 
+                ? API_ROUTES.agents.statements.base(agentId)
+                : API_ROUTES.reports.statements.base;
+            return axiosRequest.get(url);
+        },
+        enabled: userType === 'owner' || !!agentId,
         refetchOnWindowFocus: true,
     });
 }
