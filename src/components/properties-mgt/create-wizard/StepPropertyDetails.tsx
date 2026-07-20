@@ -190,7 +190,7 @@ export default function StepPropertyDetails({
   const { data: userList, isLoading: usersLoading } = GetAllUsers(
     1,
     100,
-    ownerSearchTerm,
+    ownerSearchTerm, 
     UserRole.OWNER,
   );
 
@@ -717,3 +717,4 @@ export default function StepPropertyDetails({
     </div>
   );
 }
+ 

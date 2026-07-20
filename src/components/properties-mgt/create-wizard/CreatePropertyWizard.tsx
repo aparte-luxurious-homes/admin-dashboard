@@ -51,7 +51,7 @@ import {
   PropertyMediaCategory,
 } from "./types";
 import { validatePropertyName } from "./nameValidator";
-
+import { STORAGE_KEY } from "./wizardDraft";
 const libraries: any = ["places"];
 
 export default function CreatePropertyWizard() {
@@ -62,7 +62,7 @@ export default function CreatePropertyWizard() {
   // progress if they were bounced to /settings/personal-info to complete
   // their profile (or otherwise navigated away). Files are not persisted
   // — step validation will prompt for re-uploads at the media step.
-  const draft = useMemo(() => readWizardDraft(), []);
+  const [draft, setDraft] = useState(() => readWizardDraft());
   const draftRestoredRef = useRef(false);
 
   // Step state
@@ -80,6 +80,8 @@ export default function CreatePropertyWizard() {
 
   // Amenity state
   const [showAmenityForm, setShowAmenityForm] = useState(false);
+
+  //Discontinue State
 
   // PROFILE_INCOMPLETE dialog state — surfaced when the backend rejects
   // POST /properties because the operator's profile lacks host-required fields.
@@ -173,6 +175,7 @@ export default function CreatePropertyWizard() {
       amenities: [],
       amenityIds: [],
     },
+    enableReinitialize: true,
     onSubmit: (values) => {
       handleCreateProperty(values);
     },
@@ -208,6 +211,16 @@ export default function CreatePropertyWizard() {
       });
     }
   }, [draft]);
+
+  const handleDiscontinueListing = () => {
+    clearWizardDraft();
+    setDraft(null);
+    if (WizardStep.UNITS) {
+      goToStep(WizardStep.PROPERTY_DETAILS);
+      formik.resetForm();
+      return;
+    }
+  };
 
   // Step validation
   const validateStep = (step: WizardStep): boolean => {
@@ -385,7 +398,9 @@ export default function CreatePropertyWizard() {
       ...(values.rules && { rules: values.rules }),
       ...(values.owner_email && { owner_email: values.owner_email }),
       ...(values.owner_name && { owner_name: values.owner_name }),
-      ...(values.owner_phoneNumber && { owner_phone: values.owner_phoneNumber }),
+      ...(values.owner_phoneNumber && {
+        owner_phone: values.owner_phoneNumber,
+      }),
     };
 
     createProperty(
@@ -676,6 +691,7 @@ export default function CreatePropertyWizard() {
             onAddUnit={handleAddUnit}
             onEditUnit={handleEditUnit}
             onDeleteUnit={handleDeleteUnit}
+            onDiscontinueListing={handleDiscontinueListing}
           />
         )}
 
