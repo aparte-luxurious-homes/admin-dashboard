@@ -171,8 +171,21 @@ export const API_ROUTES = {
         agents: {
             tier: (id: string | number) => `/admin/network/agents/${id}/tier`,
             adjust: (id: string | number) => `/admin/network/agents/${id}/adjust`,
-            events: `/admin/network/events`,
         },
+        events: {
+            base: `/admin/network/events`,
+            details: (id: string) => `/admin/network/events/${id}`,
+            update: (id: string) => `/admin/network/events/${id}/status`,
+        },
+        configs: {
+            actions: {
+                base: `/admin/network/configs/actions`,
+                update: (actionType: string) => `/admin/network/configs/actions/${actionType}`,
+            },
+        },
+        me: `/network/me`,
+        history: `/network/history`,
+        remit: `/jobs/remit-agent-points`,
     },
     permissions: {
         base: '/permissions',

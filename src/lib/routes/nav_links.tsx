@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import { IoIosGitNetwork } from "react-icons/io";
 import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon, RateIcon, PriceTagIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
@@ -98,6 +99,50 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'my-verifications',
                 link: PAGE_ROUTES.dashboard.propertyManagement.myVerifications.base,
                 allow: [UserRole.AGENT],
+            },
+        ]
+    },
+    {
+        name: 'Network',
+        pathName: 'network',
+        link: PAGE_ROUTES.dashboard.network.history.base,
+        icon: <IoIosGitNetwork size={20} color="white" />,
+        allow: [UserRole.AGENT],
+        secondary: true,
+        children: [
+            {
+                name: 'My Events',
+                pathName: 'history',
+                link: PAGE_ROUTES.dashboard.network.history.base,
+                allow: [UserRole.AGENT],
+            },
+            {
+                name: 'Actions',
+                pathName: 'actions',
+                link: PAGE_ROUTES.dashboard.network.configs.actions.base,
+                allow: [UserRole.AGENT],
+            },
+        ]
+    },
+    {
+        name: 'Network Management',
+        pathName: 'network',
+        link: PAGE_ROUTES.dashboard.network.events.base,
+        icon: <IoIosGitNetwork size={20} color="white" />,
+        allow: [UserRole.ADMIN],
+        secondary: true,
+        children: [
+            {
+                name: 'Events',
+                pathName: 'events',
+                link: PAGE_ROUTES.dashboard.network.events.base,
+                allow: [UserRole.ADMIN],
+            },
+            {
+                name: 'Actions',
+                pathName: 'actions',
+                link: PAGE_ROUTES.dashboard.network.configs.actions.base,
+                allow: [UserRole.ADMIN],
             },
         ]
     },

@@ -20,6 +20,7 @@ interface UserEditFormProps {
     onCancel: () => void;
     isSaving: boolean;
     showRoleSelector?: boolean;
+    extraSection?: React.ReactNode;
 }
 
 const UserEditForm: React.FC<UserEditFormProps> = ({
@@ -27,7 +28,8 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     onSave,
     onCancel,
     isSaving,
-    showRoleSelector = true
+    showRoleSelector = true,
+    extraSection,
 }) => {
     const { data: rolesData, isLoading: rolesLoading } = GetAssignableRoles();
     const assignableRoles: string[] = rolesData?.data?.data?.assignable_roles || rolesData?.data?.assignable_roles || [];
@@ -262,6 +264,8 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                     </div>
                 </div>
             </div>
+
+            {extraSection && <div className="mt-6">{extraSection}</div>}
 
             <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end gap-3">
                 <button
