@@ -125,6 +125,23 @@ export const PAGE_ROUTES = {
         icalManagement: {
             feeds: '/ical-management/feeds',
             conflicts: '/ical-management/conflicts',
-        }
+        },
+        network: {
+            base: '/network',
+            agents: {
+                base: '/network/agents',
+                details: (id: string) => `/network/agents/${id}`,
+                events: (id: string) => `/network/agents/${id}/events`,
+                adjust: (id: string) => `/network/agents/${id}/adjust`,
+            },
+            configs: {
+                actions: {
+                    base: '/network/configs/actions',
+                },
+                tiers: {
+                    base: '/network/configs/tiers',
+                },
+            },
+        },
     }
 }
