@@ -63,7 +63,7 @@ export default function StepUnits({
             onClick={onAddUnit}
             disabled={addDisabled}
             title={addDisabled ? addDisabledHint : undefined}
-            className="h-9 px-4 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
+            className="h-9 px-6 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
           >
             <Icon icon="solar:add-circle-bold" className="text-sm" />
             Add Unit

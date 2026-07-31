@@ -6,9 +6,10 @@ import type { PropertyFormValues, UnitFormValues, WizardStep } from "./types";
  * doesn't lose their work if they get bounced to `/settings/personal-info`
  * to complete their profile or otherwise navigate away.
  *
- * File-based state (property media, unit media, KYC documents) cannot be
- * serialised and is intentionally NOT persisted — the wizard's existing
- * step validation will prompt the user to re-attach files on return.
+ * File-based state (property media, unit media, ownership documents) cannot be
+ * serialised to JSON, so it is persisted separately in IndexedDB — see
+ * `wizardMediaDraft.ts`. Both drafts share the same TTL and are cleared
+ * together when the listing is discontinued or successfully created.
  */
 
 export const STORAGE_KEY = "aparte:wizard:property-create:v1";
