@@ -21,6 +21,7 @@ import UpcomingCheckInsCard from "@/src/components/dashboard/UpcomingCheckInsCar
 import AgentReferralCard from "@/src/components/dashboard/AgentReferralCard";
 import AgentVerificationQueueCard from "@/src/components/dashboard/AgentVerificationQueueCard";
 import TopAgentsCard from "@/src/components/dashboard/TopAgentsCard";
+import AgentNetworkDashboardCard from "@/src/components/dashboard/AgentNetworkDashboardCard";
 
 interface Wallet {
     id: string;
@@ -234,9 +235,12 @@ const DashboardHome = () => {
                             <UpcomingCheckInsCard />
                         )}
 
-                        {/* AGENT main column: referral + verification queue + upcoming */}
+                        {/* AGENT main column: network card → referral + verification → upcoming */}
                         {isAgent && (
                             <Grid container spacing={2}>
+                                <Grid size={{ xs: 12 }}>
+                                    <AgentNetworkDashboardCard />
+                                </Grid>
                                 <Grid size={{ xs: 12, md: 6 }}>
                                     <AgentReferralCard />
                                 </Grid>

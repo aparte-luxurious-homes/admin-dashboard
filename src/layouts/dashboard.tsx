@@ -13,6 +13,7 @@ import { IoMenu, IoClose } from "react-icons/io5";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import axiosRequest from "../lib/api";
+import { API_ROUTES } from "../lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
@@ -21,6 +22,12 @@ import { UserRole } from "../lib/enums";
 import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
 import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
+
+const TIER_CONFIG = {
+  BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+  SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+  GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+} as const;
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   const { user, isFetching } = useAuth();
@@ -31,6 +38,18 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN
     || user?.role === UserRole.OPERATIONS_ADMIN || user?.role === UserRole.ANALYST;
   const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances(isAdmin);
+
+  const [agentTier, setAgentTier] = useState<"BRONZE" | "SILVER" | "GOLD" | null>(null);
+
+  useEffect(() => {
+    if (user?.role !== UserRole.AGENT) return;
+    axiosRequest.get(API_ROUTES.network.me)
+      .then((res) => {
+        const tier = res?.data?.data?.current_tier;
+        if (tier) setAgentTier(tier);
+      })
+      .catch(() => {});
+  }, [user?.role]);
 
   // Handle click to navigate
   const handleClick = () => {
@@ -103,28 +122,39 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   // list excludes the current user's role, kick them back to the dashboard root.
   // Covers direct URL access (sidebar filtering alone doesn't stop /transactions/withdrawals
   // from rendering for an OWNER who types the URL).
+  //
+  // Some routes (e.g. /network/configs/actions) appear under more than one nav
+  // section with different `allow` lists (an agent-facing entry and an
+  // admin-facing one). Gather every entry matching the current path before
+  // deciding, so access is granted if ANY of them allows the role — otherwise
+  // whichever entry happens to come first in NAV_LINKS wins even when a later
+  // entry would have permitted the current user.
   useEffect(() => {
     if (!user || !currentRoute) return;
 
     const role = user.role as UserRole;
+    const matchingAllowLists: UserRole[][] = [];
+
     for (const link of NAV_LINKS) {
       if (link.children && link.children.length > 0) {
         for (const child of link.children) {
           if (child.link !== "#" && currentRoute.startsWith(child.link)) {
-            if (child.allow.length > 0 && !child.allow.includes(role)) {
-              toast.error("You don't have access to that page");
-              router.replace(PAGE_ROUTES.dashboard.base);
-              return;
-            }
+            matchingAllowLists.push(child.allow);
           }
         }
       } else if (link.link !== "#" && currentRoute.startsWith(link.link) && link.link !== PAGE_ROUTES.dashboard.base) {
-        if (link.allow.length > 0 && !link.allow.includes(role)) {
-          toast.error("You don't have access to that page");
-          router.replace(PAGE_ROUTES.dashboard.base);
-          return;
-        }
+        matchingAllowLists.push(link.allow);
       }
+    }
+
+    if (matchingAllowLists.length === 0) return;
+
+    const isAllowed = matchingAllowLists.some(
+      (allow) => allow.length === 0 || allow.includes(role)
+    );
+    if (!isAllowed) {
+      toast.error("You don't have access to that page");
+      router.replace(PAGE_ROUTES.dashboard.base);
     }
   }, [user, currentRoute, router]);
 
@@ -316,6 +346,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
+            {agentTier && (() => {
+              const cfg = TIER_CONFIG[agentTier];
+              return (
+                <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                  <Icon icon={cfg.icon} width="14" />
+                  {cfg.label}
+                </span>
+              );
+            })()}
             <div
               className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
               onClick={handleClick}
