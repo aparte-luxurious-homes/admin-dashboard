@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
@@ -154,7 +154,7 @@ export default function AgentNetworkHistoryTable() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {events.map((event, index) => {
+                                {events.map((event) => {
                                     const statusCfg = STATUS_CONFIG[event.status] ?? { bg: "bg-gray-100", text: "text-gray-800" };
                                     return (
                                         <tr

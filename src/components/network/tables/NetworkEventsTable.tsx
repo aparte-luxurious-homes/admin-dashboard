@@ -86,15 +86,22 @@ export default function NetworkEventsTable() {
     const [selectedRow, setSelectedRow]     = useState<number | null>(null);
     const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
 
-    const [confirmEventId, setConfirmEventId]       = useState<string | null>(null);
+    const [confirmEventId, setConfirmEventId]             = useState<string | null>(null);
     const [showRemitConfirm, setShowRemitConfirm]   = useState(false);
     const [isRemitting, setIsRemitting]             = useState(false);
 
-    const [showAdjustModal, setShowAdjustModal] = useState(false);
-    const [adjustAgentId, setAdjustAgentId]     = useState("");
-    const [adjustPoints, setAdjustPoints]       = useState<number>(0);
-    const [adjustReason, setAdjustReason]       = useState("");
-    const [isAdjusting, setIsAdjusting]         = useState(false);
+    const [showAdjustModal, setShowAdjustModal]   = useState(false);
+    const [showAdjustConfirm, setShowAdjustConfirm] = useState(false);
+    const [adjustAgentId, setAdjustAgentId]       = useState("");
+    const [adjustPoints, setAdjustPoints]         = useState<number>(0);
+    const [adjustReason, setAdjustReason]         = useState("");
+    const [isAdjusting, setIsAdjusting]           = useState(false);
+
+    // Related event — required link back to a specific prior AgentActivityEvent
+    // (e.g. an under-credited BOOKING_CHECKED_IN) that this adjustment corrects.
+    // Plain ID entry — the backend looks up and validates the event belongs
+    // to the selected agent.
+    const [relatedEventId, setRelatedEventId] = useState("");
 
     const [agents, setAgents]               = useState<Agent[]>([]);
     const [agentsLoading, setAgentsLoading] = useState(false);
@@ -195,45 +202,6 @@ export default function NetworkEventsTable() {
         }
     };
 
-    const handleAdjustSubmit = async () => {
-        if (!adjustAgentId.trim()) {
-            toast.error("Select an agent");
-            return;
-        }
-        if (!adjustPoints || adjustPoints === 0) {
-            toast.error("Points must be a nonzero number");
-            return;
-        }
-        if (!adjustReason.trim()) {
-            toast.error("Reason is required");
-            return;
-        }
-        setIsAdjusting(true);
-        try {
-            await toast.promise(
-                axiosRequest.post(API_ROUTES.network.agents.adjust(adjustAgentId.trim()), {
-                    points: adjustPoints,
-                    reason: adjustReason,
-                }),
-                {
-                    loading: "Creating adjustment...",
-                    success: "Manual adjustment created successfully",
-                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to create adjustment",
-                }
-            );
-            setShowAdjustModal(false);
-            setAdjustAgentId("");
-            setAdjustPoints(0);
-            setAdjustReason("");
-            setAgentSearch("");
-            fetchEvents();
-        } catch {
-            // handled by toast.promise
-        } finally {
-            setIsAdjusting(false);
-        }
-    };
-
     const handleRemit = async () => {
         setIsRemitting(true);
         try {
@@ -250,6 +218,52 @@ export default function NetworkEventsTable() {
             // handled by toast.promise
         } finally {
             setIsRemitting(false);
+        }
+    };
+
+    const handleAdjustSubmit = async () => {
+        if (!adjustAgentId.trim()) {
+            toast.error("Select an agent");
+            return;
+        }
+        if (!adjustPoints || adjustPoints === 0) {
+            toast.error("Points must be a nonzero number");
+            return;
+        }
+        if (!adjustReason.trim()) {
+            toast.error("Reason is required");
+            return;
+        }
+        if (!relatedEventId.trim()) {
+            toast.error("Related Event ID is required");
+            return;
+        }
+        setIsAdjusting(true);
+        try {
+            await toast.promise(
+                axiosRequest.post(API_ROUTES.network.agents.adjust(adjustAgentId.trim()), {
+                    points: adjustPoints,
+                    reason: adjustReason,
+                    related_event_id: relatedEventId.trim(),
+                }),
+                {
+                    loading: "Creating adjustment...",
+                    success: "Manual adjustment created successfully",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to create adjustment",
+                }
+            );
+            setShowAdjustModal(false);
+            setShowAdjustConfirm(false);
+            setAdjustAgentId("");
+            setAdjustPoints(0);
+            setAdjustReason("");
+            setRelatedEventId("");
+            setAgentSearch("");
+            fetchEvents();
+        } catch {
+            // handled by toast.promise
+        } finally {
+            setIsAdjusting(false);
         }
     };
 
@@ -573,7 +587,7 @@ export default function NetworkEventsTable() {
                                 <p className="text-xs text-gray-500 mt-0.5">Award or deduct points for an agent</p>
                             </div>
                             <button
-                                onClick={() => { setShowAdjustModal(false); setAgentSearch(""); setAdjustAgentId(""); }}
+                                onClick={() => { setShowAdjustModal(false); setShowAdjustConfirm(false); setAgentSearch(""); setAdjustAgentId(""); setRelatedEventId(""); }}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             >
                                 <LuX className="w-5 h-5 text-gray-500" />
@@ -611,6 +625,9 @@ export default function NetworkEventsTable() {
                                                             setAdjustAgentId(a.id);
                                                             setAgentSearch(agentFullName(a));
                                                             setAgentDropdownOpen(false);
+                                                            // A related event picked for a previous agent no
+                                                            // longer applies once the agent changes.
+                                                            setRelatedEventId("");
                                                         }}
                                                         className="px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
                                                     >
@@ -636,6 +653,17 @@ export default function NetworkEventsTable() {
                                 <p className="text-xs text-gray-400">Use a negative number to deduct points</p>
                             </div>
                             <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Related Event ID</label>
+                                <input
+                                    type="text"
+                                    value={relatedEventId}
+                                    onChange={(e) => setRelatedEventId(e.target.value)}
+                                    placeholder="Event ID this adjustment corrects"
+                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                />
+                                <p className="text-xs text-gray-400">Must belong to the selected agent</p>
+                            </div>
+                            <div className="space-y-1">
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</label>
                                 <textarea
                                     value={adjustReason}
@@ -648,17 +676,60 @@ export default function NetworkEventsTable() {
                         </div>
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
                             <button
-                                onClick={() => { setShowAdjustModal(false); setAgentSearch(""); setAdjustAgentId(""); }}
+                                onClick={() => { setShowAdjustModal(false); setShowAdjustConfirm(false); setAgentSearch(""); setAdjustAgentId(""); setRelatedEventId(""); }}
                                 className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={handleAdjustSubmit}
+                                onClick={() => {
+                                    if (!adjustAgentId.trim()) { toast.error("Agent is required"); return; }
+                                    if (!adjustPoints || adjustPoints === 0) { toast.error("Points must be a nonzero number"); return; }
+                                    if (!adjustReason.trim()) { toast.error("Reason is required"); return; }
+                                    if (!relatedEventId.trim()) { toast.error("Related Event ID is required"); return; }
+                                    setShowAdjustConfirm(true);
+                                }}
                                 disabled={isAdjusting}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
-                                {isAdjusting ? "Submitting..." : "Submit"}
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Adjustment Confirm Modal */}
+            {showAdjustConfirm && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="p-6">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                <Icon icon="mdi:swap-vertical-bold" width="24" className="text-primary" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Create adjustment?</h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                You are about to apply a{" "}
+                                <span className={`font-semibold ${adjustPoints >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                    {adjustPoints >= 0 ? "+" : ""}{adjustPoints} point
+                                </span>{" "}
+                                manual adjustment for{" "}
+                                <span className="font-semibold text-gray-700">{agentSearch}</span>. This action is logged and cannot be undone.
+                            </p>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowAdjustConfirm(false)}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => { setShowAdjustConfirm(false); handleAdjustSubmit(); }}
+                                disabled={isAdjusting}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
+                            >
+                                Yes, submit
                             </button>
                         </div>
                     </div>

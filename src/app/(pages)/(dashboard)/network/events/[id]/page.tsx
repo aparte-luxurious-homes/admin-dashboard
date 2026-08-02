@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import Grid from "@mui/material/Grid2";
@@ -26,6 +27,7 @@ interface NetworkEvent {
     is_flagged: boolean;
     reason: string | null;
     adjustment_direction: "ADDITION" | "DEDUCTION";
+    related_event_id: string | null;
     is_remitted: boolean;
     remitted_at: string | null;
     created_at: string;
@@ -339,6 +341,21 @@ export default function NetworkEventDetail() {
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Entity ID</p>
                                         <p className="text-sm font-medium text-gray-900 break-all">{event.entity_id || "--/--"}</p>
                                     </div>
+                                    {event.action_type === "MANUAL_ADJUSTMENT" && (
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Related Event ID</p>
+                                            {event.related_event_id ? (
+                                                <Link
+                                                    href={PAGE_ROUTES.dashboard.network.events.details(event.related_event_id)}
+                                                    className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline break-all"
+                                                >
+                                                    {event.related_event_id}
+                                                </Link>
+                                            ) : (
+                                                <p className="text-sm font-medium text-gray-900">--/--</p>
+                                            )}
+                                        </div>
+                                    )}
                                     <div className="space-y-1">
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Flagged</p>
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${event.is_flagged ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"}`}>

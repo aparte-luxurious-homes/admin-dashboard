@@ -135,6 +135,10 @@ export const PAGE_ROUTES = {
             history: {
                 base: '/network/history',
             },
+            mentorship: {
+                base: '/network/mentorship',
+                details: (id: string) => `/network/mentorship/${id}`,
+            },
             agents: {
                 base: '/network/agents',
                 details: (id: string) => `/network/agents/${id}`,

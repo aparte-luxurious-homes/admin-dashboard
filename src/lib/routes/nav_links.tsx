@@ -122,6 +122,13 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.network.configs.actions.base,
                 allow: [UserRole.AGENT],
             },
+            // Phase 4 — uncomment to release mentorship for agents
+            // {
+            //     name: 'Mentorship',
+            //     pathName: 'mentorship',
+            //     link: PAGE_ROUTES.dashboard.network.mentorship.base,
+            //     allow: [UserRole.AGENT],
+            // },
         ]
     },
     {
@@ -144,6 +151,13 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.network.configs.actions.base,
                 allow: [UserRole.ADMIN],
             },
+            // Phase 4 — uncomment to release mentorship for admins
+            // {
+            //     name: 'Mentorship',
+            //     pathName: 'mentorship',
+            //     link: PAGE_ROUTES.dashboard.network.mentorship.base,
+            //     allow: [UserRole.ADMIN],
+            // },
         ]
     },
     {
