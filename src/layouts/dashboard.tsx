@@ -136,6 +136,11 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     const matchingAllowLists: UserRole[][] = [];
 
     for (const link of NAV_LINKS) {
+      // Skip nav sections the current role cannot see — prevents a shared child
+      // link (e.g. /network/mentorship in both "Network" and "Network Management")
+      // from incorrectly blocking a role that is allowed by one section but not the other.
+      if (!link.allow.includes(role)) continue;
+
       if (link.children && link.children.length > 0) {
         for (const child of link.children) {
           if (child.link !== "#" && currentRoute.startsWith(child.link)) {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import Grid from "@mui/material/Grid2";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/src/components/ui/skeleton";
 
 import { useAuth } from "@/src/hooks/useAuth";
 import { usePermissions } from "@/src/hooks/usePermissions";
@@ -42,9 +42,16 @@ interface MonthlyPropertyStats {
 }
 
 interface TopListing {
-    propertyId: string | number | null;
+    propertyId?: string | number | null;
     agent: { id: string | number; name: string };
-    totalVerifiedProperties: number;
+    totalVerifiedProperties?: number;
+    listingsThisWeek?: number | null;
+    verifiedThisWeek?: number | null;
+    listingsMtd?: number | null;
+    isActiveAgent?: boolean | null;
+    verificationRatePct?: string | null;
+    bookingsThisWeek?: number | null;
+    points30d?: number | null;
     weeklyVerifications?: number;
     weeklyListings?: number;
 }
@@ -90,7 +97,7 @@ const DashboardHome = () => {
             const ngnWallet = wallets.find((w: Wallet) => w.currency === "NGN") || wallets[0];
             setWallet(ngnWallet || null);
         } catch {
-            // Wallet fetch is best-effort; the rest of the dashboard still renders.
+            // best-effort
         }
     }, [isOwner, isAgent]);
 
@@ -121,13 +128,11 @@ const DashboardHome = () => {
         },
     ];
 
-    // Sidebar shows Top Agents for admins (with weekly metrics) and owners
-    // (simpler — just the agents managing their properties). Hidden for agents.
     const showSidebar = isAdmin || isOwner;
 
     return (
         <div className="p-6 space-y-6">
-            {/* Greeting + role chip */}
+            {/* Greeting */}
             <div className="flex items-end justify-between gap-4 flex-wrap">
                 <div>
                     <h1 className="text-xl font-semibold text-gray-900">
@@ -145,7 +150,7 @@ const DashboardHome = () => {
                 </div>
             </div>
 
-            {/* KPI row — always visible, 4 cards for owner/agent (incl. wallet), 3 for admin */}
+            {/* KPI row */}
             <DashboardKpiRow
                 isOwner={isOwner}
                 isAgent={isAgent}
@@ -159,7 +164,8 @@ const DashboardHome = () => {
                 {/* Main column */}
                 <Grid size={{ xs: 12, lg: showSidebar ? 9 : 12 }}>
                     <div className="space-y-4">
-                        {/* ADMIN main column: Queues → Gateway → Charts */}
+
+                        {/* ADMIN: queues → gateway → charts */}
                         {isAdmin && (
                             <>
                                 <AdminQueuesCard />
@@ -230,12 +236,12 @@ const DashboardHome = () => {
                             </>
                         )}
 
-                        {/* OWNER main column: upcoming check-ins (priority) */}
+                        {/* OWNER: upcoming check-ins */}
                         {isOwner && (
                             <UpcomingCheckInsCard />
                         )}
 
-                        {/* AGENT main column: network card → referral + verification → upcoming */}
+                        {/* AGENT: network card → referral + verification → upcoming */}
                         {isAgent && (
                             <Grid container spacing={2}>
                                 <Grid size={{ xs: 12 }}>
@@ -255,7 +261,7 @@ const DashboardHome = () => {
                     </div>
                 </Grid>
 
-                {/* Sidebar — admin (with weekly metrics) and owner (simpler) only */}
+                {/* Sidebar — admin (weekly metrics) and owner only */}
                 {showSidebar && (
                     <Grid size={{ xs: 12, lg: 3 }}>
                         <TopAgentsCard

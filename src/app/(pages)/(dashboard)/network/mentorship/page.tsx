@@ -1,9 +1,25 @@
-// Phase 4 — mentorship feature disabled until next release.
-// To re-enable: restore the nav links in nav_links.tsx and remove the redirect below.
+'use client'
 
-import { redirect } from "next/navigation";
-import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
+import NetworkMentorshipsTable from "@/src/components/network/tables/NetworkMentorshipsTable";
+import AgentNetworkMentorshipsTable from "@/src/components/network/tables/AgentNetworkMentorshipsTable";
+import Loader from "@/src/components/loader";
 
 export default function MentorshipPage() {
-    redirect(PAGE_ROUTES.dashboard.network.history.base);
+    const { user, isFetching } = useAuth();
+
+    if (isFetching) {
+        return (
+            <div className="flex items-center justify-center py-24">
+                <Loader />
+            </div>
+        );
+    }
+
+    if (user?.role === UserRole.AGENT) {
+        return <AgentNetworkMentorshipsTable />;
+    }
+
+    return <NetworkMentorshipsTable />;
 }
