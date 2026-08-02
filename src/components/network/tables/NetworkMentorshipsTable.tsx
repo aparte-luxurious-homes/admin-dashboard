@@ -48,17 +48,12 @@ interface Mentorship {
 
 interface Agent {
     id: string;
-    first_name?: string;
-    last_name?: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    profile?: {
-        first_name?: string;
-        last_name?: string;
-        firstName?: string;
-        lastName?: string;
-    };
+    email?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    profile?: { first_name?: string | null; last_name?: string | null; firstName?: string | null; lastName?: string | null; email?: string | null };
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
@@ -76,11 +71,18 @@ function fullName(user?: MentorshipUser, fallback?: string): string {
     return name || user.email || fallback || "—";
 }
 
+function agentFullName(agent: Agent): string {
+    const first = agent.profile?.first_name || agent.profile?.firstName || agent.first_name || agent.firstName || "";
+    const last  = agent.profile?.last_name  || agent.profile?.lastName  || agent.last_name  || agent.lastName  || "";
+    return [first, last].filter(Boolean).join(" ");
+}
+
+function agentEmail(agent: Agent): string {
+    return agent.email || agent.profile?.email || "";
+}
+
 function agentDisplayName(agent: Agent): string {
-    const firstName = agent.firstName ?? agent.first_name ?? agent.profile?.firstName ?? agent.profile?.first_name;
-    const lastName  = agent.lastName  ?? agent.last_name  ?? agent.profile?.lastName  ?? agent.profile?.last_name;
-    const name = [firstName, lastName].filter(Boolean).join(" ");
-    return name || agent.email || agent.id;
+    return agentFullName(agent) || agentEmail(agent) || agent.id;
 }
 
 export default function NetworkMentorshipsTable() {
@@ -352,9 +354,10 @@ export default function NetworkMentorshipsTable() {
                                         <li
                                             key={agent.id}
                                             onMouseDown={(e) => { e.preventDefault(); selectMentor(agent); }}
-                                            className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                            className="px-3 py-2 hover:bg-gray-50 cursor-pointer"
                                         >
-                                            {agentDisplayName(agent)}
+                                            <p className="text-sm font-semibold text-gray-900">{agentFullName(agent) || agentEmail(agent)}</p>
+                                            {agentFullName(agent) && agentEmail(agent) && <p className="text-xs text-gray-400 mt-0.5">{agentEmail(agent)}</p>}
                                         </li>
                                     ))}
                                 </ul>
@@ -387,9 +390,10 @@ export default function NetworkMentorshipsTable() {
                                         <li
                                             key={agent.id}
                                             onMouseDown={(e) => { e.preventDefault(); selectMentee(agent); }}
-                                            className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                            className="px-3 py-2 hover:bg-gray-50 cursor-pointer"
                                         >
-                                            {agentDisplayName(agent)}
+                                            <p className="text-sm font-semibold text-gray-900">{agentFullName(agent) || agentEmail(agent)}</p>
+                                            {agentFullName(agent) && agentEmail(agent) && <p className="text-xs text-gray-400 mt-0.5">{agentEmail(agent)}</p>}
                                         </li>
                                     ))}
                                 </ul>
@@ -653,9 +657,10 @@ export default function NetworkMentorshipsTable() {
                                                 <li
                                                     key={agent.id}
                                                     onMouseDown={(e) => { e.preventDefault(); setCreateMentorSearch(agentDisplayName(agent)); setCreateMentorId(agent.id); setCreateMentorOpen(false); }}
-                                                    className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
+                                                    className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
                                                 >
-                                                    {agentDisplayName(agent)}
+                                                    <p className="text-sm font-semibold text-gray-900">{agentFullName(agent) || agentEmail(agent)}</p>
+                                                    {agentFullName(agent) && agentEmail(agent) && <p className="text-xs text-gray-400 mt-0.5">{agentEmail(agent)}</p>}
                                                 </li>
                                             ))}
                                         </ul>
@@ -693,9 +698,10 @@ export default function NetworkMentorshipsTable() {
                                                 <li
                                                     key={agent.id}
                                                     onMouseDown={(e) => { e.preventDefault(); setCreateMenteeSearch(agentDisplayName(agent)); setCreateMenteeId(agent.id); setCreateMenteeOpen(false); }}
-                                                    className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
+                                                    className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
                                                 >
-                                                    {agentDisplayName(agent)}
+                                                    <p className="text-sm font-semibold text-gray-900">{agentFullName(agent) || agentEmail(agent)}</p>
+                                                    {agentFullName(agent) && agentEmail(agent) && <p className="text-xs text-gray-400 mt-0.5">{agentEmail(agent)}</p>}
                                                 </li>
                                             ))}
                                         </ul>

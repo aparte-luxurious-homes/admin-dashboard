@@ -21,6 +21,11 @@ export enum Gender {
     OTHER = 'OTHER',
 }
 
+export enum AgentNetworkRole {
+    AREA_MANAGER = 'AREA_MANAGER',
+    REGIONAL_LEAD = 'REGIONAL_LEAD',
+}
+
 export enum DisputeCategory {
     PROPERTY_MISMATCH = "PROPERTY_MISMATCH",
     CLEANLINESS = "CLEANLINESS",

@@ -153,6 +153,15 @@ export const PAGE_ROUTES = {
                     base: '/network/configs/tiers',
                 },
             },
+            zones: {
+                base: '/network/zones',
+                create: '/network/zones/create',
+                details: (id: string) => `/network/zones/${id}`,
+            },
+            zoneAssignments: {
+                base: '/network/zone-assignments',
+                details: (id: string) => `/network/zone-assignments/${id}`,
+            },
         },
     }
 }

@@ -128,6 +128,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.network.mentorship.base,
                 allow: [UserRole.AGENT],
             },
+            {
+                name: 'Zone Assignments',
+                pathName: 'zone-assignments',
+                link: PAGE_ROUTES.dashboard.network.zoneAssignments.base,
+                allow: [UserRole.AGENT],
+            },
         ]
     },
     {
@@ -154,6 +160,18 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Mentorship',
                 pathName: 'mentorship',
                 link: PAGE_ROUTES.dashboard.network.mentorship.base,
+                allow: [UserRole.ADMIN],
+            },
+            {
+                name: 'Zones',
+                pathName: 'zones',
+                link: PAGE_ROUTES.dashboard.network.zones.base,
+                allow: [UserRole.ADMIN],
+            },
+            {
+                name: 'Zone Assignments',
+                pathName: 'zone-assignments',
+                link: PAGE_ROUTES.dashboard.network.zoneAssignments.base,
                 allow: [UserRole.ADMIN],
             },
         ]

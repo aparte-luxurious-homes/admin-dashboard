@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
@@ -74,14 +75,31 @@ function TierBadge({ tier }: { tier?: string }) {
     );
 }
 
-function AgentCard({ label, user, tier }: { label: string; user?: MentorshipUser; tier?: string }) {
+function AgentCard({ label, user, tier, profileId, showProfileLink }: {
+    label: string;
+    user?: MentorshipUser;
+    tier?: string;
+    profileId?: string;
+    showProfileLink?: boolean;
+}) {
     return (
         <div>
-            <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <Icon icon="solar:user-bold-duotone" width="20" />
+            <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                        <Icon icon="solar:user-bold-duotone" width="20" />
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-800">{label}</h4>
                 </div>
-                <h4 className="text-lg font-bold text-gray-800">{label}</h4>
+                {showProfileLink && profileId && (
+                    <Link
+                        href={`/user-management/agents/${profileId}`}
+                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors"
+                    >
+                        <Icon icon="mdi:open-in-new" width="13" />
+                        View Profile
+                    </Link>
+                )}
             </div>
             <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
                 <div className="flex items-center gap-4">
@@ -237,6 +255,8 @@ export default function MentorshipDetailPage() {
                                 label="Mentor"
                                 user={mentorship.mentor}
                                 tier={mentorship.mentor_tier}
+                                profileId={mentorship.mentor_id}
+                                showProfileLink={!isAgent}
                             />
                         </Grid>
 
@@ -245,6 +265,8 @@ export default function MentorshipDetailPage() {
                                 label="Mentee"
                                 user={mentorship.mentee}
                                 tier={mentorship.mentee_tier}
+                                profileId={mentorship.mentee_id}
+                                showProfileLink={!isAgent}
                             />
                         </Grid>
 

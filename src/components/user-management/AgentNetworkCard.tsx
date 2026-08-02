@@ -84,9 +84,9 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
 
     if (loading) {
         return (
-            <div className="mt-6 mb-6">
+            <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-6 mb-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <Skeleton className="w-8 h-8 rounded-lg" />
+                    <Skeleton className="w-7 h-7 rounded-lg" />
                     <Skeleton className="h-5 w-36" />
                 </div>
                 <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-6">
@@ -120,15 +120,17 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
     const showGracePeriod = tier === "BRONZE" && pts <= 0 && !!data.grace_period_until;
 
     return (
-        <div className="mt-6 mb-6">
+        <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-6 mb-6">
             {/* Header */}
-            <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <Icon icon="solar:ranking-bold-duotone" width="20" />
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                        <Icon icon="solar:ranking-bold-duotone" width="16" />
+                    </div>
+                    <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Network Standing</h4>
                 </div>
-                <h4 className="text-lg font-bold text-gray-800">Network Standing</h4>
-                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${data.is_inactive ? "bg-red-50 text-red-600 border-red-200" : "bg-green-50 text-green-600 border-green-200"}`}>
-                    <Icon icon={data.is_inactive ? "solar:close-circle-bold-duotone" : "solar:check-circle-bold-duotone"} width="11" />
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${data.is_inactive ? "bg-red-50 text-red-600 border-red-200" : "bg-green-50 text-green-600 border-green-200"}`}>
+                    <Icon icon={data.is_inactive ? "solar:close-circle-bold-duotone" : "solar:check-circle-bold-duotone"} width="12" />
                     {data.is_inactive ? "Inactive" : "Active"}
                 </span>
             </div>

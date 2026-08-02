@@ -65,6 +65,31 @@ interface StatsData {
     topListings: TopListing[];
 }
 
+interface MentorshipRecord {
+    id: string;
+    mentor_id: string;
+    mentee_id: string;
+    status: string;
+    started_at: string | null;
+    mentor?: { first_name?: string; last_name?: string; email?: string; profile?: { first_name?: string; last_name?: string } };
+    mentee?: { first_name?: string; last_name?: string; email?: string; profile?: { first_name?: string; last_name?: string } };
+    mentor_tier?: string;
+    mentee_tier?: string;
+}
+
+const MENTORSHIP_STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
+    ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
+    PENDING: { bg: "bg-yellow-100", text: "text-yellow-800" },
+    PAUSED:  { bg: "bg-orange-100", text: "text-orange-800" },
+    ENDED:   { bg: "bg-gray-100",   text: "text-gray-600"   },
+};
+
+const TIER_COLORS: Record<string, string> = {
+    BRONZE: "text-amber-700",
+    SILVER: "text-slate-600",
+    GOLD:   "text-yellow-600",
+};
+
 const DashboardHome = () => {
     const { user } = useAuth();
     const { isAdmin, isAgent, isOwner } = usePermissions();
@@ -73,6 +98,9 @@ const DashboardHome = () => {
     const [isStatLoading, setIsStatLoading] = useState(false);
     const [wallet, setWallet] = useState<Wallet | null>(null);
     const [range, setRange] = useState<string>("year");
+
+    const [mentorshipData, setMentorshipData] = useState<MentorshipRecord[]>([]);
+    const [mentorshipLoading, setMentorshipLoading] = useState(false);
 
     const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances();
     const balances = gatewayData?.data?.data || {};
@@ -101,10 +129,26 @@ const DashboardHome = () => {
         }
     }, [isOwner, isAgent]);
 
+    const fetchMentorship = useCallback(async () => {
+        if (!isAgent) return;
+        setMentorshipLoading(true);
+        try {
+            const response = await axiosRequest.get(API_ROUTES.network.myMentorship);
+            const body = response?.data?.data ?? response?.data;
+            const items = body?.items ?? body?.data ?? (Array.isArray(body) ? body : []);
+            setMentorshipData(items);
+        } catch {
+            // best-effort
+        } finally {
+            setMentorshipLoading(false);
+        }
+    }, [isAgent]);
+
     useEffect(() => {
         fetchStatistics();
         fetchWallet();
-    }, [fetchStatistics, fetchWallet]);
+        fetchMentorship();
+    }, [fetchStatistics, fetchWallet, fetchMentorship]);
 
     const usersChartData = {
         year: (stats?.users ?? []).map((item) => ({
@@ -129,6 +173,11 @@ const DashboardHome = () => {
     ];
 
     const showSidebar = isAdmin || isOwner;
+
+    const currentMentorship =
+        mentorshipData.find((m) => m.status === "ACTIVE") ??
+        mentorshipData.find((m) => m.status === "PENDING") ??
+        null;
 
     return (
         <div className="p-6 space-y-6">
@@ -241,17 +290,75 @@ const DashboardHome = () => {
                             <UpcomingCheckInsCard />
                         )}
 
-                        {/* AGENT: network card → referral + verification → upcoming */}
+                        {/* AGENT: network card → referral + verification + mentorship → upcoming */}
                         {isAgent && (
                             <Grid container spacing={2}>
                                 <Grid size={{ xs: 12 }}>
                                     <AgentNetworkDashboardCard />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                     <AgentReferralCard />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                     <AgentVerificationQueueCard />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 4 }}>
+                                    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 h-full">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                                <Icon icon="solar:users-group-rounded-bold-duotone" width="16" />
+                                            </div>
+                                            <h3 className="font-semibold text-gray-800 text-sm">Current Mentorship</h3>
+                                        </div>
+                                        {mentorshipLoading ? (
+                                            <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                                        ) : currentMentorship ? (() => {
+                                            const isMentor = currentMentorship.mentor_id === String(user?.id);
+                                            const partner = isMentor ? currentMentorship.mentee : currentMentorship.mentor;
+                                            const partnerTier = isMentor ? currentMentorship.mentee_tier : currentMentorship.mentor_tier;
+                                            const roleLabel = isMentor ? "Your Mentee" : "Your Mentor";
+                                            const partnerName =
+                                                [partner?.first_name || partner?.profile?.first_name, partner?.last_name || partner?.profile?.last_name]
+                                                    .filter(Boolean).join(" ") || partner?.email || "—";
+                                            const sc = MENTORSHIP_STATUS_CONFIG[currentMentorship.status] ?? MENTORSHIP_STATUS_CONFIG.ENDED;
+                                            return (
+                                                <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{roleLabel}</p>
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
+                                                            {currentMentorship.status}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                            <Icon icon="gg:profile" width="16" className="text-primary" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-semibold text-gray-900 truncate">{partnerName}</p>
+                                                            {partner?.email && <p className="text-[10px] text-gray-400 truncate">{partner.email}</p>}
+                                                            {partnerTier && (
+                                                                <p className={`text-[10px] font-semibold ${TIER_COLORS[partnerTier] ?? "text-gray-500"}`}>
+                                                                    {partnerTier.charAt(0) + partnerTier.slice(1).toLowerCase()}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {currentMentorship.started_at && (
+                                                        <p className="text-[10px] text-gray-400">
+                                                            Since {new Date(currentMentorship.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })() : (
+                                            <div className="flex flex-col items-center justify-center py-5 text-center">
+                                                <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center mb-2">
+                                                    <Icon icon="solar:users-group-rounded-bold-duotone" width="20" className="text-primary/40" />
+                                                </div>
+                                                <p className="text-xs text-gray-400">No active mentorship</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </Grid>
                                 <Grid size={{ xs: 12 }}>
                                     <UpcomingCheckInsCard />

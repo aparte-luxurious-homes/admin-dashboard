@@ -188,10 +188,22 @@ export const API_ROUTES = {
                 update: (actionType: string) => `/admin/network/configs/actions/${actionType}`,
             },
             tiers: {
-                base: `/network/configs/tiers`,
+                base: `/admin/network/configs/tiers`,
+            },
+            zones: {
+                base: `/admin/network/configs/zones`,
+                details: (id: string) => `/admin/network/configs/zones/${id}`,
+                assignments: {
+                    base: `/admin/network/configs/zones/assignments`,
+                    details: (id: string) => `/admin/network/configs/zones/assignments/${id}`,
+                },
             },
         },
+        zonePayoutJob: `/jobs/evaluate-zone-payouts`,
         me: `/network/me`,
+        zoneMe: `/network/zone/me`,
+        myZoneAssignments: `/network/zone-assignments`,
+        myZoneAssignmentDetails: (id: string) => `/network/zone-assignments/${id}`,
         history: `/network/history`,
         myMentorship: `/network/mentorship`,
         myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,

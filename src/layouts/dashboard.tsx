@@ -12,13 +12,16 @@ import { useState, useEffect, useMemo } from "react";
 import { IoMenu, IoClose } from "react-icons/io5";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
-import axiosRequest from "../lib/api";
-import { API_ROUTES } from "../lib/routes/endpoints";
+import { useDispatch, useSelector } from "react-redux";
+import { setAgentNetworkRole } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
+import axiosRequest from "../lib/api";
+import { API_ROUTES } from "../lib/routes/endpoints";
+import { AgentNetworkRole, UserRole } from "../lib/enums";
+import { RootState } from "../lib/store";
 import { GetGatewayBalances } from "../lib/request-handlers/integrationsMgt";
-import { UserRole } from "../lib/enums";
 import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
 import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
@@ -31,6 +34,7 @@ const TIER_CONFIG = {
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   const { user, isFetching } = useAuth();
+  const dispatch = useDispatch();
   const router = useRouter();
   const currentRoute = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -40,16 +44,56 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances(isAdmin);
 
   const [agentTier, setAgentTier] = useState<"BRONZE" | "SILVER" | "GOLD" | null>(null);
+  const agentNetworkRole = useSelector((state: RootState) => state.auth.agentNetworkRole);
 
   useEffect(() => {
     if (user?.role !== UserRole.AGENT) return;
-    axiosRequest.get(API_ROUTES.network.me)
-      .then((res) => {
-        const tier = res?.data?.data?.current_tier;
+
+    // Restore from cookie immediately so nav doesn't flicker
+    const cookieRole = Cookies.get("networkRole");
+    if (cookieRole === AgentNetworkRole.AREA_MANAGER || cookieRole === AgentNetworkRole.REGIONAL_LEAD) {
+      dispatch(setAgentNetworkRole(cookieRole as AgentNetworkRole));
+    }
+
+    Promise.allSettled([
+      axiosRequest.get(API_ROUTES.network.me),
+      axiosRequest.get(API_ROUTES.network.zoneMe),
+    ]).then(([tierRes, zoneRes]) => {
+      if (tierRes.status === "fulfilled") {
+        const tier = tierRes.value?.data?.data?.current_tier;
         if (tier) setAgentTier(tier);
-      })
-      .catch(() => {});
-  }, [user?.role]);
+      }
+      if (zoneRes.status === "fulfilled") {
+        const role = zoneRes.value?.data?.data?.assignment?.role as AgentNetworkRole | undefined;
+        const resolved = role === AgentNetworkRole.AREA_MANAGER || role === AgentNetworkRole.REGIONAL_LEAD
+          ? role
+          : null;
+        dispatch(setAgentNetworkRole(resolved));
+        if (resolved) {
+          Cookies.set("networkRole", resolved, { expires: 1 });
+        } else {
+          Cookies.remove("networkRole");
+        }
+      }
+    }).catch(() => {});
+  }, [user?.role, dispatch]);
+
+  const isZoneManager = agentNetworkRole === AgentNetworkRole.AREA_MANAGER || agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD;
+
+  const effectiveNavLinks = useMemo(() => {
+    if (!isZoneManager) return NAV_LINKS;
+    return NAV_LINKS.map((link) => {
+      if (link.pathName !== "booking-management") return link;
+      return {
+        ...link,
+        children: link.children?.map((child) =>
+          child.pathName === "booking-disputes"
+            ? { ...child, allow: [...child.allow, UserRole.AGENT] }
+            : child
+        ),
+      };
+    });
+  }, [isZoneManager]);
 
   // Handle click to navigate
   const handleClick = () => {
@@ -134,8 +178,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
 
     const role = user.role as UserRole;
     const matchingAllowLists: UserRole[][] = [];
-
-    for (const link of NAV_LINKS) {
+    for (const link of effectiveNavLinks) {
       // Skip nav sections the current role cannot see — prevents a shared child
       // link (e.g. /network/mentorship in both "Network" and "Network Management")
       // from incorrectly blocking a role that is allowed by one section but not the other.
@@ -161,7 +204,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       toast.error("You don't have access to that page");
       router.replace(PAGE_ROUTES.dashboard.base);
     }
-  }, [user, currentRoute, router]);
+  }, [user, currentRoute, router, effectiveNavLinks]);
 
   // Show loader while checking authentication or fetching user
   if (isCheckingAuth || (isFetching && !user)) {
@@ -263,7 +306,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                             [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-teal-800
                         `}
           >
-            {NAV_LINKS.map((el, index) =>
+            {effectiveNavLinks.map((el, index) =>
               el.allow.includes(user?.role) ? (
                 <SideNav
                   key={index}
