@@ -373,7 +373,7 @@ export default function StepMediaDocs({
                 <span className="font-bold text-zinc-700">
                   {unit.name || "Unnamed unit"}
                 </span>{" "}
-                is the whole property \u2014 upload its bedroom, living room,
+                is the whole property upload its bedroom, living room,
                 kitchen, and bathroom photos in the{" "}
                 <span className="font-bold text-zinc-700">
                   Property gallery
