@@ -114,8 +114,8 @@ export default function AgentNetworkHistoryTable() {
                             <option value="">All Actions</option>
                             <option value="LISTING_CREATED">Listing Created</option>
                             <option value="LISTING_VERIFIED">Listing Verified</option>
-                            <option value="BOOKING_CHECKED_IN">Booking Checked In</option>
-                            <option value="REFERRED_BOOKING_CHECKED_IN">Referred Booking</option>
+                            <option value="BOOKING_CREATED">Booking Created</option>
+                            <option value="REFERRED_BOOKING_CREATED">Referred Booking</option>
                             <option value="KYC_COMPLETED">KYC Completed</option>
                             <option value="PROFILE_COMPLETED">Profile Completed</option>
                             <option value="MANUAL_ADJUSTMENT">Manual Adjustment</option>

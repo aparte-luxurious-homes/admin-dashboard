@@ -4,11 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import { DotsIcon } from "../../icons";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { formatDate } from "@/src/lib/utils";
 import Loader from "@/src/components/loader";
-import { LuEye } from "react-icons/lu";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/src/hooks/useAuth";
 
@@ -61,6 +59,8 @@ interface Candidate {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
+    // PENDING is legacy — nothing is created in this state any more. Retained so
+    // any row predating the drop_mentorship_acceptance_001 migration still renders.
     PENDING: { bg: "bg-blue-100",   text: "text-blue-700"   },
     ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
     PAUSED:  { bg: "bg-yellow-100", text: "text-yellow-800" },
@@ -146,15 +146,8 @@ export default function AgentNetworkMentorshipsTable() {
     const [totalPages, setTotalPages]   = useState(1);
     const [statusFilter, setStatusFilter] = useState("");
 
-    const [selectedRow, setSelectedRow]     = useState<number | null>(null);
-    const [modalPosition, setModalPosition] = useState<{ top: number; left: number } | null>(null);
-
     const [viewMentorship, setViewMentorship]     = useState<Mentorship | null>(null);
     const [detailMentorship, setDetailMentorship] = useState<Mentorship | null>(null);
-
-    const [showAcceptConfirm, setShowAcceptConfirm] = useState(false);
-    const [acceptTarget, setAcceptTarget]           = useState<Mentorship | null>(null);
-    const [isAccepting, setIsAccepting]             = useState(false);
 
     // Invite modal
     const [showInviteModal, setShowInviteModal]     = useState(false);
@@ -166,7 +159,6 @@ export default function AgentNetworkMentorshipsTable() {
     const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
     const [isInviting, setIsInviting]               = useState(false);
 
-    const menuRef          = useRef<HTMLDivElement>(null);
     const candidateComboRef = useRef<HTMLDivElement>(null);
 
     // Fetch the current agent's tier from /network/me — server-sourced so it cannot be
@@ -183,9 +175,6 @@ export default function AgentNetworkMentorshipsTable() {
 
     const canInvite = agentTier === "SILVER" || agentTier === "GOLD";
     const tierBelow = agentTier ? TIER_BELOW[agentTier] : null;
-
-    const canAccept = (m: Mentorship) =>
-        m.status === "PENDING" && m.mentee_id === String(user?.id ?? "") && m.invited_by_mentor;
 
     const fetchMentorships = useCallback(async () => {
         setIsLoading(true);
@@ -235,12 +224,9 @@ export default function AgentNetworkMentorshipsTable() {
             .finally(() => setCandidatesLoading(false));
     }, [showInviteModal]);
 
-    // Click-outside handlers
+    // Click-outside handler for the candidate combo box
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-                setSelectedRow(null);
-            }
             if (candidateComboRef.current && !candidateComboRef.current.contains(e.target as Node)) {
                 setCandidateDropdownOpen(false);
             }
@@ -249,43 +235,8 @@ export default function AgentNetworkMentorshipsTable() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const handleDotsClick = (e: React.MouseEvent, index: number) => {
-        e.stopPropagation();
-        setSelectedRow(index);
-        const rect = (e.target as HTMLElement).getBoundingClientRect();
-        setModalPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
-    };
-
     const openModal = (m: Mentorship) => { setViewMentorship(m); setDetailMentorship(null); };
     const closeModal = () => { setViewMentorship(null); setDetailMentorship(null); };
-
-    const openAcceptConfirm = (m: Mentorship) => {
-        setAcceptTarget(m);
-        setShowAcceptConfirm(true);
-        setSelectedRow(null);
-    };
-
-    const handleAccept = async () => {
-        if (!acceptTarget) return;
-        setIsAccepting(true);
-        try {
-            await toast.promise(
-                axiosRequest.post(API_ROUTES.network.acceptMentorship, { mapping_id: acceptTarget.id }),
-                {
-                    loading: "Accepting mentorship...",
-                    success: "Mentorship accepted successfully",
-                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to accept mentorship",
-                }
-            );
-            setShowAcceptConfirm(false);
-            setAcceptTarget(null);
-            closeModal();
-            fetchMentorships();
-        } catch {
-        } finally {
-            setIsAccepting(false);
-        }
-    };
 
     const resetInviteModal = () => {
         setShowInviteModal(false);
@@ -321,7 +272,6 @@ export default function AgentNetworkMentorshipsTable() {
     );
 
     const modalData = detailMentorship ?? viewMentorship;
-    const contextMentorship = selectedRow !== null ? mentorships[selectedRow] : null;
 
     return (
         <div className="p-6">
@@ -356,7 +306,6 @@ export default function AgentNetworkMentorshipsTable() {
                             className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
                             <option value="">All</option>
-                            <option value="PENDING">Pending</option>
                             <option value="ACTIVE">Active</option>
                             <option value="PAUSED">Paused</option>
                             <option value="ENDED">Ended</option>
@@ -379,7 +328,6 @@ export default function AgentNetworkMentorshipsTable() {
                                     <th className="px-6 py-3 text-left">Status</th>
                                     <th className="px-6 py-3 text-left">Started</th>
                                     <th className="px-6 py-3 text-left">Ended</th>
-                                    <th className="px-6 py-3 text-right"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -387,7 +335,6 @@ export default function AgentNetworkMentorshipsTable() {
                                     const statusCfg = STATUS_CONFIG[m.status] ?? STATUS_CONFIG.ENDED;
                                     const mentorImg = profileImage(m.mentor);
                                     const menteeImg = profileImage(m.mentee);
-                                    const eligible  = canAccept(m);
                                     return (
                                         <tr
                                             key={m.id}
@@ -439,16 +386,6 @@ export default function AgentNetworkMentorshipsTable() {
                                             <td className="px-6 py-4 text-sm text-gray-700">
                                                 {m.ended_at ? formatDate(m.ended_at) : "—"}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {eligible && (
-                                                    <div
-                                                        className="flex justify-end items-center"
-                                                        onClick={(e) => handleDotsClick(e, index)}
-                                                    >
-                                                        <DotsIcon className="w-5 cursor-pointer hover:text-primary transition-colors text-gray-400" />
-                                                    </div>
-                                                )}
-                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -474,30 +411,6 @@ export default function AgentNetworkMentorshipsTable() {
                     </div>
                 )}
             </div>
-
-            {/* Context menu — only for eligible (PENDING invite) rows */}
-            {contextMentorship && modalPosition && canAccept(contextMentorship) && (
-                <div
-                    ref={menuRef}
-                    className="fixed bg-white shadow-xl rounded-lg z-50 border border-gray-200 overflow-hidden min-w-[140px]"
-                    style={{ top: modalPosition.top, left: modalPosition.left }}
-                >
-                    <button
-                        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 transition-colors border-b border-gray-100"
-                        onClick={(e) => { e.stopPropagation(); openModal(contextMentorship); setSelectedRow(null); }}
-                    >
-                        <LuEye className="text-gray-500" />
-                        <span>View</span>
-                    </button>
-                    <button
-                        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-green-50 cursor-pointer text-sm text-green-700 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); openAcceptConfirm(contextMentorship); }}
-                    >
-                        <Icon icon="mdi:check-circle-outline" width="16" className="text-green-600" />
-                        <span>Accept</span>
-                    </button>
-                </div>
-            )}
 
             {/* View modal */}
             {viewMentorship && modalData && (
@@ -562,54 +475,8 @@ export default function AgentNetworkMentorshipsTable() {
                             </div>
                         </div>
                         <div className="px-6 pb-6 flex-shrink-0 flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
-                            {canAccept(modalData) && (
-                                <button
-                                    onClick={() => openAcceptConfirm(modalData)}
-                                    className="px-6 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                                >
-                                    <Icon icon="mdi:check-circle-outline" width="16" />
-                                    Accept Mentorship
-                                </button>
-                            )}
                             <button onClick={closeModal} className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">
                                 Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Accept confirmation modal */}
-            {showAcceptConfirm && acceptTarget && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-                        <div className="p-8 min-h-[260px] flex flex-col justify-center">
-                            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                                <Icon icon="mdi:handshake-outline" width="24" className="text-green-600" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Accept this mentorship?</h3>
-                            <p className="text-sm text-gray-600 leading-relaxed">
-                                You are about to accept{" "}
-                                <span className="font-semibold text-gray-800">{fullName(acceptTarget.mentor)}</span>{" "}
-                                as your mentor. This will activate the mentorship immediately.
-                            </p>
-                            <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700 leading-relaxed">
-                                <span className="font-semibold">Note on cool-down period:</span> If this mentorship is later ended, a cool-down period will apply before you can be paired with a new mentor. Please ensure you are comfortable with this mentor before accepting.
-                            </div>
-                        </div>
-                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
-                            <button
-                                onClick={() => { setShowAcceptConfirm(false); setAcceptTarget(null); }}
-                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleAccept}
-                                disabled={isAccepting}
-                                className="px-8 py-2.5 text-sm font-bold text-white bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-green-600/20"
-                            >
-                                Yes, accept
                             </button>
                         </div>
                     </div>
@@ -635,7 +502,7 @@ export default function AgentNetworkMentorshipsTable() {
                                 <Icon icon="mdi:information-outline" width="18" className="text-blue-500 shrink-0 mt-0.5" />
                                 <p className="text-xs text-blue-700 leading-relaxed">
                                     As a <span className="font-semibold">{agentTier}</span> agent, you can invite a{" "}
-                                    <span className="font-semibold">{tierBelow}</span> agent to be your mentee. Once you send the invitation, it will appear as <span className="font-semibold">PENDING</span> until the agent accepts. Accepting activates the mentorship and the mentee will benefit from your guidance in the network.
+                                    <span className="font-semibold">{tierBelow}</span> agent to be your mentee. The mentorship becomes <span className="font-semibold">ACTIVE</span> as soon as you add them — there is no acceptance step — and the mentee is notified.
                                 </p>
                             </div>
 
@@ -737,7 +604,7 @@ export default function AgentNetworkMentorshipsTable() {
                             <p className="text-sm text-gray-500 leading-relaxed">
                                 You are about to invite{" "}
                                 <span className="font-semibold text-gray-700">{fullName(selectedCandidate)}</span>{" "}
-                                as your mentee. The invitation will be set to <span className="font-semibold">PENDING</span> until they accept.
+                                as your mentee. The mentorship becomes <span className="font-semibold">ACTIVE</span> immediately and they are notified.
                             </p>
                         </div>
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
