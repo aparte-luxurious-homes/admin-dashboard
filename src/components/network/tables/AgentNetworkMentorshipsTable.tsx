@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { formatDate } from "@/src/lib/utils";
 import Loader from "@/src/components/loader";
+import MenteeCandidatePicker, { MenteeCandidate, candidateName } from "./MenteeCandidatePicker";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/src/hooks/useAuth";
 
@@ -43,22 +44,6 @@ interface Mentorship {
     mentee_tier?: string;
 }
 
-interface Candidate {
-    id?: string;
-    user_id?: string;
-    agent_id?: string;
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-    profile_image?: string;
-    current_tier?: string;
-    profile?: {
-        first_name?: string;
-        last_name?: string;
-        profile_image?: string;
-    };
-}
-
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
     // PENDING is legacy — nothing is created in this state any more. Retained so
     // any row predating the drop_mentorship_acceptance_001 migration still renders.
@@ -90,7 +75,7 @@ function tiersBelowLabel(tier: string | null): string {
     return `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`;
 }
 
-function fullName(user?: MentorshipUser | Candidate, fallback?: string): string {
+function fullName(user?: MentorshipUser, fallback?: string): string {
     if (!user) return fallback ?? "—";
     const firstName = user.first_name || user.profile?.first_name;
     const lastName  = user.last_name  || user.profile?.last_name;
@@ -98,12 +83,8 @@ function fullName(user?: MentorshipUser | Candidate, fallback?: string): string 
     return name || user.email || fallback || "—";
 }
 
-function profileImage(user?: MentorshipUser | Candidate): string | undefined {
+function profileImage(user?: MentorshipUser): string | undefined {
     return user?.profile_image || user?.profile?.profile_image;
-}
-
-function candidateId(c: Candidate): string {
-    return (c.id ?? c.user_id ?? c.agent_id ?? "") as string;
 }
 
 function TierBadge({ tier }: { tier?: string }) {
@@ -162,16 +143,15 @@ export default function AgentNetworkMentorshipsTable() {
     const [detailMentorship, setDetailMentorship] = useState<Mentorship | null>(null);
 
     // Invite modal
-    const [showInviteModal, setShowInviteModal]     = useState(false);
-    const [showInviteConfirm, setShowInviteConfirm] = useState(false);
-    const [candidates, setCandidates]               = useState<Candidate[]>([]);
-    const [candidatesLoading, setCandidatesLoading] = useState(false);
-    const [candidateSearch, setCandidateSearch]     = useState("");
-    const [candidateDropdownOpen, setCandidateDropdownOpen] = useState(false);
-    const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-    const [isInviting, setIsInviting]               = useState(false);
-
-    const candidateComboRef = useRef<HTMLDivElement>(null);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    // Candidates staged for confirmation — one row (menu action) or a batch.
+    const [pendingInvites, setPendingInvites]   = useState<MenteeCandidate[]>([]);
+    const [isInviting, setIsInviting]           = useState(false);
+    // Bumped after a successful invite so the picker refetches and clears.
+    const [candidatesToken, setCandidatesToken] = useState(0);
+    const [menteeCap, setMenteeCap]             = useState(0);
+    const [remainingSlots, setRemainingSlots]   = useState(0);
+    const [allowanceLoaded, setAllowanceLoaded] = useState(false);
 
     // Fetch the current agent's tier from /network/me — server-sourced so it cannot be
     // manipulated client-side; the invite button is not rendered at all for non-eligible tiers
@@ -181,9 +161,20 @@ export default function AgentNetworkMentorshipsTable() {
             .then((res) => {
                 const data = res?.data?.data ?? res?.data;
                 setAgentTier(data?.tier ?? data?.current_tier ?? null);
+                const summary = data?.mentorship;
+                // mentee_cap mirrors NETWORK_MENTEE_CAP. The ?? 10 is only a
+                // fallback for a backend older than the field — it matches the
+                // server default, and the server re-checks the cap per invite.
+                const cap = summary?.mentee_cap ?? 10;
+                setMenteeCap(cap);
+                setRemainingSlots(
+                    summary?.remaining_mentee_slots ??
+                    Math.max(0, cap - (summary?.active_mentee_count ?? 0)),
+                );
+                setAllowanceLoaded(true);
             })
             .catch(() => {});
-    }, []);
+    }, [candidatesToken]);
 
     const canInvite = agentTier === "SILVER" || agentTier === "GOLD";
     const tierBelow = tiersBelowLabel(agentTier);
@@ -221,69 +212,60 @@ export default function AgentNetworkMentorshipsTable() {
             .catch(() => {});
     }, [viewMentorship?.id]);
 
-    // Fetch candidates when the invite modal opens, and again (debounced) on every
-    // search change. The endpoint pages at PAGE_LIMIT, so filtering a single page
-    // client-side hid every eligible agent past the first page.
-    useEffect(() => {
-        if (!showInviteModal) { setCandidates([]); return; }
-        // Selecting a candidate writes their name into the box — not a new search
-        if (selectedCandidate && candidateSearch === fullName(selectedCandidate)) return;
-
-        const term = candidateSearch.trim();
-        const timer = setTimeout(() => {
-            setCandidatesLoading(true);
-            axiosRequest
-                .get(API_ROUTES.network.mentorshipCandidates, {
-                    params: { page: 1, size: 100, ...(term ? { search: term } : {}) },
-                })
-                .then((res) => {
-                    const payload = res?.data?.data ?? res?.data;
-                    const items = payload?.items ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
-                    setCandidates(items);
-                })
-                .catch(() => toast.error("Failed to load candidates"))
-                .finally(() => setCandidatesLoading(false));
-        }, term ? 300 : 0);
-        return () => clearTimeout(timer);
-    }, [showInviteModal, candidateSearch, selectedCandidate]);
-
-    // Click-outside handler for the candidate combo box
-    useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
-            if (candidateComboRef.current && !candidateComboRef.current.contains(e.target as Node)) {
-                setCandidateDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     const openModal = (m: Mentorship) => { setViewMentorship(m); setDetailMentorship(null); };
     const closeModal = () => { setViewMentorship(null); setDetailMentorship(null); };
 
     const resetInviteModal = () => {
         setShowInviteModal(false);
-        setShowInviteConfirm(false);
-        setSelectedCandidate(null);
-        setCandidateSearch("");
-        setCandidateDropdownOpen(false);
+        setPendingInvites([]);
     };
 
+    /**
+     * There is no batch endpoint, so a multi-select fans out one POST per
+     * mentee. allSettled rather than all: a rejection partway through (cap
+     * reached, someone else mentored them first) must not discard the
+     * mentorships that did succeed.
+     */
     const handleInvite = async () => {
-        if (!selectedCandidate) return;
+        if (pendingInvites.length === 0) return;
         setIsInviting(true);
         try {
-            await toast.promise(
-                axiosRequest.post(API_ROUTES.network.createMentorshipInvite, { mentee_id: candidateId(selectedCandidate) }),
-                {
-                    loading: "Sending invite...",
-                    success: "Mentorship invite sent successfully",
-                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to send invite",
-                }
+            const results = await Promise.allSettled(
+                pendingInvites.map((c) =>
+                    axiosRequest.post(API_ROUTES.network.createMentorshipInvite, {
+                        mentee_id: c.agent_id ?? c.id ?? c.user_id,
+                    }),
+                ),
             );
-            resetInviteModal();
-            fetchMentorships();
-        } catch {
+            const failures = results.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+            const succeeded = results.length - failures.length;
+
+            if (succeeded > 0) {
+                toast.success(
+                    succeeded === 1
+                        ? "Mentorship created and is now active"
+                        : `${succeeded} mentorships created and are now active`,
+                );
+            }
+            if (failures.length > 0) {
+                // One toast per distinct reason — a batch that trips the cap
+                // would otherwise stack identical messages.
+                const reasons = new Set(
+                    failures.map((f: any) =>
+                        f.reason?.response?.data?.detail ||
+                        f.reason?.response?.data?.message ||
+                        "Failed to create mentorship",
+                    ),
+                );
+                reasons.forEach((reason) => toast.error(reason as string));
+            }
+
+            setPendingInvites([]);
+            if (succeeded > 0) {
+                setCandidatesToken((t) => t + 1);   // refresh allowance + candidate list
+                fetchMentorships();
+                if (succeeded === pendingInvites.length) setShowInviteModal(false);
+            }
         } finally {
             setIsInviting(false);
         }
@@ -312,8 +294,8 @@ export default function AgentNetworkMentorshipsTable() {
                                 onClick={() => setShowInviteModal(true)}
                                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                             >
-                                <Icon icon="mdi:account-plus-outline" width="16" />
-                                Invite Mentee
+                                <Icon icon="mdi:account-multiple-plus-outline" width="16" />
+                                Add Mentees
                             </button>
                         )}
                     </div>
@@ -501,146 +483,85 @@ export default function AgentNetworkMentorshipsTable() {
                 </div>
             )}
 
-            {/* Invite Mentee modal */}
+            {/* Invite Mentee modal — wide, table-driven picker */}
             {showInviteModal && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
                             <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Invite a Mentee</h3>
-                                <p className="text-xs text-gray-500 mt-0.5">Send a mentorship invitation</p>
+                                <h3 className="text-lg font-semibold text-gray-900">Take on Mentees</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    As a <span className="font-semibold">{agentTier}</span> agent you can mentor{" "}
+                                    <span className="font-semibold">{tierBelow}</span> agents. Each mentorship becomes{" "}
+                                    <span className="font-semibold">ACTIVE</span> immediately and the mentee is notified.
+                                </p>
                             </div>
-                            <button onClick={resetInviteModal} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <button onClick={resetInviteModal} className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0">
                                 <Icon icon="lucide:x" width="18" className="text-gray-500" />
                             </button>
                         </div>
-                        <div className="p-8 space-y-6 min-h-[320px]">
-                            {/* Explanation */}
-                            <div className="flex gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                                <Icon icon="mdi:information-outline" width="18" className="text-blue-500 shrink-0 mt-0.5" />
-                                <p className="text-xs text-blue-700 leading-relaxed">
-                                    As a <span className="font-semibold">{agentTier}</span> agent, you can invite a{" "}
-                                    <span className="font-semibold">{tierBelow}</span> agent to be your mentee. The mentorship becomes <span className="font-semibold">ACTIVE</span> as soon as you add them — there is no acceptance step — and the mentee is notified.
-                                </p>
-                            </div>
 
-                            {/* Candidate search-select */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Select {tierBelow} Agent
-                                </label>
-                                <div ref={candidateComboRef} className="relative">
-                                    <div className={`flex items-center border rounded-xl bg-gray-50/50 overflow-hidden transition-all ${selectedCandidate ? "border-primary" : "border-gray-200"} focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary`}>
-                                        <input
-                                            type="text"
-                                            placeholder={`Search ${tierBelow.toLowerCase()} agents by name or email…`}
-                                            value={candidateSearch}
-                                            onChange={(e) => {
-                                                setCandidateSearch(e.target.value);
-                                                setCandidateDropdownOpen(true);
-                                                if (!e.target.value) setSelectedCandidate(null);
-                                            }}
-                                            onFocus={() => setCandidateDropdownOpen(true)}
-                                            className="flex-1 px-4 py-3 text-sm text-gray-700 bg-transparent outline-none"
-                                        />
-                                        {selectedCandidate ? (
-                                            <button
-                                                onMouseDown={(e) => { e.preventDefault(); setSelectedCandidate(null); setCandidateSearch(""); }}
-                                                className="pr-3 text-gray-400 hover:text-gray-600"
-                                            >
-                                                <Icon icon="lucide:x" width="14" />
-                                            </button>
-                                        ) : (
-                                            <Icon icon="mdi:chevron-down" width="18" className="mr-3 text-gray-400" />
-                                        )}
-                                    </div>
-
-                                    {candidateDropdownOpen && (
-                                        <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-96 overflow-y-auto">
-                                            {candidatesLoading ? (
-                                                <li className="px-4 py-3 text-sm text-gray-400 italic">Searching…</li>
-                                            ) : candidates.length > 0 ? candidates.map((c) => {
-                                                const img = profileImage(c);
-                                                return (
-                                                    <li
-                                                        key={candidateId(c)}
-                                                        onMouseDown={(e) => {
-                                                            e.preventDefault();
-                                                            setSelectedCandidate(c);
-                                                            setCandidateSearch(fullName(c));
-                                                            setCandidateDropdownOpen(false);
-                                                        }}
-                                                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
-                                                    >
-                                                        <div className="relative w-7 h-7 rounded-full overflow-hidden border border-gray-200 flex-shrink-0">
-                                                            {img ? (
-                                                                <Image src={img} alt="" fill className="object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                                                    <Icon icon="gg:profile" width="16" className="text-gray-400" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="font-medium truncate">{fullName(c)}</p>
-                                                            {c.email && <p className="text-xs text-gray-400 truncate">{c.email}</p>}
-                                                        </div>
-                                                        <TierBadge tier={c.current_tier} />
-                                                    </li>
-                                                );
-                                            }) : (
-                                                <li className="px-4 py-3 text-sm text-gray-400 italic">No candidates found</li>
-                                            )}
-                                        </ul>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
-                            <button onClick={resetInviteModal} className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => setShowInviteConfirm(true)}
-                                disabled={!selectedCandidate}
-                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                            >
-                                <Icon icon="mdi:send-outline" width="14" />
-                                Send Invite
-                            </button>
-                        </div>
+                        <MenteeCandidatePicker
+                            tiersBelowLabel={tierBelow}
+                            remainingSlots={remainingSlots}
+                            menteeCap={menteeCap}
+                            allowanceLoaded={allowanceLoaded}
+                            isSubmitting={isInviting}
+                            refreshToken={candidatesToken}
+                            onMentorOne={(c) => setPendingInvites([c])}
+                            onMentorMany={(cs) => setPendingInvites(cs)}
+                        />
                     </div>
                 </div>
             )}
 
-            {/* Invite confirmation modal */}
-            {showInviteConfirm && selectedCandidate && (
+            {/* Invite confirmation */}
+            {pendingInvites.length > 0 && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-                        <div className="p-8 min-h-[260px] flex flex-col justify-center">
+                        <div className="p-8">
                             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                                 <Icon icon="mdi:account-plus-outline" width="24" className="text-primary" />
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Send invite?</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                {pendingInvites.length === 1 ? "Start this mentorship?" : `Start ${pendingInvites.length} mentorships?`}
+                            </h3>
                             <p className="text-sm text-gray-500 leading-relaxed">
-                                You are about to invite{" "}
-                                <span className="font-semibold text-gray-700">{fullName(selectedCandidate)}</span>{" "}
-                                as your mentee. The mentorship becomes <span className="font-semibold">ACTIVE</span> immediately and they are notified.
+                                {pendingInvites.length === 1 ? (
+                                    <>
+                                        You are about to take on{" "}
+                                        <span className="font-semibold text-gray-700">{candidateName(pendingInvites[0])}</span>{" "}
+                                        as your mentee.
+                                    </>
+                                ) : (
+                                    <>You are about to take on <span className="font-semibold text-gray-700">{pendingInvites.length} agents</span> as your mentees.</>
+                                )}{" "}
+                                The mentorship becomes <span className="font-semibold">ACTIVE</span> immediately and they are notified.
                             </p>
+                            {pendingInvites.length > 1 && (
+                                <ul className="mt-4 max-h-32 overflow-y-auto space-y-1 border-t border-gray-100 pt-3">
+                                    {pendingInvites.map((c) => (
+                                        <li key={c.agent_id ?? c.id ?? c.user_id} className="text-xs text-gray-500 truncate">
+                                            {candidateName(c)}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
                             <button
-                                onClick={() => setShowInviteConfirm(false)}
-                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                                onClick={() => setPendingInvites([])}
+                                disabled={isInviting}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 disabled:opacity-40 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={() => { setShowInviteConfirm(false); handleInvite(); }}
+                                onClick={handleInvite}
                                 disabled={isInviting}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
                             >
-                                Yes, send
+                                {isInviting ? "Creating..." : "Yes, proceed"}
                             </button>
                         </div>
                     </div>

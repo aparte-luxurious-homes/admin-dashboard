@@ -176,6 +176,8 @@ export const API_ROUTES = {
         mentorships: {
             base: `/admin/network/mentorship`,
             details: (id: string) => `/admin/network/mentorship/${id}`,
+            candidates: `/admin/network/mentorship/candidates`,
+            mentors: `/admin/network/mentorship/mentors`,
         },
         events: {
             base: `/admin/network/events`,
