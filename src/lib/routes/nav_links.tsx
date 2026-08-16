@@ -111,7 +111,7 @@ export const NAV_LINKS: ILink[] = [
         secondary: true,
         children: [
             {
-                name: 'My Events',
+                name: 'Events',
                 pathName: 'history',
                 link: PAGE_ROUTES.dashboard.network.history.base,
                 allow: [UserRole.AGENT],

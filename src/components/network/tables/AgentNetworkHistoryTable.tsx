@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
@@ -9,6 +10,7 @@ import TablePagination from "../../TablePagination";
 import Loader from "@/src/components/loader";
 import { LuX } from "react-icons/lu";
 import { toast } from "react-hot-toast";
+import { useAuth } from "@/src/hooks/useAuth";
 
 interface NetworkEvent {
     id: string;
@@ -27,6 +29,26 @@ interface NetworkEvent {
     remitted_at: string | null;
     created_at: string;
     updated_at: string;
+    // Present only on a mentor's combined feed — names whose event the row is.
+    agent?: {
+        first_name?: string | null;
+        last_name?: string | null;
+        email?: string | null;
+        profile_image?: string | null;
+    } | null;
+}
+
+interface MenteeOption {
+    id: string;
+    name: string;
+    email?: string | null;
+    profile_image?: string | null;
+}
+
+function personName(person?: { first_name?: string | null; last_name?: string | null; email?: string | null } | null): string {
+    if (!person) return "--/--";
+    const name = [person.first_name, person.last_name].filter(Boolean).join(" ");
+    return name || person.email || "--/--";
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
@@ -46,6 +68,7 @@ function formatEntityType(type: string | null) {
 }
 
 export default function AgentNetworkHistoryTable() {
+    const { user } = useAuth();
     const [events, setEvents]         = useState<NetworkEvent[]>([]);
     const [total, setTotal]           = useState(0);
     const [page, setPage]             = useState(1);
@@ -53,8 +76,59 @@ export default function AgentNetworkHistoryTable() {
     const [isLoading, setIsLoading]   = useState(false);
     const [statusFilter, setStatusFilter] = useState("");
     const [actionFilter, setActionFilter] = useState("");
+    // Mentor feed: "all" (own + mentees), "mine", "mentees" — mirrors the
+    // scope param on GET /network/history.
+    const [scope, setScope]               = useState("all");
+    const [menteeId, setMenteeId]         = useState("");
+    const [menteeSearch, setMenteeSearch] = useState("");
+    const [menteeOpen, setMenteeOpen]     = useState(false);
+    const [mentees, setMentees]           = useState<MenteeOption[]>([]);
+
+    const menteeComboRef = useRef<HTMLDivElement>(null);
+    // Only mentors get the scope / mentee controls; for everyone else the three
+    // scopes are equivalent and the extra chrome would be noise.
+    const isMentor = mentees.length > 0;
 
     const [viewEvent, setViewEvent] = useState<NetworkEvent | null>(null);
+
+    // The caller's mentees, sourced from their own mentorship list. Non-ENDED
+    // only, matching the set the history endpoint authorises `mentee_id` against.
+    useEffect(() => {
+        axiosRequest
+            // as_mentor=true is load-bearing: without it the endpoint returns
+            // mappings in BOTH directions, so an agent who is themselves a mentee
+            // would find their own row here and appear in their own mentee picker
+            // (the history endpoint would then 403 on that mentee_id).
+            .get(API_ROUTES.network.myMentorship, {
+                params: { page: 1, size: 100, as_mentor: true },
+            })
+            .then((res) => {
+                const payload = res?.data?.data ?? res?.data;
+                const items = payload?.items ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
+                const options: MenteeOption[] = (items as any[])
+                    .filter((m) => m?.status !== "ENDED" && m?.mentee_id && m?.mentor_id === user?.id)
+                    .map((m) => ({
+                        id: m.mentee_id,
+                        name: personName(m.mentee),
+                        email: m.mentee?.email ?? null,
+                        profile_image: m.mentee?.profile_image ?? null,
+                    }));
+                // A mentee can appear once per mapping; collapse to unique ids.
+                const seen = new Set<string>();
+                setMentees(options.filter((o) => !seen.has(o.id) && seen.add(o.id)));
+            })
+            .catch(() => setMentees([]));
+    }, [user?.id]);
+
+    useEffect(() => {
+        function onClickOutside(e: MouseEvent) {
+            if (menteeComboRef.current && !menteeComboRef.current.contains(e.target as Node)) {
+                setMenteeOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", onClickOutside);
+        return () => document.removeEventListener("mousedown", onClickOutside);
+    }, []);
 
     const fetchEvents = useCallback(async () => {
         setIsLoading(true);
@@ -64,6 +138,10 @@ export default function AgentNetworkHistoryTable() {
             params.set("size", String(size));
             if (statusFilter) params.set("status", statusFilter);
             if (actionFilter) params.set("action_type", actionFilter);
+            // mentee_id already narrows to one agent; sending scope alongside it
+            // would be redundant, and the endpoint ignores scope in that case.
+            if (menteeId) params.set("mentee_id", menteeId);
+            else if (scope !== "all") params.set("scope", scope);
 
             const response = await axiosRequest.get(
                 `${API_ROUTES.network.history}?${params.toString()}`
@@ -76,7 +154,7 @@ export default function AgentNetworkHistoryTable() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, size, statusFilter, actionFilter]);
+    }, [page, size, statusFilter, actionFilter, scope, menteeId]);
 
     useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -88,7 +166,11 @@ export default function AgentNetworkHistoryTable() {
                 <div className="p-6 border-b border-gray-200">
                     <div className="mb-4">
                         <h1 className="text-xl font-semibold text-gray-900">My Network Events</h1>
-                        <p className="text-sm text-gray-500 mt-1">View your activity events and points history</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                            {isMentor
+                                ? "Your activity events and points history, alongside your mentees'"
+                                : "View your activity events and points history"}
+                        </p>
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
@@ -119,12 +201,102 @@ export default function AgentNetworkHistoryTable() {
                             <option value="KYC_COMPLETED">KYC Completed</option>
                             <option value="PROFILE_COMPLETED">Profile Completed</option>
                             <option value="MANUAL_ADJUSTMENT">Manual Adjustment</option>
+                            <option value="MENTOR_POINT_OVERRIDE">Mentor Point Override</option>
                         </select>
 
+                        {isMentor && (
+                            <>
+                                {/* Whose events */}
+                                <select
+                                    value={menteeId ? "" : scope}
+                                    disabled={Boolean(menteeId)}
+                                    onChange={(e) => { setScope(e.target.value); setPage(1); }}
+                                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm min-w-[170px] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <option value="all">Everyone</option>
+                                    <option value="mine">My events only</option>
+                                    <option value="mentees">Mentees only</option>
+                                </select>
+
+                                {/* Mentee search */}
+                                <div ref={menteeComboRef} className="relative">
+                                    <div className={`flex items-center border rounded-lg bg-white overflow-hidden transition-all ${menteeId ? "border-primary" : "border-gray-300"} focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary`}>
+                                        <Icon icon="mdi:magnify" width="16" className="ml-3 text-gray-400 shrink-0" />
+                                        <input
+                                            type="text"
+                                            value={menteeSearch}
+                                            placeholder="Search a mentee…"
+                                            onFocus={() => setMenteeOpen(true)}
+                                            onChange={(e) => {
+                                                setMenteeSearch(e.target.value);
+                                                setMenteeOpen(true);
+                                                if (!e.target.value && menteeId) { setMenteeId(""); setPage(1); }
+                                            }}
+                                            className="px-2 py-2 text-sm text-gray-700 bg-transparent outline-none w-52"
+                                        />
+                                        {menteeId && (
+                                            <button
+                                                onMouseDown={(e) => { e.preventDefault(); setMenteeId(""); setMenteeSearch(""); setPage(1); }}
+                                                className="pr-3 text-gray-400 hover:text-gray-600"
+                                            >
+                                                <LuX size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    {menteeOpen && !menteeId && (
+                                        <ul className="absolute z-50 mt-1 w-full min-w-[260px] bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                                            {mentees
+                                                .filter((m) =>
+                                                    m.name.toLowerCase().includes(menteeSearch.toLowerCase()) ||
+                                                    (m.email ?? "").toLowerCase().includes(menteeSearch.toLowerCase())
+                                                )
+                                                .map((m) => (
+                                                    <li
+                                                        key={m.id}
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            setMenteeId(m.id);
+                                                            setMenteeSearch(m.name);
+                                                            setMenteeOpen(false);
+                                                            setPage(1);
+                                                        }}
+                                                        className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
+                                                    >
+                                                        <div className="relative w-7 h-7 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                                                            {m.profile_image ? (
+                                                                <Image src={m.profile_image} alt="" fill className="object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                                                    <Icon icon="gg:profile" width="16" className="text-gray-400" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
+                                                            {m.email && <p className="text-xs text-gray-400 truncate">{m.email}</p>}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            {mentees.filter((m) =>
+                                                m.name.toLowerCase().includes(menteeSearch.toLowerCase()) ||
+                                                (m.email ?? "").toLowerCase().includes(menteeSearch.toLowerCase())
+                                            ).length === 0 && (
+                                                <li className="px-4 py-3 text-sm text-gray-400 italic">No mentee matches that search</li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
                         {/* Clear filters */}
-                        {(statusFilter || actionFilter) && (
+                        {(statusFilter || actionFilter || menteeId || scope !== "all") && (
                             <button
-                                onClick={() => { setStatusFilter(""); setActionFilter(""); setPage(1); }}
+                                onClick={() => {
+                                    setStatusFilter(""); setActionFilter("");
+                                    setScope("all"); setMenteeId(""); setMenteeSearch("");
+                                    setPage(1);
+                                }}
                                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <Icon icon="lucide:x" width="16" height="16" />
@@ -144,6 +316,7 @@ export default function AgentNetworkHistoryTable() {
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                    {isMentor && <th className="px-6 py-3 text-left">Agent</th>}
                                     <th className="px-6 py-3 text-left">Action</th>
                                     <th className="px-6 py-3 text-left">Status</th>
                                     <th className="px-6 py-3 text-left">Points</th>
@@ -162,6 +335,24 @@ export default function AgentNetworkHistoryTable() {
                                             className="hover:bg-gray-50 transition-colors cursor-pointer"
                                             onClick={() => setViewEvent(event)}
                                         >
+                                            {isMentor && (
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="relative w-7 h-7 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                                                            {event.agent?.profile_image ? (
+                                                                <Image src={event.agent.profile_image} alt="" fill className="object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                                                    <Icon icon="gg:profile" width="16" className="text-gray-400" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-sm text-gray-700 truncate max-w-[160px]">
+                                                            {event.agent ? personName(event.agent) : "You"}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                                 {formatActionType(event.action_type)}
                                             </td>
