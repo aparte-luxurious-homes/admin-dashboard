@@ -43,6 +43,9 @@ interface Mentorship {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string }> = {
+    // PENDING is legacy — nothing is created in this state any more (both agent
+    // and admin mentorship creation are now immediate/ACTIVE). Retained so any
+    // row predating the drop_mentorship_acceptance_001 migration still renders.
     PENDING: { bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-200"   },
     ACTIVE:  { bg: "bg-green-50",  text: "text-green-700",  border: "border-green-200"  },
     PAUSED:  { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
@@ -55,7 +58,9 @@ const TIER_CONFIG: Record<string, { label: string; color: string; bg: string; bo
     GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-300" },
 };
 
-const MENTORSHIP_STATUSES = ["PENDING", "ACTIVE", "PAUSED", "ENDED"] as const;
+// Admin PATCH only accepts these three targets — PENDING is not a valid status
+// to move a mapping into (nothing accepts it since the acceptance flow was removed).
+const MENTORSHIP_STATUSES = ["ACTIVE", "PAUSED", "ENDED"] as const;
 
 function fullName(user?: MentorshipUser, fallback?: string): string {
     if (!user) return fallback ?? "--/--";

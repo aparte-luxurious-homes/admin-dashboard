@@ -57,6 +57,9 @@ interface Agent {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
+    // PENDING is legacy — nothing is created in this state any more (both agent
+    // and admin mentorship creation are now immediate/ACTIVE). Retained so any
+    // row predating the drop_mentorship_acceptance_001 migration still renders.
     PENDING: { bg: "bg-blue-100",   text: "text-blue-700"   },
     ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
     PAUSED:  { bg: "bg-yellow-100", text: "text-yellow-800" },
@@ -533,18 +536,18 @@ export default function NetworkMentorshipsTable() {
                         <span>View details</span>
                     </button>
 
-                    {/* Status transitions — hide the current status */}
-                    {(["PENDING", "ACTIVE", "PAUSED", "ENDED"] as const)
+                    {/* Status transitions — hide the current status. PENDING is not a
+                        valid transition target: admin PATCH only accepts ACTIVE/PAUSED/ENDED
+                        since the acceptance flow was removed. */}
+                    {(["ACTIVE", "PAUSED", "ENDED"] as const)
                         .filter((s) => s !== contextMentorship.status)
                         .map((s) => {
                             const icons: Record<string, string> = {
-                                PENDING: "mdi:clock-outline",
                                 ACTIVE:  "mdi:check-circle-outline",
                                 PAUSED:  "mdi:pause-circle-outline",
                                 ENDED:   "mdi:stop-circle-outline",
                             };
                             const colors: Record<string, string> = {
-                                PENDING: "text-blue-600",
                                 ACTIVE:  "text-green-600",
                                 PAUSED:  "text-yellow-600",
                                 ENDED:   "text-gray-500",
@@ -623,7 +626,7 @@ export default function NetworkMentorshipsTable() {
                             <div className="flex gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
                                 <Icon icon="mdi:information-outline" width="18" className="text-blue-500 shrink-0 mt-0.5" />
                                 <p className="text-xs text-blue-700 leading-relaxed">
-                                    This creates a mentorship relationship between two agents. The selected mentor (Silver-tier or above) will be paired with the mentee. The mapping will remain <span className="font-semibold">PENDING</span> until the mentee accepts the invitation.
+                                    This creates a mentorship relationship between two agents. The selected mentor (Silver-tier or above) will be paired with the mentee. The mapping becomes <span className="font-semibold">ACTIVE</span> immediately — there is no acceptance step — and the mentee is notified. It will fail if the mentee is already in a paused or existing mentorship.
                                 </p>
                             </div>
 
@@ -739,7 +742,7 @@ export default function NetworkMentorshipsTable() {
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-1">Create mentorship mapping?</h3>
                             <p className="text-sm text-gray-500 leading-relaxed">
-                                You are about to pair <span className="font-semibold text-gray-700">{createMentorSearch}</span> as mentor with <span className="font-semibold text-gray-700">{createMenteeSearch}</span> as mentee. The mapping will be set to <span className="font-semibold">PENDING</span> until the mentee accepts the invitation.
+                                You are about to pair <span className="font-semibold text-gray-700">{createMentorSearch}</span> as mentor with <span className="font-semibold text-gray-700">{createMenteeSearch}</span> as mentee. The mapping becomes <span className="font-semibold">ACTIVE</span> immediately and the mentee is notified.
                             </p>
                         </div>
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">

@@ -207,7 +207,6 @@ export const API_ROUTES = {
         history: `/network/history`,
         myMentorship: `/network/mentorship`,
         myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
-        acceptMentorship: `/network/mentorship/accept`,
         mentorshipCandidates: `/network/mentorship/candidates`,
         createMentorshipInvite: `/network/mentorship/invite`,
     },
