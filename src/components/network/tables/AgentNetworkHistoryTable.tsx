@@ -201,7 +201,7 @@ export default function AgentNetworkHistoryTable() {
                             <option value="KYC_COMPLETED">KYC Completed</option>
                             <option value="PROFILE_COMPLETED">Profile Completed</option>
                             <option value="MANUAL_ADJUSTMENT">Manual Adjustment</option>
-                            <option value="MENTOR_POINT_OVERRIDE">Mentor Point Override</option>
+                            {isMentor && <option value="MENTOR_POINT_OVERRIDE">Mentor Point Override</option>}
                         </select>
 
                         {isMentor && (
