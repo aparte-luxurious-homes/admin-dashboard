@@ -51,6 +51,7 @@ interface Candidate {
     last_name?: string;
     email?: string;
     profile_image?: string;
+    current_tier?: string;
     profile?: {
         first_name?: string;
         last_name?: string;
@@ -73,10 +74,21 @@ const TIER_CONFIG: Record<string, { label: string; color: string; bg: string; bo
     GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50",  border: "border-yellow-300" },
 };
 
-const TIER_BELOW: Record<string, string> = {
-    SILVER: "BRONZE",
-    GOLD:   "SILVER",
+// Tiers a mentor may take on, mirroring the backend's `order < mentor order`
+// filter in MentorshipService.list_mentee_candidates — GOLD may mentor SILVER
+// *and* BRONZE, not only the tier immediately below.
+const TIERS_BELOW: Record<string, string[]> = {
+    SILVER: ["BRONZE"],
+    GOLD:   ["SILVER", "BRONZE"],
 };
+
+function tiersBelowLabel(tier: string | null): string {
+    const tiers = tier ? TIERS_BELOW[tier] ?? [] : [];
+    const labels = tiers.map((t) => TIER_CONFIG[t]?.label ?? t);
+    if (labels.length === 0) return "lower-tier";
+    if (labels.length === 1) return labels[0];
+    return `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`;
+}
 
 function fullName(user?: MentorshipUser | Candidate, fallback?: string): string {
     if (!user) return fallback ?? "—";
@@ -174,7 +186,7 @@ export default function AgentNetworkMentorshipsTable() {
     }, []);
 
     const canInvite = agentTier === "SILVER" || agentTier === "GOLD";
-    const tierBelow = agentTier ? TIER_BELOW[agentTier] : null;
+    const tierBelow = tiersBelowLabel(agentTier);
 
     const fetchMentorships = useCallback(async () => {
         setIsLoading(true);
@@ -209,20 +221,31 @@ export default function AgentNetworkMentorshipsTable() {
             .catch(() => {});
     }, [viewMentorship?.id]);
 
-    // Fetch candidates when invite modal opens
+    // Fetch candidates when the invite modal opens, and again (debounced) on every
+    // search change. The endpoint pages at PAGE_LIMIT, so filtering a single page
+    // client-side hid every eligible agent past the first page.
     useEffect(() => {
         if (!showInviteModal) { setCandidates([]); return; }
-        setCandidatesLoading(true);
-        axiosRequest
-            .get(API_ROUTES.network.mentorshipCandidates)
-            .then((res) => {
-                const payload = res?.data?.data ?? res?.data;
-                const items = payload?.items ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
-                setCandidates(items);
-            })
-            .catch(() => toast.error("Failed to load candidates"))
-            .finally(() => setCandidatesLoading(false));
-    }, [showInviteModal]);
+        // Selecting a candidate writes their name into the box — not a new search
+        if (selectedCandidate && candidateSearch === fullName(selectedCandidate)) return;
+
+        const term = candidateSearch.trim();
+        const timer = setTimeout(() => {
+            setCandidatesLoading(true);
+            axiosRequest
+                .get(API_ROUTES.network.mentorshipCandidates, {
+                    params: { page: 1, size: 100, ...(term ? { search: term } : {}) },
+                })
+                .then((res) => {
+                    const payload = res?.data?.data ?? res?.data;
+                    const items = payload?.items ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
+                    setCandidates(items);
+                })
+                .catch(() => toast.error("Failed to load candidates"))
+                .finally(() => setCandidatesLoading(false));
+        }, term ? 300 : 0);
+        return () => clearTimeout(timer);
+    }, [showInviteModal, candidateSearch, selectedCandidate]);
 
     // Click-outside handler for the candidate combo box
     useEffect(() => {
@@ -265,11 +288,6 @@ export default function AgentNetworkMentorshipsTable() {
             setIsInviting(false);
         }
     };
-
-    const filteredCandidates = candidates.filter((c) =>
-        fullName(c).toLowerCase().includes(candidateSearch.toLowerCase()) ||
-        (c.email ?? "").toLowerCase().includes(candidateSearch.toLowerCase())
-    );
 
     const modalData = detailMentorship ?? viewMentorship;
 
@@ -515,7 +533,7 @@ export default function AgentNetworkMentorshipsTable() {
                                     <div className={`flex items-center border rounded-xl bg-gray-50/50 overflow-hidden transition-all ${selectedCandidate ? "border-primary" : "border-gray-200"} focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary`}>
                                         <input
                                             type="text"
-                                            placeholder={candidatesLoading ? "Loading candidates…" : `Search ${tierBelow?.toLowerCase()} agents…`}
+                                            placeholder={`Search ${tierBelow.toLowerCase()} agents by name or email…`}
                                             value={candidateSearch}
                                             onChange={(e) => {
                                                 setCandidateSearch(e.target.value);
@@ -537,9 +555,11 @@ export default function AgentNetworkMentorshipsTable() {
                                         )}
                                     </div>
 
-                                    {candidateDropdownOpen && !candidatesLoading && (
+                                    {candidateDropdownOpen && (
                                         <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-96 overflow-y-auto">
-                                            {filteredCandidates.length > 0 ? filteredCandidates.map((c) => {
+                                            {candidatesLoading ? (
+                                                <li className="px-4 py-3 text-sm text-gray-400 italic">Searching…</li>
+                                            ) : candidates.length > 0 ? candidates.map((c) => {
                                                 const img = profileImage(c);
                                                 return (
                                                     <li
@@ -561,10 +581,11 @@ export default function AgentNetworkMentorshipsTable() {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="min-w-0">
+                                                        <div className="min-w-0 flex-1">
                                                             <p className="font-medium truncate">{fullName(c)}</p>
                                                             {c.email && <p className="text-xs text-gray-400 truncate">{c.email}</p>}
                                                         </div>
+                                                        <TierBadge tier={c.current_tier} />
                                                     </li>
                                                 );
                                             }) : (

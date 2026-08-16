@@ -626,7 +626,7 @@ export default function NetworkMentorshipsTable() {
                             <div className="flex gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
                                 <Icon icon="mdi:information-outline" width="18" className="text-blue-500 shrink-0 mt-0.5" />
                                 <p className="text-xs text-blue-700 leading-relaxed">
-                                    This creates a mentorship relationship between two agents. The selected mentor (Silver-tier or above) will be paired with the mentee. The mapping becomes <span className="font-semibold">ACTIVE</span> immediately — there is no acceptance step — and the mentee is notified. It will fail if the mentee is already in a paused or existing mentorship.
+                                    This creates a mentorship relationship between two agents. The selected mentor (Silver-tier or above) will be paired with the mentee. The mapping becomes <span className="font-semibold">ACTIVE</span> immediately and the mentee is notified. It will fail if the mentee is already in a paused or existing mentorship.
                                 </p>
                             </div>
 
