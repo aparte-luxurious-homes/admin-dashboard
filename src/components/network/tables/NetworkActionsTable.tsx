@@ -322,7 +322,7 @@ export default function NetworkActionsTable() {
             {/* View modal */}
             {viewAction && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-100">
                             <h3 className="text-lg font-semibold text-gray-900">Action Details</h3>
                             <button
