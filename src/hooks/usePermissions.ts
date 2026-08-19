@@ -18,6 +18,14 @@ export const usePermissions = () => {
         UserRole.SUPPORT_ADMIN,
     ].includes(role as UserRole);
     const isAdmin = isAdminRole;
+    // isAdmin above includes SUPPORT_ADMIN, who is read-only on properties.
+    // Destructive property actions mirror the API's PROPERTY_DESTRUCTIVE_ROLES
+    // (services/properties/services.py) exactly — do not swap in isAdmin here.
+    const isPropertyDestructiveRole = [
+        UserRole.SUPER_ADMIN,
+        UserRole.ADMIN,
+        UserRole.OPERATIONS_ADMIN,
+    ].includes(role as UserRole);
     const isAgent = role === UserRole.AGENT;
     const isOwner = role === UserRole.OWNER;
     const isStaff = isAdmin || isAgent || isOwner;
@@ -39,7 +47,7 @@ export const usePermissions = () => {
     // Specific Actions
     const canCreateProperty = isStaff;
     const canEditProperty = isStaff; // Specific ownership check happens on backend/detail view
-    const canDeleteProperty = isSuperAdmin;
+    const canDeleteProperty = isPropertyDestructiveRole;
     const canDeleteUnit = isSuperAdmin;
     const canDeleteBooking = isSuperAdmin;
     const canDeleteUser = isSuperAdmin;
