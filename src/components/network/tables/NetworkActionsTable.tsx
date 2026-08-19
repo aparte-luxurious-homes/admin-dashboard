@@ -18,6 +18,60 @@ interface ActionConfig {
     is_active: boolean;
     updated_at: string;
     description?: string | null;
+    // Fractions (0.05 = 5%). Stored per MENTOR tier; the cut is transferred out
+    // of the mentee's award, not minted on top.
+    mentor_override_gold_pct?: number | string | null;
+    mentor_override_silver_pct?: number | string | null;
+}
+
+/**
+ * Lowest override rate that actually pays out.
+ *
+ * The backend rounds the mentor's cut half-up to a whole point, so a rate of
+ * r only yields anything once the mentee's award reaches 0.5/r points. At 2%
+ * that is a 25-point award; below 2% the threshold climbs past every base
+ * value we award, and the rate silently pays nothing while still displaying
+ * as configured. 0 stays valid as the explicit "this tier earns nothing" switch.
+ */
+const MIN_OVERRIDE_PCT = 2;
+
+const OVERRIDE_HELP =
+    `Enter 0 to switch a tier's override off, or ${MIN_OVERRIDE_PCT}% and above. ` +
+    `Anything between rounds down to zero points on real awards, so it would ` +
+    `look configured but never pay out.`;
+
+/** Stored fraction (0.05) -> display percent (5). */
+function pctToInput(fraction?: number | string | null): string {
+    const value = Number(fraction ?? 0);
+    if (!Number.isFinite(value)) return "0";
+    return String(Number((value * 100).toFixed(2)));
+}
+
+/** Display percent ("5") -> stored fraction (0.05). */
+function inputToPct(input: string): number {
+    const value = parseFloat(input);
+    if (!Number.isFinite(value)) return 0;
+    return Number((value / 100).toFixed(4));
+}
+
+/** Returns an error string, or null when the value is acceptable. */
+function validateOverride(input: string, label: string): string | null {
+    const trimmed = input.trim();
+    if (trimmed === "") return `${label} override is required — enter 0 to switch it off.`;
+    const value = parseFloat(trimmed);
+    if (!Number.isFinite(value) || value < 0) return `${label} override must be 0 or a positive number.`;
+    if (value > 100) return `${label} override cannot exceed 100%.`;
+    if (value > 0 && value < MIN_OVERRIDE_PCT) {
+        return `${label} override must be 0 or at least ${MIN_OVERRIDE_PCT}%. ` +
+               `Rates below ${MIN_OVERRIDE_PCT}% round down to zero points and never pay out.`;
+    }
+    return null;
+}
+
+function formatOverride(fraction?: number | string | null): string {
+    const value = Number(fraction ?? 0);
+    if (!Number.isFinite(value) || value <= 0) return "Off";
+    return `${Number((value * 100).toFixed(2))}%`;
 }
 
 const STATUS_CONFIG = {
@@ -52,6 +106,9 @@ export default function NetworkActionsTable() {
     const [editBasePoints, setEditBasePoints] = useState(0);
     const [editIsActive, setEditIsActive]     = useState(true);
     const [editDescription, setEditDescription] = useState("");
+    // Held as strings so the field can be cleared mid-edit without snapping to 0
+    const [editGoldPct, setEditGoldPct]     = useState("0");
+    const [editSilverPct, setEditSilverPct] = useState("0");
     const [isSaving, setIsSaving]             = useState(false);
 
     const menuRef = useRef<HTMLDivElement>(null);
@@ -92,18 +149,33 @@ export default function NetworkActionsTable() {
         setEditBasePoints(action.base_points);
         setEditIsActive(action.is_active);
         setEditDescription(action.description || "");
+        setEditGoldPct(pctToInput(action.mentor_override_gold_pct));
+        setEditSilverPct(pctToInput(action.mentor_override_silver_pct));
         setEditAction(action);
         setSelectedRow(null);
     };
 
+    const goldError   = validateOverride(editGoldPct, "Gold");
+    const silverError = validateOverride(editSilverPct, "Silver");
+
     const handleSave = async () => {
         if (!editAction) return;
+        if (goldError || silverError) {
+            toast.error(goldError || silverError || "Check the override percentages");
+            return;
+        }
         setIsSaving(true);
         try {
             await toast.promise(
                 axiosRequest.put(
                     API_ROUTES.network.configs.actions.update(editAction.action_type),
-                    { base_points: editBasePoints, is_active: editIsActive, description: editDescription }
+                    {
+                        base_points: editBasePoints,
+                        is_active: editIsActive,
+                        description: editDescription,
+                        mentor_override_gold_pct: inputToPct(editGoldPct),
+                        mentor_override_silver_pct: inputToPct(editSilverPct),
+                    }
                 ),
                 {
                     loading: "Saving...",
@@ -148,6 +220,8 @@ export default function NetworkActionsTable() {
                                 <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     <th className="px-6 py-3 text-left">Action Type</th>
                                     <th className="px-6 py-3 text-left">Base Points</th>
+                                    <th className="px-6 py-3 text-left whitespace-nowrap">Gold Ovr.</th>
+                                    <th className="px-6 py-3 text-left whitespace-nowrap">Silver Ovr.</th>
                                     {canEditActions && <th className="px-6 py-3 text-left">Status</th>}
                                     <th className={`px-6 py-3 text-left ${!canEditActions ? "w-[520px]" : ""}`}>Description</th>
                                     <th className="px-6 py-3 text-left">Last Updated</th>
@@ -168,6 +242,12 @@ export default function NetworkActionsTable() {
                                             </td>
                                             <td className="px-6 py-4 text-xl font-bold text-gray-900">
                                                 {action.base_points}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                                {formatOverride(action.mentor_override_gold_pct)}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                                                {formatOverride(action.mentor_override_silver_pct)}
                                             </td>
                                             {canEditActions && (
                                                 <td className="px-6 py-4">
@@ -242,7 +322,7 @@ export default function NetworkActionsTable() {
             {/* View modal */}
             {viewAction && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-100">
                             <h3 className="text-lg font-semibold text-gray-900">Action Details</h3>
                             <button
@@ -260,6 +340,26 @@ export default function NetworkActionsTable() {
                             <div className="space-y-1">
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Base Points</p>
                                 <p className="text-xl font-bold text-gray-900">{viewAction.base_points}</p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Mentor Override</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="px-3 py-2.5 rounded-xl border border-yellow-200 bg-yellow-50/60">
+                                        <p className="text-[11px] font-semibold text-yellow-700 uppercase tracking-wider">Gold Ovr.</p>
+                                        <p className="text-lg font-bold text-gray-900 mt-0.5">
+                                            {formatOverride(viewAction.mentor_override_gold_pct)}
+                                        </p>
+                                    </div>
+                                    <div className="px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                                        <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Silver Ovr.</p>
+                                        <p className="text-lg font-bold text-gray-900 mt-0.5">
+                                            {formatOverride(viewAction.mentor_override_silver_pct)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                    Taken out of the mentee&apos;s award for this action, not added on top.
+                                </p>
                             </div>
                             {canEditActions && (
                                 <div className="space-y-1">
@@ -334,6 +434,54 @@ export default function NetworkActionsTable() {
                                 </div>
                             </div>
                             <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700">Mentor Point Override</label>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                    Share of this action&apos;s points handed to the mentee&apos;s mentor. It is
+                                    taken <span className="font-semibold">out of</span> the mentee&apos;s award, not
+                                    added on top. {OVERRIDE_HELP}
+                                </p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gold mentor</label>
+                                        <div className={`flex items-center border rounded-xl bg-gray-50/50 overflow-hidden transition-all ${goldError ? "border-red-300" : "border-gray-200"}`}>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={100}
+                                                step={0.5}
+                                                value={editGoldPct}
+                                                onFocus={(e) => e.target.select()}
+                                                onChange={(e) => setEditGoldPct(e.target.value)}
+                                                className="flex-1 w-full px-4 py-3 text-sm bg-transparent outline-none"
+                                            />
+                                            <span className="pr-3 text-sm text-gray-400">%</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Silver mentor</label>
+                                        <div className={`flex items-center border rounded-xl bg-gray-50/50 overflow-hidden transition-all ${silverError ? "border-red-300" : "border-gray-200"}`}>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={100}
+                                                step={0.5}
+                                                value={editSilverPct}
+                                                onFocus={(e) => e.target.select()}
+                                                onChange={(e) => setEditSilverPct(e.target.value)}
+                                                className="flex-1 w-full px-4 py-3 text-sm bg-transparent outline-none"
+                                            />
+                                            <span className="pr-3 text-sm text-gray-400">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {(goldError || silverError) && (
+                                    <p className="flex items-start gap-1.5 text-xs text-red-600">
+                                        <Icon icon="mdi:alert-circle-outline" width="14" className="shrink-0 mt-0.5" />
+                                        <span>{goldError || silverError}</span>
+                                    </p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <label className="text-sm font-semibold text-gray-700">Description</label>
                                     <span className={`text-xs ${editDescription.length > 255 ? "text-red-500 font-semibold" : "text-gray-400"}`}>
@@ -359,7 +507,7 @@ export default function NetworkActionsTable() {
                             </button>
                             <button
                                 onClick={handleSave}
-                                disabled={isSaving}
+                                disabled={isSaving || Boolean(goldError) || Boolean(silverError)}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
                                 {isSaving ? (

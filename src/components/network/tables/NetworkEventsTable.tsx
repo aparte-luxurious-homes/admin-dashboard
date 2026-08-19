@@ -106,7 +106,7 @@ export default function NetworkEventsTable() {
     const [isAdjusting, setIsAdjusting]           = useState(false);
 
     // Related event — required link back to a specific prior AgentActivityEvent
-    // (e.g. an under-credited BOOKING_CHECKED_IN) that this adjustment corrects.
+    // (e.g. an under-credited BOOKING_CREATED) that this adjustment corrects.
     // Plain ID entry — the backend looks up and validates the event belongs
     // to the selected agent.
     const [relatedEventId, setRelatedEventId] = useState("");
@@ -398,8 +398,8 @@ export default function NetworkEventsTable() {
                             <option value="">All Actions</option>
                             <option value="LISTING_CREATED">Listing Created</option>
                             <option value="LISTING_VERIFIED">Listing Verified</option>
-                            <option value="BOOKING_CHECKED_IN">Booking Checked In</option>
-                            <option value="REFERRED_BOOKING_CHECKED_IN">Referred Booking</option>
+                            <option value="BOOKING_CREATED">Booking Created</option>
+                            <option value="REFERRED_BOOKING_CREATED">Referred Booking</option>
                             <option value="KYC_COMPLETED">KYC Completed</option>
                             <option value="PROFILE_COMPLETED">Profile Completed</option>
                             <option value="MANUAL_ADJUSTMENT">Manual Adjustment</option>

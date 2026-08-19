@@ -6,12 +6,20 @@ import { UserRole } from "../enums";
 
 export type NavBadgeKey = 'approvalPending';
 
+/**
+ * Labels that depend on runtime state rather than being fixed.
+ * `agentEvents`: "My Events" normally, "Events" once the agent mentors someone
+ * — at that point the page shows their mentees' activity too, so "My" is wrong.
+ */
+export type NavNameKey = 'agentEvents';
+
 export interface ILinkChild {
     name: string,
     pathName: string,
     link: string,
     allow: UserRole[],
     badgeKey?: NavBadgeKey,
+    nameKey?: NavNameKey,
 }
 
 export interface ILink {
@@ -113,6 +121,7 @@ export const NAV_LINKS: ILink[] = [
             {
                 name: 'My Events',
                 pathName: 'history',
+                nameKey: 'agentEvents',
                 link: PAGE_ROUTES.dashboard.network.history.base,
                 allow: [UserRole.AGENT],
             },

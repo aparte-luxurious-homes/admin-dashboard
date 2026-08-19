@@ -4,9 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowIcon } from "../components/icons";
-import { ILink, ILinkChild, NavBadgeKey } from "../lib/routes/nav_links";
+import { ILink, ILinkChild, NavBadgeKey, NavNameKey } from "../lib/routes/nav_links";
 import { UserRole } from "../lib/enums";
 import { GetApprovalPendingCount } from "../lib/request-handlers/bookingMgt";
+import { GetIsMentor } from "../lib/request-handlers/networkMgt";
 
 function NavChildBadge({ badgeKey }: { badgeKey: NavBadgeKey }) {
   if (badgeKey === "approvalPending") {
@@ -23,6 +24,20 @@ function ApprovalPendingBadge() {
       {count > 99 ? "99+" : count}
     </span>
   ); 
+}
+
+function NavChildLabel({ child, role }: { child: ILinkChild; role: UserRole }) {
+  if (child.nameKey === "agentEvents") {
+    return <AgentEventsLabel fallback={child.name} role={role} />;
+  }
+  return <>{child.name}</>;
+}
+
+function AgentEventsLabel({ fallback, role }: { fallback: string; role: UserRole }) {
+  const { data: isMentor } = GetIsMentor(role);
+  // Falls back to the static name while loading and for non-mentors, so the
+  // label never flickers from "Events" to "My Events".
+  return <>{isMentor ? "Events" : fallback}</>;
 }
 
 function getPathName(route: string, targetPath: string) {
@@ -98,7 +113,7 @@ export default function SideNav({
                                      hover:bg-white/10 active:bg-white/20 min-h-[44px] ${getPathName(route, child.pathName) && "bg-white/10"}`}
                   >
                     <p className="text-[14px] text-white/90 flex-1">
-                      {child.name}
+                      <NavChildLabel child={child} role={role} />
                     </p>
                     {child.badgeKey && (
                       <NavChildBadge badgeKey={child.badgeKey} />

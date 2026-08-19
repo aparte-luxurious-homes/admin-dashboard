@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import MenteeCandidatePicker, { MenteeCandidate, candidateName } from "./MenteeCandidatePicker";
 import { DotsIcon } from "../../icons";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { formatDate } from "@/src/lib/utils";
@@ -57,6 +58,9 @@ interface Agent {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
+    // PENDING is legacy — nothing is created in this state any more (both agent
+    // and admin mentorship creation are now immediate/ACTIVE). Retained so any
+    // row predating the drop_mentorship_acceptance_001 migration still renders.
     PENDING: { bg: "bg-blue-100",   text: "text-blue-700"   },
     ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
     PAUSED:  { bg: "bg-yellow-100", text: "text-yellow-800" },
@@ -118,14 +122,19 @@ export default function NetworkMentorshipsTable() {
 
     // Create mapping modal
     const [showCreateModal, setShowCreateModal]   = useState(false);
-    const [showCreateConfirm, setShowCreateConfirm] = useState(false);
     const [isCreating, setIsCreating]             = useState(false);
     const [createMentorSearch, setCreateMentorSearch]   = useState("");
     const [createMentorId, setCreateMentorId]           = useState("");
     const [createMentorOpen, setCreateMentorOpen]       = useState(false);
-    const [createMenteeSearch, setCreateMenteeSearch]   = useState("");
-    const [createMenteeId, setCreateMenteeId]           = useState("");
-    const [createMenteeOpen, setCreateMenteeOpen]       = useState(false);
+    // Step 1 picks the mentor; step 2 opens the candidate table for that mentor.
+    const [createStep, setCreateStep]             = useState<1 | 2>(1);
+    // Mentor options come from the eligibility endpoint, not the generic agent
+    // list — only Silver/Gold agents can mentor, and the generic list carries
+    // no tier to filter on.
+    const [mentorOptions, setMentorOptions]       = useState<MenteeCandidate[]>([]);
+    const [mentorOptionsLoading, setMentorOptionsLoading] = useState(false);
+    const [pendingMentees, setPendingMentees]     = useState<MenteeCandidate[]>([]);
+    const [createToken, setCreateToken]           = useState(0);
 
     const navigateToDetail = (id: string) => router.push(PAGE_ROUTES.dashboard.network.mentorship.details(id));
 
@@ -133,7 +142,6 @@ export default function NetworkMentorshipsTable() {
     const mentorComboRef      = useRef<HTMLDivElement>(null);
     const menteeComboRef      = useRef<HTMLDivElement>(null);
     const createMentorRef     = useRef<HTMLDivElement>(null);
-    const createMenteeRef     = useRef<HTMLDivElement>(null);
 
     const filteredMentors = agents.filter((a) =>
         agentDisplayName(a).toLowerCase().includes(mentorSearch.toLowerCase())
@@ -141,13 +149,6 @@ export default function NetworkMentorshipsTable() {
     const filteredMentees = agents.filter((a) =>
         agentDisplayName(a).toLowerCase().includes(menteeSearch.toLowerCase())
     );
-    const filteredCreateMentors = agents.filter((a) =>
-        agentDisplayName(a).toLowerCase().includes(createMentorSearch.toLowerCase())
-    );
-    const filteredCreateMentees = agents.filter((a) =>
-        agentDisplayName(a).toLowerCase().includes(createMenteeSearch.toLowerCase())
-    );
-
     // Fetch agents once on mount
     useEffect(() => {
         async function loadAgents() {
@@ -166,6 +167,28 @@ export default function NetworkMentorshipsTable() {
         }
         loadAgents();
     }, []);
+
+    useEffect(() => {
+        if (!showCreateModal || createStep !== 1) return;
+        // Selecting an option writes its name into the box — not a new search
+        if (createMentorId) return;
+        const term = createMentorSearch.trim();
+        const timer = setTimeout(() => {
+            setMentorOptionsLoading(true);
+            axiosRequest
+                .get(API_ROUTES.network.mentorships.mentors, {
+                    params: { page: 1, size: 50, ...(term ? { search: term } : {}) },
+                })
+                .then((res) => {
+                    const payload = res?.data?.data ?? res?.data;
+                    const items = payload?.items ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
+                    setMentorOptions(items);
+                })
+                .catch(() => setMentorOptions([]))
+                .finally(() => setMentorOptionsLoading(false));
+        }, term ? 300 : 0);
+        return () => clearTimeout(timer);
+    }, [showCreateModal, createStep, createMentorSearch, createMentorId]);
 
     const fetchMentorships = useCallback(async () => {
         setIsLoading(true);
@@ -203,9 +226,6 @@ export default function NetworkMentorshipsTable() {
             }
             if (createMentorRef.current && !createMentorRef.current.contains(e.target as Node)) {
                 setCreateMentorOpen(false);
-            }
-            if (createMenteeRef.current && !createMenteeRef.current.contains(e.target as Node)) {
-                setCreateMenteeOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -249,32 +269,58 @@ export default function NetworkMentorshipsTable() {
         setCreateMentorSearch("");
         setCreateMentorId("");
         setCreateMentorOpen(false);
-        setCreateMenteeSearch("");
-        setCreateMenteeId("");
-        setCreateMenteeOpen(false);
+        setCreateStep(1);
+        setPendingMentees([]);
         setShowCreateModal(false);
-        setShowCreateConfirm(false);
     };
 
+    /**
+     * No batch endpoint exists, so a multi-select fans out one POST per mentee.
+     * allSettled rather than all: a rejection partway through (mentor hit the
+     * cap, someone else mentored the agent first) must not discard the mappings
+     * that already succeeded.
+     */
     const handleCreate = async () => {
-        if (!createMentorId || !createMenteeId) return;
+        if (!createMentorId || pendingMentees.length === 0) return;
         setIsCreating(true);
         try {
-            await toast.promise(
-                axiosRequest.post(API_ROUTES.network.mentorships.base, {
-                    mentor_id: createMentorId,
-                    mentee_id: createMenteeId,
-                }),
-                {
-                    loading: "Creating mapping...",
-                    success: "Mentorship mapping created",
-                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message || "Failed to create mapping",
-                }
+            const results = await Promise.allSettled(
+                pendingMentees.map((c) =>
+                    axiosRequest.post(API_ROUTES.network.mentorships.base, {
+                        mentor_id: createMentorId,
+                        mentee_id: c.agent_id ?? c.id ?? c.user_id,
+                    }),
+                ),
             );
-            resetCreateModal();
-            fetchMentorships();
-        } catch {
-            // handled by toast.promise
+            const failures = results.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+            const succeeded = results.length - failures.length;
+
+            if (succeeded > 0) {
+                toast.success(
+                    succeeded === 1
+                        ? "Mentorship mapping created"
+                        : `${succeeded} mentorship mappings created`,
+                );
+            }
+            if (failures.length > 0) {
+                // One toast per distinct reason — a batch that trips the cap
+                // would otherwise stack identical messages.
+                const reasons = new Set(
+                    failures.map((f: any) =>
+                        f.reason?.response?.data?.detail ||
+                        f.reason?.response?.data?.message ||
+                        "Failed to create mapping",
+                    ),
+                );
+                reasons.forEach((reason) => toast.error(reason as string));
+            }
+
+            setPendingMentees([]);
+            if (succeeded > 0) {
+                setCreateToken((t) => t + 1);   // refresh candidates + allowance
+                fetchMentorships();
+                if (succeeded === results.length) resetCreateModal();
+            }
         } finally {
             setIsCreating(false);
         }
@@ -533,18 +579,18 @@ export default function NetworkMentorshipsTable() {
                         <span>View details</span>
                     </button>
 
-                    {/* Status transitions — hide the current status */}
-                    {(["PENDING", "ACTIVE", "PAUSED", "ENDED"] as const)
+                    {/* Status transitions — hide the current status. PENDING is not a
+                        valid transition target: admin PATCH only accepts ACTIVE/PAUSED/ENDED
+                        since the acceptance flow was removed. */}
+                    {(["ACTIVE", "PAUSED", "ENDED"] as const)
                         .filter((s) => s !== contextMentorship.status)
                         .map((s) => {
                             const icons: Record<string, string> = {
-                                PENDING: "mdi:clock-outline",
                                 ACTIVE:  "mdi:check-circle-outline",
                                 PAUSED:  "mdi:pause-circle-outline",
                                 ENDED:   "mdi:stop-circle-outline",
                             };
                             const colors: Record<string, string> = {
-                                PENDING: "text-blue-600",
                                 ACTIVE:  "text-green-600",
                                 PAUSED:  "text-yellow-600",
                                 ENDED:   "text-gray-500",
@@ -605,156 +651,185 @@ export default function NetworkMentorshipsTable() {
             {/* Create Mapping modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <div>
+                    <div className={`bg-white rounded-2xl shadow-xl w-full overflow-hidden flex flex-col ${createStep === 1 ? "max-w-md" : "max-w-4xl"}`}>
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+                            <div className="min-w-0">
                                 <h3 className="text-lg font-semibold text-gray-900">Create Mentorship Mapping</h3>
-                                <p className="text-xs text-gray-500 mt-0.5">Assign a mentor to guide a mentee agent</p>
-                            </div>
-                            <button
-                                onClick={resetCreateModal}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <Icon icon="lucide:x" width="18" className="text-gray-500" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-5">
-                            {/* Info banner */}
-                            <div className="flex gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                                <Icon icon="mdi:information-outline" width="18" className="text-blue-500 shrink-0 mt-0.5" />
-                                <p className="text-xs text-blue-700 leading-relaxed">
-                                    This creates a mentorship relationship between two agents. The selected mentor (Silver-tier or above) will be paired with the mentee. The mapping will remain <span className="font-semibold">PENDING</span> until the mentee accepts the invitation.
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {createStep === 1
+                                        ? "Step 1 of 2 — choose the mentor"
+                                        : <>Step 2 of 2 — choose mentees for <span className="font-semibold text-gray-700">{createMentorSearch}</span></>}
                                 </p>
                             </div>
-
-                            {/* Mentor combobox */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Mentor Agent</label>
-                                <div ref={createMentorRef} className="relative">
-                                    <div className={`flex items-center border rounded-xl bg-gray-50/50 overflow-hidden transition-all ${createMentorId ? "border-primary" : "border-gray-200"} focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary`}>
-                                        <input
-                                            type="text"
-                                            placeholder={agentsLoading ? "Loading agents..." : "Search mentor by name…"}
-                                            value={createMentorSearch}
-                                            onChange={(e) => { setCreateMentorSearch(e.target.value); setCreateMentorOpen(true); if (!e.target.value) setCreateMentorId(""); }}
-                                            onFocus={() => setCreateMentorOpen(true)}
-                                            className="flex-1 px-4 py-3 text-sm text-gray-700 bg-transparent outline-none"
-                                        />
-                                        {createMentorId ? (
-                                            <button
-                                                onMouseDown={(e) => { e.preventDefault(); setCreateMentorSearch(""); setCreateMentorId(""); }}
-                                                className="pr-3 text-gray-400 hover:text-gray-600"
-                                            >
-                                                <Icon icon="lucide:x" width="14" />
-                                            </button>
-                                        ) : (
-                                            <Icon icon="mdi:chevron-down" width="18" className="mr-3 text-gray-400" />
-                                        )}
-                                    </div>
-                                    {createMentorOpen && filteredCreateMentors.length > 0 && (
-                                        <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                            {filteredCreateMentors.map((agent) => (
-                                                <li
-                                                    key={agent.id}
-                                                    onMouseDown={(e) => { e.preventDefault(); setCreateMentorSearch(agentDisplayName(agent)); setCreateMentorId(agent.id); setCreateMentorOpen(false); }}
-                                                    className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
-                                                >
-                                                    <p className="text-sm font-semibold text-gray-900">{agentFullName(agent) || agentEmail(agent)}</p>
-                                                    {agentFullName(agent) && agentEmail(agent) && <p className="text-xs text-gray-400 mt-0.5">{agentEmail(agent)}</p>}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Mentee combobox */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-700">Mentee Agent</label>
-                                <div ref={createMenteeRef} className="relative">
-                                    <div className={`flex items-center border rounded-xl bg-gray-50/50 overflow-hidden transition-all ${createMenteeId ? "border-primary" : "border-gray-200"} focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary`}>
-                                        <input
-                                            type="text"
-                                            placeholder={agentsLoading ? "Loading agents..." : "Search mentee by name…"}
-                                            value={createMenteeSearch}
-                                            onChange={(e) => { setCreateMenteeSearch(e.target.value); setCreateMenteeOpen(true); if (!e.target.value) setCreateMenteeId(""); }}
-                                            onFocus={() => setCreateMenteeOpen(true)}
-                                            className="flex-1 px-4 py-3 text-sm text-gray-700 bg-transparent outline-none"
-                                        />
-                                        {createMenteeId ? (
-                                            <button
-                                                onMouseDown={(e) => { e.preventDefault(); setCreateMenteeSearch(""); setCreateMenteeId(""); }}
-                                                className="pr-3 text-gray-400 hover:text-gray-600"
-                                            >
-                                                <Icon icon="lucide:x" width="14" />
-                                            </button>
-                                        ) : (
-                                            <Icon icon="mdi:chevron-down" width="18" className="mr-3 text-gray-400" />
-                                        )}
-                                    </div>
-                                    {createMenteeOpen && filteredCreateMentees.length > 0 && (
-                                        <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                            {filteredCreateMentees.map((agent) => (
-                                                <li
-                                                    key={agent.id}
-                                                    onMouseDown={(e) => { e.preventDefault(); setCreateMenteeSearch(agentDisplayName(agent)); setCreateMenteeId(agent.id); setCreateMenteeOpen(false); }}
-                                                    className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
-                                                >
-                                                    <p className="text-sm font-semibold text-gray-900">{agentFullName(agent) || agentEmail(agent)}</p>
-                                                    {agentFullName(agent) && agentEmail(agent) && <p className="text-xs text-gray-400 mt-0.5">{agentEmail(agent)}</p>}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                {createStep === 2 && (
+                                    <button
+                                        onClick={() => { setCreateStep(1); setPendingMentees([]); }}
+                                        disabled={isCreating}
+                                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                                    >
+                                        <Icon icon="mdi:arrow-left" width="14" />
+                                        Change mentor
+                                    </button>
+                                )}
+                                <button
+                                    onClick={resetCreateModal}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <Icon icon="lucide:x" width="18" className="text-gray-500" />
+                                </button>
                             </div>
                         </div>
-                        <div className="mt-2 pt-4 px-6 pb-6 border-t border-gray-100 flex justify-end gap-3">
-                            <button
-                                onClick={resetCreateModal}
-                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => setShowCreateConfirm(true)}
-                                disabled={!createMentorId || !createMenteeId}
-                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                            >
-                                <Icon icon="mdi:plus" width="14" />
-                                Create Mapping
-                            </button>
-                        </div>
+
+                        {createStep === 1 ? (
+                            <>
+                                <div className="p-6 space-y-5">
+                                    {/* Info banner */}
+                                    <div className="flex gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                                        <Icon icon="mdi:information-outline" width="18" className="text-blue-500 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-blue-700 leading-relaxed">
+                                            Pick the mentor first — they must be Silver-tier or above. The next step lists
+                                            only the agents that mentor is eligible to take on, capped at their remaining
+                                            allowance. Each mapping becomes <span className="font-semibold">ACTIVE</span> immediately
+                                            and the mentee is notified.
+                                        </p>
+                                    </div>
+
+                                    {/* Mentor combobox — modal-local state; must not touch
+                                        the page-level mentorId filter behind the modal. */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-gray-700">Mentor Agent</label>
+                                        <div ref={createMentorRef} className="relative">
+                                            <div className={`flex items-center border rounded-xl bg-gray-50/50 overflow-hidden transition-all ${createMentorId ? "border-primary" : "border-gray-200"} focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary`}>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search a Silver or Gold agent by name or email…"
+                                                    value={createMentorSearch}
+                                                    onChange={(e) => { setCreateMentorSearch(e.target.value); setCreateMentorOpen(true); if (!e.target.value) setCreateMentorId(""); }}
+                                                    onFocus={() => setCreateMentorOpen(true)}
+                                                    className="flex-1 px-4 py-3 text-sm text-gray-700 bg-transparent outline-none"
+                                                />
+                                                {createMentorId ? (
+                                                    <button
+                                                        onMouseDown={(e) => { e.preventDefault(); setCreateMentorSearch(""); setCreateMentorId(""); }}
+                                                        className="pr-3 text-gray-400 hover:text-gray-600"
+                                                    >
+                                                        <Icon icon="lucide:x" width="14" />
+                                                    </button>
+                                                ) : (
+                                                    <Icon icon="mdi:chevron-down" width="18" className="mr-3 text-gray-400" />
+                                                )}
+                                            </div>
+                                            {createMentorOpen && !createMentorId && (
+                                                <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                                                    {mentorOptionsLoading ? (
+                                                        <li className="px-4 py-3 text-sm text-gray-400 italic">Searching…</li>
+                                                    ) : mentorOptions.length > 0 ? mentorOptions.map((agent) => {
+                                                        const id = agent.agent_id ?? agent.id ?? agent.user_id ?? "";
+                                                        return (
+                                                            <li
+                                                                key={id}
+                                                                onMouseDown={(e) => { e.preventDefault(); setCreateMentorSearch(candidateName(agent)); setCreateMentorId(id); setCreateMentorOpen(false); }}
+                                                                className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
+                                                            >
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-semibold text-gray-900 truncate">{candidateName(agent)}</p>
+                                                                    {agent.email && <p className="text-xs text-gray-400 mt-0.5 truncate">{agent.email}</p>}
+                                                                </div>
+                                                                {agent.current_tier && (
+                                                                    <span className={`shrink-0 px-2 py-0.5 text-[11px] font-semibold rounded-full border ${agent.current_tier === "GOLD" ? "text-yellow-600 bg-yellow-50 border-yellow-300" : "text-slate-600 bg-slate-100 border-slate-300"}`}>
+                                                                        {agent.current_tier.charAt(0) + agent.current_tier.slice(1).toLowerCase()}
+                                                                    </span>
+                                                                )}
+                                                            </li>
+                                                        );
+                                                    }) : (
+                                                        <li className="px-4 py-3 text-sm text-gray-400 italic">No eligible mentor found</li>
+                                                    )}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-2 pt-4 px-6 pb-6 border-t border-gray-100 flex justify-end gap-3">
+                                    <button
+                                        onClick={resetCreateModal}
+                                        className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => setCreateStep(2)}
+                                        disabled={!createMentorId}
+                                        className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                                    >
+                                        Choose mentees
+                                        <Icon icon="mdi:arrow-right" width="14" />
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <MenteeCandidatePicker
+                                voice="mentor"
+                                tiersBelowLabel="lower-tier"
+                                endpoint={API_ROUTES.network.mentorships.candidates}
+                                extraParams={{ mentor_id: createMentorId }}
+                                menteeCap={0}
+                                remainingSlots={0}
+                                allowanceLoaded={false}
+                                isSubmitting={isCreating}
+                                refreshToken={createToken}
+                                onMentorOne={(c) => setPendingMentees([c])}
+                                onMentorMany={(cs) => setPendingMentees(cs)}
+                            />
+                        )}
                     </div>
                 </div>
             )}
 
             {/* Create confirm modal */}
-            {showCreateConfirm && (
+            {pendingMentees.length > 0 && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
                         <div className="p-6">
                             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                                 <Icon icon="mdi:account-multiple-plus" width="24" className="text-primary" />
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Create mentorship mapping?</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                {pendingMentees.length === 1 ? "Create mentorship mapping?" : `Create ${pendingMentees.length} mappings?`}
+                            </h3>
                             <p className="text-sm text-gray-500 leading-relaxed">
-                                You are about to pair <span className="font-semibold text-gray-700">{createMentorSearch}</span> as mentor with <span className="font-semibold text-gray-700">{createMenteeSearch}</span> as mentee. The mapping will be set to <span className="font-semibold">PENDING</span> until the mentee accepts the invitation.
+                                You are about to pair <span className="font-semibold text-gray-700">{createMentorSearch}</span> as mentor with{" "}
+                                {pendingMentees.length === 1 ? (
+                                    <span className="font-semibold text-gray-700">{candidateName(pendingMentees[0])}</span>
+                                ) : (
+                                    <span className="font-semibold text-gray-700">{pendingMentees.length} mentees</span>
+                                )}. Each mapping becomes <span className="font-semibold">ACTIVE</span> immediately and the mentee is notified.
                             </p>
+                            {pendingMentees.length > 1 && (
+                                <ul className="mt-4 max-h-32 overflow-y-auto space-y-1 border-t border-gray-100 pt-3">
+                                    {pendingMentees.map((c) => (
+                                        <li key={c.agent_id ?? c.id ?? c.user_id} className="text-xs text-gray-500 truncate">
+                                            {candidateName(c)}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
                             <button
-                                onClick={() => setShowCreateConfirm(false)}
-                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                                onClick={() => setPendingMentees([])}
+                                disabled={isCreating}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 disabled:opacity-40 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={() => { setShowCreateConfirm(false); handleCreate(); }}
+                                onClick={handleCreate}
                                 disabled={isCreating}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
                             >
-                                Yes, create
+                                {isCreating ? "Creating..." : "Yes, create"}
                             </button>
                         </div>
                     </div>
