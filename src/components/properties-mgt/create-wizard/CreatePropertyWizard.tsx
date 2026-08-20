@@ -604,7 +604,7 @@ export default function CreatePropertyWizard() {
                         );
                         formData.append("media_type", mediaType);
                         formData.append("is_featured", "false");
-                        formData.append("category", category);
+                        // formData.append("category", category);
                         uploadUnitMedia(
                           {
                             propertyId,

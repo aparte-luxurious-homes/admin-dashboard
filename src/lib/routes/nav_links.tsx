@@ -225,7 +225,7 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'reviews',
         link: PAGE_ROUTES.dashboard.reviews.base,
         icon: <RateIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN,UserRole.AGENT,UserRole.OWNER],
         secondary: false,
         children: undefined,
     },
