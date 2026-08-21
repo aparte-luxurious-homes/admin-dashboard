@@ -7,20 +7,16 @@ export enum ReportsRequestKeys {
     statementDetails = "getStatementDetails",
 }
 
-export function GetStatementsHistory(ownerId: string | undefined) {
+export function GetStatements(userType: 'owner' | 'agent' = 'owner', userId?: string) {
     return useQuery({
-        queryKey: [ReportsRequestKeys.statements, ownerId],
-        queryFn: () => axiosRequest.get(API_ROUTES.reports.statements.base(ownerId!)),
-        enabled: !!ownerId,
-        refetchOnWindowFocus: true,
-    });
-}
-
-export function GetMonthlyStatementDetails(ownerId: string | undefined, year: number | string, month: number | string) {
-    return useQuery({
-        queryKey: [ReportsRequestKeys.statementDetails, ownerId, year, month],
-        queryFn: () => axiosRequest.get(API_ROUTES.reports.statements.details(ownerId!, year, month)),
-        enabled: !!ownerId && !!year && !!month,
+        queryKey: [ReportsRequestKeys.statements, userType, userId],
+        queryFn: () => {
+            const url = userType === 'agent'
+                ? API_ROUTES.agents.statements.base(userId!)
+                : API_ROUTES.reports.statements.base(userId!);
+            return axiosRequest.get(url);
+        },
+        enabled: !!userId,
         refetchOnWindowFocus: true,
     });
 }

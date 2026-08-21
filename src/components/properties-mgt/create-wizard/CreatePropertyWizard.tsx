@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
@@ -36,6 +36,11 @@ import {
   clearWizardDraft,
 } from "./wizardDraft";
 import {
+  readWizardMediaDraft,
+  writeWizardMediaDraft,
+  clearWizardMediaDraft,
+} from "./wizardMediaDraft";
+import {
   IAmenity,
   ICreateProperty,
   DocumentType,
@@ -46,11 +51,11 @@ import {
   WizardStep,
   PropertyFormValues,
   UnitFormValues,
-  createEmptyUnit,
   CategorizedMedia,
   PropertyMediaCategory,
 } from "./types";
 import { validatePropertyName } from "./nameValidator";
+import Modal from "../../modal/Modal";
 
 const libraries: any = ["places"];
 
@@ -60,9 +65,10 @@ export default function CreatePropertyWizard() {
 
   // Restore from localStorage on first mount so the agent doesn't lose
   // progress if they were bounced to /settings/personal-info to complete
-  // their profile (or otherwise navigated away). Files are not persisted
-  // — step validation will prompt for re-uploads at the media step.
-  const draft = useMemo(() => readWizardDraft(), []);
+  // their profile (or otherwise navigated away). Non-file wizard state lives
+  // here; selected files are restored separately from IndexedDB (see the
+  // media-hydration effect below and wizardMediaDraft.ts).
+  const [draft, setDraft] = useState(() => readWizardDraft());
   const draftRestoredRef = useRef(false);
 
   // Step state
@@ -81,6 +87,9 @@ export default function CreatePropertyWizard() {
   // Amenity state
   const [showAmenityForm, setShowAmenityForm] = useState(false);
 
+  //Discontinue State
+  const [showDiscontinueModal, setShowDiscontinueModal] = useState(false);
+
   // PROFILE_INCOMPLETE dialog state — surfaced when the backend rejects
   // POST /properties because the operator's profile lacks host-required fields.
   const [incompleteFields, setIncompleteFields] = useState<string[] | null>(
@@ -89,6 +98,9 @@ export default function CreatePropertyWizard() {
 
   // Media state — files grouped by PropertyMediaCategory. Each non-empty
   // category is uploaded in its own POST so the server can persist the tag.
+  // These file buckets are persisted to IndexedDB (see wizardMediaDraft.ts) so
+  // selected media survives a page refresh; they're only wiped when the listing
+  // is discontinued or successfully created.
   const [propertyMedia, setPropertyMedia] = useState<CategorizedMedia>({});
   const [unitMediaByCategory, setUnitMediaByCategory] = useState<
     Record<string, CategorizedMedia>
@@ -96,6 +108,9 @@ export default function CreatePropertyWizard() {
   const [docFiles, setDocFiles] = useState<
     { file: File; type: DocumentType }[]
   >([]);
+  // Gate media persistence until the initial IndexedDB read finishes, so the
+  // empty startup state doesn't clobber a previously-saved draft.
+  const [mediaHydrated, setMediaHydrated] = useState(false);
 
   // Amenities
   const { data: fetchedAmenities } = GetAmenities();
@@ -173,22 +188,62 @@ export default function CreatePropertyWizard() {
       amenities: [],
       amenityIds: [],
     },
+    enableReinitialize: true,
     onSubmit: (values) => {
       handleCreateProperty(values);
     },
   });
 
   // Persist the JSON-serialisable parts of wizard state to localStorage
-  // on every meaningful change. File state (media/docs) is intentionally
-  // excluded — see wizardDraft.ts.
+  // on every meaningful change. File state (media/docs) is persisted
+  // separately to IndexedDB — see the media effects below and wizardMediaDraft.ts.
+  const [isDiscontinuing, setIsDiscontinuing] = useState(false);
   useEffect(() => {
+    if (isDiscontinuing) return;
+
     writeWizardDraft({
       values: formik.values,
       units,
       currentStep,
       highestStep,
     });
-  }, [formik.values, units, currentStep, highestStep]);
+  }, [formik.values, units, currentStep, highestStep, isDiscontinuing]);
+
+  // Restore file-based media (property gallery, per-unit media, docs) from
+  // IndexedDB once on mount. Files can't live in the JSON draft, so they get
+  // their own store — this is what makes selections survive a page refresh.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const mediaDraft = await readWizardMediaDraft();
+      if (cancelled) return;
+      if (mediaDraft) {
+        if (mediaDraft.propertyMedia)
+          setPropertyMedia(mediaDraft.propertyMedia);
+        if (mediaDraft.unitMediaByCategory)
+          setUnitMediaByCategory(mediaDraft.unitMediaByCategory);
+        if (mediaDraft.docFiles) setDocFiles(mediaDraft.docFiles);
+      }
+      setMediaHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist the file buckets on every change, once hydration is done. Skipped
+  // while discontinuing so we don't re-save a draft we're about to clear.
+  useEffect(() => {
+    if (isDiscontinuing) return;
+    if (!mediaHydrated) return;
+    writeWizardMediaDraft({ propertyMedia, unitMediaByCategory, docFiles });
+  }, [
+    propertyMedia,
+    unitMediaByCategory,
+    docFiles,
+    mediaHydrated,
+    isDiscontinuing,
+  ]);
 
   // Once per mount, if we actually restored something, surface a toast so
   // the user knows their previous work is back. Skipped when the draft
@@ -206,9 +261,33 @@ export default function CreatePropertyWizard() {
       toast.success("Welcome back — we restored your property draft.", {
         duration: 4500,
       });
+      setShowDiscontinueModal(true);
     }
   }, [draft]);
 
+  const handleDiscontinueListing = () => {
+    setIsDiscontinuing(true);
+
+    formik.resetForm();
+
+    clearWizardDraft();
+    // Discontinuing is the only path (besides a successful create) that wipes
+    // the persisted media — drop the IndexedDB file draft and local buckets.
+    clearWizardMediaDraft();
+    setPropertyMedia({});
+    setUnitMediaByCategory({});
+    setDocFiles([]);
+
+    setDraft(null);
+    setShowDiscontinueModal(false);
+
+    setTimeout(() => {
+      router.push("/property-management/all-properties");
+    }, 200);
+  };
+
+  const handleCloseShowDiscontinueModal = () => setShowDiscontinueModal(false);
+  const handleOpenShowDiscontinueModal = () => setShowDiscontinueModal(true);
   // Step validation
   const validateStep = (step: WizardStep): boolean => {
     switch (step) {
@@ -277,7 +356,7 @@ export default function CreatePropertyWizard() {
         const anyPropertyMedia = Object.values(propertyMedia).some(
           (files) => (files?.length ?? 0) > 0,
         );
-        if (!anyPropertyMedia) {
+        if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
           toast.error(
             "Please upload photos for at least one property category before creating",
           );
@@ -385,7 +464,9 @@ export default function CreatePropertyWizard() {
       ...(values.rules && { rules: values.rules }),
       ...(values.owner_email && { owner_email: values.owner_email }),
       ...(values.owner_name && { owner_name: values.owner_name }),
-      ...(values.owner_phoneNumber && { owner_phone: values.owner_phoneNumber }),
+      ...(values.owner_phoneNumber && {
+        owner_phone: values.owner_phoneNumber,
+      }),
     };
 
     createProperty(
@@ -398,8 +479,10 @@ export default function CreatePropertyWizard() {
             return;
           }
 
-          // Property persisted — drop the draft so a future visit starts fresh.
+          // Property persisted — drop the drafts (JSON + media) so a future
+          // visit starts fresh.
           clearWizardDraft();
+          clearWizardMediaDraft();
 
           toast.success("Property created successfully");
 
@@ -521,7 +604,7 @@ export default function CreatePropertyWizard() {
                         );
                         formData.append("media_type", mediaType);
                         formData.append("is_featured", "false");
-                        formData.append("category", category);
+                        // formData.append("category", category);
                         uploadUnitMedia(
                           {
                             propertyId,
@@ -676,6 +759,7 @@ export default function CreatePropertyWizard() {
             onAddUnit={handleAddUnit}
             onEditUnit={handleEditUnit}
             onDeleteUnit={handleDeleteUnit}
+            onDiscontinueListing={handleOpenShowDiscontinueModal}
           />
         )}
 
@@ -688,6 +772,7 @@ export default function CreatePropertyWizard() {
             units={units}
             unitMediaByCategory={unitMediaByCategory}
             setUnitMediaByCategory={setUnitMediaByCategory}
+            onDiscontinueListing={handleOpenShowDiscontinueModal}
           />
         )}
 
@@ -735,6 +820,35 @@ export default function CreatePropertyWizard() {
         open={incompleteFields !== null}
         missingFields={incompleteFields ?? []}
         onClose={() => setIncompleteFields(null)}
+      />
+
+      <Modal
+        isOpen={showDiscontinueModal}
+        onClose={handleCloseShowDiscontinueModal}
+        title=""
+        content={
+          <div className="space-y-6">
+            <p className="text-center font-bold text-gray-700">
+              Do you want to discontinue this listing?
+            </p>
+
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={handleDiscontinueListing}
+                className="rounded-lg bg-red-600 px-6 py-2 text-white"
+              >
+                Yes
+              </button>
+
+              <button
+                onClick={handleCloseShowDiscontinueModal}
+                className="rounded-lg border px-6 py-2"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        }
       />
     </div>
   );

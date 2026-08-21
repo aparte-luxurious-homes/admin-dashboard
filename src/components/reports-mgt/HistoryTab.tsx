@@ -1,21 +1,34 @@
 "use client";
 
 import React, { useState } from "react";
-import { GetStatementsHistory, requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
+import { GetStatements, requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import toast from "react-hot-toast";
 import { FiDownload, FiExternalLink } from "react-icons/fi";
 import { format } from "date-fns";
 import TablePagination from "@/src/components/TablePagination";
-import Spinner from "@/src/components/ui/Spinner";
 import { useAuth } from "@/src/hooks/useAuth";
+import Spinner from "@/src/components/ui/Spinner";
 import { StatementHistoryItem } from "@/src/lib/types";
 
-export default function HistoryTab({ targetOwnerId }: { targetOwnerId?: string }) {
+interface IStatement {
+    year: number;
+    month: number;
+    status: string;
+    delivered_at: string;
+    bookings_count?: number;
+    gross_revenue?: number;
+    net_to_wallet?: number;
+    google_cloud_link?: string;
+}
+
+export default function HistoryTab() {
     const { user } = useAuth();
-    const ownerId = targetOwnerId || user?.id?.toString();
-    const { data: statementsData, isLoading, error } = GetStatementsHistory(ownerId);
-    const statements: StatementHistoryItem[] = statementsData?.data?.data || [];
+    const isAgent = user?.role === 'AGENT';
+    const userType = isAgent ? 'agent' : 'owner';
+
+    const { data: statementsData, isLoading, error } = GetStatements(userType, user?.id?.toString());
+    const statements: IStatement[] = statementsData?.data?.data || [];
 
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -32,11 +45,13 @@ export default function HistoryTab({ targetOwnerId }: { targetOwnerId?: string }
     };
 
     const handleDownload = async (year: number, month: number, formatType: 'pdf' | 'csv') => {
-        if (!ownerId) return;
+        if (!user?.id) return;
         const id = `${year}-${month}-${formatType}`;
         try {
             setDownloadingId(id);
-            const url = API_ROUTES.reports.statements.download(ownerId, year, month);
+            const url = isAgent
+                ? API_ROUTES.agents.statements.download(user.id.toString(), year, month)
+                : API_ROUTES.reports.statements.download(user.id.toString(), year, month);
 
             await requestReportDownload(url, formatType);
             toast.success(`${formatType.toUpperCase()} downloaded successfully`);
@@ -101,8 +116,8 @@ export default function HistoryTab({ targetOwnerId }: { targetOwnerId?: string }
                                                     <div className="flex items-center justify-end gap-3">
                                                         <button
                                                             onClick={() => handleDownload(stmt.year, stmt.month, 'pdf')}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
                                                             disabled={downloadingId === `${stmt.year}-${stmt.month}-pdf`}
-                                                            className="flex items-center gap-1.5 text-primary hover:text-primary/80 disabled:opacity-50 text-sm font-medium transition-colors"
                                                         >
                                                             {downloadingId === `${stmt.year}-${stmt.month}-pdf` ? (
                                                                 <Spinner width="16" height="16" />
@@ -114,8 +129,8 @@ export default function HistoryTab({ targetOwnerId }: { targetOwnerId?: string }
                                                         <span className="text-gray-300">|</span>
                                                         <button
                                                             onClick={() => handleDownload(stmt.year, stmt.month, 'csv')}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors"
                                                             disabled={downloadingId === `${stmt.year}-${stmt.month}-csv`}
-                                                            className="flex items-center gap-1.5 text-primary hover:text-primary/80 disabled:opacity-50 text-sm font-medium transition-colors"
                                                         >
                                                             {downloadingId === `${stmt.year}-${stmt.month}-csv` ? (
                                                                 <Spinner width="16" height="16" />
