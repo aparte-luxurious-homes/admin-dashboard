@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import { KycStatus, UserRole } from "@/src/lib/enums";
-import { UpdateUserKyc } from "@/src/lib/request-handlers/userMgt";
+import { UpdateUser, UpdateUserKyc } from "@/src/lib/request-handlers/userMgt";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import type { KycDocument, UserDetail } from "./user-detail.types";
 import KycUploadOnBehalfModal from "./KycUploadOnBehalfModal";
@@ -17,6 +17,19 @@ const KYC_UPLOAD_ROLES = new Set<string>([
   UserRole.ADMIN,
   UserRole.OPERATIONS_ADMIN,
 ]);
+
+// Roles that can correct a user's NIN/BVN. This is deliberately NARROWER than
+// the backend's KYC_PII_EDIT_ROLES (services/users/router.py), which also lists
+// OPERATIONS_ADMIN: editing PII goes through PUT /admin/users/{id}, and that
+// route is gated on the `users.update` permission, which OPERATIONS_ADMIN is
+// not granted (services/permissions/service.py). Showing them the field would
+// only earn a 403. Add OPERATIONS_ADMIN here if that grant is ever added.
+const KYC_PII_EDIT_ROLES = new Set<string>([
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+]);
+
+const ELEVEN_DIGITS = /^\d{11}$/;
 
 interface Props {
   user: UserDetail;
@@ -148,10 +161,18 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
   const [reason, setReason] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
 
+  // Blank means "leave unchanged" — the stored values are only ever shown
+  // masked, so pre-filling these would write the mask back to the profile.
+  const [isEditingPii, setIsEditingPii] = useState(false);
+  const [ninInput, setNinInput] = useState("");
+  const [bvnInput, setBvnInput] = useState("");
+
   const { role } = usePermissions();
   const canUploadOnBehalf = !!role && KYC_UPLOAD_ROLES.has(role);
 
   const updateMutation = UpdateUserKyc();
+  const piiMutation = UpdateUser();
+  const canEditPii = !!role && KYC_PII_EDIT_ROLES.has(role);
 
   const reasonRequired = selectedStatus === KycStatus.REJECTED;
   const reasonValid = !reasonRequired || reason.trim().length > 0;
@@ -191,6 +212,59 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
               typeof detail === "string"
                 ? detail
                 : "Failed to update KYC status",
+            );
+          }
+        },
+      },
+    );
+  };
+
+  const ninDirty = ninInput.trim().length > 0;
+  const bvnDirty = bvnInput.trim().length > 0;
+  const ninValid = !ninDirty || ELEVEN_DIGITS.test(ninInput.trim());
+  const bvnValid = !bvnDirty || ELEVEN_DIGITS.test(bvnInput.trim());
+  const piiSubmitDisabled =
+    piiMutation.isPending ||
+    (!ninDirty && !bvnDirty) ||
+    !ninValid ||
+    !bvnValid;
+
+  const closePiiEditor = () => {
+    setIsEditingPii(false);
+    setNinInput("");
+    setBvnInput("");
+  };
+
+  const onSubmitPii = () => {
+    if (piiSubmitDisabled) return;
+    // Only send what was actually typed. The backend writes any field that is
+    // not None, and an empty string would fail its ^\d{11}$ validation, so a
+    // blank box has to be omitted rather than sent through.
+    piiMutation.mutate(
+      {
+        userId: user.id,
+        payload: {
+          profile: {
+            ...(ninDirty ? { nin: ninInput.trim() } : {}),
+            ...(bvnDirty ? { bvn: bvnInput.trim() } : {}),
+          },
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Identity details updated");
+          closePiiEditor();
+          onUpdate?.();
+        },
+        onError: (err: any) => {
+          const detail = err?.response?.data?.detail;
+          if (Array.isArray(detail) && detail.length) {
+            toast.error(detail[0]?.msg || "Failed to update identity details");
+          } else {
+            toast.error(
+              typeof detail === "string"
+                ? detail
+                : "Failed to update identity details",
             );
           }
         },
@@ -243,8 +317,22 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
               )}
             </div>
           </div>
-          {!isEditing && (
+          {!isEditing && !isEditingPii && (
             <div className="flex items-center gap-2">
+              {canEditPii && (
+                <button
+                  onClick={() => {
+                    setNinInput("");
+                    setBvnInput("");
+                    setIsEditingPii(true);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium flex items-center gap-2"
+                  title="Correct this user's NIN or BVN"
+                >
+                  <Icon icon="mdi:card-account-details-outline" className="w-4 h-4" />
+                  Edit NIN/BVN
+                </button>
+              )}
               {canUploadOnBehalf && (
                 <button
                   onClick={() => setUploadOpen(true)}
@@ -287,6 +375,92 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
           </div>
         )}
       </div>
+
+      {/* Identity (NIN/BVN) correction panel */}
+      {isEditingPii && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">
+              Correct identity details
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Stored values are masked, so leave a box blank to keep it
+              unchanged. Each number must be exactly 11 digits.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                NIN{" "}
+                <span className="normal-case font-normal text-gray-400">
+                  (current: {profile.nin ? maskId(profile.nin) : "not set"})
+                </span>
+              </label>
+              <input
+                value={ninInput}
+                onChange={(e) =>
+                  setNinInput(e.target.value.replace(/\D/g, "").slice(0, 11))
+                }
+                inputMode="numeric"
+                placeholder="Enter new 11-digit NIN"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm ${
+                  ninValid ? "border-gray-300" : "border-red-300 bg-red-50/50"
+                }`}
+              />
+              {!ninValid && (
+                <p className="text-xs text-red-600">NIN must be 11 digits.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                BVN{" "}
+                <span className="normal-case font-normal text-gray-400">
+                  (current: {profile.bvn ? maskId(profile.bvn) : "not set"})
+                </span>
+              </label>
+              <input
+                value={bvnInput}
+                onChange={(e) =>
+                  setBvnInput(e.target.value.replace(/\D/g, "").slice(0, 11))
+                }
+                inputMode="numeric"
+                placeholder="Enter new 11-digit BVN"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm ${
+                  bvnValid ? "border-gray-300" : "border-red-300 bg-red-50/50"
+                }`}
+              />
+              {!bvnValid && (
+                <p className="text-xs text-red-600">BVN must be 11 digits.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onSubmitPii}
+              disabled={piiSubmitDisabled}
+              className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {piiMutation.isPending ? (
+                <>
+                  <Icon icon="eos-icons:loading" className="w-4 h-4" />
+                  Saving...
+                </>
+              ) : (
+                "Save identity details"
+              )}
+            </button>
+            <button
+              onClick={closePiiEditor}
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-700 font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Decision panel */}
       {isEditing && (
