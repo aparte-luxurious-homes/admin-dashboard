@@ -30,6 +30,14 @@ interface NetworkEvent {
     remitted_at: string | null;
     created_at: string;
     updated_at: string;
+    // Names whose event the row is. Attached by the backend to every row on
+    // every feed, so the table never has to resolve an id client-side.
+    agent?: {
+        first_name?: string | null;
+        last_name?: string | null;
+        email?: string | null;
+        profile_image?: string | null;
+    } | null;
 }
 
 interface ActionButton {
@@ -452,11 +460,18 @@ export default function NetworkEventsTable() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 {(() => {
-                                                    const agent = agents.find((a) => a.id === event.agent_id);
-                                                    return agent ? (
+                                                    // The embedded card first: `agents` only holds the first
+                                                    // page of the directory, so resolving from it alone showed
+                                                    // a raw UUID for every agent past the hundredth.
+                                                    const embedded = event.agent;
+                                                    const name  = [embedded?.first_name, embedded?.last_name].filter(Boolean).join(" ");
+                                                    const local = agents.find((a) => a.id === event.agent_id);
+                                                    const label = name || (local ? agentFullName(local) : "");
+                                                    const email = embedded?.email || local?.email || "";
+                                                    return label || email ? (
                                                         <div className="min-w-0">
-                                                            <p className="text-sm font-medium text-gray-900 truncate">{agentFullName(agent)}</p>
-                                                            <p className="text-xs text-gray-500 truncate">{agent.email ?? "—"}</p>
+                                                            <p className="text-sm font-medium text-gray-900 truncate">{label || email}</p>
+                                                            <p className="text-xs text-gray-500 truncate">{label ? (email || "—") : "—"}</p>
                                                         </div>
                                                     ) : (
                                                         <span className="text-xs text-gray-400 font-mono">{event.agent_id.slice(0, 8)}…</span>

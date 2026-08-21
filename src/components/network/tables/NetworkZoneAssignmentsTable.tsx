@@ -8,10 +8,12 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { DotsIcon } from "../../icons";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import { formatDate } from "@/src/lib/utils";
+import { formatDate, isSameId } from "@/src/lib/utils";
 import Loader from "@/src/components/loader";
 import { LuEye, LuPencil, LuCheck, LuPause, LuX, LuClock } from "react-icons/lu";
 import { toast } from "react-hot-toast";
+import { UserRole } from "@/src/lib/enums";
+import { GetNetworkStanding } from "@/src/lib/request-handlers/networkMgt";
 
 type Role = "AREA_MANAGER" | "REGIONAL_LEAD";
 type EmploymentMode = "COMMISSION_ONLY" | "SALARIED_OVERLAY";
@@ -103,16 +105,32 @@ export default function NetworkZoneAssignmentsTable() {
     const router = useRouter();
     const { user } = useAuth();
     const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+    // A Regional Lead's tree holds the Area Managers running the cities beneath
+    // them — the roster they are accountable for — so their list is widened and
+    // gains the same scope / role / zone narrowing the admin table has.
+    const { data: standing } = GetNetworkStanding(user?.role as UserRole | undefined);
+    const isZoneManager = Boolean(standing?.isZoneManager);
+    const showFilters = isAdmin || isZoneManager;
     const [assignments, setAssignments] = useState<ZoneAssignment[]>([]);
     const [isLoading, setIsLoading]     = useState(false);
     const [page, setPage]               = useState(1);
     const [totalPages, setTotalPages]   = useState(1);
     const [roleFilter, setRoleFilter]     = useState("");
     const [zoneFilter, setZoneFilter]     = useState("");
+    // Mirrors the scope param on GET /network/zone-assignments: "all" (own rows
+    // plus the zone tree's), "mine", "zone". Agent-side only — the admin table
+    // is unscoped.
+    const [scope, setScope]               = useState("all");
     const [zoneSearch, setZoneSearch]     = useState("");
     const [zoneDropdownOpen, setZoneDropdownOpen] = useState(false);
 
     const [zones, setZones]           = useState<Zone[]>([]);
+    // Zone options for a zone manager, harvested from the rows the endpoint
+    // returns — every zone on a returned row is inside the tree it authorises,
+    // so `zone_id` drawn from here can never come back 403. Accumulated rather
+    // than derived from the current page: once a zone filter is applied the
+    // page holds only that zone, and a derived list would collapse to it.
+    const [agentZones, setAgentZones] = useState<Zone[]>([]);
     const [agents, setAgents]         = useState<Agent[]>([]);
     const [agentsLoading, setAgentsLoading] = useState(false);
 
@@ -161,10 +179,11 @@ export default function NetworkZoneAssignmentsTable() {
         setIsLoading(true);
         try {
             const params: Record<string, any> = { page, size: 20 };
-            if (isAdmin) {
-                if (roleFilter) params.role    = roleFilter;
-                if (zoneFilter) params.zone_id = zoneFilter;
-            }
+            if (roleFilter) params.role    = roleFilter;
+            if (zoneFilter) params.zone_id = zoneFilter;
+            // scope is agent-side only — the admin listing is already unscoped,
+            // and /admin/... would reject the param.
+            if (!isAdmin && scope !== "all") params.scope = scope;
             const endpoint = isAdmin
                 ? API_ROUTES.network.configs.zones.assignments.base
                 : API_ROUTES.network.myZoneAssignments;
@@ -172,6 +191,15 @@ export default function NetworkZoneAssignmentsTable() {
             const data = res?.data?.data ?? res?.data;
             const items = data?.items ?? data?.data ?? (Array.isArray(data) ? data : []);
             setAssignments(items);
+            if (!isAdmin) {
+                setAgentZones((prev) => {
+                    const merged = new Map(prev.map((z) => [z.id, z]));
+                    (items as ZoneAssignment[]).forEach((a) => {
+                        if (a.zone?.id) merged.set(a.zone.id, a.zone);
+                    });
+                    return Array.from(merged.values());
+                });
+            }
             const total = data?.total ?? items.length;
             setTotalPages(Math.max(1, Math.ceil(total / 20)));
         } catch (error: any) {
@@ -179,7 +207,7 @@ export default function NetworkZoneAssignmentsTable() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, roleFilter, zoneFilter, isAdmin]);
+    }, [page, roleFilter, zoneFilter, scope, isAdmin]);
 
     useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
 
@@ -344,6 +372,8 @@ export default function NetworkZoneAssignmentsTable() {
         }
     };
 
+    const zoneOptions = isAdmin ? zones : agentZones;
+
     const filteredAgents = agents.filter((a) => agentDisplayName(a).toLowerCase().includes(createAgentSearch.toLowerCase()));
     const contextAssignment = selectedRow !== null ? assignments[selectedRow] : null;
 
@@ -358,7 +388,9 @@ export default function NetworkZoneAssignmentsTable() {
                             <p className="text-sm text-gray-500 mt-1">
                                 {isAdmin
                                     ? "Assign Area Managers and Regional Leads to geographic zones"
-                                    : "Your zone assignment and role details"}
+                                    : isZoneManager
+                                        ? "Your assignment, and every assignment inside the zone you manage"
+                                        : "Your zone assignment and role details"}
                             </p>
                         </div>
                         {isAdmin && (
@@ -382,8 +414,8 @@ export default function NetworkZoneAssignmentsTable() {
                         )}
                     </div>
 
-                    {/* Filters — admin only */}
-                    {isAdmin && (
+                    {/* Filters — admins and zone managers; a plain agent has one row */}
+                    {showFilters && (
                     <div className="mt-4 flex items-center gap-3 flex-wrap">
                         {/* Zone search-select */}
                         <div className="relative" ref={zoneComboRef}>
@@ -406,7 +438,7 @@ export default function NetworkZoneAssignmentsTable() {
                             )}
                             {zoneDropdownOpen && (
                                 <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                    {zones
+                                    {zoneOptions
                                         .filter((z) => z.name.toLowerCase().includes(zoneSearch.toLowerCase()))
                                         .map((z) => (
                                             <li
@@ -417,7 +449,7 @@ export default function NetworkZoneAssignmentsTable() {
                                                 {z.name} <span className="text-xs text-gray-400">({z.type})</span>
                                             </li>
                                         ))}
-                                    {zones.filter((z) => z.name.toLowerCase().includes(zoneSearch.toLowerCase())).length === 0 && (
+                                    {zoneOptions.filter((z) => z.name.toLowerCase().includes(zoneSearch.toLowerCase())).length === 0 && (
                                         <li className="px-3 py-2 text-sm text-gray-400 italic">No zones found</li>
                                     )}
                                 </ul>
@@ -428,6 +460,28 @@ export default function NetworkZoneAssignmentsTable() {
                             <option value="AREA_MANAGER">Area Manager</option>
                             <option value="REGIONAL_LEAD">Regional Lead</option>
                         </select>
+
+                        {!isAdmin && isZoneManager && (
+                            <select
+                                value={scope}
+                                onChange={(e) => { setScope(e.target.value); setPage(1); }}
+                                className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary min-w-[180px]"
+                            >
+                                <option value="all">Everyone</option>
+                                <option value="mine">My assignments only</option>
+                                <option value="zone">My zone only</option>
+                            </select>
+                        )}
+
+                        {(roleFilter || zoneFilter || scope !== "all") && (
+                            <button
+                                onClick={() => { setRoleFilter(""); setZoneFilter(""); setZoneSearch(""); setScope("all"); setPage(1); }}
+                                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                <Icon icon="lucide:x" width="16" height="16" />
+                                Clear
+                            </button>
+                        )}
                     </div>
                     )}
                 </div>
@@ -464,7 +518,16 @@ export default function NetworkZoneAssignmentsTable() {
                                                 {resolvedZone?.type && <p className="text-xs text-gray-400">{resolvedZone.type}</p>}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <p className="text-sm font-medium text-gray-900">{agentName(resolvedUser)}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-medium text-gray-900">{agentName(resolvedUser)}</p>
+                                                    {/* A zone manager's list carries other managers' rows;
+                                                        without this their own is indistinguishable. */}
+                                                    {!isAdmin && isSameId(a.user_id, user?.id) && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                                                            You
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {resolvedUser?.email && <p className="text-xs text-gray-500">{resolvedUser.email}</p>}
                                             </td>
                                             <td className="px-6 py-4">

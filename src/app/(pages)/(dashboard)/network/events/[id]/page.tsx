@@ -12,7 +12,7 @@ import BreadCrumb from "@/src/components/breadcrumb";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { formatDate } from "@/src/lib/utils";
+import { extractUuids, formatDate, formatEventReason } from "@/src/lib/utils";
 
 interface NetworkEvent {
     id: string;
@@ -118,6 +118,12 @@ export default function NetworkEventDetail() {
     const [eventLoading, setEventLoading] = useState(false);
     const [agentLoading, setAgentLoading] = useState(false);
 
+    // Names for the agent ids frozen into the reason string — a
+    // MENTOR_POINT_OVERRIDE row names its mentee by raw UUID. Resolved per id
+    // rather than from a directory page, so it never depends on the mentee
+    // happening to fall inside the first page of the agent list.
+    const [reasonNames, setReasonNames] = useState<Record<string, string>>({});
+
     const [isEditing, setIsEditing]       = useState(searchParams.get("edit") === "true");
     const [editStatus, setEditStatus]     = useState<string>("");
     const [editReason, setEditReason]     = useState<string>("");
@@ -157,6 +163,33 @@ export default function NetworkEventDetail() {
     useEffect(() => {
         if (event?.agent_id) fetchAgent(event.agent_id);
     }, [event?.agent_id, fetchAgent]);
+
+    useEffect(() => {
+        const ids = extractUuids(event?.reason).filter((uuid) => !reasonNames[uuid]);
+        if (ids.length === 0) return;
+        let cancelled = false;
+        Promise.allSettled(
+            ids.map((uuid) => axiosRequest.get(API_ROUTES.admin.users.userByUuid(uuid))),
+        ).then((results) => {
+            if (cancelled) return;
+            const resolved: Record<string, string> = {};
+            results.forEach((result, i) => {
+                if (result.status !== "fulfilled") return;
+                const data = result.value?.data?.data ?? result.value?.data;
+                const name = data ? getAgentName(data as AgentUser) : "";
+                // getAgentName returns the "--/--" placeholder for a nameless
+                // profile; substituting that would be worse than the id.
+                if (name && name !== "--/--") resolved[ids[i]] = name;
+            });
+            if (Object.keys(resolved).length > 0) {
+                setReasonNames((prev) => ({ ...prev, ...resolved }));
+            }
+        });
+        return () => { cancelled = true; };
+        // reasonNames is deliberately out of the dep list — it is what this
+        // effect writes, and the filter above already makes the run idempotent.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [event?.reason]);
 
     useEffect(() => {
         if (!event?.agent_id) { setAgentTier(null); return; }
@@ -432,7 +465,9 @@ export default function NetworkEventDetail() {
                                                 placeholder="Enter reason..."
                                             />
                                         ) : (
-                                            <p className="text-sm font-medium text-gray-900">{event.reason || "--/--"}</p>
+                                            <p className="text-sm font-medium text-gray-900">
+                                                {formatEventReason(event.reason, (uuid) => reasonNames[uuid]) || "--/--"}
+                                            </p>
                                         )}
                                     </div>
                                 </div>

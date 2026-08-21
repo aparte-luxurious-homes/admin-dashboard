@@ -116,3 +116,49 @@ export async function downloadScreenAsPDF({ name, element }: { name: string; ele
     console.error("Error generating PDF:", error);
   }
 }
+
+/**
+ * Compare two user ids that reach the client under different types.
+ *
+ * `IUser.id` is declared `number` but the API issues UUID strings, so a bare
+ * `===` between an id off a payload and `user.id` is both a type error and
+ * wrong at runtime. Nullish on either side is never a match — two absent ids
+ * are not the same user.
+ */
+export function isSameId(
+  a: string | number | null | undefined,
+  b: string | number | null | undefined,
+): boolean {
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  return String(a) === String(b);
+}
+
+/** Matches a canonical UUID anywhere inside a free-text string. */
+const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+
+/** The distinct UUIDs mentioned in a free-text string, in order of appearance. */
+export function extractUuids(text?: string | null): string[] {
+  if (!text) return [];
+  return Array.from(new Set((text.match(UUID_PATTERN) ?? []).map((id) => id.toLowerCase())));
+}
+
+/**
+ * Render an activity event's `reason` with agent ids swapped for names.
+ *
+ * The backend freezes the reason at write time, so a MENTOR_POINT_OVERRIDE row
+ * reads "…earned by mentee 91474e09-ac77-48c5-969c-b3715bb7ca3e for
+ * BOOKING_CREATED". Rewriting the stored string would only help rows written
+ * afterwards, so the substitution happens at render time and fixes existing
+ * rows too.
+ *
+ * `nameFor` returns undefined for an id it cannot resolve; that id is left
+ * verbatim rather than elided, since an unresolvable agent is exactly the case
+ * where an admin still needs the raw value.
+ */
+export function formatEventReason(
+  reason: string | null | undefined,
+  nameFor: (id: string) => string | null | undefined,
+): string {
+  if (!reason) return "";
+  return reason.replace(UUID_PATTERN, (id) => nameFor(id.toLowerCase()) || id);
+}

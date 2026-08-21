@@ -1,16 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import { formatDate } from "@/src/lib/utils";
+import { formatDate, formatEventReason, isSameId } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import Loader from "@/src/components/loader";
 import { LuX } from "react-icons/lu";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
+import { GetNetworkAgents, GetNetworkStanding, networkAgentName } from "@/src/lib/request-handlers/networkMgt";
+import NetworkAgentFilter from "../NetworkAgentFilter";
 
 interface NetworkEvent {
     id: string;
@@ -29,20 +32,15 @@ interface NetworkEvent {
     remitted_at: string | null;
     created_at: string;
     updated_at: string;
-    // Present only on a mentor's combined feed — names whose event the row is.
+    // Names whose event the row is. The backend attaches it to every row on
+    // every feed — mentor, zone manager and plain agent alike — so the Agent
+    // column never has to resolve an id client-side.
     agent?: {
         first_name?: string | null;
         last_name?: string | null;
         email?: string | null;
         profile_image?: string | null;
     } | null;
-}
-
-interface MenteeOption {
-    id: string;
-    name: string;
-    email?: string | null;
-    profile_image?: string | null;
 }
 
 function personName(person?: { first_name?: string | null; last_name?: string | null; email?: string | null } | null): string {
@@ -76,59 +74,53 @@ export default function AgentNetworkHistoryTable() {
     const [isLoading, setIsLoading]   = useState(false);
     const [statusFilter, setStatusFilter] = useState("");
     const [actionFilter, setActionFilter] = useState("");
-    // Mentor feed: "all" (own + mentees), "mine", "mentees" — mirrors the
-    // scope param on GET /network/history.
-    const [scope, setScope]               = useState("all");
-    const [menteeId, setMenteeId]         = useState("");
-    const [menteeSearch, setMenteeSearch] = useState("");
-    const [menteeOpen, setMenteeOpen]     = useState(false);
-    const [mentees, setMentees]           = useState<MenteeOption[]>([]);
-
-    const menteeComboRef = useRef<HTMLDivElement>(null);
-    // Only mentors get the scope / mentee controls; for everyone else the three
-    // scopes are equivalent and the extra chrome would be noise.
-    const isMentor = mentees.length > 0;
+    // Mirrors the scope param on GET /network/history: "all" (self + mentees +
+    // zone tree), "mine", "mentees", "zone". For an agent who mentors nobody
+    // and manages no zone all four are equivalent.
+    const [scope, setScope]           = useState("all");
+    const [agentId, setAgentId]       = useState("");
 
     const [viewEvent, setViewEvent] = useState<NetworkEvent | null>(null);
 
-    // The caller's mentees, sourced from their own mentorship list. Non-ENDED
-    // only, matching the set the history endpoint authorises `mentee_id` against.
-    useEffect(() => {
-        axiosRequest
-            // as_mentor=true is load-bearing: without it the endpoint returns
-            // mappings in BOTH directions, so an agent who is themselves a mentee
-            // would find their own row here and appear in their own mentee picker
-            // (the history endpoint would then 403 on that mentee_id).
-            .get(API_ROUTES.network.myMentorship, {
-                params: { page: 1, size: 100, as_mentor: true },
-            })
-            .then((res) => {
-                const payload = res?.data?.data ?? res?.data;
-                const items = payload?.items ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
-                const options: MenteeOption[] = (items as any[])
-                    .filter((m) => m?.status !== "ENDED" && m?.mentee_id && m?.mentor_id === user?.id)
-                    .map((m) => ({
-                        id: m.mentee_id,
-                        name: personName(m.mentee),
-                        email: m.mentee?.email ?? null,
-                        profile_image: m.mentee?.profile_image ?? null,
-                    }));
-                // A mentee can appear once per mapping; collapse to unique ids.
-                const seen = new Set<string>();
-                setMentees(options.filter((o) => !seen.has(o.id) && seen.add(o.id)));
-            })
-            .catch(() => setMentees([]));
-    }, [user?.id]);
+    // Whether the caller sees anyone but themselves, and why. Mentors get the
+    // mentee scopes, Area Managers / Regional Leads get the zone scope, and
+    // both get the agent picker — for a plain agent every scope resolves to the
+    // same rows, so the controls would be dead chrome.
+    const { data: standing } = GetNetworkStanding(user?.role as UserRole | undefined);
+    const isMentor      = Boolean(standing?.isMentor);
+    const isZoneManager = Boolean(standing?.isZoneManager);
+    const hasNetwork    = isMentor || isZoneManager;
 
+    // Names for the agent ids the backend freezes into a reason string — a
+    // MENTOR_POINT_OVERRIDE row names its mentee by raw UUID.
+    //
+    // Two sources, because one page of the general list is not enough. The
+    // mentee list is fetched separately and is exhaustive (the cap is 10), which
+    // guarantees every override on the caller's OWN rows resolves — a zone
+    // manager with hundreds of agents in scope could otherwise get a first page
+    // that omits their own mentees entirely. The scope list then covers, on a
+    // best-effort basis, the other mentors' overrides a zone manager sees; an id
+    // beyond both stays a raw UUID rather than being elided.
+    const { data: menteeAgents } = GetNetworkAgents({ relation: "mentee", size: 100, enabled: isMentor });
+    const { data: scopeAgents }  = GetNetworkAgents({ size: 100, enabled: isZoneManager });
+    const agentNamesById = useMemo(() => {
+        const map = new Map<string, string>();
+        [...(scopeAgents?.items ?? []), ...(menteeAgents?.items ?? [])].forEach((a) =>
+            map.set(a.agent_id.toLowerCase(), networkAgentName(a)),
+        );
+        return map;
+    }, [scopeAgents, menteeAgents]);
+    const nameFor = useCallback((id: string) => agentNamesById.get(id), [agentNamesById]);
+
+    // A scope the caller has lost (mentorship ended, assignment expired) would
+    // otherwise pin the feed empty with no visible cause.
     useEffect(() => {
-        function onClickOutside(e: MouseEvent) {
-            if (menteeComboRef.current && !menteeComboRef.current.contains(e.target as Node)) {
-                setMenteeOpen(false);
-            }
+        if (!standing) return;
+        if ((scope === "mentees" && !isMentor) || (scope === "zone" && !isZoneManager)) {
+            setScope("all");
+            setPage(1);
         }
-        document.addEventListener("mousedown", onClickOutside);
-        return () => document.removeEventListener("mousedown", onClickOutside);
-    }, []);
+    }, [standing, scope, isMentor, isZoneManager]);
 
     const fetchEvents = useCallback(async () => {
         setIsLoading(true);
@@ -138,9 +130,11 @@ export default function AgentNetworkHistoryTable() {
             params.set("size", String(size));
             if (statusFilter) params.set("status", statusFilter);
             if (actionFilter) params.set("action_type", actionFilter);
-            // mentee_id already narrows to one agent; sending scope alongside it
-            // would be redundant, and the endpoint ignores scope in that case.
-            if (menteeId) params.set("mentee_id", menteeId);
+            // agent_id, not the legacy mentee_id alias: it accepts any agent in
+            // the caller's network, and a zone manager's picker offers agents
+            // they manage but do not mentor. It already narrows to one agent, so
+            // scope alongside it is redundant and the endpoint ignores it.
+            if (agentId) params.set("agent_id", agentId);
             else if (scope !== "all") params.set("scope", scope);
 
             const response = await axiosRequest.get(
@@ -154,9 +148,19 @@ export default function AgentNetworkHistoryTable() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, size, statusFilter, actionFilter, scope, menteeId]);
+    }, [page, size, statusFilter, actionFilter, scope, agentId]);
 
     useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+    // Says exactly whose rows are on the page, so the "Events" heading is never
+    // ambiguous about the widened default scope.
+    const feedDescription = isMentor && isZoneManager
+        ? "Activity events and points for you, your mentees, and every agent in your zone"
+        : isZoneManager
+            ? "Activity events and points for you and every agent in your zone"
+            : isMentor
+                ? "Your activity events and points history, alongside your mentees'"
+                : "View your activity events and points history";
 
     return (
         <>
@@ -165,12 +169,8 @@ export default function AgentNetworkHistoryTable() {
                 {/* Header */}
                 <div className="p-6 border-b border-gray-200">
                     <div className="mb-4">
-                        <h1 className="text-xl font-semibold text-gray-900">My Network Events</h1>
-                        <p className="text-sm text-gray-500 mt-1">
-                            {isMentor
-                                ? "Your activity events and points history, alongside your mentees'"
-                                : "View your activity events and points history"}
-                        </p>
+                        <h1 className="text-xl font-semibold text-gray-900">Network Events</h1>
+                        <p className="text-sm text-gray-500 mt-1">{feedDescription}</p>
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
@@ -201,100 +201,42 @@ export default function AgentNetworkHistoryTable() {
                             <option value="KYC_COMPLETED">KYC Completed</option>
                             <option value="PROFILE_COMPLETED">Profile Completed</option>
                             <option value="MANUAL_ADJUSTMENT">Manual Adjustment</option>
-                            {isMentor && <option value="MENTOR_POINT_OVERRIDE">Mentor Point Override</option>}
+                            {/* A zone manager's feed carries their agents' override
+                                rows even when they mentor nobody themselves. */}
+                            {hasNetwork && <option value="MENTOR_POINT_OVERRIDE">Mentor Point Override</option>}
                         </select>
 
-                        {isMentor && (
+                        {hasNetwork && (
                             <>
-                                {/* Whose events */}
+                                {/* Whose events — the scope param on /network/history */}
                                 <select
-                                    value={menteeId ? "" : scope}
-                                    disabled={Boolean(menteeId)}
+                                    value={agentId ? "" : scope}
+                                    disabled={Boolean(agentId)}
                                     onChange={(e) => { setScope(e.target.value); setPage(1); }}
                                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm min-w-[170px] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <option value="all">Everyone</option>
                                     <option value="mine">My events only</option>
-                                    <option value="mentees">Mentees only</option>
+                                    {isMentor && <option value="mentees">Mentees only</option>}
+                                    {isZoneManager && <option value="zone">My zone only</option>}
                                 </select>
 
-                                {/* Mentee search */}
-                                <div ref={menteeComboRef} className="relative">
-                                    <div className={`flex items-center border rounded-lg bg-white overflow-hidden transition-all ${menteeId ? "border-primary" : "border-gray-300"} focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary`}>
-                                        <Icon icon="mdi:magnify" width="16" className="ml-3 text-gray-400 shrink-0" />
-                                        <input
-                                            type="text"
-                                            value={menteeSearch}
-                                            placeholder="Search a mentee…"
-                                            onFocus={() => setMenteeOpen(true)}
-                                            onChange={(e) => {
-                                                setMenteeSearch(e.target.value);
-                                                setMenteeOpen(true);
-                                                if (!e.target.value && menteeId) { setMenteeId(""); setPage(1); }
-                                            }}
-                                            className="px-2 py-2 text-sm text-gray-700 bg-transparent outline-none w-52"
-                                        />
-                                        {menteeId && (
-                                            <button
-                                                onMouseDown={(e) => { e.preventDefault(); setMenteeId(""); setMenteeSearch(""); setPage(1); }}
-                                                className="pr-3 text-gray-400 hover:text-gray-600"
-                                            >
-                                                <LuX size={14} />
-                                            </button>
-                                        )}
-                                    </div>
-                                    {menteeOpen && !menteeId && (
-                                        <ul className="absolute z-50 mt-1 w-full min-w-[260px] bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                                            {mentees
-                                                .filter((m) =>
-                                                    m.name.toLowerCase().includes(menteeSearch.toLowerCase()) ||
-                                                    (m.email ?? "").toLowerCase().includes(menteeSearch.toLowerCase())
-                                                )
-                                                .map((m) => (
-                                                    <li
-                                                        key={m.id}
-                                                        onMouseDown={(e) => {
-                                                            e.preventDefault();
-                                                            setMenteeId(m.id);
-                                                            setMenteeSearch(m.name);
-                                                            setMenteeOpen(false);
-                                                            setPage(1);
-                                                        }}
-                                                        className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-gray-50 cursor-pointer first:rounded-t-xl last:rounded-b-xl"
-                                                    >
-                                                        <div className="relative w-7 h-7 rounded-full overflow-hidden border border-gray-200 shrink-0">
-                                                            {m.profile_image ? (
-                                                                <Image src={m.profile_image} alt="" fill className="object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                                                    <Icon icon="gg:profile" width="16" className="text-gray-400" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
-                                                            {m.email && <p className="text-xs text-gray-400 truncate">{m.email}</p>}
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            {mentees.filter((m) =>
-                                                m.name.toLowerCase().includes(menteeSearch.toLowerCase()) ||
-                                                (m.email ?? "").toLowerCase().includes(menteeSearch.toLowerCase())
-                                            ).length === 0 && (
-                                                <li className="px-4 py-3 text-sm text-gray-400 italic">No mentee matches that search</li>
-                                            )}
-                                        </ul>
-                                    )}
-                                </div>
+                                {/* Single-agent filter — mentees plus, for an Area
+                                    Manager / Regional Lead, their zone's agents. */}
+                                <NetworkAgentFilter
+                                    value={agentId}
+                                    onChange={(id) => { setAgentId(id); setPage(1); }}
+                                    placeholder={isZoneManager ? "Search an agent…" : "Search a mentee…"}
+                                />
                             </>
                         )}
 
                         {/* Clear filters */}
-                        {(statusFilter || actionFilter || menteeId || scope !== "all") && (
+                        {(statusFilter || actionFilter || agentId || scope !== "all") && (
                             <button
                                 onClick={() => {
                                     setStatusFilter(""); setActionFilter("");
-                                    setScope("all"); setMenteeId(""); setMenteeSearch("");
+                                    setScope("all"); setAgentId("");
                                     setPage(1);
                                 }}
                                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
@@ -316,7 +258,7 @@ export default function AgentNetworkHistoryTable() {
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                    {isMentor && <th className="px-6 py-3 text-left">Agent</th>}
+                                    <th className="px-6 py-3 text-left">Agent</th>
                                     <th className="px-6 py-3 text-left">Action</th>
                                     <th className="px-6 py-3 text-left">Status</th>
                                     <th className="px-6 py-3 text-left">Points</th>
@@ -335,24 +277,29 @@ export default function AgentNetworkHistoryTable() {
                                             className="hover:bg-gray-50 transition-colors cursor-pointer"
                                             onClick={() => setViewEvent(event)}
                                         >
-                                            {isMentor && (
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2.5">
-                                                        <div className="relative w-7 h-7 rounded-full overflow-hidden border border-gray-200 shrink-0">
-                                                            {event.agent?.profile_image ? (
-                                                                <Image src={event.agent.profile_image} alt="" fill className="object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                                                    <Icon icon="gg:profile" width="16" className="text-gray-400" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-sm text-gray-700 truncate max-w-[160px]">
-                                                            {event.agent ? personName(event.agent) : "You"}
-                                                        </span>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="relative w-7 h-7 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                                                        {event.agent?.profile_image ? (
+                                                            <Image src={event.agent.profile_image} alt="" fill className="object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                                                <Icon icon="gg:profile" width="16" className="text-gray-400" />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </td>
-                                            )}
+                                                    <span className="text-sm text-gray-700 truncate max-w-[160px]">
+                                                        {event.agent ? personName(event.agent) : "You"}
+                                                    </span>
+                                                    {/* The name alone can't distinguish the caller's own row
+                                                        from a namesake's, and the feed is mostly their own. */}
+                                                    {isSameId(event.agent_id, user?.id) && (
+                                                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                                                            You
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                                 {formatActionType(event.action_type)}
                                             </td>
@@ -437,7 +384,7 @@ export default function AgentNetworkHistoryTable() {
                                 { label: "Adjustment",      value: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.adjustment_direction === "ADDITION" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{viewEvent.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}</span> },
                                 { label: "Entity",          value: formatEntityType(viewEvent.entity_type) },
                                 { label: "Remitted",        value: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.is_remitted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>{viewEvent.is_remitted ? "Yes" : "No"}</span> },
-                                { label: "Reason",          value: viewEvent.reason || "--/--" },
+                                { label: "Reason",          value: formatEventReason(viewEvent.reason, nameFor) || "--/--" },
                                 { label: "Created At",      value: formatDate(viewEvent.created_at) },
                                 { label: "Updated At",      value: formatDate(viewEvent.updated_at) },
                             ] as { label: string; value: React.ReactNode }[]).map(({ label, value }) => (
