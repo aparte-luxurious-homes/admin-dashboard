@@ -12,7 +12,8 @@ import BreadCrumb from "@/src/components/breadcrumb";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { extractUuids, formatDate, formatEventReason } from "@/src/lib/utils";
+import EventReason from "@/src/components/network/EventReason";
+import { formatDate } from "@/src/lib/utils";
 
 interface NetworkEvent {
     id: string;
@@ -28,6 +29,15 @@ interface NetworkEvent {
     reason: string | null;
     adjustment_direction: "ADDITION" | "DEDUCTION";
     related_event_id: string | null;
+    related_action_type: string | null;
+    // Whose event `related_event_id` points at — the mentee on a
+    // MENTOR_POINT_OVERRIDE. Supplied by the API, so the reason renders a name
+    // without a second lookup.
+    related_agent?: {
+        first_name?: string | null;
+        last_name?: string | null;
+        email?: string | null;
+    } | null;
     is_remitted: boolean;
     remitted_at: string | null;
     created_at: string;
@@ -118,12 +128,6 @@ export default function NetworkEventDetail() {
     const [eventLoading, setEventLoading] = useState(false);
     const [agentLoading, setAgentLoading] = useState(false);
 
-    // Names for the agent ids frozen into the reason string — a
-    // MENTOR_POINT_OVERRIDE row names its mentee by raw UUID. Resolved per id
-    // rather than from a directory page, so it never depends on the mentee
-    // happening to fall inside the first page of the agent list.
-    const [reasonNames, setReasonNames] = useState<Record<string, string>>({});
-
     const [isEditing, setIsEditing]       = useState(searchParams.get("edit") === "true");
     const [editStatus, setEditStatus]     = useState<string>("");
     const [editReason, setEditReason]     = useState<string>("");
@@ -163,33 +167,6 @@ export default function NetworkEventDetail() {
     useEffect(() => {
         if (event?.agent_id) fetchAgent(event.agent_id);
     }, [event?.agent_id, fetchAgent]);
-
-    useEffect(() => {
-        const ids = extractUuids(event?.reason).filter((uuid) => !reasonNames[uuid]);
-        if (ids.length === 0) return;
-        let cancelled = false;
-        Promise.allSettled(
-            ids.map((uuid) => axiosRequest.get(API_ROUTES.admin.users.userByUuid(uuid))),
-        ).then((results) => {
-            if (cancelled) return;
-            const resolved: Record<string, string> = {};
-            results.forEach((result, i) => {
-                if (result.status !== "fulfilled") return;
-                const data = result.value?.data?.data ?? result.value?.data;
-                const name = data ? getAgentName(data as AgentUser) : "";
-                // getAgentName returns the "--/--" placeholder for a nameless
-                // profile; substituting that would be worse than the id.
-                if (name && name !== "--/--") resolved[ids[i]] = name;
-            });
-            if (Object.keys(resolved).length > 0) {
-                setReasonNames((prev) => ({ ...prev, ...resolved }));
-            }
-        });
-        return () => { cancelled = true; };
-        // reasonNames is deliberately out of the dep list — it is what this
-        // effect writes, and the filter above already makes the run idempotent.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [event?.reason]);
 
     useEffect(() => {
         if (!event?.agent_id) { setAgentTier(null); return; }
@@ -413,19 +390,23 @@ export default function NetworkEventDetail() {
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Entity ID</p>
                                         <p className="text-sm font-medium text-gray-900 break-all">{event.entity_id || "--/--"}</p>
                                     </div>
-                                    {event.action_type === "MANUAL_ADJUSTMENT" && (
+                                    {/* Shown whenever the field is set, not just for
+                                        MANUAL_ADJUSTMENT: MENTOR_POINT_OVERRIDE also
+                                        carries it — the mentee award the cut came out
+                                        of — and gating on the action type hid it. */}
+                                    {event.related_event_id && (
                                         <div className="space-y-1">
-                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Related Event ID</p>
-                                            {event.related_event_id ? (
-                                                <Link
-                                                    href={PAGE_ROUTES.dashboard.network.events.details(event.related_event_id)}
-                                                    className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline break-all"
-                                                >
-                                                    {event.related_event_id}
-                                                </Link>
-                                            ) : (
-                                                <p className="text-sm font-medium text-gray-900">--/--</p>
-                                            )}
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                {event.action_type === "MENTOR_POINT_OVERRIDE" ? "Source Event" : "Related Event"}
+                                            </p>
+                                            <Link
+                                                href={PAGE_ROUTES.dashboard.network.events.details(event.related_event_id)}
+                                                className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline break-all"
+                                            >
+                                                {event.related_action_type
+                                                    ? formatActionType(event.related_action_type)
+                                                    : event.related_event_id}
+                                            </Link>
                                         </div>
                                     )}
                                     <div className="space-y-1">
@@ -466,7 +447,14 @@ export default function NetworkEventDetail() {
                                             />
                                         ) : (
                                             <p className="text-sm font-medium text-gray-900">
-                                                {formatEventReason(event.reason, (uuid) => reasonNames[uuid]) || "--/--"}
+                                                <EventReason
+                                                    reason={event.reason}
+                                                    relatedAgent={event.related_agent}
+                                                    relatedEventId={event.related_event_id}
+                                                    href={event.related_event_id
+                                                        ? PAGE_ROUTES.dashboard.network.events.details(event.related_event_id)
+                                                        : undefined}
+                                                />
                                             </p>
                                         )}
                                     </div>

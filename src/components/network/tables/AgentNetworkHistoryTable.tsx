@@ -1,18 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import { formatDate, formatEventReason, isSameId } from "@/src/lib/utils";
+import { formatDate, isSameId } from "@/src/lib/utils";
 import TablePagination from "../../TablePagination";
 import Loader from "@/src/components/loader";
 import { LuX } from "react-icons/lu";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
-import { GetNetworkAgents, GetNetworkStanding, networkAgentName } from "@/src/lib/request-handlers/networkMgt";
+import { GetNetworkStanding } from "@/src/lib/request-handlers/networkMgt";
+import EventReason from "../EventReason";
 import NetworkAgentFilter from "../NetworkAgentFilter";
 
 interface NetworkEvent {
@@ -32,10 +33,22 @@ interface NetworkEvent {
     remitted_at: string | null;
     created_at: string;
     updated_at: string;
+    // The event this row was derived from — for a MENTOR_POINT_OVERRIDE, the
+    // mentee award the cut came out of.
+    related_event_id: string | null;
+    related_action_type: string | null;
     // Names whose event the row is. The backend attaches it to every row on
     // every feed — mentor, zone manager and plain agent alike — so the Agent
     // column never has to resolve an id client-side.
     agent?: {
+        first_name?: string | null;
+        last_name?: string | null;
+        email?: string | null;
+        profile_image?: string | null;
+    } | null;
+    // Whose event `related_event_id` points at. Supplied by the API so the
+    // mentee is named without parsing the id out of `reason` or looking it up.
+    related_agent?: {
         first_name?: string | null;
         last_name?: string | null;
         email?: string | null;
@@ -81,6 +94,49 @@ export default function AgentNetworkHistoryTable() {
     const [agentId, setAgentId]       = useState("");
 
     const [viewEvent, setViewEvent] = useState<NetworkEvent | null>(null);
+    // Events the modal drilled down FROM, so following an override back to its
+    // source award is reversible. A stack rather than a single parent: a source
+    // award can itself be a MANUAL_ADJUSTMENT pointing further back.
+    const [eventTrail, setEventTrail] = useState<NetworkEvent[]>([]);
+    const [relatedLoading, setRelatedLoading] = useState(false);
+
+    const openRelatedEvent = useCallback(async (from: NetworkEvent) => {
+        if (!from.related_event_id) return;
+        setRelatedLoading(true);
+        try {
+            const res = await axiosRequest.get(
+                API_ROUTES.network.historyDetails(from.related_event_id),
+            );
+            const data = res?.data?.data ?? res?.data;
+            if (!data) throw new Error("empty");
+            setEventTrail((trail) => [...trail, from]);
+            setViewEvent(data as NetworkEvent);
+        } catch (error: any) {
+            // A 403 here means the source award belongs to an agent outside the
+            // caller's network — possible when a zone manager reads another
+            // mentor's override row.
+            toast.error(
+                error?.response?.data?.detail ||
+                error?.response?.data?.message ||
+                "Could not open the source event",
+            );
+        } finally {
+            setRelatedLoading(false);
+        }
+    }, []);
+
+    const closeEventModal = useCallback(() => {
+        setViewEvent(null);
+        setEventTrail([]);
+    }, []);
+
+    const goBackOneEvent = useCallback(() => {
+        setEventTrail((trail) => {
+            const previous = trail[trail.length - 1];
+            if (previous) setViewEvent(previous);
+            return trail.slice(0, -1);
+        });
+    }, []);
 
     // Whether the caller sees anyone but themselves, and why. Mentors get the
     // mentee scopes, Area Managers / Regional Leads get the zone scope, and
@@ -90,27 +146,6 @@ export default function AgentNetworkHistoryTable() {
     const isMentor      = Boolean(standing?.isMentor);
     const isZoneManager = Boolean(standing?.isZoneManager);
     const hasNetwork    = isMentor || isZoneManager;
-
-    // Names for the agent ids the backend freezes into a reason string — a
-    // MENTOR_POINT_OVERRIDE row names its mentee by raw UUID.
-    //
-    // Two sources, because one page of the general list is not enough. The
-    // mentee list is fetched separately and is exhaustive (the cap is 10), which
-    // guarantees every override on the caller's OWN rows resolves — a zone
-    // manager with hundreds of agents in scope could otherwise get a first page
-    // that omits their own mentees entirely. The scope list then covers, on a
-    // best-effort basis, the other mentors' overrides a zone manager sees; an id
-    // beyond both stays a raw UUID rather than being elided.
-    const { data: menteeAgents } = GetNetworkAgents({ relation: "mentee", size: 100, enabled: isMentor });
-    const { data: scopeAgents }  = GetNetworkAgents({ size: 100, enabled: isZoneManager });
-    const agentNamesById = useMemo(() => {
-        const map = new Map<string, string>();
-        [...(scopeAgents?.items ?? []), ...(menteeAgents?.items ?? [])].forEach((a) =>
-            map.set(a.agent_id.toLowerCase(), networkAgentName(a)),
-        );
-        return map;
-    }, [scopeAgents, menteeAgents]);
-    const nameFor = useCallback((id: string) => agentNamesById.get(id), [agentNamesById]);
 
     // A scope the caller has lost (mentorship ended, assignment expired) would
     // otherwise pin the feed empty with no visible cause.
@@ -364,18 +399,35 @@ export default function AgentNetworkHistoryTable() {
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <div>
+                            <div className="min-w-0">
+                                {/* Drilling into a source event replaces the modal's
+                                    contents, so without this the caller loses their
+                                    place in the chain they followed. */}
+                                {eventTrail.length > 0 && (
+                                    <button
+                                        onClick={goBackOneEvent}
+                                        className="flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-1"
+                                    >
+                                        <Icon icon="lucide:arrow-left" width="13" />
+                                        Back
+                                    </button>
+                                )}
                                 <h3 className="text-lg font-semibold text-gray-900">Event Details</h3>
-                                <p className="text-xs text-gray-500 mt-0.5">{formatActionType(viewEvent.action_type)}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {formatActionType(viewEvent.action_type)}
+                                    {viewEvent.agent && (
+                                        <span className="text-gray-400"> · {personName(viewEvent.agent)}</span>
+                                    )}
+                                </p>
                             </div>
                             <button
-                                onClick={() => setViewEvent(null)}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                onClick={closeEventModal}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
                             >
                                 <LuX className="w-5 h-5 text-gray-500" />
                             </button>
                         </div>
-                        <div className="p-6 grid grid-cols-2 gap-x-6 gap-y-5 max-h-[70vh] overflow-y-auto">
+                        <div className={`p-6 grid grid-cols-2 gap-x-6 gap-y-5 max-h-[70vh] overflow-y-auto transition-opacity ${relatedLoading ? "opacity-50 pointer-events-none" : ""}`}>
                             {([
                                 { label: "Status",         value: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).bg} ${(STATUS_CONFIG[viewEvent.status] ?? { bg: "bg-gray-100", text: "text-gray-800" }).text}`}>{viewEvent.status}</span> },
                                 { label: "Points Awarded",  value: <span className={`text-xl font-bold ${viewEvent.points_awarded >= 0 ? "text-green-600" : "text-red-600"}`}>{viewEvent.points_awarded >= 0 ? "+" : ""}{viewEvent.points_awarded}</span> },
@@ -384,11 +436,24 @@ export default function AgentNetworkHistoryTable() {
                                 { label: "Adjustment",      value: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.adjustment_direction === "ADDITION" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{viewEvent.adjustment_direction === "ADDITION" ? "Addition" : "Deduction"}</span> },
                                 { label: "Entity",          value: formatEntityType(viewEvent.entity_type) },
                                 { label: "Remitted",        value: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewEvent.is_remitted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>{viewEvent.is_remitted ? "Yes" : "No"}</span> },
-                                { label: "Reason",          value: formatEventReason(viewEvent.reason, nameFor) || "--/--" },
+                                {
+                                    label: "Reason",
+                                    // Full width: the override prose runs long, and
+                                    // half a column wraps it into a ragged stack.
+                                    wide: true,
+                                    value: (
+                                        <EventReason
+                                            reason={viewEvent.reason}
+                                            relatedAgent={viewEvent.related_agent}
+                                            relatedEventId={viewEvent.related_event_id}
+                                            onOpenRelated={() => openRelatedEvent(viewEvent)}
+                                        />
+                                    ),
+                                },
                                 { label: "Created At",      value: formatDate(viewEvent.created_at) },
                                 { label: "Updated At",      value: formatDate(viewEvent.updated_at) },
-                            ] as { label: string; value: React.ReactNode }[]).map(({ label, value }) => (
-                                <div key={label} className="space-y-1">
+                            ] as { label: string; value: React.ReactNode; wide?: boolean }[]).map(({ label, value, wide }) => (
+                                <div key={label} className={`space-y-1 ${wide ? "col-span-2" : ""}`}>
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
                                     <div className="text-sm font-medium text-gray-900">{value}</div>
                                 </div>
