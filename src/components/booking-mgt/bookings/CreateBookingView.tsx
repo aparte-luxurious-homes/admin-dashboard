@@ -227,7 +227,7 @@ export default function CreateBookingView() {
                 : selectedUser?.phone || null;
               const propName = selectedProperty?.name ?? "your booking";
               const waMessage = encodeURIComponent(
-                `Hi! Your Aparté booking ${data.booking_id} at ${propName} is ready. Pay here: ${data.payment_link}`,
+                `Hi! Your Aparte booking ${data.booking_id} at ${propName} is ready. Pay here: ${data.payment_link}`,
               );
               const waNumber = (guestPhone || "").replace(/\D/g, "");
               try {

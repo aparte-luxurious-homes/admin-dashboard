@@ -320,7 +320,7 @@ export default function UnitDrawer({
               </label>
               <input
                 type="text"
-                placeholder="e.g., Luxury Suite A"
+                placeholder="e.g., Two-Bedroom Suite A"
                 value={unit.name}
                 onChange={(e) => updateField("name", e.target.value)}
                 className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all text-sm"
