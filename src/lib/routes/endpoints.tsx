@@ -221,6 +221,14 @@ export const API_ROUTES = {
         mentorshipCandidates: `/network/mentorship/candidates`,
         createMentorshipInvite: `/network/mentorship/invite`,
     },
+    platform: {
+        // Readable by any authenticated user — every client needs to know
+        // whether to render the Network navigation at all.
+        features: '/platform/features',
+        // SUPER_ADMIN only; adds who last moved the switch.
+        adminFeatures: '/admin/platform/features',
+        networkFeature: '/admin/platform/features/network',
+    },
     permissions: {
         base: '/permissions',
         details: (permissionId: string) => `/permissions/${permissionId}`,

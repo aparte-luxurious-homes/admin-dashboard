@@ -22,6 +22,7 @@ import AgentReferralCard from "@/src/components/dashboard/AgentReferralCard";
 import AgentVerificationQueueCard from "@/src/components/dashboard/AgentVerificationQueueCard";
 import TopAgentsCard from "@/src/components/dashboard/TopAgentsCard";
 import AgentNetworkDashboardCard from "@/src/components/dashboard/AgentNetworkDashboardCard";
+import { useNetworkEnabled } from "@/src/lib/request-handlers/platformMgt";
 
 interface Wallet {
     id: string;
@@ -93,6 +94,7 @@ const TIER_COLORS: Record<string, string> = {
 const DashboardHome = () => {
     const { user } = useAuth();
     const { isAdmin, isAgent, isOwner } = usePermissions();
+    const { networkEnabled } = useNetworkEnabled();
 
     const [stats, setStats] = useState<Partial<StatsData>>({});
     const [isStatLoading, setIsStatLoading] = useState(false);
@@ -130,7 +132,8 @@ const DashboardHome = () => {
     }, [isOwner, isAgent]);
 
     const fetchMentorship = useCallback(async () => {
-        if (!isAgent) return;
+        // /network/* answers 503 with the feature off; skip rather than toast.
+        if (!isAgent || !networkEnabled) return;
         setMentorshipLoading(true);
         try {
             const response = await axiosRequest.get(API_ROUTES.network.myMentorship);
@@ -142,7 +145,7 @@ const DashboardHome = () => {
         } finally {
             setMentorshipLoading(false);
         }
-    }, [isAgent]);
+    }, [isAgent, networkEnabled]);
 
     useEffect(() => {
         fetchStatistics();
@@ -293,73 +296,77 @@ const DashboardHome = () => {
                         {/* AGENT: network card → referral + verification + mentorship → upcoming */}
                         {isAgent && (
                             <Grid container spacing={2}>
-                                <Grid size={{ xs: 12 }}>
-                                    <AgentNetworkDashboardCard />
-                                </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                {networkEnabled && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <AgentNetworkDashboardCard />
+                                    </Grid>
+                                )}
+                                <Grid size={{ xs: 12, md: networkEnabled ? 4 : 6 }}>
                                     <AgentReferralCard />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid size={{ xs: 12, md: networkEnabled ? 4 : 6 }}>
                                     <AgentVerificationQueueCard />
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
-                                    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 h-full">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                                <Icon icon="solar:users-group-rounded-bold-duotone" width="16" />
+                                {networkEnabled && (
+                                    <Grid size={{ xs: 12, md: 4 }}>
+                                        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 h-full">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                                    <Icon icon="solar:users-group-rounded-bold-duotone" width="16" />
+                                                </div>
+                                                <h3 className="font-semibold text-gray-800 text-sm">Current Mentorship</h3>
                                             </div>
-                                            <h3 className="font-semibold text-gray-800 text-sm">Current Mentorship</h3>
+                                            {mentorshipLoading ? (
+                                                <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                                            ) : currentMentorship ? (() => {
+                                                const isMentor = currentMentorship.mentor_id === String(user?.id);
+                                                const partner = isMentor ? currentMentorship.mentee : currentMentorship.mentor;
+                                                const partnerTier = isMentor ? currentMentorship.mentee_tier : currentMentorship.mentor_tier;
+                                                const roleLabel = isMentor ? "Your Mentee" : "Your Mentor";
+                                                const partnerName =
+                                                    [partner?.first_name || partner?.profile?.first_name, partner?.last_name || partner?.profile?.last_name]
+                                                        .filter(Boolean).join(" ") || partner?.email || "—";
+                                                const sc = MENTORSHIP_STATUS_CONFIG[currentMentorship.status] ?? MENTORSHIP_STATUS_CONFIG.ENDED;
+                                                return (
+                                                    <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{roleLabel}</p>
+                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
+                                                                {currentMentorship.status}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                                <Icon icon="gg:profile" width="16" className="text-primary" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-semibold text-gray-900 truncate">{partnerName}</p>
+                                                                {partner?.email && <p className="text-[10px] text-gray-400 truncate">{partner.email}</p>}
+                                                                {partnerTier && (
+                                                                    <p className={`text-[10px] font-semibold ${TIER_COLORS[partnerTier] ?? "text-gray-500"}`}>
+                                                                        {partnerTier.charAt(0) + partnerTier.slice(1).toLowerCase()}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {currentMentorship.started_at && (
+                                                            <p className="text-[10px] text-gray-400">
+                                                                Since {new Date(currentMentorship.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })() : (
+                                                <div className="flex flex-col items-center justify-center py-5 text-center">
+                                                    <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center mb-2">
+                                                        <Icon icon="solar:users-group-rounded-bold-duotone" width="20" className="text-primary/40" />
+                                                    </div>
+                                                    <p className="text-xs text-gray-400">No active mentorship</p>
+                                                </div>
+                                            )}
                                         </div>
-                                        {mentorshipLoading ? (
-                                            <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-                                        ) : currentMentorship ? (() => {
-                                            const isMentor = currentMentorship.mentor_id === String(user?.id);
-                                            const partner = isMentor ? currentMentorship.mentee : currentMentorship.mentor;
-                                            const partnerTier = isMentor ? currentMentorship.mentee_tier : currentMentorship.mentor_tier;
-                                            const roleLabel = isMentor ? "Your Mentee" : "Your Mentor";
-                                            const partnerName =
-                                                [partner?.first_name || partner?.profile?.first_name, partner?.last_name || partner?.profile?.last_name]
-                                                    .filter(Boolean).join(" ") || partner?.email || "—";
-                                            const sc = MENTORSHIP_STATUS_CONFIG[currentMentorship.status] ?? MENTORSHIP_STATUS_CONFIG.ENDED;
-                                            return (
-                                                <div className="bg-gray-50 rounded-xl p-3 space-y-2.5">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{roleLabel}</p>
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
-                                                            {currentMentorship.status}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2.5">
-                                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                                            <Icon icon="gg:profile" width="16" className="text-primary" />
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-semibold text-gray-900 truncate">{partnerName}</p>
-                                                            {partner?.email && <p className="text-[10px] text-gray-400 truncate">{partner.email}</p>}
-                                                            {partnerTier && (
-                                                                <p className={`text-[10px] font-semibold ${TIER_COLORS[partnerTier] ?? "text-gray-500"}`}>
-                                                                    {partnerTier.charAt(0) + partnerTier.slice(1).toLowerCase()}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {currentMentorship.started_at && (
-                                                        <p className="text-[10px] text-gray-400">
-                                                            Since {new Date(currentMentorship.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            );
-                                        })() : (
-                                            <div className="flex flex-col items-center justify-center py-5 text-center">
-                                                <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center mb-2">
-                                                    <Icon icon="solar:users-group-rounded-bold-duotone" width="20" className="text-primary/40" />
-                                                </div>
-                                                <p className="text-xs text-gray-400">No active mentorship</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </Grid>
+                                    </Grid>
+                                )}
                                 <Grid size={{ xs: 12 }}>
                                     <UpcomingCheckInsCard />
                                 </Grid>
@@ -375,6 +382,7 @@ const DashboardHome = () => {
                             isLoading={isStatLoading}
                             topListings={stats?.topListings}
                             showWeeklyMetrics={isAdmin}
+                            showPoints={networkEnabled}
                         />
                     </Grid>
                 )}

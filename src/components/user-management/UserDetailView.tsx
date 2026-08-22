@@ -14,6 +14,7 @@ import UserEditDrawer from "./UserEditDrawer";
 import { useUserDetail } from "./useUserDetail";
 import { RoleConfig } from "./user-detail.types";
 import AgentNetworkCard from "./AgentNetworkCard";
+import { useNetworkEnabled } from "@/src/lib/request-handlers/platformMgt";
 
 interface UserDetailViewProps {
   roleConfig: RoleConfig;
@@ -56,6 +57,7 @@ function DetailSkeleton() {
 }
 
 const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
+  const { networkEnabled } = useNetworkEnabled();
   const params = useParams();
   const id = params?.id as string | undefined;
 
@@ -95,7 +97,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
               onCreateWallet={createWallet}
               isCreatingWallet={isCreatingWallet}
             />
-            {roleConfig.role === "AGENT" && id && (
+            {networkEnabled && roleConfig.role === "AGENT" && id && (
               <AgentNetworkCard userId={String(id)} />
             )}
             <UserDetailsPanel user={user} />
