@@ -22,6 +22,7 @@ import { API_ROUTES } from "../lib/routes/endpoints";
 import { AgentNetworkRole, UserRole } from "../lib/enums";
 import { RootState } from "../lib/store";
 import { GetGatewayBalances } from "../lib/request-handlers/integrationsMgt";
+import { useNetworkEnabled } from "../lib/request-handlers/platformMgt";
 import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
 import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
@@ -45,9 +46,20 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
 
   const [agentTier, setAgentTier] = useState<"BRONZE" | "SILVER" | "GOLD" | null>(null);
   const agentNetworkRole = useSelector((state: RootState) => state.auth.agentNetworkRole);
+  // Platform kill switch. Off means the whole feature is inert: no nav, no tier
+  // badge, and no probes to /network/* (which answer 503 anyway).
+  const { networkEnabled } = useNetworkEnabled();
 
   useEffect(() => {
     if (user?.role !== UserRole.AGENT) return;
+    if (!networkEnabled) {
+      // Clear anything a previous session cached, so the badge and the
+      // zone-manager nav widening cannot survive the switch being turned off.
+      setAgentTier(null);
+      dispatch(setAgentNetworkRole(null));
+      Cookies.remove("networkRole");
+      return;
+    }
 
     // Restore from cookie immediately so nav doesn't flicker
     const cookieRole = Cookies.get("networkRole");
@@ -76,13 +88,21 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         }
       }
     }).catch(() => {});
-  }, [user?.role, dispatch]);
+  }, [user?.role, dispatch, networkEnabled]);
 
-  const isZoneManager = agentNetworkRole === AgentNetworkRole.AREA_MANAGER || agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD;
+  const isZoneManager = networkEnabled
+    && (agentNetworkRole === AgentNetworkRole.AREA_MANAGER || agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD);
 
   const effectiveNavLinks = useMemo(() => {
-    if (!isZoneManager) return NAV_LINKS;
-    return NAV_LINKS.map((link) => {
+    // Both "Network" (agent) and "Network Management" (admin) sections share
+    // the `network` pathName, so one filter removes the feature from every
+    // role's sidebar. It also drives the route guard below, which bounces any
+    // path with no nav entry the current role is allowed to see.
+    const base = networkEnabled
+      ? NAV_LINKS
+      : NAV_LINKS.filter((link) => link.pathName !== "network");
+    if (!isZoneManager) return base;
+    return base.map((link) => {
       if (link.pathName !== "booking-management") return link;
       return {
         ...link,
@@ -93,7 +113,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         ),
       };
     });
-  }, [isZoneManager]);
+  }, [isZoneManager, networkEnabled]);
 
   // Handle click to navigate
   const handleClick = () => {
@@ -176,6 +196,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user || !currentRoute) return;
 
+    // Feature switch first. Filtering the nav removes the links but leaves the
+    // routes reachable by URL, and the loop below only bounces paths that match
+    // a nav entry the role may NOT see — a path matching nothing falls through.
+    if (!networkEnabled && currentRoute.startsWith("/network")) {
+      toast.error("The Agent Network feature is currently disabled");
+      router.replace(PAGE_ROUTES.dashboard.base);
+      return;
+    }
+
     const role = user.role as UserRole;
     const matchingAllowLists: UserRole[][] = [];
     for (const link of effectiveNavLinks) {
@@ -204,7 +233,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       toast.error("You don't have access to that page");
       router.replace(PAGE_ROUTES.dashboard.base);
     }
-  }, [user, currentRoute, router, effectiveNavLinks]);
+  }, [user, currentRoute, router, effectiveNavLinks, networkEnabled]);
 
   // Show loader while checking authentication or fetching user
   if (isCheckingAuth || (isFetching && !user)) {
@@ -394,7 +423,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
-            {agentTier && (() => {
+            {networkEnabled && agentTier && (() => {
               const cfg = TIER_CONFIG[agentTier];
               return (
                 <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>

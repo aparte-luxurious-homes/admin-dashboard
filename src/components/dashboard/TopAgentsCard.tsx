@@ -29,9 +29,15 @@ interface TopAgentsCardProps {
     topListings: TopAgent[] | undefined;
     /** Show framework metrics (admin tier). Owners see the simpler list. */
     showWeeklyMetrics: boolean;
+    /**
+     * Show the 30-day points badge. Points are an Agent Network concept, so
+     * this is off whenever the platform kill switch is off — the stats
+     * endpoint keeps returning `points30d`, but it must not be rendered.
+     */
+    showPoints: boolean;
 }
 
-const TopAgentsCard = ({ isLoading, topListings, showWeeklyMetrics }: TopAgentsCardProps) => {
+const TopAgentsCard = ({ isLoading, topListings, showWeeklyMetrics, showPoints }: TopAgentsCardProps) => {
     const list = topListings ?? [];
 
     return (
@@ -106,7 +112,7 @@ const TopAgentsCard = ({ isLoading, topListings, showWeeklyMetrics }: TopAgentsC
                                                     Active
                                                 </span>
                                             )}
-                                            {showFrameworkMetrics && row.points30d != null && (
+                                            {showPoints && showFrameworkMetrics && row.points30d != null && (
                                                 <span
                                                     className="shrink-0 text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded"
                                                     title="Points earned in the last 30 days"

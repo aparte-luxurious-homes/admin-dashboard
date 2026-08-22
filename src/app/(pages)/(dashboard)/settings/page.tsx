@@ -3,7 +3,9 @@
 import SettingCard from "@/src/components/settings-card/settingscard";
 import Grid from "@mui/material/Grid2";
 import { useAuth } from "@/src/hooks/useAuth";
-import { Icon } from "@iconify/react";
+import { MdOutlineAccountCircle, MdSecurity, MdPayments } from "react-icons/md";
+import { IoGitNetworkOutline } from "react-icons/io5";
+import { UserRole } from "@/src/lib/enums";
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -13,20 +15,31 @@ const SettingsPage = () => {
       title: "Personal info",
       description: "Profile details & identity verification",
       route: "/settings/personal-info",
-      icon: <Icon icon="carbon:user-profile" width="32" height="32" />,
+      icon: <MdOutlineAccountCircle size={32} />,
     },
     {
       title: "Login & security",
       description: "Update your password",
       route: "/settings/login-security",
-      icon: <Icon icon="mdi:security" width="32" height="32" />,
+      icon: <MdSecurity size={32} />,
     },
     {
       title: "Payments & payouts",
       description: "Configure payment gateways & payouts",
       route: "/settings/payments-payouts",
-      icon: <Icon icon="material-symbols:payments" width="32" height="32" />,
+      icon: <MdPayments size={32} />,
     },
+    // Platform-wide kill switch. Conditionally rendered rather than CSS-hidden,
+    // so it is absent from the DOM entirely for anyone but a super admin — the
+    // API enforces the same restriction, this only keeps the card out of sight.
+    ...(user?.role === UserRole.SUPER_ADMIN
+      ? [{
+          title: "Network events",
+          description: "Enable or disable the Agent Network platform-wide",
+          route: "/settings/network-events",
+          icon: <IoGitNetworkOutline size={32} />,
+        }]
+      : []),
   ];
 
   return (

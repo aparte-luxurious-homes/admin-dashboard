@@ -1,7 +1,7 @@
 "use client"
 
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import { UserRole } from "@/src/lib/enums";
@@ -55,6 +55,17 @@ const RolesPermissionsView = () => {
         () => assignableRoles.find((r) => r.key === selectedRole),
         [assignableRoles, selectedRole],
     );
+    // A standing key can vanish from the catalogue mid-session — the Agent
+    // Network kill switch removes all five. Fall back to the first identity
+    // role rather than leaving the picker on a role the API no longer serves,
+    // which would show an empty grid against a blank select.
+    useEffect(() => {
+        if (rolesQuery.isLoading || assignableRoles.length === 0) return;
+        if (!assignableRoles.some((r) => r.key === selectedRole)) {
+            setSelectedRole(identityRoles[0]?.key ?? assignableRoles[0].key);
+        }
+    }, [rolesQuery.isLoading, assignableRoles, identityRoles, selectedRole]);
+
     const seedMutation = SeedPermissions();
     const assignMutation = AssignPermissionToRole();
     const revokeMutation = RemovePermissionFromRole();
