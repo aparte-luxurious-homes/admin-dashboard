@@ -206,7 +206,7 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                         Unit Description
                                     </h3>
                                     <p className="text-[12px] sm:[14px] md:[14px] text-zinc-600 leading-relaxed max-w-3xl relative z-10">
-                                        {propertyUnit?.description || "A premium living space within this luxury development, carefully curated for excellence and comfort."}
+                                        {propertyUnit?.description || "No description has been added for this unit yet."}
                                     </p>
                                 </div>
                             </section>
