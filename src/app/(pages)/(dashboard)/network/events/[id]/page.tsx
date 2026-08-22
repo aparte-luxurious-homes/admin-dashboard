@@ -12,6 +12,7 @@ import BreadCrumb from "@/src/components/breadcrumb";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import EventReason from "@/src/components/network/EventReason";
 import { formatDate } from "@/src/lib/utils";
 
 interface NetworkEvent {
@@ -28,6 +29,15 @@ interface NetworkEvent {
     reason: string | null;
     adjustment_direction: "ADDITION" | "DEDUCTION";
     related_event_id: string | null;
+    related_action_type: string | null;
+    // Whose event `related_event_id` points at — the mentee on a
+    // MENTOR_POINT_OVERRIDE. Supplied by the API, so the reason renders a name
+    // without a second lookup.
+    related_agent?: {
+        first_name?: string | null;
+        last_name?: string | null;
+        email?: string | null;
+    } | null;
     is_remitted: boolean;
     remitted_at: string | null;
     created_at: string;
@@ -380,19 +390,23 @@ export default function NetworkEventDetail() {
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Entity ID</p>
                                         <p className="text-sm font-medium text-gray-900 break-all">{event.entity_id || "--/--"}</p>
                                     </div>
-                                    {event.action_type === "MANUAL_ADJUSTMENT" && (
+                                    {/* Shown whenever the field is set, not just for
+                                        MANUAL_ADJUSTMENT: MENTOR_POINT_OVERRIDE also
+                                        carries it — the mentee award the cut came out
+                                        of — and gating on the action type hid it. */}
+                                    {event.related_event_id && (
                                         <div className="space-y-1">
-                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Related Event ID</p>
-                                            {event.related_event_id ? (
-                                                <Link
-                                                    href={PAGE_ROUTES.dashboard.network.events.details(event.related_event_id)}
-                                                    className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline break-all"
-                                                >
-                                                    {event.related_event_id}
-                                                </Link>
-                                            ) : (
-                                                <p className="text-sm font-medium text-gray-900">--/--</p>
-                                            )}
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                {event.action_type === "MENTOR_POINT_OVERRIDE" ? "Source Event" : "Related Event"}
+                                            </p>
+                                            <Link
+                                                href={PAGE_ROUTES.dashboard.network.events.details(event.related_event_id)}
+                                                className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline break-all"
+                                            >
+                                                {event.related_action_type
+                                                    ? formatActionType(event.related_action_type)
+                                                    : event.related_event_id}
+                                            </Link>
                                         </div>
                                     )}
                                     <div className="space-y-1">
@@ -432,7 +446,16 @@ export default function NetworkEventDetail() {
                                                 placeholder="Enter reason..."
                                             />
                                         ) : (
-                                            <p className="text-sm font-medium text-gray-900">{event.reason || "--/--"}</p>
+                                            <p className="text-sm font-medium text-gray-900">
+                                                <EventReason
+                                                    reason={event.reason}
+                                                    relatedAgent={event.related_agent}
+                                                    relatedEventId={event.related_event_id}
+                                                    href={event.related_event_id
+                                                        ? PAGE_ROUTES.dashboard.network.events.details(event.related_event_id)
+                                                        : undefined}
+                                                />
+                                            </p>
                                         )}
                                     </div>
                                 </div>

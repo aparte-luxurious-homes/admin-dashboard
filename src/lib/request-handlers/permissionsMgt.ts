@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import { UserRole } from "../enums";
 import {
+    AssignableRole,
     Permission,
     PermissionCreatePayload,
     PermissionUpdatePayload,
@@ -12,6 +12,7 @@ import {
 export enum PermissionsQK {
     list = "permissions:list",
     role = "permissions:role",
+    assignableRoles = "permissions:assignable-roles",
 }
 
 const FIVE_MIN = 5 * 60 * 1000;
@@ -38,7 +39,24 @@ export function GetAllPermissions(limit = 500) {
     });
 }
 
-export function GetRolePermissions(role: UserRole | undefined, enabled = true) {
+/**
+ * The role keys permissions may be assigned to, with display metadata. A static
+ * catalogue server-side, so it is cached like one — sourcing it from the API
+ * rather than a local array keeps the page correct when the key space changes.
+ */
+export function GetAssignableRoles() {
+    return useQuery({
+        queryKey: [PermissionsQK.assignableRoles],
+        queryFn: async () => {
+            const response = await axiosRequest.get(API_ROUTES.permissions.assignableRoles);
+            return unwrap<AssignableRole[]>(response);
+        },
+        staleTime: FIVE_MIN,
+        refetchOnWindowFocus: false,
+    });
+}
+
+export function GetRolePermissions(role: string | undefined, enabled = true) {
     return useQuery({
         queryKey: [PermissionsQK.role, role],
         queryFn: async () => {
@@ -103,7 +121,7 @@ export function DeletePermission() {
 export function AssignPermissionToRole() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ role, permissionId }: { role: UserRole; permissionId: string }) =>
+        mutationFn: ({ role, permissionId }: { role: string; permissionId: string }) =>
             axiosRequest.post(API_ROUTES.permissions.assignToRole(role, permissionId)),
         onSuccess: (_data, vars) => {
             queryClient.invalidateQueries({ queryKey: [PermissionsQK.role, vars.role] });
@@ -114,7 +132,7 @@ export function AssignPermissionToRole() {
 export function RemovePermissionFromRole() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ role, permissionId }: { role: UserRole; permissionId: string }) =>
+        mutationFn: ({ role, permissionId }: { role: string; permissionId: string }) =>
             axiosRequest.delete(API_ROUTES.permissions.removeFromRole(role, permissionId)),
         onSuccess: (_data, vars) => {
             queryClient.invalidateQueries({ queryKey: [PermissionsQK.role, vars.role] });

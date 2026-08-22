@@ -5,11 +5,14 @@ import Image from "next/image";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import { formatDate } from "@/src/lib/utils";
+import { formatDate, isSameId } from "@/src/lib/utils";
 import Loader from "@/src/components/loader";
 import MenteeCandidatePicker, { MenteeCandidate, candidateName } from "./MenteeCandidatePicker";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
+import { GetNetworkStanding } from "@/src/lib/request-handlers/networkMgt";
+import NetworkAgentFilter from "../NetworkAgentFilter";
 
 interface MentorshipUser {
     id?: string;
@@ -87,6 +90,19 @@ function profileImage(user?: MentorshipUser): string | undefined {
     return user?.profile_image || user?.profile?.profile_image;
 }
 
+/**
+ * Marks the caller's own row. Load-bearing once a zone manager's list carries
+ * other people's pairs — without it "Mentorships" reads as if every row were
+ * theirs.
+ */
+function YouBadge() {
+    return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+            You
+        </span>
+    );
+}
+
 function TierBadge({ tier }: { tier?: string }) {
     if (!tier) return null;
     const cfg = TIER_CONFIG[tier];
@@ -138,6 +154,11 @@ export default function AgentNetworkMentorshipsTable() {
     const [page, setPage]               = useState(1);
     const [totalPages, setTotalPages]   = useState(1);
     const [statusFilter, setStatusFilter] = useState("");
+    // Mirrors the scope param on GET /network/mentorship: "all" (own mappings
+    // plus, for an Area Manager / Regional Lead, every mapping in their zone
+    // tree), "mine", "zone". Equivalent for an agent managing no zone.
+    const [scope, setScope]             = useState("all");
+    const [agentId, setAgentId]         = useState("");
 
     const [viewMentorship, setViewMentorship]     = useState<Mentorship | null>(null);
     const [detailMentorship, setDetailMentorship] = useState<Mentorship | null>(null);
@@ -179,11 +200,32 @@ export default function AgentNetworkMentorshipsTable() {
     const canInvite = agentTier === "SILVER" || agentTier === "GOLD";
     const tierBelow = tiersBelowLabel(agentTier);
 
+    // An Area Manager / Regional Lead supervises mentorship quality across their
+    // region, so their list is widened to the zone tree and gains the scope +
+    // agent controls. A plain agent's list is only ever their own mappings.
+    const { data: standing } = GetNetworkStanding(user?.role as UserRole | undefined);
+    const isMentor      = Boolean(standing?.isMentor);
+    const isZoneManager = Boolean(standing?.isZoneManager);
+    const hasNetwork    = isMentor || isZoneManager;
+
+    // Drop a scope the caller has since lost, so the list can't pin empty with
+    // no visible cause.
+    useEffect(() => {
+        if (standing && scope === "zone" && !isZoneManager) {
+            setScope("all");
+            setPage(1);
+        }
+    }, [standing, scope, isZoneManager]);
+
     const fetchMentorships = useCallback(async () => {
         setIsLoading(true);
         try {
             const params: Record<string, string | number> = { page, size: 20 };
             if (statusFilter) params.status = statusFilter;
+            // agent_id already narrows to one agent's mappings, so scope
+            // alongside it would be redundant — the endpoint ignores it there.
+            if (agentId) params.agent_id = agentId;
+            else if (scope !== "all") params.scope = scope;
             const response = await axiosRequest.get(API_ROUTES.network.myMentorship, { params });
             const payload = response?.data?.data ?? response?.data;
             const items = payload?.items ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
@@ -195,7 +237,7 @@ export default function AgentNetworkMentorshipsTable() {
         } finally {
             setIsLoading(false);
         }
-    }, [page, statusFilter]);
+    }, [page, statusFilter, scope, agentId]);
 
     useEffect(() => { fetchMentorships(); }, [fetchMentorships]);
 
@@ -281,8 +323,12 @@ export default function AgentNetworkMentorshipsTable() {
                 <div className="p-6 border-b border-gray-200">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div>
-                            <h1 className="text-xl font-semibold text-gray-900">My Mentorships</h1>
-                            <p className="text-sm text-gray-500 mt-1">Your active and past mentor–mentee relationships</p>
+                            <h1 className="text-xl font-semibold text-gray-900">Mentorships</h1>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {isZoneManager
+                                    ? "Mentor–mentee relationships in your zone, alongside your own"
+                                    : "Your active and past mentor–mentee relationships"}
+                            </p>
                         </div>
                         {/*
                           * Invite button: conditionally rendered (not CSS-hidden) based on
@@ -299,7 +345,7 @@ export default function AgentNetworkMentorshipsTable() {
                             </button>
                         )}
                     </div>
-                    <div className="mt-4">
+                    <div className="mt-4 flex items-center gap-3 flex-wrap">
                         <select
                             value={statusFilter}
                             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
@@ -310,6 +356,37 @@ export default function AgentNetworkMentorshipsTable() {
                             <option value="PAUSED">Paused</option>
                             <option value="ENDED">Ended</option>
                         </select>
+
+                        {isZoneManager && (
+                            <select
+                                value={agentId ? "" : scope}
+                                disabled={Boolean(agentId)}
+                                onChange={(e) => { setScope(e.target.value); setPage(1); }}
+                                className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary min-w-[180px] disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <option value="all">Everyone</option>
+                                <option value="mine">My mentorships only</option>
+                                <option value="zone">My zone only</option>
+                            </select>
+                        )}
+
+                        {hasNetwork && (
+                            <NetworkAgentFilter
+                                value={agentId}
+                                onChange={(id) => { setAgentId(id); setPage(1); }}
+                                placeholder={isZoneManager ? "Search an agent…" : "Search a mentee…"}
+                            />
+                        )}
+
+                        {(statusFilter || agentId || scope !== "all") && (
+                            <button
+                                onClick={() => { setStatusFilter(""); setScope("all"); setAgentId(""); setPage(1); }}
+                                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                <Icon icon="lucide:x" width="16" height="16" />
+                                Clear
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -353,7 +430,10 @@ export default function AgentNetworkMentorshipsTable() {
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-base font-semibold text-gray-900">{fullName(m.mentor, m.mentor_id)}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-base font-semibold text-gray-900">{fullName(m.mentor, m.mentor_id)}</p>
+                                                            {isSameId(m.mentor_id, user?.id) && <YouBadge />}
+                                                        </div>
                                                         {m.mentor?.email && <p className="text-xs text-gray-500 mt-0.5">{m.mentor.email}</p>}
                                                     </div>
                                                 </div>
@@ -370,7 +450,10 @@ export default function AgentNetworkMentorshipsTable() {
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-base font-semibold text-gray-900">{fullName(m.mentee, m.mentee_id)}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-base font-semibold text-gray-900">{fullName(m.mentee, m.mentee_id)}</p>
+                                                            {isSameId(m.mentee_id, user?.id) && <YouBadge />}
+                                                        </div>
                                                         {m.mentee?.email && <p className="text-xs text-gray-500 mt-0.5">{m.mentee.email}</p>}
                                                     </div>
                                                 </div>

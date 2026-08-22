@@ -207,6 +207,15 @@ export const API_ROUTES = {
         myZoneAssignments: `/network/zone-assignments`,
         myZoneAssignmentDetails: (id: string) => `/network/zone-assignments/${id}`,
         history: `/network/history`,
+        // One event out of the caller's own feed, scoped by the same
+        // VisibilityScope. Lets an agent follow a row's related_event_id;
+        // the admin single-event route is not reachable for them.
+        historyDetails: (id: string) => `/network/history/${id}`,
+        // The agents the caller may filter their network views by — self,
+        // their mentees, and (Area Manager / Regional Lead) every agent holding
+        // a property in their zone tree. Distinct from `network.agents` above,
+        // which is the admin tier/adjust pair.
+        myNetworkAgents: `/network/agents`,
         myMentorship: `/network/mentorship`,
         myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
         mentorshipCandidates: `/network/mentorship/candidates`,
@@ -215,6 +224,7 @@ export const API_ROUTES = {
     permissions: {
         base: '/permissions',
         details: (permissionId: string) => `/permissions/${permissionId}`,
+        assignableRoles: '/permissions/roles',
         rolePermissions: (role: string) => `/permissions/roles/${role}`,
         assignToRole: (role: string, permissionId: string) => `/permissions/roles/${role}/assign/${permissionId}`,
         removeFromRole: (role: string, permissionId: string) => `/permissions/roles/${role}/remove/${permissionId}`,
