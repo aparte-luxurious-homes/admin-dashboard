@@ -1,13 +1,14 @@
 "use client"
 
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import { UserRole } from "@/src/lib/enums";
-import { Permission } from "@/src/lib/types/permissions";
+import { AssignableRole, Permission } from "@/src/lib/types/permissions";
 import {
     GetAllPermissions,
+    GetAssignableRoles,
     GetRolePermissions,
     AssignPermissionToRole,
     RemovePermissionFromRole,
@@ -18,21 +19,10 @@ import CreatePermissionModal from "./CreatePermissionModal";
 import EditPermissionModal from "./EditPermissionModal";
 import DeletePermissionConfirm from "./DeletePermissionConfirm";
 
-const ROLES = [
-    { value: UserRole.SUPER_ADMIN, label: "Super Admin", color: "bg-purple-100 text-purple-700" },
-    { value: UserRole.ADMIN, label: "Admin", color: "bg-blue-100 text-blue-700" },
-    { value: UserRole.OPERATIONS_ADMIN, label: "Operations Admin", color: "bg-teal-100 text-teal-700" },
-    { value: UserRole.SUPPORT_ADMIN, label: "Support Admin", color: "bg-cyan-100 text-cyan-700" },
-    { value: UserRole.ANALYST, label: "Analyst", color: "bg-indigo-100 text-indigo-700" },
-    { value: UserRole.AGENT, label: "Agent", color: "bg-green-100 text-green-700" },
-    { value: UserRole.OWNER, label: "Owner", color: "bg-orange-100 text-orange-700" },
-    { value: UserRole.GUEST, label: "Guest", color: "bg-gray-100 text-gray-700" },
-];
-
 const RolesPermissionsView = () => {
     const { isSuperAdmin } = usePermissions();
 
-    const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.ADMIN);
+    const [selectedRole, setSelectedRole] = useState<string>(UserRole.ADMIN);
     const [searchValue, setSearchValue] = useState("");
     const [editMode, setEditMode] = useState(false);
     const [pendingChanges, setPendingChanges] = useState<{
@@ -46,7 +36,36 @@ const RolesPermissionsView = () => {
     const [deleteTarget, setDeleteTarget] = useState<Permission | null>(null);
 
     const allPermsQuery = GetAllPermissions(500);
+    const rolesQuery = GetAssignableRoles();
     const roleQuery = GetRolePermissions(selectedRole);
+
+    const assignableRoles: AssignableRole[] = useMemo(
+        () => rolesQuery.data ?? [],
+        [rolesQuery.data],
+    );
+    const identityRoles = useMemo(
+        () => assignableRoles.filter((r) => r.kind === "identity"),
+        [assignableRoles],
+    );
+    const standingRoles = useMemo(
+        () => assignableRoles.filter((r) => r.kind === "standing"),
+        [assignableRoles],
+    );
+    const activeRole = useMemo(
+        () => assignableRoles.find((r) => r.key === selectedRole),
+        [assignableRoles, selectedRole],
+    );
+    // A standing key can vanish from the catalogue mid-session — the Agent
+    // Network kill switch removes all five. Fall back to the first identity
+    // role rather than leaving the picker on a role the API no longer serves,
+    // which would show an empty grid against a blank select.
+    useEffect(() => {
+        if (rolesQuery.isLoading || assignableRoles.length === 0) return;
+        if (!assignableRoles.some((r) => r.key === selectedRole)) {
+            setSelectedRole(identityRoles[0]?.key ?? assignableRoles[0].key);
+        }
+    }, [rolesQuery.isLoading, assignableRoles, identityRoles, selectedRole]);
+
     const seedMutation = SeedPermissions();
     const assignMutation = AssignPermissionToRole();
     const revokeMutation = RemovePermissionFromRole();
@@ -270,17 +289,34 @@ const RolesPermissionsView = () => {
                             <select
                                 value={selectedRole}
                                 onChange={(e) => {
-                                    setSelectedRole(e.target.value as UserRole);
+                                    setSelectedRole(e.target.value);
                                     setPendingChanges({ toAdd: [], toRemove: [] });
                                     setEditMode(false);
                                 }}
                                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-medium bg-white"
                             >
-                                {ROLES.map((role) => (
-                                    <option key={role.value} value={role.value}>
-                                        {role.label}
+                                {rolesQuery.isLoading && <option value={selectedRole}>Loading…</option>}
+                                {/* Without a fallback option the select renders blank on failure,
+                                    which reads as a broken page rather than a failed fetch. */}
+                                {!rolesQuery.isLoading && assignableRoles.length === 0 && (
+                                    <option value={selectedRole}>
+                                        {rolesQuery.isError ? "Could not load roles" : "No roles available"}
                                     </option>
-                                ))}
+                                )}
+                                {identityRoles.length > 0 && (
+                                    <optgroup label="Roles">
+                                        {identityRoles.map((role) => (
+                                            <option key={role.key} value={role.key}>{role.label}</option>
+                                        ))}
+                                    </optgroup>
+                                )}
+                                {standingRoles.length > 0 && (
+                                    <optgroup label="Standing roles (earned)">
+                                        {standingRoles.map((role) => (
+                                            <option key={role.key} value={role.key}>{role.label}</option>
+                                        ))}
+                                    </optgroup>
+                                )}
                             </select>
                         </div>
                         <div className="ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
@@ -393,6 +429,25 @@ const RolesPermissionsView = () => {
                         </div>
                     )}
                 </div>
+
+                {activeRole?.kind === "standing" && activeRole.derived_from && (
+                    <div className="px-6 pb-6">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                            <Icon icon="mdi:information" className="w-5 h-5 text-blue-600 mt-0.5" />
+                            <div>
+                                <p className="text-sm font-medium text-blue-900">
+                                    {activeRole.label} is a standing role
+                                </p>
+                                <p className="text-sm text-blue-700 mt-1">
+                                    {activeRole.derived_from} It cannot be assigned to a user directly — an
+                                    agent holds it <span className="font-semibold">in addition to</span> their
+                                    account role, and permissions granted here are added to whatever their
+                                    account role already allows.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {selectedRole === UserRole.SUPER_ADMIN && (
                     <div className="px-6 pb-6">

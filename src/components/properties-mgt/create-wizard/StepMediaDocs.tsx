@@ -27,6 +27,7 @@ interface StepMediaDocsProps {
   setUnitMediaByCategory: Dispatch<
     SetStateAction<Record<string, CategorizedMedia>>
   >;
+  onDiscontinueListing: () => void;
 }
 
 function CategorySlot({
@@ -235,6 +236,7 @@ export default function StepMediaDocs({
   units,
   unitMediaByCategory,
   setUnitMediaByCategory,
+  onDiscontinueListing,
 }: StepMediaDocsProps) {
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>(
     DocumentType.UTILITY_BILL,
@@ -298,6 +300,18 @@ export default function StepMediaDocs({
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Coverage checklist */}
+      <div className="flex justify-end w-full">
+        <button
+          onClick={onDiscontinueListing}
+          className="flex items-center gap-2 rounded-md p-2 transition-colors hover:bg-primary/10"
+        >
+          <p className="text-xs text-zinc-500">Discontinue Listing</p>
+          <Icon
+            icon="solar:trash-bin-trash-outline"
+            className="text-xl text-primary"
+          />
+        </button>
+      </div>
       <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-3 shadow-sm">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
@@ -319,7 +333,9 @@ export default function StepMediaDocs({
           />
         </div>
         <p className="text-[11px] text-zinc-500">
-          Guests trust listings that show every room. Missing slots are added to the admin review queue-listings can still be created, but coverage gaps slow down verification.
+          Guests trust listings that show every room. Missing slots are added to
+          the admin review queue-listings can still be created, but coverage
+          gaps slow down verification.
         </p>
       </div>
 
@@ -357,7 +373,7 @@ export default function StepMediaDocs({
                 <span className="font-bold text-zinc-700">
                   {unit.name || "Unnamed unit"}
                 </span>{" "}
-                is the whole property \u2014 upload its bedroom, living room,
+                is the whole property upload its bedroom, living room,
                 kitchen, and bathroom photos in the{" "}
                 <span className="font-bold text-zinc-700">
                   Property gallery

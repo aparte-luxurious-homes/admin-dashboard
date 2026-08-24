@@ -245,6 +245,8 @@ export interface ICreateProperty {
     rules?: string
     owner_email?: string
     owner_name?: string
+    owner_phone?: string
+    units?: ICreatePropertyUnit[],
 }
 
 export interface IAssignProperty {
@@ -305,7 +307,8 @@ export interface ICreatePropertyUnit {
     kitchen_count: number,
     bathroom_count: number,
     caution_fee: string,
-    amenities: number[]
+    amenities: number[],
+    media?: string[],
 }
 
 export interface IUploadPropertyMedia {

@@ -190,7 +190,7 @@ export default function StepPropertyDetails({
   const { data: userList, isLoading: usersLoading } = GetAllUsers(
     1,
     100,
-    ownerSearchTerm,
+    ownerSearchTerm, 
     UserRole.OWNER,
   );
 
@@ -250,7 +250,7 @@ export default function StepPropertyDetails({
               <input
                 id="name"
                 type="text"
-                placeholder="e.g. Aparte Luxury Suites"
+                placeholder="e.g. Aparte Admiralty Suites"
                 value={formik.values.name}
                 onChange={formik.handleChange}
                 className={`w-full bg-zinc-50 border rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium ${nameError ? "border-red-300" : "border-zinc-200"}`}
@@ -717,3 +717,4 @@ export default function StepPropertyDetails({
     </div>
   );
 }
+ 

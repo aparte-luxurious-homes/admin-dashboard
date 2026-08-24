@@ -561,7 +561,7 @@ export default function CreateUnitView({
                     <input
                       id="name"
                       type="text"
-                      placeholder="e.g., Luxury Suite"
+                      placeholder="e.g., Two-Bedroom Suite"
                       value={formik.values.name}
                       onChange={formik.handleChange}
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-9 pr-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all text-sm"

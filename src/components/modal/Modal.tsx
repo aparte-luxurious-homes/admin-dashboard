@@ -4,7 +4,7 @@ import { useEffect } from "react";
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title?: string;
   content: React.ReactNode;
   footer?: React.ReactNode;
 }

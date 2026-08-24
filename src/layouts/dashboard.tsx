@@ -12,18 +12,30 @@ import { useState, useEffect, useMemo } from "react";
 import { IoMenu, IoClose } from "react-icons/io5";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
-import axiosRequest from "../lib/api";
+import { useDispatch, useSelector } from "react-redux";
+import { setAgentNetworkRole } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
+import axiosRequest from "../lib/api";
+import { API_ROUTES } from "../lib/routes/endpoints";
+import { AgentNetworkRole, UserRole } from "../lib/enums";
+import { RootState } from "../lib/store";
 import { GetGatewayBalances } from "../lib/request-handlers/integrationsMgt";
-import { UserRole } from "../lib/enums";
+import { useNetworkEnabled } from "../lib/request-handlers/platformMgt";
 import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
 import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
 
+const TIER_CONFIG = {
+  BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+  SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+  GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+} as const;
+
 export default function Dashboard({ children }: { children: React.ReactNode }) {
   const { user, isFetching } = useAuth();
+  const dispatch = useDispatch();
   const router = useRouter();
   const currentRoute = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -31,6 +43,77 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN
     || user?.role === UserRole.OPERATIONS_ADMIN || user?.role === UserRole.ANALYST;
   const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances(isAdmin);
+
+  const [agentTier, setAgentTier] = useState<"BRONZE" | "SILVER" | "GOLD" | null>(null);
+  const agentNetworkRole = useSelector((state: RootState) => state.auth.agentNetworkRole);
+  // Platform kill switch. Off means the whole feature is inert: no nav, no tier
+  // badge, and no probes to /network/* (which answer 503 anyway).
+  const { networkEnabled } = useNetworkEnabled();
+
+  useEffect(() => {
+    if (user?.role !== UserRole.AGENT) return;
+    if (!networkEnabled) {
+      // Clear anything a previous session cached, so the badge and the
+      // zone-manager nav widening cannot survive the switch being turned off.
+      setAgentTier(null);
+      dispatch(setAgentNetworkRole(null));
+      Cookies.remove("networkRole");
+      return;
+    }
+
+    // Restore from cookie immediately so nav doesn't flicker
+    const cookieRole = Cookies.get("networkRole");
+    if (cookieRole === AgentNetworkRole.AREA_MANAGER || cookieRole === AgentNetworkRole.REGIONAL_LEAD) {
+      dispatch(setAgentNetworkRole(cookieRole as AgentNetworkRole));
+    }
+
+    Promise.allSettled([
+      axiosRequest.get(API_ROUTES.network.me),
+      axiosRequest.get(API_ROUTES.network.zoneMe),
+    ]).then(([tierRes, zoneRes]) => {
+      if (tierRes.status === "fulfilled") {
+        const tier = tierRes.value?.data?.data?.current_tier;
+        if (tier) setAgentTier(tier);
+      }
+      if (zoneRes.status === "fulfilled") {
+        const role = zoneRes.value?.data?.data?.assignment?.role as AgentNetworkRole | undefined;
+        const resolved = role === AgentNetworkRole.AREA_MANAGER || role === AgentNetworkRole.REGIONAL_LEAD
+          ? role
+          : null;
+        dispatch(setAgentNetworkRole(resolved));
+        if (resolved) {
+          Cookies.set("networkRole", resolved, { expires: 1 });
+        } else {
+          Cookies.remove("networkRole");
+        }
+      }
+    }).catch(() => {});
+  }, [user?.role, dispatch, networkEnabled]);
+
+  const isZoneManager = networkEnabled
+    && (agentNetworkRole === AgentNetworkRole.AREA_MANAGER || agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD);
+
+  const effectiveNavLinks = useMemo(() => {
+    // Both "Network" (agent) and "Network Management" (admin) sections share
+    // the `network` pathName, so one filter removes the feature from every
+    // role's sidebar. It also drives the route guard below, which bounces any
+    // path with no nav entry the current role is allowed to see.
+    const base = networkEnabled
+      ? NAV_LINKS
+      : NAV_LINKS.filter((link) => link.pathName !== "network");
+    if (!isZoneManager) return base;
+    return base.map((link) => {
+      if (link.pathName !== "booking-management") return link;
+      return {
+        ...link,
+        children: link.children?.map((child) =>
+          child.pathName === "booking-disputes"
+            ? { ...child, allow: [...child.allow, UserRole.AGENT] }
+            : child
+        ),
+      };
+    });
+  }, [isZoneManager, networkEnabled]);
 
   // Handle click to navigate
   const handleClick = () => {
@@ -103,30 +186,54 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   // list excludes the current user's role, kick them back to the dashboard root.
   // Covers direct URL access (sidebar filtering alone doesn't stop /transactions/withdrawals
   // from rendering for an OWNER who types the URL).
+  //
+  // Some routes (e.g. /network/configs/actions) appear under more than one nav
+  // section with different `allow` lists (an agent-facing entry and an
+  // admin-facing one). Gather every entry matching the current path before
+  // deciding, so access is granted if ANY of them allows the role — otherwise
+  // whichever entry happens to come first in NAV_LINKS wins even when a later
+  // entry would have permitted the current user.
   useEffect(() => {
     if (!user || !currentRoute) return;
 
+    // Feature switch first. Filtering the nav removes the links but leaves the
+    // routes reachable by URL, and the loop below only bounces paths that match
+    // a nav entry the role may NOT see — a path matching nothing falls through.
+    if (!networkEnabled && currentRoute.startsWith("/network")) {
+      toast.error("The Agent Network feature is currently disabled");
+      router.replace(PAGE_ROUTES.dashboard.base);
+      return;
+    }
+
     const role = user.role as UserRole;
-    for (const link of NAV_LINKS) {
+    const matchingAllowLists: UserRole[][] = [];
+    for (const link of effectiveNavLinks) {
+      // Skip nav sections the current role cannot see — prevents a shared child
+      // link (e.g. /network/mentorship in both "Network" and "Network Management")
+      // from incorrectly blocking a role that is allowed by one section but not the other.
+      if (!link.allow.includes(role)) continue;
+
       if (link.children && link.children.length > 0) {
         for (const child of link.children) {
           if (child.link !== "#" && currentRoute.startsWith(child.link)) {
-            if (child.allow.length > 0 && !child.allow.includes(role)) {
-              toast.error("You don't have access to that page");
-              router.replace(PAGE_ROUTES.dashboard.base);
-              return;
-            }
+            matchingAllowLists.push(child.allow);
           }
         }
       } else if (link.link !== "#" && currentRoute.startsWith(link.link) && link.link !== PAGE_ROUTES.dashboard.base) {
-        if (link.allow.length > 0 && !link.allow.includes(role)) {
-          toast.error("You don't have access to that page");
-          router.replace(PAGE_ROUTES.dashboard.base);
-          return;
-        }
+        matchingAllowLists.push(link.allow);
       }
     }
-  }, [user, currentRoute, router]);
+
+    if (matchingAllowLists.length === 0) return;
+
+    const isAllowed = matchingAllowLists.some(
+      (allow) => allow.length === 0 || allow.includes(role)
+    );
+    if (!isAllowed) {
+      toast.error("You don't have access to that page");
+      router.replace(PAGE_ROUTES.dashboard.base);
+    }
+  }, [user, currentRoute, router, effectiveNavLinks, networkEnabled]);
 
   // Show loader while checking authentication or fetching user
   if (isCheckingAuth || (isFetching && !user)) {
@@ -228,7 +335,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
                             [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-teal-800
                         `}
           >
-            {NAV_LINKS.map((el, index) =>
+            {effectiveNavLinks.map((el, index) =>
               el.allow.includes(user?.role) ? (
                 <SideNav
                   key={index}
@@ -316,6 +423,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
+            {networkEnabled && agentTier && (() => {
+              const cfg = TIER_CONFIG[agentTier];
+              return (
+                <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                  <Icon icon={cfg.icon} width="14" />
+                  {cfg.label}
+                </span>
+              );
+            })()}
             <div
               className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
               onClick={handleClick}
