@@ -45,7 +45,13 @@ export default function NetworkAgentFilter({
     className = "",
 }: {
     value: string;
-    onChange: (agentId: string) => void;
+    /**
+     * `label` is the agent's display name, passed alongside the id so a caller
+     * can caption a flow with it ("choose mentees for Ada") without refetching
+     * the list this component already holds. Optional second argument: existing
+     * callers that only take the id keep working unchanged.
+     */
+    onChange: (agentId: string, label?: string) => void;
     enabled?: boolean;
     placeholder?: string;
     className?: string;
@@ -78,7 +84,7 @@ export default function NetworkAgentFilter({
 
     const options = data?.items ?? [];
 
-    const clear = () => { onChange(""); setSearch(""); };
+    const clear = () => { onChange("", ""); setSearch(""); };
 
     if (!enabled) return null;
 
@@ -94,7 +100,7 @@ export default function NetworkAgentFilter({
                     onChange={(e) => {
                         setSearch(e.target.value);
                         setOpen(true);
-                        if (!e.target.value && value) onChange("");
+                        if (!e.target.value && value) onChange("", "");
                     }}
                     className="px-2 py-2 text-sm text-gray-700 bg-transparent outline-none w-52"
                 />
@@ -125,7 +131,7 @@ export default function NetworkAgentFilter({
                             key={agent.agent_id}
                             onMouseDown={(e) => {
                                 e.preventDefault();
-                                onChange(agent.agent_id);
+                                onChange(agent.agent_id, networkAgentName(agent));
                                 setSearch(networkAgentName(agent));
                                 setOpen(false);
                             }}
