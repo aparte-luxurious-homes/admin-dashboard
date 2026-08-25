@@ -46,6 +46,7 @@ import {
   DocumentType,
   MediaType,
   PropertyType,
+  DiscountType,
 } from "../types";
 import {
   WizardStep,
@@ -56,6 +57,7 @@ import {
 } from "./types";
 import { validatePropertyName } from "./nameValidator";
 import Modal from "../../modal/Modal";
+import StepDiscounts from "./StepDiscounts";
 
 const libraries: any = ["places"];
 
@@ -187,6 +189,8 @@ export default function CreatePropertyWizard() {
       rules: "",
       amenities: [],
       amenityIds: [],
+      long_stay_discount_policy: { is_active: false, discount_type: DiscountType.FIXED, tiers: [] },
+      extension_discount_policy: { is_active: false, discount_type: DiscountType.PERCENTAGE, tiers: [] },
     },
     enableReinitialize: true,
     onSubmit: (values) => {
@@ -364,6 +368,8 @@ export default function CreatePropertyWizard() {
         }
         return true;
       }
+      case WizardStep.DISCOUNTS:
+        return true;
       default:
         return true;
     }
@@ -467,6 +473,8 @@ export default function CreatePropertyWizard() {
       ...(values.owner_phoneNumber && {
         owner_phone: values.owner_phoneNumber,
       }),
+      long_stay_discount_policy: values.long_stay_discount_policy,
+      extension_discount_policy: values.extension_discount_policy,
     };
 
     createProperty(
@@ -774,6 +782,10 @@ export default function CreatePropertyWizard() {
             setUnitMediaByCategory={setUnitMediaByCategory}
             onDiscontinueListing={handleOpenShowDiscontinueModal}
           />
+        )}
+
+        {currentStep === WizardStep.DISCOUNTS && (
+          <StepDiscounts formik={formik} />
         )}
 
         {/* Navigation Buttons */}

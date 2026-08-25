@@ -97,6 +97,7 @@ export const API_ROUTES = {
             documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
             verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
             bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
+            reviewDiscountProposal: (propertyId: string | number) => `/properties/${propertyId}/discounts/review-proposal`,
         },
         amenities: {
             base: '/amenities',
@@ -122,6 +123,7 @@ export const API_ROUTES = {
         reconcilePayment: (id: string | number) => `/bookings/${id}/reconcile-payment`,
         extensions: {
             base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
+            quote: (bookingId: string | number) => `/bookings/${bookingId}/extensions/quote`,
             listAll: '/bookings/extensions/all',
             details: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}`,
             approve: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/approve`,

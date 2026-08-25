@@ -21,6 +21,21 @@ export const useBookingExtensions = (bookingId: string | number, params?: { page
   });
 };
 
+// 🔹 Get Extension Quote
+export const useExtensionQuote = (bookingId: string | number, newEndDate: string) => {
+  return useQuery({
+    queryKey: ["extension-quote", bookingId, newEndDate],
+    queryFn: async () => {
+      const response = await axiosRequest.get<IBaseResponse<any>>(
+        API_ROUTES.bookings.extensions.quote(bookingId),
+        { params: { new_end_date: newEndDate } }
+      );
+      return response.data.data;
+    },
+    enabled: !!bookingId && !!newEndDate,
+  });
+};
+
 // 🔹 Fetch All Extensions (Admin/Owner)
 export const useAllExtensions = (params?: { page?: number; size?: number }) => {
   return useQuery({
