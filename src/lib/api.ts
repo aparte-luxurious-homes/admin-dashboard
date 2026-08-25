@@ -141,6 +141,7 @@ axiosRequest.interceptors.response.use(
 
         // Clear token cookie
         Cookies.remove('token');
+        Cookies.remove('networkRole');
 
         // Clear Redux state and React Query cache
         try {

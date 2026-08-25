@@ -1,5 +1,10 @@
 import NetworkZoneAssignmentsTable from "@/src/components/network/tables/NetworkZoneAssignmentsTable";
+import ZoneManagerOnly from "@/src/components/network/ZoneManagerOnly";
 
 export default function ZoneAssignmentsPage() {
-    return <NetworkZoneAssignmentsTable />;
+    return (
+        <ZoneManagerOnly>
+            <NetworkZoneAssignmentsTable />
+        </ZoneManagerOnly>
+    );
 }

@@ -1,5 +1,10 @@
 import NetworkZonesTable from "@/src/components/network/tables/NetworkZonesTable";
+import ZoneManagerOnly from "@/src/components/network/ZoneManagerOnly";
 
 export default function ZonesPage() {
-    return <NetworkZonesTable />;
+    return (
+        <ZoneManagerOnly>
+            <NetworkZonesTable />
+        </ZoneManagerOnly>
+    );
 }

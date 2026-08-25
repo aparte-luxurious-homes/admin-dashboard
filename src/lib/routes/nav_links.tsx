@@ -132,6 +132,16 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.network.mentorship.base,
                 allow: [UserRole.AGENT],
             },
+            // Both zone entries are stripped for agents without an ACTIVE zone
+            // assignment - see ZONE_LEAD_ONLY_SEGMENTS in layouts/dashboard.tsx.
+            // Standing is not knowable from the role alone, so it cannot be
+            // expressed in `allow` here.
+            {
+                name: 'Zone Members',
+                pathName: 'zone-members',
+                link: PAGE_ROUTES.dashboard.network.zoneMembers.base,
+                allow: [UserRole.AGENT],
+            },
             {
                 name: 'Zone Assignments',
                 pathName: 'zone-assignments',

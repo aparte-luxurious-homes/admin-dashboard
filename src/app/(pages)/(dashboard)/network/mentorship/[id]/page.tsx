@@ -15,6 +15,7 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { formatDate } from "@/src/lib/utils";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
+import { GetNetworkStanding } from "@/src/lib/request-handlers/networkMgt";
 
 interface MentorshipUser {
     first_name?: string;
@@ -145,6 +146,24 @@ export default function MentorshipDetailPage() {
     const [mentorship, setMentorship] = useState<Mentorship | null>(null);
     const [isLoading, setIsLoading]   = useState(false);
 
+    // A zone lead settles requests and re-statuses mappings in their patch, the
+    // same actions an admin has here. Read from server-fetched standing, not a
+    // role check: "is a zone lead" is not knowable from the role alone.
+    const { data: standing } = GetNetworkStanding(user?.role as UserRole | undefined);
+    const isZoneManager = Boolean(standing?.isZoneManager);
+    // Settling requests and re-statusing is a supervisory act: zone leads and
+    // admins only. A mentor sees the same page but has no action on it, which
+    // is exactly what the API allows them.
+    const canDecide = !isAgent || isZoneManager;
+    // Profile links follow visibility, not authority. A mentor's mentee is in
+    // their scope, so the link resolves for them; a plain agent's scope is only
+    // themselves, and the profile page says so rather than erroring.
+    const canViewProfiles = !isAgent || isZoneManager || Boolean(standing?.isMentor);
+
+    const [decision, setDecision] = useState<"approve" | "reject" | null>(null);
+    const [decisionReason, setDecisionReason] = useState("");
+    const [isDeciding, setIsDeciding] = useState(false);
+
     const [isEditing, setIsEditing]         = useState(false);
     const [editStatus, setEditStatus]       = useState("");
     const [editIsFlagged, setEditIsFlagged] = useState(false);
@@ -170,20 +189,67 @@ export default function MentorshipDetailPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [id]);
+        // `isAgent` belongs in the deps: useAuth resolves asynchronously, so the
+        // first render has no user and would otherwise pin this callback to the
+        // admin endpoint — 403ing for every agent, permanently, since `id` never
+        // changes to retrigger it.
+    }, [id, isAgent]);
 
     useEffect(() => { fetchMentorship(); }, [fetchMentorship]);
+
+    const handleDecision = async () => {
+        if (!mentorship || !decision) return;
+        setIsDeciding(true);
+        try {
+            await toast.promise(
+                decision === "approve"
+                    ? axiosRequest.post(API_ROUTES.network.approveMentorship(mentorship.id), {})
+                    : axiosRequest.post(API_ROUTES.network.rejectMentorship(mentorship.id), {
+                        ...(decisionReason.trim() ? { reason: decisionReason.trim() } : {}),
+                    }),
+                {
+                    loading: decision === "approve" ? "Approving..." : "Rejecting...",
+                    success: decision === "approve"
+                        ? "Request approved — the mentorship is now active"
+                        : "Request rejected and removed",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message
+                        || `Failed to ${decision} the request`,
+                }
+            );
+            setDecision(null);
+            setDecisionReason("");
+            // A rejection deletes the row, so there is nothing left to show.
+            if (decision === "reject") {
+                router.push(PAGE_ROUTES.dashboard.network.mentorship.base);
+            } else {
+                fetchMentorship();
+            }
+        } catch {
+            // surfaced by toast.promise
+        } finally {
+            setIsDeciding(false);
+        }
+    };
 
     const handleSave = async () => {
         if (!mentorship) return;
         setIsSaving(true);
         try {
             await toast.promise(
-                axiosRequest.patch(API_ROUTES.network.mentorships.details(mentorship.id), {
-                    status: editStatus,
-                    is_flagged: editIsFlagged,
-                    ...(editReason.trim() ? { reason: editReason.trim() } : {}),
-                }),
+                // Agents PATCH their own route; the admin route is closed to
+                // them. `is_flagged` is admin-only server-side and 403s the
+                // whole request if an agent sends it, so it is omitted rather
+                // than sent and refused.
+                axiosRequest.patch(
+                    isAgent
+                        ? API_ROUTES.network.myMentorshipDetails(mentorship.id)
+                        : API_ROUTES.network.mentorships.details(mentorship.id),
+                    {
+                        status: editStatus,
+                        ...(isAgent ? {} : { is_flagged: editIsFlagged }),
+                        ...(editReason.trim() ? { reason: editReason.trim() } : {}),
+                    }
+                ),
                 {
                     loading: "Saving changes...",
                     success: "Mentorship updated successfully",
@@ -447,6 +513,65 @@ export default function MentorshipDetailPage() {
                 </div>
             </div>
         )}
+            {decision && (() => {
+                const isReject = decision === "reject";
+                return (
+                    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                            <div className="p-6">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${isReject ? "bg-red-50" : "bg-green-50"}`}>
+                                    <Icon
+                                        icon={isReject ? "mdi:close-octagon-outline" : "mdi:check-decagram-outline"}
+                                        width="24"
+                                        className={isReject ? "text-red-600" : "text-green-600"}
+                                    />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                    {isReject ? "Reject this request?" : "Approve this request?"}
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    {isReject
+                                        ? "The request will be permanently deleted, not archived. Both agents are notified, naming you. The mentor may request again."
+                                        : "The mentorship becomes active immediately and overrides begin accruing. Both agents are notified."}
+                                </p>
+                                {isReject && (
+                                    <div className="mt-4">
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                                            Reason <span className="font-normal normal-case tracking-normal text-gray-400">(optional)</span>
+                                        </label>
+                                        <textarea
+                                            value={decisionReason}
+                                            onChange={(e) => setDecisionReason(e.target.value)}
+                                            rows={3}
+                                            placeholder="Included in the notification sent to both agents"
+                                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                                <button
+                                    onClick={() => { setDecision(null); setDecisionReason(""); }}
+                                    disabled={isDeciding}
+                                    className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 disabled:opacity-40 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDecision}
+                                    disabled={isDeciding}
+                                    className={`px-8 py-2.5 text-sm font-bold text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg ${
+                                        isReject ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" : "bg-primary hover:bg-primary/90 shadow-primary/20"
+                                    }`}
+                                >
+                                    {isReject ? "Yes, reject" : "Yes, approve"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
         </>
     );
 }

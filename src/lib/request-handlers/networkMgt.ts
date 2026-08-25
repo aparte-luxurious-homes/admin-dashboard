@@ -90,6 +90,53 @@ export interface NetworkAgentOption {
     relation: "self" | "mentee" | "zone";
 }
 
+export interface NetworkAgentProfile {
+    agent_id: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    profile_image?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+    is_active: boolean;
+    is_verified: boolean;
+    joined_at?: string | null;
+    current_tier?: string | null;
+    points_30d?: number | null;
+    mentor?: string | null;
+    mentor_id?: string | null;
+    mentee_count: number;
+    zone_roles: string[];
+    properties_listed: number;
+    properties_verified: number;
+}
+
+/**
+ * One agent's profile, from GET /network/agents/{id}.
+ *
+ * Scope-gated server-side: the caller's own row, their mentees, and every agent
+ * in a zone tree they manage. Anyone else is a 403, so this is safe to call
+ * with any id the agents list returned.
+ *
+ * Read-only by construction — the endpoint exposes no mutation, and the fields
+ * an admin would act on (KYC, identity documents, wallet) are absent entirely
+ * rather than merely hidden in the UI.
+ */
+export function GetNetworkAgentProfile(agentId?: string) {
+    return useQuery({
+        queryKey: [NetworkRequestKeys.myNetworkAgents, "profile", agentId ?? ""],
+        queryFn: () =>
+            axiosRequest.get(API_ROUTES.network.myNetworkAgentProfile(String(agentId))),
+        enabled: Boolean(agentId),
+        select: (resp: any): NetworkAgentProfile => resp?.data?.data ?? resp?.data,
+        staleTime: 60 * 1000,
+        refetchOnWindowFocus: false,
+        retry: false,
+    });
+}
+
 export function networkAgentName(option: NetworkAgentOption): string {
     const name = [option.first_name, option.last_name].filter(Boolean).join(" ");
     return name || option.email || "Unnamed agent";
@@ -111,20 +158,23 @@ export function GetNetworkAgents({
     relation,
     includeSelf = true,
     enabled = true,
+    page = 1,
     size = 50,
 }: {
     search?: string;
     relation?: "self" | "mentee" | "zone";
     includeSelf?: boolean;
     enabled?: boolean;
+    /** 1-based. The combobox callers leave this alone; the zone-members table pages. */
+    page?: number;
     size?: number;
 } = {}) {
     return useQuery({
-        queryKey: [NetworkRequestKeys.myNetworkAgents, search ?? "", relation ?? "", includeSelf, size],
+        queryKey: [NetworkRequestKeys.myNetworkAgents, search ?? "", relation ?? "", includeSelf, page, size],
         queryFn: () =>
             axiosRequest.get(API_ROUTES.network.myNetworkAgents, {
                 params: {
-                    page: 1,
+                    page,
                     size,
                     ...(search ? { search } : {}),
                     ...(relation ? { relation } : {}),

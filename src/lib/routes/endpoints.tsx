@@ -216,6 +216,10 @@ export const API_ROUTES = {
         // a property in their zone tree. Distinct from `network.agents` above,
         // which is the admin tier/adjust pair.
         myNetworkAgents: `/network/agents`,
+        // Read-only profile of one agent in the caller's scope. Narrower than
+        // the admin user detail on purpose: agents do not hold users.read, so
+        // no NIN/BVN, KYC state, wallet or payout data is returned.
+        myNetworkAgentProfile: (id: string) => `/network/agents/${id}`,
         myMentorship: `/network/mentorship`,
         myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
         mentorshipCandidates: `/network/mentorship/candidates`,

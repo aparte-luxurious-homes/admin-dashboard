@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
@@ -13,6 +14,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import { GetNetworkStanding } from "@/src/lib/request-handlers/networkMgt";
 import NetworkAgentFilter from "../NetworkAgentFilter";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
 interface MentorshipUser {
     id?: string;
@@ -146,6 +148,7 @@ function AgentModalCard({ label, user, tier }: { label: string; user?: Mentorshi
 
 export default function AgentNetworkMentorshipsTable() {
     const { user } = useAuth();
+    const router = useRouter();
 
     // Tier is fetched fresh from the server so it cannot be spoofed via client-side state
     const [agentTier, setAgentTier] = useState<string | null>(null);
@@ -402,7 +405,12 @@ export default function AgentNetworkMentorshipsTable() {
         }
     };
 
-    const openModal = (m: Mentorship) => { setViewMentorship(m); setDetailMentorship(null); };
+    // Zone leads and mentors get the same full detail page an admin sees, rather
+    // than the lighter read-only modal this table used to open. The page is
+    // already role-aware: it fetches through the agent endpoint and shows only
+    // the actions the caller may perform.
+    const openModal = (m: Mentorship) =>
+        router.push(PAGE_ROUTES.dashboard.network.mentorship.details(m.id));
     const closeModal = () => { setViewMentorship(null); setDetailMentorship(null); };
 
     const resetInviteModal = () => {
