@@ -47,6 +47,7 @@ import { Icon } from "@iconify/react";
 import UnitDrawer from "../create-wizard/UnitDrawer";
 import { UnitFormValues, createEmptyUnit } from "../create-wizard/types";
 import UnitCard from "../create-wizard/UnitCard";
+import StepDiscounts from "../create-wizard/StepDiscounts";
 import axios from "axios";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import usePlacesAutocomplete, {
@@ -446,6 +447,8 @@ export default function EditPropertyView({
         postal_code: values.postal_code || undefined,
         landmark: values.landmark || undefined,
         google_place_id: values.google_place_id || undefined,
+        long_stay_discount_policy: values.long_stay_discount_policy,
+        extension_discount_policy: values.extension_discount_policy,
       };
 
       if (values.type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
@@ -1242,6 +1245,10 @@ export default function EditPropertyView({
                             </div>
                         </div>
                     </div>
+          {/* Discounts Management Section */}
+          <div className="bg-white border border-zinc-100 rounded-2xl p-0 shadow-sm mt-4">
+            <StepDiscounts formik={formik} />
+          </div>
 
           {/* Units Management Section */}
           <FormCard icon="solar:home-2-bold-duotone" title="Units">

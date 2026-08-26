@@ -116,3 +116,20 @@ export async function downloadScreenAsPDF({ name, element }: { name: string; ele
     console.error("Error generating PDF:", error);
   }
 }
+
+/**
+ * Compare two user ids that reach the client under different types.
+ *
+ * `IUser.id` is declared `number` but the API issues UUID strings, so a bare
+ * `===` between an id off a payload and `user.id` is both a type error and
+ * wrong at runtime. Nullish on either side is never a match — two absent ids
+ * are not the same user.
+ */
+export function isSameId(
+  a: string | number | null | undefined,
+  b: string | number | null | undefined,
+): boolean {
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  return String(a) === String(b);
+}
+

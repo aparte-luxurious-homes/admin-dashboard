@@ -4,7 +4,13 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
-import { DocumentType, IAmenity, ICreateProperty, MediaType, PropertyType } from "../types";
+import {
+  DocumentType,
+  IAmenity,
+  ICreateProperty,
+  MediaType,
+  PropertyType,
+} from "../types";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
 import { FaPlus, FaMapLocationDot, FaArrowLeftLong } from "react-icons/fa6";
@@ -144,27 +150,27 @@ function AddressAutocomplete({
       formik.setFieldValue("latitude", lat);
       formik.setFieldValue("longitude", lng);
 
-            // Country is locked to Nigeria — never overwrite from Google.
-            // City fallback chain handles Nigerian addresses where Google often
-            // omits `locality` and uses `administrative_area_level_2` or
-            // `sublocality_*` instead.
-            const components: any[] = results[0].address_components || [];
-            const findByType = (type: string) =>
-                components.find((c: any) => c.types?.includes(type))?.long_name || '';
-            const city =
-                findByType('locality') ||
-                findByType('administrative_area_level_2') ||
-                findByType('sublocality_level_1') ||
-                findByType('sublocality') ||
-                findByType('postal_town');
-            const state = findByType('administrative_area_level_1');
-            if (city) formik.setFieldValue('city', city);
-            if (state) formik.setFieldValue('state', state);
-            formik.setFieldValue('google_place_id', results[0].place_id || '');
-        } catch (error) {
-            console.error("Error geocoding selection:", error);
-        }
-    };
+      // Country is locked to Nigeria — never overwrite from Google.
+      // City fallback chain handles Nigerian addresses where Google often
+      // omits `locality` and uses `administrative_area_level_2` or
+      // `sublocality_*` instead.
+      const components: any[] = results[0].address_components || [];
+      const findByType = (type: string) =>
+        components.find((c: any) => c.types?.includes(type))?.long_name || "";
+      const city =
+        findByType("locality") ||
+        findByType("administrative_area_level_2") ||
+        findByType("sublocality_level_1") ||
+        findByType("sublocality") ||
+        findByType("postal_town");
+      const state = findByType("administrative_area_level_1");
+      if (city) formik.setFieldValue("city", city);
+      if (state) formik.setFieldValue("state", state);
+      formik.setFieldValue("google_place_id", results[0].place_id || "");
+    } catch (error) {
+      console.error("Error geocoding selection:", error);
+    }
+  };
 
   return (
     <div className="relative group w-full">
@@ -273,27 +279,26 @@ export default function CreatePropertyView({}) {
     setAvailableAmenities(fetchedAmenites?.data?.data ?? fixedAmenities);
   }, [fetchedAmenites]);
 
-    const formik =
-        useFormik({
-            initialValues: {
-                name: "",
-                address: "",
-                google_place_id: "",
-                property_type: PropertyType.DUPLEX,
-                country: "Nigeria",
-                state: "",
-                city: "",
-                description: "",
-                latitude: 0,
-                longitude: 0,
-                // kyc_id: 0,
-                ownerId: 0,
-                owner_name: "",
-                owner_email: "",
-                is_pet_allowed: false,
-                amenities: [],
-                amenityIds: [],
-            },
+  const formik = useFormik({
+    initialValues: {
+      name: "",
+      address: "",
+      google_place_id: "",
+      property_type: PropertyType.DUPLEX,
+      country: "Nigeria",
+      state: "",
+      city: "",
+      description: "",
+      latitude: 0,
+      longitude: 0,
+      // kyc_id: 0,
+      ownerId: 0,
+      owner_name: "",
+      owner_email: "",
+      is_pet_allowed: false,
+      amenities: [],
+      amenityIds: [],
+    },
 
     onSubmit: (values) => {
       const sortedAmenities = sortAmenities(
@@ -301,12 +306,12 @@ export default function CreatePropertyView({}) {
         values.amenities,
       );
 
-                const payload: ICreateProperty = {
-                    ...values,
-                    country: "Nigeria",
-                    amenities: sortedAmenities,
-                    is_party_allowed: false,
-                }
+      const payload: ICreateProperty = {
+        ...values,
+        country: "Nigeria",
+        amenities: sortedAmenities,
+        is_party_allowed: false,
+      };
 
       mutate(
         {
@@ -527,7 +532,7 @@ export default function CreatePropertyView({}) {
                   <input
                     id="name"
                     type="text"
-                    placeholder="e.g. Aparte Luxury Suites"
+                    placeholder="e.g. Aparte Admiralty Suites"
                     value={formik.values.name}
                     onChange={formik.handleChange}
                     className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
@@ -727,88 +732,114 @@ export default function CreatePropertyView({}) {
                 <div className="space-y-4">
                   <AddressAutocomplete formik={formik} isLoaded={isLoaded} />
 
-                                    {isLoaded && (
-                                        <div className="w-full h-[300px] rounded-2xl overflow-hidden border border-zinc-200">
-                                            <GoogleMap
-                                                mapContainerStyle={{ height: '100%', width: '100%' }}
-                                                center={{ lat: formik.values.latitude || 6.5244, lng: formik.values.longitude || 3.3792 }}
-                                                zoom={formik.values.latitude ? 15 : 12}
-                                                onClick={(e: any) => {
-                                                    if (e.latLng) {
-                                                        formik.setFieldValue('latitude', e.latLng.lat());
-                                                        formik.setFieldValue('longitude', e.latLng.lng());
-                                                    }
-                                                }}
-                                            >
-                                                {formik.values.latitude && formik.values.longitude && (
-                                                    <Marker
-                                                        position={{ lat: formik.values.latitude, lng: formik.values.longitude }}
-                                                        draggable={true}
-                                                        onDragEnd={(e: any) => {
-                                                            if (e.latLng) {
-                                                                formik.setFieldValue('latitude', e.latLng.lat());
-                                                                formik.setFieldValue('longitude', e.latLng.lng());
-                                                            }
-                                                        }}
-                                                    />
-                                                )}
-                                            </GoogleMap>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 md:col-span-3 gap-6">
-                                <div className="space-y-2">
-                                    <label htmlFor="latitude" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Latitude</label>
-                                    <input
-                                        id="latitude"
-                                        type="number"
-                                        step="any"
-                                        placeholder="0.0000"
-                                        value={formik.values.latitude}
-                                        onChange={formik.handleChange}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label htmlFor="longitude" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Longitude</label>
-                                    <input
-                                        id="longitude"
-                                        type="number"
-                                        step="any"
-                                        placeholder="0.0000"
-                                        value={formik.values.longitude}
-                                        onChange={formik.handleChange}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
-                                    />
-                                </div>
-                            </div>
-                            {/* State & City — populated by Google Places autocomplete; editable for corrections.
-                                Country is locked to Nigeria (set in initialValues + payload). */}
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">State</label>
-                                <input
-                                    id="state"
-                                    type="text"
-                                    placeholder="E.g. Lagos"
-                                    value={formik.values.state}
-                                    onChange={formik.handleChange}
-                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">City</label>
-                                <input
-                                    id="city"
-                                    type="text"
-                                    placeholder="E.g. Ikeja"
-                                    value={formik.values.city}
-                                    onChange={formik.handleChange}
-                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
-                                />
-                            </div>
-                        </div>
+                  {isLoaded && (
+                    <div className="w-full h-[300px] rounded-2xl overflow-hidden border border-zinc-200">
+                      <GoogleMap
+                        mapContainerStyle={{ height: "100%", width: "100%" }}
+                        center={{
+                          lat: formik.values.latitude || 6.5244,
+                          lng: formik.values.longitude || 3.3792,
+                        }}
+                        zoom={formik.values.latitude ? 15 : 12}
+                        onClick={(e: any) => {
+                          if (e.latLng) {
+                            formik.setFieldValue("latitude", e.latLng.lat());
+                            formik.setFieldValue("longitude", e.latLng.lng());
+                          }
+                        }}
+                      >
+                        {formik.values.latitude && formik.values.longitude && (
+                          <Marker
+                            position={{
+                              lat: formik.values.latitude,
+                              lng: formik.values.longitude,
+                            }}
+                            draggable={true}
+                            onDragEnd={(e: any) => {
+                              if (e.latLng) {
+                                formik.setFieldValue(
+                                  "latitude",
+                                  e.latLng.lat(),
+                                );
+                                formik.setFieldValue(
+                                  "longitude",
+                                  e.latLng.lng(),
+                                );
+                              }
+                            }}
+                          />
+                        )}
+                      </GoogleMap>
                     </div>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:col-span-3 gap-6">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="latitude"
+                    className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                  >
+                    Latitude
+                  </label>
+                  <input
+                    id="latitude"
+                    type="number"
+                    step="any"
+                    placeholder="0.0000"
+                    value={formik.values.latitude}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="longitude"
+                    className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                  >
+                    Longitude
+                  </label>
+                  <input
+                    id="longitude"
+                    type="number"
+                    step="any"
+                    placeholder="0.0000"
+                    value={formik.values.longitude}
+                    onChange={formik.handleChange}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
+                  />
+                </div>
+              </div>
+              {/* State & City — populated by Google Places autocomplete; editable for corrections.
+                                Country is locked to Nigeria (set in initialValues + payload). */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                  State
+                </label>
+                <input
+                  id="state"
+                  type="text"
+                  placeholder="E.g. Lagos"
+                  value={formik.values.state}
+                  onChange={formik.handleChange}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                  City
+                </label>
+                <input
+                  id="city"
+                  type="text"
+                  placeholder="E.g. Ikeja"
+                  value={formik.values.city}
+                  onChange={formik.handleChange}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-xs"
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Verifications & Amenities Section */}
           <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">

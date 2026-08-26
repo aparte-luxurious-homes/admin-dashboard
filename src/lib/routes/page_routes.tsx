@@ -125,6 +125,43 @@ export const PAGE_ROUTES = {
         icalManagement: {
             feeds: '/ical-management/feeds',
             conflicts: '/ical-management/conflicts',
-        }
+        },
+        network: {
+            base: '/network',
+            events: {
+                base: '/network/events',
+                details: (id: string) => `/network/events/${id}`,
+            },
+            history: {
+                base: '/network/history',
+            },
+            mentorship: {
+                base: '/network/mentorship',
+                details: (id: string) => `/network/mentorship/${id}`,
+            },
+            agents: {
+                base: '/network/agents',
+                details: (id: string) => `/network/agents/${id}`,
+                events: (id: string) => `/network/agents/${id}/events`,
+                adjust: (id: string) => `/network/agents/${id}/adjust`,
+            },
+            configs: {
+                actions: {
+                    base: '/network/configs/actions',
+                },
+                tiers: {
+                    base: '/network/configs/tiers',
+                },
+            },
+            zones: {
+                base: '/network/zones',
+                create: '/network/zones/create',
+                details: (id: string) => `/network/zones/${id}`,
+            },
+            zoneAssignments: {
+                base: '/network/zone-assignments',
+                details: (id: string) => `/network/zone-assignments/${id}`,
+            },
+        },
     }
 }

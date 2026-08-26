@@ -97,6 +97,7 @@ export const API_ROUTES = {
             documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
             verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
             bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
+            reviewDiscountProposal: (propertyId: string | number) => `/properties/${propertyId}/discounts/review-proposal`,
         },
         amenities: {
             base: '/amenities',
@@ -125,6 +126,7 @@ export const API_ROUTES = {
         reconcilePayment: (id: string | number) => `/bookings/${id}/reconcile-payment`,
         extensions: {
             base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
+            quote: (bookingId: string | number) => `/bookings/${bookingId}/extensions/quote`,
             listAll: '/bookings/extensions/all',
             details: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}`,
             approve: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/approve`,
@@ -170,9 +172,72 @@ export const API_ROUTES = {
         details: (transactionId: string) => `/wallets/transactions/${transactionId}`,
         approveRefund: (transactionId: string) => `/wallets/transactions/${transactionId}/approve-refund`
     },
+    network: {
+        agents: {
+            tier: (id: string | number) => `/admin/network/agents/${id}/tier`,
+            adjust: (id: string | number) => `/admin/network/agents/${id}/adjust`,
+        },
+        remit: `/jobs/evaluate-agent-tiers`,
+        mentorships: {
+            base: `/admin/network/mentorship`,
+            details: (id: string) => `/admin/network/mentorship/${id}`,
+            candidates: `/admin/network/mentorship/candidates`,
+            mentors: `/admin/network/mentorship/mentors`,
+        },
+        events: {
+            base: `/admin/network/events`,
+            details: (id: string) => `/admin/network/events/${id}`,
+            update: (id: string) => `/admin/network/events/${id}/status`,
+        },
+        configs: {
+            actions: {
+                base: `/admin/network/configs/actions`,
+                update: (actionType: string) => `/admin/network/configs/actions/${actionType}`,
+            },
+            tiers: {
+                base: `/admin/network/configs/tiers`,
+            },
+            zones: {
+                base: `/admin/network/configs/zones`,
+                details: (id: string) => `/admin/network/configs/zones/${id}`,
+                assignments: {
+                    base: `/admin/network/configs/zones/assignments`,
+                    details: (id: string) => `/admin/network/configs/zones/assignments/${id}`,
+                },
+            },
+        },
+        zonePayoutJob: `/jobs/evaluate-zone-payouts`,
+        me: `/network/me`,
+        zoneMe: `/network/zone/me`,
+        myZoneAssignments: `/network/zone-assignments`,
+        myZoneAssignmentDetails: (id: string) => `/network/zone-assignments/${id}`,
+        history: `/network/history`,
+        // One event out of the caller's own feed, scoped by the same
+        // VisibilityScope. Lets an agent follow a row's related_event_id;
+        // the admin single-event route is not reachable for them.
+        historyDetails: (id: string) => `/network/history/${id}`,
+        // The agents the caller may filter their network views by — self,
+        // their mentees, and (Area Manager / Regional Lead) every agent holding
+        // a property in their zone tree. Distinct from `network.agents` above,
+        // which is the admin tier/adjust pair.
+        myNetworkAgents: `/network/agents`,
+        myMentorship: `/network/mentorship`,
+        myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
+        mentorshipCandidates: `/network/mentorship/candidates`,
+        createMentorshipInvite: `/network/mentorship/invite`,
+    },
+    platform: {
+        // Readable by any authenticated user — every client needs to know
+        // whether to render the Network navigation at all.
+        features: '/platform/features',
+        // SUPER_ADMIN only; adds who last moved the switch.
+        adminFeatures: '/admin/platform/features',
+        networkFeature: '/admin/platform/features/network',
+    },
     permissions: {
         base: '/permissions',
         details: (permissionId: string) => `/permissions/${permissionId}`,
+        assignableRoles: '/permissions/roles',
         rolePermissions: (role: string) => `/permissions/roles/${role}`,
         assignToRole: (role: string, permissionId: string) => `/permissions/roles/${role}/assign/${permissionId}`,
         removeFromRole: (role: string, permissionId: string) => `/permissions/roles/${role}/remove/${permissionId}`,
@@ -197,11 +262,21 @@ export const API_ROUTES = {
     },
     reports: {
         statements: {
-            base: '/reports/me/statements',
-            download: (year: string | number, month: string | number) => `/reports/me/statements/${year}/${month}/download`,
+            base: (ownerId: string) => `/reports/owners/${ownerId}/statements`,
+            download: (ownerId: string, year: string | number, month: string | number) => `/reports/owners/${ownerId}/statements/${year}/${month}/download`,
+            details: (ownerId: string, year: string | number, month: string | number) => `/reports/owners/${ownerId}/statements/${year}/${month}`,
         },
         bookings: {
             export: '/reports/bookings/export',
+        }
+    },
+    agents: {
+        statements: {
+            base: (agentId: string) => `/reports/agents/${agentId}/statements`,
+            download: (agentId: string, year: string | number, month: string | number) => `/reports/agents/${agentId}/statements/${year}/${month}/download`,
+        },
+        bookings: {
+            export: '/reports/agents/bookings/export',
         }
     },
     ical: {

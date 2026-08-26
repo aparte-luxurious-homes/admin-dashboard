@@ -44,6 +44,7 @@ interface Transaction {
 }
 
 interface TransactionSummary {
+    currency?: string;
     total_credit: string;
     total_debit: string;
     net: string;
@@ -471,36 +472,43 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
                 </div>
 
                 {summary && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-6 py-4 border-b border-gray-200 bg-gray-50/30">
-                        <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
-                                <Icon icon="mdi:arrow-down" className="text-green-600 w-5 h-5" />
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/30">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+                                    <Icon icon="mdi:arrow-down" className="text-green-600 w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Credit</p>
+                                    <p className="text-lg font-semibold text-green-700">{formatMoney(summary.total_credit, summary.currency)}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Credit</p>
-                                <p className="text-lg font-semibold text-green-700">{formatMoney(summary.total_credit)}</p>
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                                    <Icon icon="mdi:arrow-up" className="text-red-600 w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Debit</p>
+                                    <p className="text-lg font-semibold text-red-700">{formatMoney(summary.total_debit, summary.currency)}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                                    <Icon icon="mdi:scale-balance" className="text-blue-600 w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net</p>
+                                    <p className={`text-lg font-semibold ${parseFloat(summary.net) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                        {formatMoney(summary.net, summary.currency)}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                                <Icon icon="mdi:arrow-up" className="text-red-600 w-5 h-5" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Debit</p>
-                                <p className="text-lg font-semibold text-red-700">{formatMoney(summary.total_debit)}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-                                <Icon icon="mdi:scale-balance" className="text-blue-600 w-5 h-5" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net</p>
-                                <p className={`text-lg font-semibold ${parseFloat(summary.net) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                    {formatMoney(summary.net)}
-                                </p>
-                            </div>
-                        </div>
+                        <p className="text-[11px] text-gray-400 mt-2">
+                            Totals cover {summary.currency || "NGN"} {statusFilter ? "" : "settled "}transactions
+                            {statusFilter ? ` with status ${statusFilter.replace(/_/g, " ").toLowerCase()}` : ""}
+                            {" "}({summary.count} counted). Other currencies appear in the table but are excluded from these figures.
+                        </p>
                     </div>
                 )}
 

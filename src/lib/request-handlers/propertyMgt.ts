@@ -461,3 +461,15 @@ export function ResubmitOwnerVerification() {
         },
     });
 }
+
+export function ReviewDiscountProposal() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, payload }: { propertyId: string | number; payload: { action: 'approve' | 'reject' } }) => 
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.reviewDiscountProposal(propertyId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
+        }
+    });
+}

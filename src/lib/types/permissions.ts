@@ -10,16 +10,30 @@ export interface Permission {
     updated_at: string;
 }
 
+/**
+ * A key permissions may be assigned to. Superset of UserRole: "identity" keys
+ * mirror users.role, while "standing" keys (SILVER_AGENT, GOLD_AGENT,
+ * AREA_MANAGER, REGIONAL_LEAD) are derived — held in addition to an identity
+ * role and never written to users.role. See services/permissions/enums.py.
+ */
+export interface AssignableRole {
+    key: string;
+    label: string;
+    kind: "identity" | "standing";
+    /** Why a standing key cannot be assigned to a user directly. Null for identity. */
+    derived_from: string | null;
+}
+
 export interface RolePermission {
     id: string;
-    role: UserRole;
+    role: string;
     permission_id: string;
     created_at: string;
     permission: Permission;
 }
 
 export interface RolePermissionsResponse {
-    role: UserRole;
+    role: string;
     permissions: Permission[];
     total: number;
 }

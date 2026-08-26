@@ -8,7 +8,8 @@ import {
     useRequestExtension, 
     useApproveExtension, 
     useRejectExtension, 
-    useCancelExtension 
+    useCancelExtension,
+    useExtensionQuote 
 } from "@/src/hooks/useExtensions";
 import { ExtensionStatus, UserRole } from "@/src/lib/enums";
 import { usePermissions } from "@/src/hooks/usePermissions";
@@ -44,6 +45,8 @@ export default function BookingExtensions({ bookingId, currentEndDate, bookingSt
     const cancelExtension = useCancelExtension();
 
     const formattedCurrentEndDate = currentEndDate ? formatDateToYYYYMMDD(currentEndDate) : "";
+
+    const { data: quoteData, isLoading: quoteLoading, isError: quoteError } = useExtensionQuote(bookingId, newEndDate);
 
     const extensions = data?.items || [];
 
@@ -232,6 +235,53 @@ export default function BookingExtensions({ bookingId, currentEndDate, bookingSt
                                 className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
                             />
                         </div>
+
+                        {/* Extension Quote Display */}
+                        {newEndDate && (
+                            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Price Quote</p>
+                                {quoteLoading ? (
+                                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                        <Icon icon="line-md:loading-twotone-loop" className="text-sm" />
+                                        Fetching quote...
+                                    </div>
+                                ) : quoteError ? (
+                                    <p className="text-xs text-red-500">Unable to fetch quote for these dates.</p>
+                                ) : quoteData ? (
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-zinc-600">Base Price ({quoteData.nights} extra night{quoteData.nights !== 1 ? 's' : ''})</span>
+                                            <span className="text-zinc-800 font-medium">₦{Number(quoteData.base_amount).toLocaleString()}</span>
+                                        </div>
+                                        {quoteData.discount_amount > 0 && (
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-green-600 flex items-center gap-1">
+                                                    <Icon icon="solar:tag-price-bold-duotone" className="text-sm" />
+                                                    Extension discount ({quoteData.discount_label})
+                                                </span>
+                                                <span className="text-green-600 font-medium">−₦{Number(quoteData.discount_amount).toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        {quoteData.caution_fee > 0 && (
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-zinc-600">Caution fee</span>
+                                                <span className="text-zinc-800 font-medium">₦{Number(quoteData.caution_fee).toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        <div className="pt-2 border-t border-zinc-200 flex justify-between text-sm font-bold">
+                                            <span className="text-zinc-800">Total</span>
+                                            <span className="text-primary">₦{Number(quoteData.total_amount).toLocaleString()}</span>
+                                        </div>
+                                        {quoteData.upsell_message && (
+                                            <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded-lg flex gap-2 items-center">
+                                                <Icon icon="solar:info-circle-bold" className="text-blue-500 text-sm flex-shrink-0" />
+                                                <span className="text-[10px] text-blue-700 font-medium">{quoteData.upsell_message}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Payment Method</label>

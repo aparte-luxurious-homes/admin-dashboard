@@ -1,4 +1,5 @@
 import { JSX } from "react";
+import { IoIosGitNetwork } from "react-icons/io";
 import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon, RateIcon, PriceTagIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
@@ -102,6 +103,84 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
+        name: 'Network',
+        pathName: 'network',
+        link: PAGE_ROUTES.dashboard.network.history.base,
+        icon: <IoIosGitNetwork size={20} color="white" />,
+        allow: [UserRole.AGENT],
+        secondary: true,
+        children: [
+            {
+                // "Events", not "My Events": the feed carries the caller's own
+                // events plus their mentees' and — for an Area Manager /
+                // Regional Lead — their whole zone's, so "My" was wrong for
+                // everyone but a plain agent.
+                name: 'Events',
+                pathName: 'history',
+                link: PAGE_ROUTES.dashboard.network.history.base,
+                allow: [UserRole.AGENT],
+            },
+            {
+                name: 'Actions',
+                pathName: 'actions',
+                link: PAGE_ROUTES.dashboard.network.configs.actions.base,
+                allow: [UserRole.AGENT],
+            },
+            {
+                name: 'Mentorship',
+                pathName: 'mentorship',
+                link: PAGE_ROUTES.dashboard.network.mentorship.base,
+                allow: [UserRole.AGENT],
+            },
+            {
+                name: 'Zone Assignments',
+                pathName: 'zone-assignments',
+                link: PAGE_ROUTES.dashboard.network.zoneAssignments.base,
+                allow: [UserRole.AGENT],
+            },
+        ]
+    },
+    {
+        name: 'Network Management',
+        pathName: 'network',
+        link: PAGE_ROUTES.dashboard.network.events.base,
+        icon: <IoIosGitNetwork size={20} color="white" />,
+        allow: [UserRole.ADMIN],
+        secondary: true,
+        children: [
+            {
+                name: 'Events',
+                pathName: 'events',
+                link: PAGE_ROUTES.dashboard.network.events.base,
+                allow: [UserRole.ADMIN],
+            },
+            {
+                name: 'Actions',
+                pathName: 'actions',
+                link: PAGE_ROUTES.dashboard.network.configs.actions.base,
+                allow: [UserRole.ADMIN],
+            },
+            {
+                name: 'Mentorship',
+                pathName: 'mentorship',
+                link: PAGE_ROUTES.dashboard.network.mentorship.base,
+                allow: [UserRole.ADMIN],
+            },
+            {
+                name: 'Zones',
+                pathName: 'zones',
+                link: PAGE_ROUTES.dashboard.network.zones.base,
+                allow: [UserRole.ADMIN],
+            },
+            {
+                name: 'Zone Assignments',
+                pathName: 'zone-assignments',
+                link: PAGE_ROUTES.dashboard.network.zoneAssignments.base,
+                allow: [UserRole.ADMIN],
+            },
+        ]
+    },
+    {
         name: 'Booking Management',
         pathName: 'booking-management',
         link: PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
@@ -141,7 +220,7 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'reviews',
         link: PAGE_ROUTES.dashboard.reviews.base,
         icon: <RateIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN,UserRole.AGENT,UserRole.OWNER],
         secondary: false,
         children: undefined,
     },
@@ -285,7 +364,7 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'reports',
         link: PAGE_ROUTES.dashboard.reports.agentPerformance,
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST, UserRole.OWNER],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST, UserRole.OWNER, UserRole.AGENT],
         secondary: true,
         children: [
             {
@@ -298,7 +377,7 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Statements',
                 pathName: 'statements',
                 link: PAGE_ROUTES.dashboard.reports.statements,
-                allow: [UserRole.OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN],
+                allow: [UserRole.OWNER, UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
         ]
     },

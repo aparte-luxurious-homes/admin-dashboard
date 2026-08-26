@@ -283,7 +283,7 @@ export default function EditUnitView({
                                     <input
                                         id="name"
                                         type="text"
-                                        placeholder="e.g. Luxury Penthouse Suite"
+                                        placeholder="e.g. Penthouse Suite"
                                         value={formik.values.name}
                                         onChange={formik.handleChange}
                                         className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
