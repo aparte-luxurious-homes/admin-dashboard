@@ -24,12 +24,13 @@ import { useDispatch } from "react-redux";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from "formik";
 import {
-  DeleteProperty,
   FeatureProperty,
   UpdateProperty,
   UpdateBookingMode,
   UploadPropertyMedia,
+  DeleteProperty,
   DeletePropertyMedia, UploadPropertyDocument, GetPropertyDocuments,
+  GetEventTypes,
 } from "@/src/lib/request-handlers/propertyMgt";
 import { CreatePropertyUnit, UpdatePropertyUnit, DeletePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { BookingMode } from "../types";
@@ -226,6 +227,18 @@ export default function EditPropertyView({
     const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
     const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
 
+  // Event types
+  const { data: fetchedEventTypes } = GetEventTypes();
+  const [availableEventTypes, setAvailableEventTypes] = useState<
+    { id: string; name: string }[]
+  >([]);
+
+  useEffect(() => {
+    if (fetchedEventTypes?.data?.data) {
+      setAvailableEventTypes(fetchedEventTypes.data.data);
+    }
+  }, [fetchedEventTypes]);
+
   // Unit management state
   const { mutate: createUnit, isPending: isCreatingUnit } = CreatePropertyUnit();
   const { mutate: updateUnit } = UpdatePropertyUnit();
@@ -401,6 +414,7 @@ export default function EditPropertyView({
         BookingMode.INSTANT) as BookingMode,
       amenities: propertyData?.amenities.map((el) => el.id),
       amenityNames: propertyData?.amenities.map((el) => el.name),
+      event_types: (propertyData?.eventTypes ?? propertyData?.event_types ?? []).map((el: any) => el.name ?? el),
     },
     onSubmit: (values: any) => {
       const sortedAmenities = sortAmenities(
@@ -433,6 +447,12 @@ export default function EditPropertyView({
         landmark: values.landmark || undefined,
         google_place_id: values.google_place_id || undefined,
       };
+
+      if (values.type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
+        updatePayload.event_types = availableEventTypes
+          .filter(et => values.event_types.includes(et.name))
+          .map(et => Number(et.id));
+      }
 
       mutate(
         { propertyId: propertyData.id, payload: updatePayload },
@@ -558,7 +578,7 @@ export default function EditPropertyView({
           deleteMutation(
             { propertyId: propertyData.id },
             {
-              onSuccess: (response) => {
+              onSuccess: (response: any) => {
                 removeParam("edit");
                 toast.success(response?.data?.message, {
                   duration: 6000,
@@ -878,6 +898,25 @@ export default function EditPropertyView({
                   formik.setFieldValue("amenityNames", [...val])
                 }
               />
+
+              {formik.values.type === PropertyType.EVENT_CENTRE && (
+                <div className="pt-4 border-t border-zinc-50">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <Icon
+                      icon="solar:calendar-bold-duotone"
+                      className="text-sm text-primary"
+                    />
+                    Event Types
+                  </p>
+                  <MultipleChoice
+                    options={availableEventTypes.map((et) => et.name)}
+                    selected={formik.values.event_types}
+                    onChange={(val) =>
+                      formik.setFieldValue("event_types", [...val])
+                    }
+                  />
+                </div>
+              )}
 
               {/* Flags */}
               <div className="pt-4 border-t border-zinc-50">

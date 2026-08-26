@@ -101,6 +101,9 @@ export const API_ROUTES = {
         amenities: {
             base: '/amenities',
         },
+        eventTypes: {
+            base: '/event-types',
+        },
     },
     verifications: {
         base: '/verifications',

@@ -160,6 +160,7 @@ export type PropertyFormValues = {
     rules: string;
     amenities: string[];
     amenityIds: number[];
+    event_types: string[];
 };
 
 export function createEmptyUnit(): UnitFormValues {

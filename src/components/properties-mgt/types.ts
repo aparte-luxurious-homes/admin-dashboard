@@ -32,6 +32,7 @@ export enum PropertyType {
     VILLA = 'VILLA',
     APARTMENT = 'APARTMENT',
     HOTEL = 'HOTEL',
+    EVENT_CENTRE = 'EVENT_CENTRE',
     OTHERS = 'OTHERS',
 }
 
@@ -131,6 +132,30 @@ export interface IPropertyUnit {
     kitchen_count?: number
     bathroomCount: number
     bathroom_count?: number
+    seatingCapacity?: number
+    seating_capacity?: number
+    standingCapacity?: number
+    standing_capacity?: number
+    carParkSpaces?: number
+    car_park_spaces?: number
+    powerSupplyProvision?: string
+    power_supply_provision?: string
+    additionalFees?: Array<{
+        fee_name: string
+        fee_amount: number
+        is_mandatory: boolean
+    }>
+    additional_fees?: Array<{
+        fee_name: string
+        fee_amount: number
+        is_mandatory: boolean
+    }>
+    eventPricePerDay?: string
+    event_price_per_day?: string
+    eventPricePerHour?: string
+    event_price_per_hour?: string
+    eventPricePerHalfDay?: string
+    event_price_per_half_day?: string
     isVerified: boolean
     is_verified?: boolean
     createdAt: string
@@ -187,6 +212,8 @@ export interface IProperty {
     media: IPropertyMedia[]
     amenities: IAmenity[]
     documents: IPropertyDocument[]
+    eventTypes?: any[]
+    event_types?: any[]
 }
 
 export enum DocumentType {
@@ -197,6 +224,9 @@ export enum DocumentType {
     TENANCY_AGREEMENT = 'TENANCY_AGREEMENT',
     TITLE_DEED = 'TITLE_DEED',
     CERTIFICATE_OF_OCCUPANCY = 'CERTIFICATE_OF_OCCUPANCY',
+    EVENT_PERMIT = 'EVENT_PERMIT',
+    INSURANCE_CERTIFICATE = 'INSURANCE_CERTIFICATE',
+    OTHER_SUPPORTING_DOCUMENT = 'OTHER_SUPPORTING_DOCUMENT',
 }
 
 export interface IPropertyDocument {
@@ -245,6 +275,7 @@ export interface ICreateProperty {
     rules?: string
     owner_email?: string
     owner_name?: string
+    event_types?: number[]
 }
 
 export interface IAssignProperty {
@@ -275,7 +306,8 @@ export interface IUpdateProperty {
     is_party_allowed: boolean,
     rules?: string,
     owner_email?: string,
-    owner_name?: string
+    owner_name?: string,
+    event_types?: number[]
 }
 
 export interface IUpdatePropertyUnit {
@@ -291,6 +323,18 @@ export interface IUpdatePropertyUnit {
     kitchen_count?: number,
     bathroom_count?: number,
     amenities?: number[],
+    seating_capacity?: number,
+    standing_capacity?: number,
+    car_park_spaces?: number,
+    power_supply_provision?: string,
+    event_price_per_day?: string,
+    event_price_per_hour?: string,
+    event_price_per_half_day?: string,
+    additional_fees?: Array<{
+        fee_name: string,
+        fee_amount: number,
+        is_mandatory: boolean
+    }>,
 }
 
 export interface ICreatePropertyUnit {
@@ -305,7 +349,19 @@ export interface ICreatePropertyUnit {
     kitchen_count: number,
     bathroom_count: number,
     caution_fee: string,
-    amenities: number[]
+    amenities: number[],
+    seating_capacity?: number,
+    standing_capacity?: number,
+    car_park_spaces?: number,
+    power_supply_provision?: string,
+    event_price_per_day?: string,
+    event_price_per_hour?: string,
+    event_price_per_half_day?: string,
+    additional_fees?: Array<{
+        fee_name: string,
+        fee_amount: number,
+        is_mandatory: boolean
+    }>,
 }
 
 export interface IUploadPropertyMedia {
