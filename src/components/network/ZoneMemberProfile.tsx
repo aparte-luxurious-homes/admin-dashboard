@@ -148,8 +148,19 @@ export default function ZoneMemberProfile() {
                                     >
                                         {agent.is_active ? "Active" : "Inactive"}
                                     </span>
+                                    {agent.average_rating && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+                                            <Icon icon="mdi:star" width="13" />
+                                            {agent.average_rating}
+                                        </span>
+                                    )}
                                 </div>
                                 <p className="text-sm text-gray-500 mt-1 truncate">{agent.email}</p>
+                                {agent.bio && (
+                                    <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">
+                                        {agent.bio}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -178,14 +189,32 @@ export default function ZoneMemberProfile() {
                         <h2 className="text-sm font-semibold text-gray-800 mb-3">Details</h2>
                         <div className="border border-gray-100 rounded-2xl p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                             <Field label="Phone" value={agent.phone} />
+                            <Field label="Street address" value={agent.address} />
                             <Field label="City" value={agent.city} />
                             <Field label="State" value={agent.state} />
                             <Field label="Country" value={agent.country} />
+                            <Field
+                                label="Gender"
+                                value={
+                                    agent.gender
+                                        ? agent.gender.charAt(0) + agent.gender.slice(1).toLowerCase()
+                                        : null
+                                }
+                            />
+                            <Field
+                                label="Date of birth"
+                                value={agent.dob ? formatDate(agent.dob) : null}
+                            />
                             <Field
                                 label="Joined"
                                 value={agent.joined_at ? formatDate(agent.joined_at) : null}
                             />
                             <Field label="Mentor" value={agent.mentor} />
+                            <Field label="Referral code" value={agent.referral_code} />
+                            <Field
+                                label="Catalog handle"
+                                value={agent.handle ? `@${agent.handle}` : null}
+                            />
                             <Field
                                 label="Account verified"
                                 value={agent.is_verified ? "Yes" : "No"}
@@ -195,8 +224,9 @@ export default function ZoneMemberProfile() {
 
                     <p className="mt-6 text-xs text-gray-400 flex items-center gap-1.5">
                         <Icon icon="mdi:information-outline" width="14" />
-                        Read-only. Identity documents, KYC status and wallet details are
-                        available to administrators only.
+                        Read-only. Identity documents (NIN, BVN), KYC status and wallet
+                        details are not included — those are available to administrators
+                        only.
                     </p>
                 </>
             )}

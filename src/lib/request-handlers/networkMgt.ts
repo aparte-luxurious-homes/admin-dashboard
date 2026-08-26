@@ -97,9 +97,16 @@ export interface NetworkAgentProfile {
     email?: string | null;
     phone?: string | null;
     profile_image?: string | null;
+    bio?: string | null;
+    address?: string | null;
     city?: string | null;
     state?: string | null;
     country?: string | null;
+    gender?: string | null;
+    dob?: string | null;
+    average_rating?: string | null;
+    referral_code?: string | null;
+    handle?: string | null;
     is_active: boolean;
     is_verified: boolean;
     joined_at?: string | null;
