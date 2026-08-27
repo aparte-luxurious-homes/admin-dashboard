@@ -1,9 +1,10 @@
-import { PropertyType } from '../types';
+import { PropertyType, IDiscountPolicy } from '../types';
 
 export enum WizardStep {
     PROPERTY_DETAILS = 0,
     UNITS = 1,
-    MEDIA_DOCS = 2,
+    DISCOUNTS = 2,
+    MEDIA_DOCS = 3,
 }
 
 // Mirrors services/properties/models.py::PropertyMediaCategory
@@ -115,6 +116,7 @@ export type CategorizedMedia = Partial<Record<PropertyMediaCategory, File[]>>;
 export const WIZARD_STEPS = [
     { key: WizardStep.PROPERTY_DETAILS, label: 'Property Details', icon: 'solar:home-2-bold-duotone' },
     { key: WizardStep.UNITS, label: 'Units', icon: 'solar:widget-3-bold-duotone' },
+    { key: WizardStep.DISCOUNTS, label: 'Discounts', icon: 'solar:tag-price-bold-duotone' },
     { key: WizardStep.MEDIA_DOCS, label: 'Media & Docs', icon: 'solar:camera-bold-duotone' },
 ] as const;
 
@@ -158,6 +160,8 @@ export type PropertyFormValues = {
     is_pet_allowed: boolean;
     is_party_allowed: boolean;
     rules: string;
+    long_stay_discount_policy: IDiscountPolicy;
+    extension_discount_policy: IDiscountPolicy;
     amenities: string[];
     amenityIds: number[];
 };
