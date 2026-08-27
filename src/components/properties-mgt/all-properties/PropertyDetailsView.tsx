@@ -57,6 +57,7 @@ import { IUser } from "@/src/lib/types";
 import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
 import Spinner from "../../ui/Spinner";
 import { formatDate } from "@/src/lib/utils";
+import DiscountProposalModal from "./DiscountProposalModal";
 
 export default function PropertyDetailsView({
   propertyId,
@@ -101,6 +102,8 @@ export default function PropertyDetailsView({
     ownerSearchTerm,
     UserRole.OWNER,
   );
+
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [owners, setOwners] = useState<IUser[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<IUser | null>(null);
   const [editMode, setEditMode] = useState<boolean>(
@@ -345,6 +348,22 @@ export default function PropertyDetailsView({
               <div className="lg:col-span-8 p-4 sm:p-6 md:p-8 space-y-8 md:space-y-10">
                 {!editMode ? (
                   <>
+                    {(property?.proposed_long_stay_discount_policy || property?.proposed_extension_discount_policy) && user?.role === UserRole.OWNER && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                        <Icon icon="solar:info-circle-bold-duotone" className="text-amber-500 text-xl mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-bold text-amber-800">Pending Discount Proposal</h4>
+                          <p className="text-xs text-amber-700 mt-1">An admin has proposed changes to your discount policies. Please review them.</p>
+                          <button
+                            onClick={() => setShowDiscountModal(true)}
+                            className="mt-3 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors"
+                          >
+                            Review Proposal
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Title + Rating */}
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -1443,6 +1462,14 @@ export default function PropertyDetailsView({
           </div>
         )}
       </div>
+
+      {showDiscountModal && property && (
+        <DiscountProposalModal
+          isOpen={showDiscountModal}
+          onClose={() => setShowDiscountModal(false)}
+          property={property}
+        />
+      )}
     </div>
   );
 }

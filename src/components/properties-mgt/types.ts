@@ -40,6 +40,22 @@ export enum BookingMode {
     REQUEST_TO_BOOK = 'REQUEST_TO_BOOK',
 }
 
+export enum DiscountType {
+    PERCENTAGE = 'PERCENTAGE',
+    FIXED = 'FIXED',
+}
+
+export interface IDiscountTier {
+    min_nights: number;
+    value: number | string;
+}
+
+export interface IDiscountPolicy {
+    is_active: boolean;
+    discount_type: DiscountType;
+    tiers: IDiscountTier[];
+}
+
 export interface IAmenity {
     id: number
     name: string
@@ -176,6 +192,13 @@ export interface IProperty {
     rules?: string
     isFeatured: boolean
     is_featured?: boolean
+    
+    // Discount Policies
+    long_stay_discount_policy?: IDiscountPolicy
+    extension_discount_policy?: IDiscountPolicy
+    proposed_long_stay_discount_policy?: IDiscountPolicy
+    proposed_extension_discount_policy?: IDiscountPolicy
+    
     createdAt: string
     created_at?: string
     updatedAt: string
@@ -246,6 +269,10 @@ export interface ICreateProperty {
     owner_email?: string
     owner_name?: string
     owner_phone?: string
+    long_stay_discount_policy?: IDiscountPolicy
+    extension_discount_policy?: IDiscountPolicy
+    proposed_long_stay_discount_policy?: IDiscountPolicy
+    proposed_extension_discount_policy?: IDiscountPolicy
     units?: ICreatePropertyUnit[],
 }
 
