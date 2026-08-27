@@ -135,6 +135,11 @@ export const PAGE_ROUTES = {
             history: {
                 base: '/network/history',
             },
+            // Zone leads only — the roster of agents inside their zone tree.
+            zoneMembers: {
+                base: '/network/zone-members',
+                details: (id: string) => `/network/zone-members/${id}`,
+            },
             mentorship: {
                 base: '/network/mentorship',
                 details: (id: string) => `/network/mentorship/${id}`,

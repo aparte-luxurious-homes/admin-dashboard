@@ -218,10 +218,25 @@ export const API_ROUTES = {
         // a property in their zone tree. Distinct from `network.agents` above,
         // which is the admin tier/adjust pair.
         myNetworkAgents: `/network/agents`,
+        // Read-only profile of one agent in the caller's scope. Narrower than
+        // the admin user detail on purpose: agents do not hold users.read, so
+        // no NIN/BVN, KYC state, wallet or payout data is returned.
+        myNetworkAgentProfile: (id: string) => `/network/agents/${id}`,
         myMentorship: `/network/mentorship`,
         myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
         mentorshipCandidates: `/network/mentorship/candidates`,
+        // A mentor's create is a REQUEST: it lands PENDING and is settled by the
+        // mentee's immediate zone lead or an admin. It does not become active
+        // on submit.
         createMentorshipInvite: `/network/mentorship/invite`,
+        // Settle a PENDING request. Approve → ACTIVE; reject DELETES the row
+        // and notifies both parties naming the decider.
+        approveMentorship: (id: string) => `/network/mentorship/${id}/approve`,
+        rejectMentorship: (id: string) => `/network/mentorship/${id}/reject`,
+        // Area Manager / Regional Lead pairing two agents inside their own zone
+        // tree — created ACTIVE, no approval step, since the lead is already
+        // the approver.
+        assignMentorship: `/network/mentorship/assign`,
     },
     platform: {
         // Readable by any authenticated user — every client needs to know

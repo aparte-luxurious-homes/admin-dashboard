@@ -132,6 +132,16 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.network.mentorship.base,
                 allow: [UserRole.AGENT],
             },
+            // Both zone entries are stripped for agents without an ACTIVE zone
+            // assignment - see ZONE_LEAD_ONLY_SEGMENTS in layouts/dashboard.tsx.
+            // Standing is not knowable from the role alone, so it cannot be
+            // expressed in `allow` here.
+            {
+                name: 'Zone Members',
+                pathName: 'zone-members',
+                link: PAGE_ROUTES.dashboard.network.zoneMembers.base,
+                allow: [UserRole.AGENT],
+            },
             {
                 name: 'Zone Assignments',
                 pathName: 'zone-assignments',
@@ -145,38 +155,38 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'network',
         link: PAGE_ROUTES.dashboard.network.events.base,
         icon: <IoIosGitNetwork size={20} color="white" />,
-        allow: [UserRole.ADMIN],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
         secondary: true,
         children: [
             {
                 name: 'Events',
                 pathName: 'events',
                 link: PAGE_ROUTES.dashboard.network.events.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
             {
                 name: 'Actions',
                 pathName: 'actions',
                 link: PAGE_ROUTES.dashboard.network.configs.actions.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
             {
                 name: 'Mentorship',
                 pathName: 'mentorship',
                 link: PAGE_ROUTES.dashboard.network.mentorship.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
             {
                 name: 'Zones',
                 pathName: 'zones',
                 link: PAGE_ROUTES.dashboard.network.zones.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
             {
                 name: 'Zone Assignments',
                 pathName: 'zone-assignments',
                 link: PAGE_ROUTES.dashboard.network.zoneAssignments.base,
-                allow: [UserRole.ADMIN],
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
             },
         ]
     },

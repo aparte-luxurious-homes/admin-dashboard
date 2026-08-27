@@ -64,6 +64,11 @@ axiosRequest.interceptors.request.use((config) => {
 // Flag to prevent multiple simultaneous redirects
 let isRedirecting = false;
 
+// Endpoints whose 401 means "wrong credential for this route", not "your
+// session expired". They are authenticated by something other than the user's
+// JWT, so a 401 here must surface to the caller instead of ending the session.
+const NON_SESSION_AUTH_PATHS = ['/jobs/'];
+
 // 🔹 Handle token expiration (401 errors) + PROFILE_INCOMPLETE (403) redirects
 axiosRequest.interceptors.response.use(
   (response) => response,
@@ -110,6 +115,24 @@ axiosRequest.interceptors.response.use(
       // Avoid redirect loop on login route and don't logout for non-auth endpoints
       const onLoginRoute = currentPath.includes('/auth/login') || requestUrl.includes('/auth/login');
 
+      // A 401 from these endpoints is NOT a session failure. They authenticate
+      // with a credential other than the user's JWT (the /jobs/* routes take a
+      // shared bearer token meant for Cloud Scheduler), so rejecting the
+      // session token is the expected answer, not proof it expired. Without
+      // this, one admin click on "Run remittance" cleared the cookie, wiped
+      // Redux and bounced the user to login.
+      const isNonSessionAuthEndpoint = NON_SESSION_AUTH_PATHS.some((p) =>
+        requestUrl.includes(p)
+      );
+
+      if (isNonSessionAuthEndpoint) {
+        console.log(
+          '[Axios Interceptor] 401 from a non-session endpoint — surfacing to the caller, not logging out:',
+          requestUrl
+        );
+        return Promise.reject(error);
+      }
+
       if (!onLoginRoute && !isRedirecting) {
         console.log('[Axios Interceptor] Token expired, clearing auth state and redirecting to login');
 
@@ -118,6 +141,7 @@ axiosRequest.interceptors.response.use(
 
         // Clear token cookie
         Cookies.remove('token');
+        Cookies.remove('networkRole');
 
         // Clear Redux state and React Query cache
         try {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Icon } from "@iconify/react/dist/iconify.js";
@@ -13,6 +14,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import { GetNetworkStanding } from "@/src/lib/request-handlers/networkMgt";
 import NetworkAgentFilter from "../NetworkAgentFilter";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
 interface MentorshipUser {
     id?: string;
@@ -48,7 +50,8 @@ interface Mentorship {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
-    // PENDING is legacy — nothing is created in this state any more. Retained so
+    // PENDING is where a mentor's own request sits until the mentee's zone lead
+    // or an admin settles it. Retained so
     // any row predating the drop_mentorship_acceptance_001 migration still renders.
     PENDING: { bg: "bg-blue-100",   text: "text-blue-700"   },
     ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
@@ -145,6 +148,7 @@ function AgentModalCard({ label, user, tier }: { label: string; user?: Mentorshi
 
 export default function AgentNetworkMentorshipsTable() {
     const { user } = useAuth();
+    const router = useRouter();
 
     // Tier is fetched fresh from the server so it cannot be spoofed via client-side state
     const [agentTier, setAgentTier] = useState<string | null>(null);
@@ -162,6 +166,34 @@ export default function AgentNetworkMentorshipsTable() {
 
     const [viewMentorship, setViewMentorship]     = useState<Mentorship | null>(null);
     const [detailMentorship, setDetailMentorship] = useState<Mentorship | null>(null);
+
+    // Row action menu. A zone lead supervises mentorships across their patch, so
+    // they get the same row actions an admin has; a plain agent gets only the
+    // actions they are a party to.
+    const [menuRow, setMenuRow] = useState<number | null>(null);
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+    const [decisionTarget, setDecisionTarget] = useState<{ id: string; action: "approve" | "reject"; pair: string } | null>(null);
+    const [rejectReason, setRejectReason] = useState("");
+    const [isDeciding, setIsDeciding] = useState(false);
+    const [statusTarget, setStatusTarget] = useState<{ id: string; newStatus: string } | null>(null);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+    // Zone-lead direct assign. Distinct from the invite flow above: a lead pairs
+    // two OTHER agents and the mapping lands ACTIVE, because the lead is the
+    // approver — there is no request to raise.
+    // Two-step, mirroring the admin's Create Mentorship Mapping: step 1 picks
+    // the mentor, step 2 is the same multi-select candidate table. A lead pairs
+    // in batches for the same reason an admin does — onboarding a cohort under
+    // one mentor is the common case, and one-at-a-time made that N trips.
+    const [showAssignModal, setShowAssignModal]   = useState(false);
+    const [assignStep, setAssignStep]             = useState<1 | 2>(1);
+    const [assignMentorId, setAssignMentorId]     = useState("");
+    const [assignMentorName, setAssignMentorName] = useState("");
+    // Staged for the confirm dialog, exactly as the admin flow stages its own.
+    const [pendingAssigns, setPendingAssigns]     = useState<MenteeCandidate[]>([]);
+    const [isAssigning, setIsAssigning]           = useState(false);
+    // Bumped after a successful batch so the picker refetches and clears.
+    const [assignToken, setAssignToken]           = useState(0);
 
     // Invite modal
     const [showInviteModal, setShowInviteModal] = useState(false);
@@ -196,6 +228,69 @@ export default function AgentNetworkMentorshipsTable() {
             })
             .catch(() => {});
     }, [candidatesToken]);
+
+    const closeAssign = () => {
+        setShowAssignModal(false);
+        setAssignStep(1);
+        setAssignMentorId("");
+        setAssignMentorName("");
+        setPendingAssigns([]);
+    };
+
+    /**
+     * No batch endpoint exists, so a multi-select fans out one POST per mentee
+     * — the same shape the admin table uses. allSettled rather than all: a
+     * rejection partway through (the mentor hit their cap, someone else
+     * mentored the agent first) must not discard the mappings that already
+     * succeeded.
+     */
+    const handleAssign = async () => {
+        if (!assignMentorId || pendingAssigns.length === 0) return;
+        setIsAssigning(true);
+        try {
+            const results = await Promise.allSettled(
+                pendingAssigns.map((c) =>
+                    axiosRequest.post(API_ROUTES.network.assignMentorship, {
+                        mentor_id: assignMentorId,
+                        mentee_id: c.agent_id ?? c.id ?? c.user_id,
+                    }),
+                ),
+            );
+            const failures = results.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+            const succeeded = results.length - failures.length;
+
+            if (succeeded > 0) {
+                toast.success(
+                    succeeded === 1
+                        ? "Mentorship created and is now active"
+                        : `${succeeded} mentorships created and are now active`,
+                );
+            }
+            if (failures.length > 0) {
+                // One toast per distinct reason — a batch that trips the cap
+                // would otherwise stack identical messages. Every eligibility
+                // rule the mentor path enforces applies here too, so surface
+                // the server's reason rather than a generic failure.
+                const reasons = new Set(
+                    failures.map((f: any) =>
+                        f.reason?.response?.data?.detail ||
+                        f.reason?.response?.data?.message ||
+                        "Failed to create the mentorship",
+                    ),
+                );
+                reasons.forEach((reason) => toast.error(reason as string));
+            }
+
+            setPendingAssigns([]);
+            if (succeeded > 0) {
+                setAssignToken((t) => t + 1);   // refresh candidates + allowance
+                fetchMentorships();
+                if (succeeded === results.length) closeAssign();
+            }
+        } finally {
+            setIsAssigning(false);
+        }
+    };
 
     const canInvite = agentTier === "SILVER" || agentTier === "GOLD";
     const tierBelow = tiersBelowLabel(agentTier);
@@ -254,7 +349,68 @@ export default function AgentNetworkMentorshipsTable() {
             .catch(() => {});
     }, [viewMentorship?.id]);
 
-    const openModal = (m: Mentorship) => { setViewMentorship(m); setDetailMentorship(null); };
+    const handleDecision = async () => {
+        if (!decisionTarget) return;
+        const { id, action } = decisionTarget;
+        setIsDeciding(true);
+        try {
+            await toast.promise(
+                action === "approve"
+                    ? axiosRequest.post(API_ROUTES.network.approveMentorship(id), {})
+                    : axiosRequest.post(API_ROUTES.network.rejectMentorship(id), {
+                        ...(rejectReason.trim() ? { reason: rejectReason.trim() } : {}),
+                    }),
+                {
+                    loading: action === "approve" ? "Approving request..." : "Rejecting request...",
+                    success: action === "approve"
+                        ? "Request approved — the mentorship is now active"
+                        : "Request rejected and removed",
+                    // The lead's zone is re-checked server-side, so an out-of-zone
+                    // decision comes back as a reason worth showing verbatim.
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message
+                        || `Failed to ${action} the request`,
+                }
+            );
+            setDecisionTarget(null);
+            setRejectReason("");
+            fetchMentorships();
+        } catch {
+            // surfaced by toast.promise; modal stays open for a retry
+        } finally {
+            setIsDeciding(false);
+        }
+    };
+
+    const handleStatusUpdate = async () => {
+        if (!statusTarget) return;
+        setIsUpdatingStatus(true);
+        try {
+            await toast.promise(
+                axiosRequest.patch(API_ROUTES.network.myMentorshipDetails(statusTarget.id), {
+                    status: statusTarget.newStatus,
+                }),
+                {
+                    loading: "Updating status...",
+                    success: `Status updated to ${statusTarget.newStatus}`,
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message
+                        || "Failed to update status",
+                }
+            );
+            setStatusTarget(null);
+            fetchMentorships();
+        } catch {
+            // surfaced by toast.promise
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    };
+
+    // Zone leads and mentors get the same full detail page an admin sees, rather
+    // than the lighter read-only modal this table used to open. The page is
+    // already role-aware: it fetches through the agent endpoint and shows only
+    // the actions the caller may perform.
+    const openModal = (m: Mentorship) =>
+        router.push(PAGE_ROUTES.dashboard.network.mentorship.details(m.id));
     const closeModal = () => { setViewMentorship(null); setDetailMentorship(null); };
 
     const resetInviteModal = () => {
@@ -335,15 +491,32 @@ export default function AgentNetworkMentorshipsTable() {
                           * server-fetched tier. Absent from the DOM entirely for Bronze agents —
                           * cannot be revealed via browser inspect element.
                           */}
-                        {canInvite && (
-                            <button
-                                onClick={() => setShowInviteModal(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
-                            >
-                                <Icon icon="mdi:account-multiple-plus-outline" width="16" />
-                                Add Mentees
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/*
+                              * Zone leads pair two other agents directly. Gated on the
+                              * server-fetched `isZoneManager` standing, so it is absent from
+                              * the DOM for anyone without an ACTIVE zone assignment — the
+                              * endpoint re-checks the zone tree regardless.
+                              */}
+                            {isZoneManager && (
+                                <button
+                                    onClick={() => setShowAssignModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                                >
+                                    <Icon icon="mdi:account-switch-outline" width="16" />
+                                    Create Mapping
+                                </button>
+                            )}
+                            {canInvite && (
+                                <button
+                                    onClick={() => setShowInviteModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                                >
+                                    <Icon icon="mdi:account-multiple-plus-outline" width="16" />
+                                    Add Mentees
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="mt-4 flex items-center gap-3 flex-wrap">
                         <select
@@ -352,6 +525,7 @@ export default function AgentNetworkMentorshipsTable() {
                             className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
                             <option value="">All</option>
+                            <option value="PENDING">Pending</option>
                             <option value="ACTIVE">Active</option>
                             <option value="PAUSED">Paused</option>
                             <option value="ENDED">Ended</option>
@@ -405,6 +579,7 @@ export default function AgentNetworkMentorshipsTable() {
                                     <th className="px-6 py-3 text-left">Status</th>
                                     <th className="px-6 py-3 text-left">Started</th>
                                     <th className="px-6 py-3 text-left">Ended</th>
+                                    <th className="px-6 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -469,6 +644,22 @@ export default function AgentNetworkMentorshipsTable() {
                                             <td className="px-6 py-4 text-sm text-gray-700">
                                                 {m.ended_at ? formatDate(m.ended_at) : "—"}
                                             </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                                        // Fixed-positioned menu: anchor to the viewport rect so it
+                                                        // is not clipped by the table's overflow-x-auto wrapper.
+                                                        setMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 180) });
+                                                        setMenuRow(menuRow === index ? null : index);
+                                                    }}
+                                                    className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 transition-colors"
+                                                    aria-label="Row actions"
+                                                >
+                                                    <Icon icon="mdi:dots-vertical" width="18" />
+                                                </button>
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -494,6 +685,186 @@ export default function AgentNetworkMentorshipsTable() {
                     </div>
                 )}
             </div>
+
+            {/* Row actions. Backdrop closes on any outside click. */}
+            {menuRow !== null && mentorships[menuRow] && (() => {
+                const m = mentorships[menuRow];
+                const isParty = isSameId(m.mentor_id, user?.id) || isSameId(m.mentee_id, user?.id);
+                const pair = `${fullName(m.mentor, m.mentor_id)} -> ${fullName(m.mentee, m.mentee_id)}`;
+                // A lead may settle and re-status anything in their zone; a plain
+                // agent may only end a mentorship they are part of. Both are
+                // re-checked server-side - this only keeps dead options off screen.
+                const canSettle = isZoneManager && m.status === "PENDING";
+                const canRestatus = isZoneManager && m.status !== "PENDING";
+                // No self-service exit. Ending a mentorship is a supervisory act:
+                // a party who wants out asks their zone lead or an admin to do
+                // it. The API refuses it either way - no agent key holds
+                // network.end_mentorship any more.
+                void isParty;
+                return (
+                    <>
+                        <div className="fixed inset-0 z-40" onClick={() => setMenuRow(null)} />
+                        <div
+                            className="fixed bg-white shadow-xl rounded-lg z-50 border border-gray-200 overflow-hidden min-w-[180px]"
+                            style={{ top: menuPos.top, left: menuPos.left }}
+                        >
+                            <button
+                                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700 transition-colors border-b border-gray-100"
+                                onClick={() => { setMenuRow(null); openModal(m); }}
+                            >
+                                <Icon icon="mdi:eye-outline" width="14" className="text-gray-500" />
+                                <span>View details</span>
+                            </button>
+
+                            {canSettle && (
+                                <>
+                                    <button
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700 transition-colors border-b border-gray-100"
+                                        onClick={() => { setMenuRow(null); setDecisionTarget({ id: m.id, action: "approve", pair }); }}
+                                    >
+                                        <Icon icon="mdi:check-decagram-outline" width="14" className="text-green-600" />
+                                        <span>Approve request</span>
+                                    </button>
+                                    <button
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700 transition-colors border-b border-gray-100"
+                                        onClick={() => { setMenuRow(null); setRejectReason(""); setDecisionTarget({ id: m.id, action: "reject", pair }); }}
+                                    >
+                                        <Icon icon="mdi:close-octagon-outline" width="14" className="text-red-600" />
+                                        <span>Reject request</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {canRestatus && (["ACTIVE", "PAUSED", "ENDED"] as const)
+                                .filter((st) => st !== m.status)
+                                .map((st) => {
+                                    const icons: Record<string, string> = {
+                                        ACTIVE: "mdi:check-circle-outline",
+                                        PAUSED: "mdi:pause-circle-outline",
+                                        ENDED: "mdi:stop-circle-outline",
+                                    };
+                                    const colors: Record<string, string> = {
+                                        ACTIVE: "text-green-600",
+                                        PAUSED: "text-yellow-600",
+                                        ENDED: "text-gray-500",
+                                    };
+                                    return (
+                                        <button
+                                            key={st}
+                                            className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700 transition-colors border-b last:border-b-0 border-gray-100"
+                                            onClick={() => { setMenuRow(null); setStatusTarget({ id: m.id, newStatus: st }); }}
+                                        >
+                                            <Icon icon={icons[st]} width="14" className={colors[st]} />
+                                            <span>Set {st.charAt(0) + st.slice(1).toLowerCase()}</span>
+                                        </button>
+                                    );
+                                })}
+
+
+                        </div>
+                    </>
+                );
+            })()}
+
+            {/* Approve / reject a PENDING request */}
+            {decisionTarget && (() => {
+                const isReject = decisionTarget.action === "reject";
+                return (
+                    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                            <div className="p-6">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${isReject ? "bg-red-50" : "bg-green-50"}`}>
+                                    <Icon
+                                        icon={isReject ? "mdi:close-octagon-outline" : "mdi:check-decagram-outline"}
+                                        width="24"
+                                        className={isReject ? "text-red-600" : "text-green-600"}
+                                    />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                    {isReject ? "Reject this request?" : "Approve this request?"}
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    <span className="font-semibold text-gray-700">{decisionTarget.pair}</span>
+                                    {isReject ? (
+                                        <> will be <span className="font-semibold text-red-600">permanently deleted</span>, not
+                                        archived. Both agents are notified, naming you. The mentor may request again.</>
+                                    ) : (
+                                        <> becomes <span className="font-semibold text-green-700">active</span> immediately and
+                                        overrides begin accruing. Both agents are notified.</>
+                                    )}
+                                </p>
+                                {isReject && (
+                                    <div className="mt-4">
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                                            Reason <span className="font-normal normal-case tracking-normal text-gray-400">(optional)</span>
+                                        </label>
+                                        <textarea
+                                            value={rejectReason}
+                                            onChange={(e) => setRejectReason(e.target.value)}
+                                            rows={3}
+                                            placeholder="Included in the notification sent to both agents"
+                                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                                <button
+                                    onClick={() => { setDecisionTarget(null); setRejectReason(""); }}
+                                    disabled={isDeciding}
+                                    className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 disabled:opacity-40 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDecision}
+                                    disabled={isDeciding}
+                                    className={`px-8 py-2.5 text-sm font-bold text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg ${
+                                        isReject ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" : "bg-primary hover:bg-primary/90 shadow-primary/20"
+                                    }`}
+                                >
+                                    {isReject ? "Yes, reject" : "Yes, approve"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* Status change confirm */}
+            {statusTarget && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="p-6">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                <Icon icon="mdi:swap-horizontal" width="24" className="text-primary" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Update status?</h3>
+                            <p className="text-sm text-gray-500">
+                                Set this mentorship to{" "}
+                                <span className="font-semibold text-gray-700">{statusTarget.newStatus}</span>?
+                                {statusTarget.newStatus === "ENDED" && " Ending is permanent - it cannot be reactivated."}
+                            </p>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setStatusTarget(null)}
+                                disabled={isUpdatingStatus}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 disabled:opacity-40 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleStatusUpdate}
+                                disabled={isUpdatingStatus}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
+                            >
+                                Yes, update
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* View modal */}
             {viewMentorship && modalData && (
@@ -598,6 +969,170 @@ export default function AgentNetworkMentorshipsTable() {
                 </div>
             )}
 
+            {/* Zone-lead direct assign */}
+            {showAssignModal && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                    <div className={`bg-white rounded-2xl shadow-xl w-full overflow-hidden flex flex-col ${assignStep === 1 ? "max-w-md" : "max-w-4xl"}`}>
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+                            <div className="min-w-0">
+                                <h3 className="text-lg font-semibold text-gray-900">Create Mentorship Mapping</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {assignStep === 1
+                                        ? "Step 1 of 2 — choose the mentor"
+                                        : <>Step 2 of 2 — choose mentees for <span className="font-semibold text-gray-700">{assignMentorName}</span></>}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                {assignStep === 2 && (
+                                    <button
+                                        onClick={() => { setAssignStep(1); setPendingAssigns([]); }}
+                                        disabled={isAssigning}
+                                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                                    >
+                                        <Icon icon="mdi:arrow-left" width="14" />
+                                        Change mentor
+                                    </button>
+                                )}
+                                <button
+                                    onClick={closeAssign}
+                                    disabled={isAssigning}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+                                >
+                                    <Icon icon="lucide:x" width="18" className="text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {assignStep === 1 ? (
+                            <>
+                                <div className="p-6 space-y-5">
+                                    {/* Info banner — mirrors the admin's, but says ACTIVE
+                                        without qualification: a lead IS the approver, so
+                                        their create skips the PENDING request entirely. */}
+                                    <div className="flex gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                                        <Icon icon="mdi:information-outline" width="18" className="text-blue-500 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-blue-700 leading-relaxed">
+                                            Pick the mentor first — they must be Silver-tier or above. The next step lists
+                                            only the agents in your zone that mentor is eligible to take on. Each mapping
+                                            becomes <span className="font-semibold">ACTIVE</span> immediately and both
+                                            agents are notified — no approval step, because you are the approver.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-gray-700">Mentor Agent</label>
+                                        {/*
+                                          * NetworkAgentFilter reads GET /network/agents, which
+                                          * returns exactly the caller's visibility scope. For a
+                                          * lead that is their zone tree — the same set the assign
+                                          * endpoint validates against, so a selection made here
+                                          * cannot come back as out-of-zone.
+                                          */}
+                                        <NetworkAgentFilter
+                                            value={assignMentorId}
+                                            onChange={(id: string, label?: string) => {
+                                                setAssignMentorId(id);
+                                                setAssignMentorName(label ?? "");
+                                            }}
+                                            placeholder="Search a Silver or Gold agent in your zone…"
+                                        />
+                                        <p className="text-[11px] text-gray-400">
+                                            Must be Silver or Gold, and ranked above every mentee you pick.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="mt-2 pt-4 px-6 pb-6 border-t border-gray-100 flex justify-end gap-3">
+                                    <button
+                                        onClick={closeAssign}
+                                        className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => setAssignStep(2)}
+                                        disabled={!assignMentorId}
+                                        className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                                    >
+                                        Choose mentees
+                                        <Icon icon="mdi:arrow-right" width="14" />
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            /*
+                             * Same picker the admin uses, pointed at the AGENT candidates
+                             * endpoint with mentor_id. That param makes the endpoint list
+                             * candidates for the chosen mentor rather than the caller, and
+                             * restricts them to the caller's zone tree — so nothing the
+                             * table offers can be refused by the assign endpoint.
+                             */
+                            <MenteeCandidatePicker
+                                voice="mentor"
+                                tiersBelowLabel="lower-tier"
+                                endpoint={API_ROUTES.network.mentorshipCandidates}
+                                extraParams={{ mentor_id: assignMentorId }}
+                                menteeCap={0}
+                                remainingSlots={0}
+                                allowanceLoaded={false}
+                                isSubmitting={isAssigning}
+                                refreshToken={assignToken}
+                                onMentorOne={(c) => setPendingAssigns([c])}
+                                onMentorMany={(cs) => setPendingAssigns(cs)}
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Assign confirm — same shape and copy as the admin's create confirm. */}
+            {pendingAssigns.length > 0 && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="p-6">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                <Icon icon="mdi:account-multiple-plus" width="24" className="text-primary" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                {pendingAssigns.length === 1 ? "Create mentorship mapping?" : `Create ${pendingAssigns.length} mappings?`}
+                            </h3>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                You are about to pair <span className="font-semibold text-gray-700">{assignMentorName}</span> as mentor with{" "}
+                                {pendingAssigns.length === 1 ? (
+                                    <span className="font-semibold text-gray-700">{candidateName(pendingAssigns[0])}</span>
+                                ) : (
+                                    <span className="font-semibold text-gray-700">{pendingAssigns.length} mentees</span>
+                                )}. Each mapping becomes <span className="font-semibold">ACTIVE</span> immediately and both agents are notified.
+                            </p>
+                            {pendingAssigns.length > 1 && (
+                                <ul className="mt-4 max-h-32 overflow-y-auto space-y-1 border-t border-gray-100 pt-3">
+                                    {pendingAssigns.map((c) => (
+                                        <li key={c.agent_id ?? c.id ?? c.user_id} className="text-xs text-gray-500 truncate">
+                                            {candidateName(c)}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setPendingAssigns([])}
+                                disabled={isAssigning}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 disabled:opacity-40 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAssign}
+                                disabled={isAssigning}
+                                className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
+                            >
+                                {isAssigning ? "Creating..." : "Yes, create"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Invite confirmation */}
             {pendingInvites.length > 0 && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
@@ -607,19 +1142,21 @@ export default function AgentNetworkMentorshipsTable() {
                                 <Icon icon="mdi:account-plus-outline" width="24" className="text-primary" />
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                                {pendingInvites.length === 1 ? "Start this mentorship?" : `Start ${pendingInvites.length} mentorships?`}
+                                {pendingInvites.length === 1 ? "Request this mentorship?" : `Request ${pendingInvites.length} mentorships?`}
                             </h3>
                             <p className="text-sm text-gray-500 leading-relaxed">
                                 {pendingInvites.length === 1 ? (
                                     <>
-                                        You are about to take on{" "}
+                                        You are about to request{" "}
                                         <span className="font-semibold text-gray-700">{candidateName(pendingInvites[0])}</span>{" "}
                                         as your mentee.
                                     </>
                                 ) : (
-                                    <>You are about to take on <span className="font-semibold text-gray-700">{pendingInvites.length} agents</span> as your mentees.</>
+                                    <>You are about to request <span className="font-semibold text-gray-700">{pendingInvites.length} agents</span> as your mentees.</>
                                 )}{" "}
-                                The mentorship becomes <span className="font-semibold">ACTIVE</span> immediately and they are notified.
+                                {pendingInvites.length === 1 ? "This is sent" : "These are sent"} as a{" "}
+                                <span className="font-semibold">request</span> for their zone lead or an
+                                administrator to approve — overrides only start accruing once approved.
                             </p>
                             {pendingInvites.length > 1 && (
                                 <ul className="mt-4 max-h-32 overflow-y-auto space-y-1 border-t border-gray-100 pt-3">
@@ -644,7 +1181,7 @@ export default function AgentNetworkMentorshipsTable() {
                                 disabled={isInviting}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
                             >
-                                {isInviting ? "Creating..." : "Yes, proceed"}
+                                {isInviting ? "Submitting..." : "Yes, send request"}
                             </button>
                         </div>
                     </div>
