@@ -12,7 +12,7 @@ import BreadCrumb from "@/src/components/breadcrumb";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { formatDate } from "@/src/lib/utils";
+import { formatDate, isSameId } from "@/src/lib/utils";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import { GetNetworkStanding } from "@/src/lib/request-handlers/networkMgt";
@@ -81,12 +81,20 @@ function TierBadge({ tier }: { tier?: string }) {
     );
 }
 
-function AgentCard({ label, user, tier, profileId, showProfileLink }: {
+function AgentCard({ label, user, tier, profileId, showProfileLink, profileHref, profileLabel }: {
     label: string;
     user?: MentorshipUser;
     tier?: string;
     profileId?: string;
     showProfileLink?: boolean;
+    /**
+     * Where "View Profile" points. Admins get the full user-management record;
+     * an agent gets the scoped network profile, because agents do not hold
+     * `users.read` and the admin route would bounce them. When the card IS the
+     * caller, the page routes them to their own settings instead.
+     */
+    profileHref?: (id: string) => string;
+    profileLabel?: string;
 }) {
     return (
         <div>
@@ -99,11 +107,15 @@ function AgentCard({ label, user, tier, profileId, showProfileLink }: {
                 </div>
                 {showProfileLink && profileId && (
                     <Link
-                        href={`/user-management/agents/${profileId}`}
+                        href={
+                            profileHref
+                                ? profileHref(profileId)
+                                : `/user-management/agents/${profileId}`
+                        }
                         className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors"
                     >
                         <Icon icon="mdi:open-in-new" width="13" />
-                        View Profile
+                        {profileLabel ?? "View Profile"}
                     </Link>
                 )}
             </div>
@@ -159,6 +171,15 @@ export default function MentorshipDetailPage() {
     // their scope, so the link resolves for them; a plain agent's scope is only
     // themselves, and the profile page says so rather than erroring.
     const canViewProfiles = !isAgent || isZoneManager || Boolean(standing?.isMentor);
+
+    // Both parties get a link. Where it goes depends on who is being looked at:
+    // the caller's own card leads to their settings, where the record is theirs
+    // to edit, rather than to a read-only copy of themselves.
+    const isSelf = (agentId?: string) => Boolean(agentId && isSameId(agentId, user?.id));
+    const profileHrefFor = (agentId: string) =>
+        isSelf(agentId)
+            ? PAGE_ROUTES.dashboard.settings.personalInfo
+            : PAGE_ROUTES.dashboard.network.agents.details(agentId);
 
     const [decision, setDecision] = useState<"approve" | "reject" | null>(null);
     const [decisionReason, setDecisionReason] = useState("");
@@ -327,7 +348,9 @@ export default function MentorshipDetailPage() {
                                 user={mentorship.mentor}
                                 tier={mentorship.mentor_tier}
                                 profileId={mentorship.mentor_id}
-                                showProfileLink={!isAgent}
+                                showProfileLink={!isAgent || canViewProfiles || isSelf(mentorship.mentor_id)}
+                                profileHref={isAgent ? profileHrefFor : undefined}
+                                profileLabel={isAgent && isSelf(mentorship.mentor_id) ? "My Profile" : undefined}
                             />
                         </Grid>
 
@@ -337,7 +360,9 @@ export default function MentorshipDetailPage() {
                                 user={mentorship.mentee}
                                 tier={mentorship.mentee_tier}
                                 profileId={mentorship.mentee_id}
-                                showProfileLink={!isAgent}
+                                showProfileLink={!isAgent || canViewProfiles || isSelf(mentorship.mentee_id)}
+                                profileHref={isAgent ? profileHrefFor : undefined}
+                                profileLabel={isAgent && isSelf(mentorship.mentee_id) ? "My Profile" : undefined}
                             />
                         </Grid>
 

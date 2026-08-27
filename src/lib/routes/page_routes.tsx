@@ -110,6 +110,9 @@ export const PAGE_ROUTES = {
         settings: {
             base: '/settings',
             kyc: '/settings/kyc',
+            // Where a "view profile" link points when the target IS the caller —
+            // they edit their own record here rather than reading a scoped copy.
+            personalInfo: '/settings/personal-info',
         },
         rolesPermissions: {
             base: '/roles-permissions',
