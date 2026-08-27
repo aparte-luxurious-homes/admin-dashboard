@@ -164,6 +164,7 @@ export type PropertyFormValues = {
     extension_discount_policy: IDiscountPolicy;
     amenities: string[];
     amenityIds: number[];
+    event_types: string[];
 };
 
 export function createEmptyUnit(): UnitFormValues {

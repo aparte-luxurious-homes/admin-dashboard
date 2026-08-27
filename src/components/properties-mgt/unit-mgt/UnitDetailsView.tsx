@@ -310,6 +310,10 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                     <div className="space-y-1 sm:space-y-2 lg:space-y-3">
                                         {[
                                             { icon: LuUsers, label: 'Capacity', value: `${propertyUnit?.max_guests || 0} Guests` },
+                                            ...(propertyUnit?.seating_capacity ? [{ icon: 'solar:chair-bold-duotone', label: 'Seating Capacity', value: `${propertyUnit.seating_capacity}` }] : []),
+                                            ...(propertyUnit?.standing_capacity ? [{ icon: 'solar:users-group-rounded-bold-duotone', label: 'Standing Capacity', value: `${propertyUnit.standing_capacity}` }] : []),
+                                            ...(propertyUnit?.car_park_spaces ? [{ icon: 'solar:car-bold-duotone', label: 'Car Park Spaces', value: `${propertyUnit.car_park_spaces}` }] : []),
+                                            ...(propertyUnit?.power_supply_provision ? [{ icon: 'solar:bolt-bold-duotone', label: 'Power Supply', value: `${propertyUnit.power_supply_provision}` }] : []),
                                             { icon: 'solar:dollar-minimalistic-bold-duotone', label: 'Caution Fee', value: `${formatMoney(propertyUnit?.caution_fee || 0)}` },
                                             { icon: 'solar:box-bold-duotone', label: 'Available Inventory', value: `${propertyUnit?.count || 1} Units` }
                                         ].map((spec, i) => (
