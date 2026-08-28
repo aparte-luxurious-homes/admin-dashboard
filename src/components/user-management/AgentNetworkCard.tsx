@@ -8,6 +8,7 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { UserRole } from "@/src/lib/enums";
+import { formatPoints } from "@/src/lib/utils";
 
 interface AgentNetworkSummary {
     current_tier: string;
@@ -166,7 +167,7 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                     {/* 30-day points */}
                     <div className="flex flex-col justify-center space-y-1.5">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Points (30d)</p>
-                        <p className="text-xl font-bold text-gray-900">{pts.toLocaleString()}</p>
+                        <p className="text-xl font-bold text-gray-900">{formatPoints(pts)}</p>
                     </div>
 
                     {/* Listing commission */}
@@ -185,8 +186,8 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
                 {nextTier && (
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
-                            <p className="text-xs text-gray-500 font-medium">{pts.toLocaleString()} / {target} pts</p>
-                            <p className="text-xs font-semibold text-primary">{Math.max(0, target - pts)} pts to {nextTier}</p>
+                            <p className="text-xs text-gray-500 font-medium">{formatPoints(pts)} / {target} pts</p>
+                            <p className="text-xs font-semibold text-primary">{formatPoints(Math.max(0, target - pts))} pts to {nextTier}</p>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                             <div

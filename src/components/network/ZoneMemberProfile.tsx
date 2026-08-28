@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import BreadCrumb from "@/src/components/breadcrumb";
 import Loader from "@/src/components/loader";
-import { formatDate } from "@/src/lib/utils";
+import { formatDate, formatPoints } from "@/src/lib/utils";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { GetNetworkAgentProfile } from "@/src/lib/request-handlers/networkMgt";
 
@@ -182,7 +182,7 @@ export default function ZoneMemberProfile({
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             <Stat
                                 label="Points"
-                                value={agent.points_30d ?? 0}
+                                value={formatPoints(agent.points_30d)}
                                 hint="Last 30 days"
                             />
                             <Stat label="Mentees" value={agent.mentee_count ?? 0} />
