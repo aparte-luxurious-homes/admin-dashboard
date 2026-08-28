@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import BreadCrumb from "@/src/components/breadcrumb";
 import Loader from "@/src/components/loader";
-import { formatDate } from "@/src/lib/utils";
+import { formatDate, formatPoints } from "@/src/lib/utils";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { GetNetworkAgentProfile } from "@/src/lib/request-handlers/networkMgt";
 
@@ -55,7 +55,18 @@ function Stat({ label, value, hint }: { label: string; value: string | number; h
  * a plain "not in your network" state rather than an error, because reaching it
  * usually means a stale link rather than a fault.
  */
-export default function ZoneMemberProfile() {
+export default function ZoneMemberProfile({
+    backLink,
+    backLabel,
+}: {
+    /**
+     * Where the breadcrumb returns to. Defaults to the zone roster, but the same
+     * view is reached from a mentorship mapping now, and sending a mentor back to
+     * a roster they may not even have is wrong.
+     */
+    backLink?: string;
+    backLabel?: string;
+} = {}) {
     const params = useParams();
     const id = params?.id as string | undefined;
     const { data: agent, isLoading, isError, error } = GetNetworkAgentProfile(id);
@@ -72,8 +83,8 @@ export default function ZoneMemberProfile() {
             <BreadCrumb
                 description=""
                 active="Agent Profile"
-                link_one={PAGE_ROUTES.dashboard.network.zoneMembers.base}
-                link_one_name="Zone Members"
+                link_one={backLink ?? PAGE_ROUTES.dashboard.network.zoneMembers.base}
+                link_one_name={backLabel ?? "Zone Members"}
             />
 
             {isLoading ? (
@@ -92,7 +103,7 @@ export default function ZoneMemberProfile() {
                     </h3>
                     <p className="text-sm text-gray-500 max-w-sm">
                         {status === 403
-                            ? "This agent is not in a zone you manage, so their profile is not available to you."
+                            ? "This agent is not in your network, so their profile is not available to you."
                             : "This agent may have been removed."}
                     </p>
                 </div>
@@ -171,7 +182,7 @@ export default function ZoneMemberProfile() {
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             <Stat
                                 label="Points"
-                                value={agent.points_30d ?? 0}
+                                value={formatPoints(agent.points_30d)}
                                 hint="Last 30 days"
                             />
                             <Stat label="Mentees" value={agent.mentee_count ?? 0} />
