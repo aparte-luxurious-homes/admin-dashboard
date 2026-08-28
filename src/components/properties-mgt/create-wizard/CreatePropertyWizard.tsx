@@ -292,6 +292,14 @@ export default function CreatePropertyWizard() {
 
   const handleCloseShowDiscontinueModal = () => setShowDiscontinueModal(false);
   const handleOpenShowDiscontinueModal = () => setShowDiscontinueModal(true);
+
+  const [firstTimeUploadingMedia, setFirstTimeUploadingMedia] = useState(false);
+  useEffect(() => {
+    if (WizardStep.MEDIA_DOCS) {
+      setFirstTimeUploadingMedia(true);
+    }
+  }, []);
+
   // Step validation
   const validateStep = (step: WizardStep): boolean => {
     switch (step) {
@@ -316,7 +324,7 @@ export default function CreatePropertyWizard() {
         }
         if (!address.trim()) {
           toast.error("Address is required");
-          return false;
+          return false; 
         }
         if (!google_place_id) {
           toast.error(
@@ -360,7 +368,7 @@ export default function CreatePropertyWizard() {
         const anyPropertyMedia = Object.values(propertyMedia).some(
           (files) => (files?.length ?? 0) > 0,
         );
-        if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
+        if (WizardStep.MEDIA_DOCS && !firstTimeUploadingMedia) {
           toast.error(
             "Please upload photos for at least one property category before creating",
           );
@@ -436,6 +444,17 @@ export default function CreatePropertyWizard() {
     if (!validateStep(WizardStep.MEDIA_DOCS)) return;
 
     const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
+
+    const anyPropertyMedia = Object.values(propertyMedia).some(
+      (files) => (files?.length ?? 0) > 0,
+    );
+
+    if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
+      toast.error(
+        "Please upload photos for at least one property category before creating",
+      );
+      return false;
+    };
 
     if (
       values.latitude == null ||
