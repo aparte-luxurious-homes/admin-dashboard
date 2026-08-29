@@ -501,6 +501,7 @@ export default function CreatePropertyWizard() {
       ...(values.owner_phoneNumber && {
         owner_phone: values.owner_phoneNumber,
       }),
+      ...(values.ownerId && { owner_id: String(values.ownerId) }),
       long_stay_discount_policy: values.long_stay_discount_policy,
       extension_discount_policy: values.extension_discount_policy,
     };

@@ -298,6 +298,7 @@ export interface ICreateProperty {
     rules?: string
     owner_email?: string
     owner_name?: string
+    owner_id?: string
     event_types?: number[]
 }
 
