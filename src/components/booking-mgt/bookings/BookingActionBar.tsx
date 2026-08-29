@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -70,7 +71,7 @@ export default function BookingActionBar({
       { bookingId: booking.id },
       {
         onSuccess: () => {
-          toast.success("Booking marked as checked in");
+          toast.success(MESSAGES.MSG_BOOKING_MARKED_AS_CHECKED_IN);
           onStatusChange(BookingStatus.CHECKED_IN);
         },
         onError: (err: any) =>
@@ -98,7 +99,7 @@ export default function BookingActionBar({
       { bookingId: booking.id },
       {
         onSuccess: () => {
-          toast.success("Booking marked as checked out");
+          toast.success(MESSAGES.MSG_BOOKING_MARKED_AS_CHECKED_OUT);
           onStatusChange(BookingStatus.CHECKED_OUT);
         },
         onError: (err: any) =>
@@ -112,7 +113,7 @@ export default function BookingActionBar({
       { bookingId: booking.id },
       {
         onSuccess: () => {
-          toast.success("Booking request approved — guest can now pay");
+          toast.success(MESSAGES.MSG_BOOKING_REQUEST_APPROVED_GUEST_CAN_NOW_P);
           onStatusChange(BookingStatus.PENDING);
         },
         onError: (err: any) =>
@@ -128,7 +129,7 @@ export default function BookingActionBar({
       { bookingId: booking.id, reason: rejectReason || undefined },
       {
         onSuccess: () => {
-          toast.success("Booking request rejected");
+          toast.success(MESSAGES.MSG_BOOKING_REQUEST_REJECTED);
           setShowRejectModal(false);
           setRejectReason("");
           onStatusChange(BookingStatus.CANCELLED);
@@ -146,7 +147,7 @@ export default function BookingActionBar({
       { bookingId: booking.id },
       {
         onSuccess: () => {
-          toast.success("Cancellation approved");
+          toast.success(MESSAGES.MSG_CANCELLATION_APPROVED);
           onStatusChange(BookingStatus.CANCELLED);
         },
         onError: (err: any) =>
@@ -389,10 +390,10 @@ export default function BookingActionBar({
                 setShowCancelConfirm(false);
                 if (newStatus === BookingStatus.CANCEL_REQUESTED) {
                   toast.success(
-                    "Cancellation requested — awaiting admin approval",
+                    MESSAGES.MSG_CANCELLATION_REQUESTED_AWAITING_ADMIN_AP,
                   );
                 } else {
-                  toast.success("Booking cancelled");
+                  toast.success(MESSAGES.MSG_BOOKING_CANCELLED);
                 }
                 onStatusChange(newStatus ?? BookingStatus.CANCELLED);
               },
@@ -424,14 +425,14 @@ export default function BookingActionBar({
             },
             {
               onSuccess: () => {
-                toast.success("Booking record deleted");
+                toast.success(MESSAGES.MSG_BOOKING_RECORD_DELETED);
                 router.push(
                   PAGE_ROUTES.dashboard.bookingManagement.bookings.base,
                 );
               },
               onError: (err: any) => {
                 toast.error(
-                  err?.response?.data?.detail || "Failed to delete booking",
+                  err?.response?.data?.detail || MESSAGES.MSG_FAILED_TO_DELETE_BOOKING,
                 );
               },
             },

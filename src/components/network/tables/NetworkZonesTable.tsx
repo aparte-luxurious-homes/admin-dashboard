@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -437,7 +438,7 @@ export default function NetworkZonesTable() {
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
                             <button onClick={() => setEditZone(null)} className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
                             <button
-                                onClick={() => { if (!editName.trim()) { toast.error("Name is required"); return; } setShowEditConfirm(true); }}
+                                onClick={() => { if (!editName.trim()) { toast.error(MESSAGES.MSG_NAME_IS_REQUIRED); return; } setShowEditConfirm(true); }}
                                 className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                             >
                                 <Icon icon="mdi:content-save" width="14" /> Save

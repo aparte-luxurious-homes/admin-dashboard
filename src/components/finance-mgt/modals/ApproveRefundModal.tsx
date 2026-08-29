@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import Modal from "../../modal/Modal";
 import { ApproveRefund, ApproveRefundPayload } from "@/src/lib/request-handlers/financeMgt";
@@ -37,7 +38,7 @@ export function ApproveRefundModal({ isOpen, onClose, transactionId, amount, cur
                 },
             });
             setRefundProof(response.data.data.url);
-            toast.success("Proof uploaded successfully");
+            toast.success(MESSAGES.MSG_PROOF_UPLOADED_SUCCESSFULLY);
         } catch (error: any) {
             toast.error(error.response?.data?.message || "Failed to upload proof");
         } finally {
@@ -59,7 +60,7 @@ export function ApproveRefundModal({ isOpen, onClose, transactionId, amount, cur
             },
             {
                 onSuccess: () => {
-                    toast.success("Refund approved successfully");
+                    toast.success(MESSAGES.MSG_REFUND_APPROVED_SUCCESSFULLY);
                     onClose();
                 },
                 onError: (err: any) => {

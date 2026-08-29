@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
@@ -183,7 +184,7 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
 
   const onSubmit = () => {
     if (!reasonValid) {
-      toast.error("Please provide a rejection reason");
+      toast.error(MESSAGES.MSG_PLEASE_PROVIDE_A_REJECTION_REASON);
       return;
     }
     updateMutation.mutate(
@@ -198,7 +199,7 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
       },
       {
         onSuccess: () => {
-          toast.success("KYC status updated");
+          toast.success(MESSAGES.MSG_KYC_STATUS_UPDATED);
           setIsEditing(false);
           setReason("");
           onUpdate?.();
@@ -252,7 +253,7 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
       },
       {
         onSuccess: () => {
-          toast.success("Identity details updated");
+          toast.success(MESSAGES.MSG_IDENTITY_DETAILS_UPDATED);
           closePiiEditor();
           onUpdate?.();
         },

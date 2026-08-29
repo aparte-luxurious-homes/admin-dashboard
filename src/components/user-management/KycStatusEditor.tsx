@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
@@ -41,7 +42,7 @@ const KycStatusEditor: React.FC<KycStatusEditorProps> = ({ userId, currentStatus
                     ? { rejection_reason: rejectionReason }
                     : {}),
             });
-            toast.success("KYC status updated successfully");
+            toast.success(MESSAGES.MSG_KYC_STATUS_UPDATED_SUCCESSFULLY);
             setIsEditing(false);
             setRejectionReason("");
             onUpdate?.();

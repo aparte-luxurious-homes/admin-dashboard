@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -551,7 +552,7 @@ export default function ZoneDetailPage() {
                             </button>
                             <button
                                 onClick={() => {
-                                    if (!editName.trim()) { toast.error("Zone name is required"); return; }
+                                    if (!editName.trim()) { toast.error(MESSAGES.MSG_ZONE_NAME_IS_REQUIRED); return; }
                                     setShowSaveConfirm(true);
                                 }}
                                 disabled={isSaving}

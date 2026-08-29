@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState, useEffect } from "react";
 import Modal from "../../modal/Modal";
 import { ApproveWithdrawal, VerifyPayoutAccount, AuthorizeDisbursement, ResendDisbursementOtp } from "@/src/lib/request-handlers/financeMgt";
@@ -75,7 +76,7 @@ export function ApproveWithdrawalModal({
                     const txnStatus = data?.data?.status;
                     if (data?.requires_otp || txnStatus === "AWAITING_AUTHORIZATION") {
                         setStep("otp");
-                        toast.success("OTP sent to merchant admin. Enter it to complete the disbursement.");
+                        toast.success(MESSAGES.MSG_OTP_SENT_TO_MERCHANT_ADMIN_ENTER_IT_TO_C);
                     } else if (txnStatus === "FAILED") {
                         // Defensive: backend now raises 400 on disbursement failure,
                         // but guard against older deploys that still return 200 with a FAILED txn.
@@ -83,7 +84,7 @@ export function ApproveWithdrawalModal({
                         toast.error(reason);
                         handleClose();
                     } else {
-                        toast.success("Withdrawal approved and payout initiated");
+                        toast.success(MESSAGES.MSG_WITHDRAWAL_APPROVED_AND_PAYOUT_INITIATED);
                         handleClose();
                     }
                 },
@@ -116,7 +117,7 @@ export function ApproveWithdrawalModal({
             },
             {
                 onSuccess: () => {
-                    toast.success("Payout account re-verified successfully. Retrying approval...");
+                    toast.success(MESSAGES.MSG_PAYOUT_ACCOUNT_RE_VERIFIED_SUCCESSFULLY_);
                     handleApprove();
                 },
                 onError: (err: any) => {
@@ -137,7 +138,7 @@ export function ApproveWithdrawalModal({
             { walletId, payload: { transaction_id: transactionId, otp: otpValue.trim() } },
             {
                 onSuccess: () => {
-                    toast.success("Disbursement authorized successfully");
+                    toast.success(MESSAGES.MSG_DISBURSEMENT_AUTHORIZED_SUCCESSFULLY);
                     handleClose();
                 },
                 onError: (err: any) => {
@@ -154,7 +155,7 @@ export function ApproveWithdrawalModal({
         resendOtp.mutate(
             { walletId, payload: { transaction_id: transactionId } },
             {
-                onSuccess: () => toast.success("OTP resent successfully"),
+                onSuccess: () => toast.success(MESSAGES.MSG_OTP_RESENT_SUCCESSFULLY),
                 onError: (err: any) => {
                     const detail = err?.response?.data?.detail;
                     toast.error(

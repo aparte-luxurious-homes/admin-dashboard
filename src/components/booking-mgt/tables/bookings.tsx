@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { formatDate, formatMoney } from "@/src/lib/utils";
 import { DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
 import { DeleteBooking, GetAllBookings } from "@/src/lib/request-handlers/bookingMgt";
@@ -408,11 +409,11 @@ export default function BookingsTable({
                             },
                             {
                                 onSuccess: () => {
-                                    toast.success('Booking deleted successfully');
+                                    toast.success(MESSAGES.MSG_BOOKING_DELETED_SUCCESSFULLY);
                                     setIsDeleteDialogOpen(false);
                                     setBookingToDelete(null);
                                 },
-                                onError: () => toast.error('Failed to delete booking')
+                                onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_BOOKING)
                             }
                         );
                     }

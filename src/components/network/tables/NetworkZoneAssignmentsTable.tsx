@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -753,8 +754,8 @@ export default function NetworkZoneAssignmentsTable() {
                         <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
                             <button onClick={resetCreate} className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
                             <button onClick={() => {
-                                if (!createAgentId) { toast.error("Agent is required"); return; }
-                                if (!createZoneId)  { toast.error("Zone is required");  return; }
+                                if (!createAgentId) { toast.error(MESSAGES.MSG_AGENT_IS_REQUIRED); return; }
+                                if (!createZoneId)  { toast.error(MESSAGES.MSG_ZONE_IS_REQUIRED);  return; }
                                 setShowCreateConfirm(true);
                             }} className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
                                 <Icon icon="mdi:plus" width="14" /> Create

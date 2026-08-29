@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import BreadCrumb from "@/src/components/breadcrumb";
 import Button from "@/src/components/button";
 import { Icon } from "@iconify/react";
@@ -200,7 +201,7 @@ const PaymentPayout = () => {
 
     const parsedAmount = parseFloat(rewardAmount);
     if (isNaN(parsedAmount) || parsedAmount < 0) {
-      toast.error("Please enter a valid reward amount.", toastStyle);
+      toast.error(MESSAGES.MSG_PLEASE_ENTER_A_VALID_REWARD_AMOUNT, toastStyle);
       return;
     }
 
@@ -214,7 +215,7 @@ const PaymentPayout = () => {
         {
           onSuccess: () => {
             if (!enabledChanged) {
-              toast.success("Reward settings saved.", toastStyle);
+              toast.success(MESSAGES.MSG_REWARD_SETTINGS_SAVED, toastStyle);
             }
           },
           onError: (error: any) => {
@@ -239,7 +240,7 @@ const PaymentPayout = () => {
               saveAmount(true);
             } else {
               toast.success(
-                res?.data?.message ?? "Reward settings saved.",
+                res?.data?.message ?? MESSAGES.MSG_REWARD_SETTINGS_SAVED,
                 toastStyle
               );
             }

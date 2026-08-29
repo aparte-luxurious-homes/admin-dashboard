@@ -1,3 +1,4 @@
+import { MESSAGES } from '@/src/lib/messages';
 import { DeletePropertyUnit, GetSinglePropertyUnit, GetUnitAvailability, CreateUnitAvailability } from "@/src/lib/request-handlers/unitMgt";
 import { useEffect, useState } from "react";
 import { IPropertyUnit } from "../types";
@@ -391,8 +392,8 @@ export default function UnitDetailsView({ propertyId, unitId }: { propertyId: st
                                                     saveAvailability(
                                                         { propertyId: String(propertyId), unitId, payload: { dates } },
                                                         {
-                                                            onSuccess: () => toast.success('Availability updated successfully'),
-                                                            onError: () => toast.error('Failed to update availability')
+                                                            onSuccess: () => toast.success(MESSAGES.MSG_AVAILABILITY_UPDATED_SUCCESSFULLY),
+                                                            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_UPDATE_AVAILABILITY)
                                                         }
                                                     );
                                                 }}
