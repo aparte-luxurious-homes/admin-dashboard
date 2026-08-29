@@ -59,9 +59,11 @@ function DiscountPolicyEditor({
           </h3>
           <p className="text-sm text-zinc-500 mt-1">{description}</p>
         </div>
+        {/* CustomCheckbox hands back the new boolean, not a change event —
+            reading e.target.checked off it yielded undefined. */}
         <CustomCheckbox
           checked={policy.is_active}
-          onChange={(e) => formik.setFieldValue(`${fieldPrefix}.is_active`, e.target.checked)}
+          onChange={(checked) => formik.setFieldValue(`${fieldPrefix}.is_active`, checked)}
           label="Enable Policy"
         />
       </div>
@@ -72,11 +74,22 @@ function DiscountPolicyEditor({
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1.5 ml-0.5">
               Discount Type
             </label>
+            {/* CustomDropdown's API is selected/handleSelection over a flat
+                option list, not value/onChange over {label,value} pairs. It
+                renders each option directly, so labels go in and the matching
+                DiscountType is mapped back out. */}
             <CustomDropdown
-              options={allowedTypes}
-              value={policy.discount_type}
-              onChange={(val) => formik.setFieldValue(`${fieldPrefix}.discount_type`, val)}
-              placeholder="Select Type"
+              options={allowedTypes.map((t) => t.label)}
+              selected={
+                allowedTypes.find((t) => t.value === policy.discount_type)?.label ??
+                "Select Type"
+              }
+              handleSelection={(label: string) => {
+                const match = allowedTypes.find((t) => t.label === label);
+                if (match) {
+                  formik.setFieldValue(`${fieldPrefix}.discount_type`, match.value);
+                }
+              }}
             />
           </div>
 

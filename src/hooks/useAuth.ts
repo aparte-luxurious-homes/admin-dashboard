@@ -21,6 +21,9 @@ export const fetchUser = async (): Promise<IUser> => {
 
   if (user.role === UserRole.GUEST) {
     Cookies.remove("token");
+    // Zone standing is per-account. Leaving this behind lets the next agent to
+    // log in on this browser inherit a former lead's zone navigation.
+    Cookies.remove("networkRole");
     window.location.href = PAGE_ROUTES.auth.login;
     throw Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
   }
@@ -169,6 +172,9 @@ export const useLogin = () => {
       // Remove token if there's an error
       // console.log('[useLogin] Login error, removing token');
       Cookies.remove("token");
+    // Zone standing is per-account. Leaving this behind lets the next agent to
+    // log in on this browser inherit a former lead's zone navigation.
+    Cookies.remove("networkRole");
       // console.error('[useLogin] Login failed:', error);
     }
   });
@@ -269,6 +275,9 @@ export const useLogout = () => {
     mutationFn: async () => {
       await axiosRequest.post("/auth/logout");
       Cookies.remove("token");
+    // Zone standing is per-account. Leaving this behind lets the next agent to
+    // log in on this browser inherit a former lead's zone navigation.
+    Cookies.remove("networkRole");
     },
     onSuccess: () => {
       dispatch(clearUser());

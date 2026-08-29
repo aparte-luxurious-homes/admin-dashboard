@@ -76,8 +76,15 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         if (tier) setAgentTier(tier);
       }
       if (zoneRes.status === "fulfilled") {
-        const role = zoneRes.value?.data?.data?.assignment?.role as AgentNetworkRole | undefined;
-        const resolved = role === AgentNetworkRole.AREA_MANAGER || role === AgentNetworkRole.REGIONAL_LEAD
+        const assignment = zoneRes.value?.data?.data?.assignment;
+        const role = assignment?.role as AgentNetworkRole | undefined;
+        // Status matters as much as role: an ENDED assignment still carries
+        // `role: AREA_MANAGER`, and reading the role alone is what kept the
+        // zone navigation alive for former managers. Checked here as well as
+        // server-side so a stale deployment of either half cannot resurrect it.
+        const isActive = !assignment?.status || assignment.status === "ACTIVE";
+        const resolved = isActive
+          && (role === AgentNetworkRole.AREA_MANAGER || role === AgentNetworkRole.REGIONAL_LEAD)
           ? role
           : null;
         dispatch(setAgentNetworkRole(resolved));
@@ -86,12 +93,25 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         } else {
           Cookies.remove("networkRole");
         }
+      } else {
+        // Fail closed. Without this the optimistic cookie restore above stands
+        // unchallenged whenever the zone call errors, so a stale or foreign
+        // cookie keeps granting zone navigation for its full day of life. A
+        // real lead loses the links until the next successful call, which is
+        // the safer way to be wrong.
+        dispatch(setAgentNetworkRole(null));
+        Cookies.remove("networkRole");
       }
     }).catch(() => {});
   }, [user?.role, dispatch, networkEnabled]);
 
   const isZoneManager = networkEnabled
     && (agentNetworkRole === AgentNetworkRole.AREA_MANAGER || agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD);
+
+  // Agent nav children that only make sense with an ACTIVE zone assignment.
+  // A plain agent has no zone, so these would render as links to an empty
+  // roster and a list of somebody else's assignments.
+  const ZONE_LEAD_ONLY_SEGMENTS = ["zone-members", "zone-assignments"];
 
   const effectiveNavLinks = useMemo(() => {
     // Both "Network" (agent) and "Network Management" (admin) sections share
@@ -101,6 +121,23 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     const base = networkEnabled
       ? NAV_LINKS
       : NAV_LINKS.filter((link) => link.pathName !== "network");
+    // Agents only. The admin "Network Management" section shares the `network`
+    // pathName and carries its own Zone Assignments child, and isZoneManager is
+    // false for staff (it is derived from an agent's zone standing) — so
+    // filtering on pathName alone would strip that link from every admin.
+    if (user?.role === UserRole.AGENT && !isZoneManager) {
+      // Strip the zone-only children rather than the whole Network section:
+      // Events, Actions and Mentorship stay, since every agent has those.
+      return base.map((link) => {
+        if (link.pathName !== "network" || !link.children) return link;
+        return {
+          ...link,
+          children: link.children.filter(
+            (child) => !ZONE_LEAD_ONLY_SEGMENTS.includes(child.pathName)
+          ),
+        };
+      });
+    }
     if (!isZoneManager) return base;
     return base.map((link) => {
       if (link.pathName !== "booking-management") return link;
@@ -113,7 +150,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         ),
       };
     });
-  }, [isZoneManager, networkEnabled]);
+  }, [isZoneManager, networkEnabled, user?.role]);
 
   // Handle click to navigate
   const handleClick = () => {

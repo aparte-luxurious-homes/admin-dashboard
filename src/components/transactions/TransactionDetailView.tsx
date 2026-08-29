@@ -160,6 +160,10 @@ function DetailSkeleton() {
 const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDetailViewProps) => {
     const [data, setData] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(false);
+    // Kept so the empty state can tell "no such transaction" apart from "not
+    // yours to see" — rendering both as "not found" hid a real 403 behind a
+    // message that sent people looking for a missing record.
+    const [loadError, setLoadError] = useState<{ status?: number; message: string } | null>(null);
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
@@ -171,13 +175,23 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const fetchData = useCallback(async () => {
         if (!id) return;
         setLoading(true);
+        setLoadError(null);
         try {
             const response = await axiosRequest.get(
                 API_ROUTES.transactions.details(String(id))
             );
             setData(response?.data?.data);
         } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to fetch transaction details");
+            // FastAPI raises HTTPException with the reason under `detail`;
+            // `message` only exists on the success wrapper, so reading it alone
+            // always fell through to the generic fallback.
+            const message =
+                error?.response?.data?.detail ||
+                error?.response?.data?.message ||
+                "Failed to fetch transaction details";
+            setData(null);
+            setLoadError({ status: error?.response?.status, message });
+            toast.error(message);
         } finally {
             setLoading(false);
         }
@@ -218,8 +232,19 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                     <DetailSkeleton />
                 ) : !data ? (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                        <Icon icon="mdi:receipt-text-remove-outline" width="48" className="mb-3" />
-                        <p className="text-lg font-medium">Transaction not found</p>
+                        <Icon
+                            icon={loadError?.status === 403 ? "mdi:lock-outline" : "mdi:receipt-text-remove-outline"}
+                            width="48"
+                            className="mb-3"
+                        />
+                        <p className="text-lg font-medium">
+                            {loadError?.status === 403
+                                ? "You don't have access to this transaction"
+                                : "Transaction not found"}
+                        </p>
+                        {loadError?.message && (
+                            <p className="text-sm mt-1">{loadError.message}</p>
+                        )}
                     </div>
                 ) : (
                     <>

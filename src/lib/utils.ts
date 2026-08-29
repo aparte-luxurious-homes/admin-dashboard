@@ -133,3 +133,25 @@ export function isSameId(
   return String(a) === String(b);
 }
 
+
+/**
+ * Render a gamification point total for display.
+ *
+ * Points stopped being whole numbers when the mentor override began paying up
+ * the whole mentorship chain: each level's cut is a percentage of the level
+ * below it, so a grand-mentor routinely earns 0.1 of a point. The API sends
+ * these as `Numeric(12,2)`, which reaches the client as a number like `98` or
+ * `0.1` — and occasionally as a string, depending on the serializer.
+ *
+ * Whole values render with no decimal point ("98", not "98.0"); fractional
+ * values keep one place. Thousands are grouped.
+ */
+export function formatPoints(value: string | number | null | undefined): string {
+  const n = typeof value === "string" ? Number(value) : value ?? 0;
+  if (n === null || n === undefined || Number.isNaN(n)) return "0";
+  const rounded = Math.round(n * 10) / 10;
+  return rounded.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  });
+}

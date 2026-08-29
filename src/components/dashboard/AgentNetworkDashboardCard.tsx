@@ -8,7 +8,7 @@ import Link from "next/link";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { formatDate } from "@/src/lib/utils";
+import { formatDate, formatPoints } from "@/src/lib/utils";
 
 interface AgentNetworkSummary {
     current_tier: "BRONZE" | "SILVER" | "GOLD";
@@ -199,9 +199,9 @@ export default function AgentNetworkDashboardCard() {
                                             <div className="space-y-2">
                                                 <div>
                                                     <div className="flex items-center justify-between mb-1.5">
-                                                        <p className="text-xs text-gray-500 font-medium">{points30d.toLocaleString()} / {tierTarget} pts</p>
+                                                        <p className="text-xs text-gray-500 font-medium">{formatPoints(points30d)} / {tierTarget} pts</p>
                                                         {nextTierLabel ? (
-                                                            <p className="text-xs font-semibold text-primary">{Math.max(0, tierTarget - points30d)} pts to {nextTierLabel}</p>
+                                                            <p className="text-xs font-semibold text-primary">{formatPoints(Math.max(0, tierTarget - points30d))} pts to {nextTierLabel}</p>
                                                         ) : (
                                                             <p className="text-xs font-semibold text-yellow-600">Maintaining Gold</p>
                                                         )}
