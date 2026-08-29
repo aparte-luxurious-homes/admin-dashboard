@@ -260,8 +260,8 @@ export default function CreatePropertyView({}) {
   const sortAmenities = (
     amenities: IAmenity[] = [],
     newAmeities: string[] = [],
-  ): number[] => {
-    const sortedAmenities: number[] = [];
+  ): string[] => {
+    const sortedAmenities: string[] = [];
     const safeAmenities = Array.isArray(amenities) ? amenities : [];
     const safeNew = Array.isArray(newAmeities) ? newAmeities : [];
     const prevAmenityNames = safeAmenities.map((a) => a.name);

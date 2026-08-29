@@ -454,7 +454,7 @@ export default function EditPropertyView({
       if (values.type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
         updatePayload.event_types = availableEventTypes
           .filter(et => values.event_types.includes(et.name))
-          .map(et => Number(et.id));
+          .map(et => String(et.id));
       }
 
       mutate(
