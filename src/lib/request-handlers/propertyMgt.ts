@@ -11,6 +11,7 @@ enum PropertyRequestKeys {
     propertyAmenities = "assignPropertyAmenities",
     getAmenities = "getAmenities",
     createAmenities = "getAmenities",
+    getEventTypes = "getEventTypes",
     featureProperty = "featureProperty",
     createProperty = "createProperty",
     propertyVerification = "propertyVerification",
@@ -161,6 +162,12 @@ export function GetAmenities() {
     });
 }
 
+export function GetEventTypes() {
+    return useQuery({
+        queryKey: [PropertyRequestKeys.getEventTypes],
+        queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.eventTypes.base),
+    });
+}
 
 export function CreateAmenity() {
     const queryClient = useQueryClient();

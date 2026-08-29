@@ -13,6 +13,7 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { fixedAmenities } from "@/src/data/amenities";
 import {
   GetAmenities,
+  GetEventTypes,
   CreateProperty,
   UploadPropertyMedia,
   UploadPropertyDocument,
@@ -114,14 +115,24 @@ export default function CreatePropertyWizard() {
   // empty startup state doesn't clobber a previously-saved draft.
   const [mediaHydrated, setMediaHydrated] = useState(false);
 
-  // Amenities
+  // Amenities and Event Types
   const { data: fetchedAmenities } = GetAmenities();
+  const { data: fetchedEventTypes } = GetEventTypes();
   const [availableAmenities, setAvailableAmenities] =
     useState<IAmenity[]>(fixedAmenities);
+  const [availableEventTypes, setAvailableEventTypes] = useState<
+    { id: string; name: string }[]
+  >([]);
 
   useEffect(() => {
     setAvailableAmenities(fetchedAmenities?.data?.data ?? fixedAmenities);
   }, [fetchedAmenities]);
+
+  useEffect(() => {
+    if (fetchedEventTypes?.data?.data) {
+      setAvailableEventTypes(fetchedEventTypes.data.data);
+    }
+  }, [fetchedEventTypes]);
 
   // API mutations
   const { mutate: createProperty, isPending: isCreating } = CreateProperty();
@@ -189,8 +200,7 @@ export default function CreatePropertyWizard() {
       rules: "",
       amenities: [],
       amenityIds: [],
-      long_stay_discount_policy: { is_active: false, discount_type: DiscountType.FIXED, tiers: [] },
-      extension_discount_policy: { is_active: false, discount_type: DiscountType.PERCENTAGE, tiers: [] },
+      event_types: [],
     },
     enableReinitialize: true,
     onSubmit: (values) => {
@@ -467,26 +477,25 @@ export default function CreatePropertyWizard() {
       return;
     }
 
-    const payload: ICreateProperty = {
+    const propertyPayload: ICreateProperty = {
       name: values.name,
       description: values.description,
       address: values.address,
-      property_type: values.property_type as PropertyType,
+      street_number: values.street_number || undefined,
+      street_name: values.street_name || undefined,
+      postal_code: values.postal_code || undefined,
+      landmark: values.landmark || undefined,
+      google_place_id: values.google_place_id || "",
       city: values.city,
       state: values.state,
       country: values.country,
-      latitude: values.latitude,
-      longitude: values.longitude,
-      google_place_id: values.google_place_id,
+      latitude: values.latitude || 0,
+      longitude: values.longitude || 0,
+      property_type: values.property_type as PropertyType,
       amenities: sortedAmenities,
       is_pet_allowed: values.is_pet_allowed,
       is_party_allowed: values.is_party_allowed,
-      ...(values.street_number && { street_number: values.street_number }),
-      ...(values.street_name && { street_name: values.street_name }),
-      ...(values.postal_code && { postal_code: values.postal_code }),
-      ...(values.landmark && { landmark: values.landmark }),
-      ...(values.geocode_raw && { geocode_raw: values.geocode_raw }),
-      ...(values.rules && { rules: values.rules }),
+      rules: values.rules || undefined,
       ...(values.owner_email && { owner_email: values.owner_email }),
       ...(values.owner_name && { owner_name: values.owner_name }),
       ...(values.owner_phoneNumber && {
@@ -496,8 +505,14 @@ export default function CreatePropertyWizard() {
       extension_discount_policy: values.extension_discount_policy,
     };
 
+    if (values.property_type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
+        propertyPayload.event_types = availableEventTypes
+            .filter(et => values.event_types.includes(et.name))
+            .map(et => Number(et.id));
+    }
+
     createProperty(
-      { payload },
+      { payload: propertyPayload },
       {
         onSuccess: (response) => {
           const propertyId = response?.data?.data?.id;
@@ -775,6 +790,7 @@ export default function CreatePropertyWizard() {
           <StepPropertyDetails
             formik={formik}
             availableAmenities={availableAmenities}
+            availableEventTypes={availableEventTypes}
             userRole={user?.role}
             isLoaded={isLoaded}
           />
