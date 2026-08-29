@@ -153,7 +153,7 @@ export type PropertyFormValues = {
     description: string;
     latitude: number | null;
     longitude: number | null;
-    ownerId: number;
+    ownerId: string;
     owner_name: string;
     owner_email: string;
     owner_phoneNumber: string;
@@ -163,7 +163,7 @@ export type PropertyFormValues = {
     long_stay_discount_policy: IDiscountPolicy;
     extension_discount_policy: IDiscountPolicy;
     amenities: string[];
-    amenityIds: number[];
+    amenityIds: string[];
     event_types: string[];
 };
 

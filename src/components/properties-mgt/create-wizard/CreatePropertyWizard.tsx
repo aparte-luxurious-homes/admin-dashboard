@@ -156,8 +156,8 @@ export default function CreatePropertyWizard() {
   const sortAmenities = (
     amenities: IAmenity[] = [],
     selectedNames: string[] = [],
-  ): number[] => {
-    const sorted: number[] = [];
+  ): string[] => {
+    const sorted: string[] = [];
     const safeAmenities = Array.isArray(amenities) ? amenities : [];
     const safeNames = Array.isArray(selectedNames) ? selectedNames : [];
     const amenityNames = safeAmenities.map((a) => a.name);
@@ -191,13 +191,23 @@ export default function CreatePropertyWizard() {
       description: "",
       latitude: null,
       longitude: null,
-      ownerId: 0,
+      ownerId: "",
       owner_name: "",
       owner_email: "",
       owner_phoneNumber: "",
       is_pet_allowed: false,
       is_party_allowed: false,
       rules: "",
+      long_stay_discount_policy: {
+        is_active: false,
+        discount_type: DiscountType.PERCENTAGE,
+        tiers: []
+      },
+      extension_discount_policy: {
+        is_active: false,
+        discount_type: DiscountType.PERCENTAGE,
+        tiers: []
+      },
       amenities: [],
       amenityIds: [],
       event_types: [],
@@ -509,7 +519,7 @@ export default function CreatePropertyWizard() {
     if (values.property_type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
         propertyPayload.event_types = availableEventTypes
             .filter(et => values.event_types.includes(et.name))
-            .map(et => Number(et.id));
+            .map(et => String(et.id));
     }
 
     createProperty(
