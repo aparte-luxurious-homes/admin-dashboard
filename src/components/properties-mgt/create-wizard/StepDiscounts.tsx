@@ -97,8 +97,11 @@ function DiscountPolicyEditor({
                       <input
                         type="number"
                         min="1"
-                        value={tier.min_nights}
-                        onChange={(e) => updateTier(index, "min_nights", Number(e.target.value))}
+                        value={tier.min_nights === ("" as any) ? "" : tier.min_nights.toString()}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateTier(index, "min_nights", val === "" ? ("" as any) : Number(val));
+                        }}
                         className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
                       />
                     </div>
@@ -110,8 +113,11 @@ function DiscountPolicyEditor({
                         type="number"
                         min="0"
                         step={policy.discount_type === DiscountType.PERCENTAGE ? "0.01" : "1"}
-                        value={tier.value}
-                        onChange={(e) => updateTier(index, "value", Number(e.target.value))}
+                        value={tier.value === ("" as any) ? "" : tier.value.toString()}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateTier(index, "value", val === "" ? ("" as any) : Number(val));
+                        }}
                         className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
                       />
                     </div>
@@ -121,7 +127,7 @@ function DiscountPolicyEditor({
                         onClick={() => removeTier(index)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                       >
-                        <TrashIcon />
+                        <TrashIcon className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
