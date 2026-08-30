@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState, useEffect } from "react";
 import Modal from "../../modal/Modal";
 import { UpdateWallet } from "@/src/lib/request-handlers/financeMgt";
@@ -42,11 +43,11 @@ export function EditWalletModal({
 
     const handleSave = () => {
         if (!amount || parseFloat(amount) <= 0) {
-            toast.error("Enter a valid amount");
+            toast.error(MESSAGES.MSG_ENTER_A_VALID_AMOUNT);
             return;
         }
         if (!reason.trim()) {
-            toast.error("Reason is required");
+            toast.error(MESSAGES.MSG_REASON_IS_REQUIRED);
             return;
         }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { format } from "date-fns";
@@ -27,8 +28,8 @@ export default function PlatformConflictsPage() {
                 cancelText: "Cancel",
                 onConfirm: () => {
                     resolveConflict(conflictId, {
-                        onSuccess: () => toast.success("Conflict marked as resolved."),
-                        onError: () => toast.error("Failed to resolve conflict.")
+                        onSuccess: () => toast.success(MESSAGES.MSG_CONFLICT_MARKED_AS_RESOLVED),
+                        onError: () => toast.error(MESSAGES.MSG_FAILED_TO_RESOLVE_CONFLICT)
                     });
                 }
             })

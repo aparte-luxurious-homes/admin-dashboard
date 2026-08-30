@@ -1,5 +1,6 @@
 "use client"
 
+import { MESSAGES } from '@/src/lib/messages';
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { useState, useMemo, useEffect } from "react";
 import { Icon } from "@iconify/react";
@@ -131,7 +132,7 @@ const RolesPermissionsView = () => {
     const saveChanges = async () => {
         const totalChanges = pendingChanges.toAdd.length + pendingChanges.toRemove.length;
         if (totalChanges === 0) {
-            toast.error("No changes to save");
+            toast.error(MESSAGES.MSG_NO_CHANGES_TO_SAVE);
             return;
         }
 

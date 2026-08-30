@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -26,7 +27,7 @@ export const useRequireRole = (allowedRoles: UserRole[]) => {
     const role = user.role as UserRole | undefined;
     if (!role || !allowedRoles.includes(role)) {
       hasRedirected.current = true;
-      toast.error("You don't have access to that page");
+      toast.error(MESSAGES.MSG_YOU_DON_T_HAVE_ACCESS_TO_THAT_PAGE);
       router.replace(PAGE_ROUTES.dashboard.base);
     }
   }, [user, isFetching, allowedRoles, router]);

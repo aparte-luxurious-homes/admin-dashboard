@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
@@ -68,7 +69,7 @@ const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
     const submit = async (otpString: string) => {
         try {
             await verifyMutation.mutateAsync({ phone, otp: otpString });
-            toast.success("Phone verified. Welcome back.");
+            toast.success(MESSAGES.MSG_PHONE_VERIFIED_WELCOME_BACK);
             // useVerifyPhoneOtp's onSuccess handles the redirect.
         } catch (err: any) {
             toast.error(extractApiMessage(err, "Invalid OTP. Please try again."));
@@ -123,7 +124,7 @@ const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
     const handleResendSms = async () => {
         try {
             await resendMutation.mutateAsync({ phone });
-            toast.success("New OTP sent to your phone.");
+            toast.success(MESSAGES.MSG_NEW_OTP_SENT_TO_YOUR_PHONE);
             setResendCooldown(RESEND_COOLDOWN_SECONDS);
         } catch (err: any) {
             toast.error(extractApiMessage(err, "Couldn't resend OTP. Try the email fallback below."));
@@ -138,7 +139,7 @@ const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
     const handleSendToEmail = async () => {
         try {
             await emailFallbackMutation.mutateAsync({ phone });
-            toast.success("OTP sent to the email on your account.");
+            toast.success(MESSAGES.MSG_OTP_SENT_TO_THE_EMAIL_ON_YOUR_ACCOUNT);
             setResendCooldown(RESEND_COOLDOWN_SECONDS);
         } catch (err: any) {
             toast.error(extractApiMessage(err, "Couldn't send OTP to email. Contact support."));

@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import BreadCrumb from "@/src/components/breadcrumb";
 import { useAuth, fetchUser } from "@/src/hooks/useAuth";
 import { setUser } from "@/src/lib/slices/authSlice";
@@ -65,7 +66,7 @@ const ReferralCodeBox = ({ code }: { code: string }) => {
         className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary text-primary text-sm font-medium hover:bg-primary/5 transition-colors"
       >
         {copied ? <IoCheckmarkOutline className="text-green-500" /> : <IoCopyOutline />}
-        <span className={copied ? 'text-green-500' : ''}>{copied ? 'Copied!' : 'Copy'}</span>
+        <span className={copied ? 'text-green-500' : ''}>{copied ? MESSAGES.MSG_COPIED : 'Copy'}</span>
       </button>
     </div>
   );

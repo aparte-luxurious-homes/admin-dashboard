@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useAdminDisputes, useMyDisputes, useUpdateDisputeStatus } from "@/src/hooks/useDisputes";
 import { useState } from "react";
 import { Skeleton } from "@/src/components/ui/skeleton";
@@ -227,7 +228,7 @@ const DisputesView = () => {
                             className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm font-medium text-amber-600 transition-colors border-b border-gray-100 group last:border-b-0"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                toast.success("Full detail page recommended for resolution");
+                                toast.success(MESSAGES.MSG_FULL_DETAIL_PAGE_RECOMMENDED_FOR_RESOLUT);
                                 setSelectedRow(null);
                             }}
                         >

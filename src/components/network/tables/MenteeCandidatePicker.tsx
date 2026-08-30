@@ -20,6 +20,7 @@
  * the invariant.
  */
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
@@ -317,7 +318,7 @@ export default function MenteeCandidatePicker({
             const payload = res?.data?.data ?? res?.data;
             const pool: MenteeCandidate[] = payload?.items ?? payload?.data ?? (Array.isArray(payload) ? payload : []);
             if (pool.length === 0) {
-                toast.error("No eligible candidates to pick from");
+                toast.error(MESSAGES.MSG_NO_ELIGIBLE_CANDIDATES_TO_PICK_FROM);
                 return;
             }
             // Fisher–Yates over a copy, then take the first N.
@@ -330,7 +331,7 @@ export default function MenteeCandidatePicker({
             setSelected(Object.fromEntries(picked.map((c) => [candidateKey(c), c])));
             toast.success(`Randomly selected ${picked.length} ${picked.length === 1 ? "agent" : "agents"}`);
         } catch {
-            toast.error("Could not build a random selection");
+            toast.error(MESSAGES.MSG_COULD_NOT_BUILD_A_RANDOM_SELECTION);
         } finally {
             setLoading(false);
         }

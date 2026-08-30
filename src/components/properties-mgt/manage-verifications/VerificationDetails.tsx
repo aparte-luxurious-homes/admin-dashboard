@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import Image from "next/image";
 import { MdCopyAll } from "react-icons/md";
 import { useEffect, useRef, useState } from "react";
@@ -117,7 +118,7 @@ export default function VerificationDetails({
         },
         {
           onSuccess: () => {
-            toast.success("Property verification updated successfuly", {
+            toast.success(MESSAGES.MSG_PROPERTY_VERIFICATION_UPDATED_SUCCESSFUL, {
               duration: 6000,
               style: {
                 maxWidth: "500px",
@@ -127,7 +128,7 @@ export default function VerificationDetails({
             setEditMode(false);
           },
           onError: (error) =>
-            toast.error("Something went wrong", {
+            toast.error(MESSAGES.MSG_SOMETHING_WENT_WRONG, {
               duration: 6000,
               style: {
                 maxWidth: "500px",
@@ -155,7 +156,7 @@ export default function VerificationDetails({
           setShowRejectModal(false);
           setRejectReason("");
           formik.setFieldValue("feedback", reason);
-          toast.success("Property verification rejected", {
+          toast.success(MESSAGES.MSG_PROPERTY_VERIFICATION_REJECTED, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
           });
@@ -198,7 +199,7 @@ export default function VerificationDetails({
       },
       {
         onSuccess: () => {
-          toast.success("Document marked verified", {
+          toast.success(MESSAGES.MSG_DOCUMENT_MARKED_VERIFIED, {
             duration: 4000,
             style: { maxWidth: "500px", width: "max-content" },
           });
@@ -238,7 +239,7 @@ export default function VerificationDetails({
         onSuccess: () => {
           setDocRejectingId(null);
           setDocRejectReason("");
-          toast.success("Document rejected", {
+          toast.success(MESSAGES.MSG_DOCUMENT_REJECTED, {
             duration: 4000,
             style: { maxWidth: "500px", width: "max-content" },
           });
@@ -281,7 +282,7 @@ export default function VerificationDetails({
             },
             {
               onSuccess: () =>
-                toast.success("Property verification updated successfuly", {
+                toast.success(MESSAGES.MSG_PROPERTY_VERIFICATION_UPDATED_SUCCESSFUL, {
                   duration: 6000,
                   style: {
                     maxWidth: "500px",
@@ -319,7 +320,7 @@ export default function VerificationDetails({
       {
         onSuccess: () => {
           setShowApproveModal(false);
-          toast.success("Property verification approved", {
+          toast.success(MESSAGES.MSG_PROPERTY_VERIFICATION_APPROVED, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
           });
@@ -361,7 +362,7 @@ export default function VerificationDetails({
       },
       {
         onSuccess: () => {
-          toast.success("Agent assigned successfully", {
+          toast.success(MESSAGES.MSG_AGENT_ASSIGNED_SUCCESSFULLY, {
             duration: 6000,
             style: {
               maxWidth: "500px",
@@ -375,7 +376,7 @@ export default function VerificationDetails({
           toast.error(
             error.status === 409
               ? "Agent already assigned with pending verification"
-              : "Something went wrong",
+              : MESSAGES.MSG_SOMETHING_WENT_WRONG,
             {
               duration: 6000,
               style: {
@@ -424,7 +425,7 @@ export default function VerificationDetails({
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
     if (evidenceUrls.length + files.length > 10) {
-      toast.error("Maximum 10 evidence files per verification");
+      toast.error(MESSAGES.MSG_MAXIMUM_10_EVIDENCE_FILES_PER_VERIFICATI);
       return;
     }
     uploadEvidence(
@@ -433,7 +434,7 @@ export default function VerificationDetails({
         onSuccess: (resp: any) => {
           const urls: string[] = resp?.data?.data?.urls || [];
           if (urls.length === 0) {
-            toast.error("Upload succeeded but no URLs returned");
+            toast.error(MESSAGES.MSG_UPLOAD_SUCCEEDED_BUT_NO_URLS_RETURNED);
             return;
           }
           setEvidenceUrls((prev) => [...prev, ...urls]);
@@ -862,7 +863,7 @@ export default function VerificationDetails({
                           navigator.clipboard.writeText(
                             `APRT25-${property?.id}`,
                           );
-                          toast.success("ID copied!", { duration: 1500 });
+                          toast.success(MESSAGES.MSG_ID_COPIED, { duration: 1500 });
                         }}
                         className="text-zinc-400 hover:text-primary transition-colors"
                       >

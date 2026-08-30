@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosRequest from "@/src/lib/api";
@@ -239,19 +240,19 @@ export default function NetworkEventsTable() {
 
     const handleAdjustSubmit = async () => {
         if (!adjustAgentId.trim()) {
-            toast.error("Select an agent");
+            toast.error(MESSAGES.MSG_SELECT_AN_AGENT);
             return;
         }
         if (!adjustPoints || adjustPoints === 0) {
-            toast.error("Points must be a nonzero number");
+            toast.error(MESSAGES.MSG_POINTS_MUST_BE_A_NONZERO_NUMBER);
             return;
         }
         if (!adjustReason.trim()) {
-            toast.error("Reason is required");
+            toast.error(MESSAGES.MSG_REASON_IS_REQUIRED);
             return;
         }
         if (!relatedEventId.trim()) {
-            toast.error("Related Event ID is required");
+            toast.error(MESSAGES.MSG_RELATED_EVENT_ID_IS_REQUIRED);
             return;
         }
         setIsAdjusting(true);
@@ -707,10 +708,10 @@ export default function NetworkEventsTable() {
                             </button>
                             <button
                                 onClick={() => {
-                                    if (!adjustAgentId.trim()) { toast.error("Agent is required"); return; }
-                                    if (!adjustPoints || adjustPoints === 0) { toast.error("Points must be a nonzero number"); return; }
-                                    if (!adjustReason.trim()) { toast.error("Reason is required"); return; }
-                                    if (!relatedEventId.trim()) { toast.error("Related Event ID is required"); return; }
+                                    if (!adjustAgentId.trim()) { toast.error(MESSAGES.MSG_AGENT_IS_REQUIRED); return; }
+                                    if (!adjustPoints || adjustPoints === 0) { toast.error(MESSAGES.MSG_POINTS_MUST_BE_A_NONZERO_NUMBER); return; }
+                                    if (!adjustReason.trim()) { toast.error(MESSAGES.MSG_REASON_IS_REQUIRED); return; }
+                                    if (!relatedEventId.trim()) { toast.error(MESSAGES.MSG_RELATED_EVENT_ID_IS_REQUIRED); return; }
                                     setShowAdjustConfirm(true);
                                 }}
                                 disabled={isAdjusting}

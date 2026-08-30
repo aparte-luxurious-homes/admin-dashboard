@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -269,7 +270,7 @@ export default function CreateZonePage() {
           </button>
           <button
             onClick={() => {
-              if (!name.trim()) { toast.error('Zone name is required'); return }
+              if (!name.trim()) { toast.error(MESSAGES.MSG_ZONE_NAME_IS_REQUIRED); return }
               setShowConfirm(true)
             }}
             className="px-8 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"

@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
@@ -63,7 +64,7 @@ export const useFlagReview = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
-      toast.success("Review flagged successfully");
+      toast.success(MESSAGES.MSG_REVIEW_FLAGGED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to flag review");
@@ -81,7 +82,7 @@ export const useUnflagReview = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
-      toast.success("Review unflagged successfully");
+      toast.success(MESSAGES.MSG_REVIEW_UNFLAGGED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to unflag review");
@@ -99,7 +100,7 @@ export const useRestoreReview = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
-      toast.success("Review restored successfully");
+      toast.success(MESSAGES.MSG_REVIEW_RESTORED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to restore review");
@@ -117,7 +118,7 @@ export const useRemoveReview = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
-      toast.success("Review removed successfully");
+      toast.success(MESSAGES.MSG_REVIEW_REMOVED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to remove review");
@@ -135,7 +136,7 @@ export const useSubmitReview = () => {
     },
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["property-reviews"] });
-        toast.success("Review submitted successfully");
+        toast.success(MESSAGES.MSG_REVIEW_SUBMITTED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to submit review");
