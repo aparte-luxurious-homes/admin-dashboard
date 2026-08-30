@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef, useState } from "react";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
@@ -156,8 +157,8 @@ export default function CreatePropertyWizard() {
   const sortAmenities = (
     amenities: IAmenity[] = [],
     selectedNames: string[] = [],
-  ): number[] => {
-    const sorted: number[] = [];
+  ): string[] => {
+    const sorted: string[] = [];
     const safeAmenities = Array.isArray(amenities) ? amenities : [];
     const safeNames = Array.isArray(selectedNames) ? selectedNames : [];
     const amenityNames = safeAmenities.map((a) => a.name);
@@ -191,13 +192,23 @@ export default function CreatePropertyWizard() {
       description: "",
       latitude: null,
       longitude: null,
-      ownerId: 0,
+      ownerId: "",
       owner_name: "",
       owner_email: "",
       owner_phoneNumber: "",
       is_pet_allowed: false,
       is_party_allowed: false,
       rules: "",
+      long_stay_discount_policy: {
+        is_active: false,
+        discount_type: DiscountType.PERCENTAGE,
+        tiers: []
+      },
+      extension_discount_policy: {
+        is_active: false,
+        discount_type: DiscountType.PERCENTAGE,
+        tiers: []
+      },
       amenities: [],
       amenityIds: [],
       event_types: [],
@@ -272,7 +283,7 @@ export default function CreatePropertyWizard() {
       (draft.units?.length ?? 0) > 0 ||
       draft.currentStep !== WizardStep.PROPERTY_DETAILS;
     if (hasMeaningfulDraft) {
-      toast.success("Welcome back — we restored your property draft.", {
+      toast.success(MESSAGES.MSG_WELCOME_BACK_WE_RESTORED_YOUR_PROPERTY_D, {
         duration: 4500,
       });
       setShowDiscontinueModal(true);
@@ -333,41 +344,41 @@ export default function CreatePropertyWizard() {
           return false;
         }
         if (!address.trim()) {
-          toast.error("Address is required");
+          toast.error(MESSAGES.MSG_ADDRESS_IS_REQUIRED);
           return false; 
         }
         if (!google_place_id) {
           toast.error(
-            "Please select the address from the suggestions so we can pin it on the map",
+            MESSAGES.MSG_PLEASE_SELECT_THE_ADDRESS_FROM_THE_SUGGE,
           );
           return false;
         }
         if (latitude == null || longitude == null) {
           toast.error(
-            "Coordinates missing \u2014 pick the address from the suggestions again",
+            MESSAGES.MSG_COORDINATES_MISSING_U2014_PICK_THE_ADDRE,
           );
           return false;
         }
         if (!pin_confirmed) {
           toast.error(
-            "Please confirm the map pin matches the actual property location",
+            MESSAGES.MSG_PLEASE_CONFIRM_THE_MAP_PIN_MATCHES_THE_A,
           );
           return false;
         }
         if (!property_type) {
-          toast.error("Property type is required");
+          toast.error(MESSAGES.MSG_PROPERTY_TYPE_IS_REQUIRED);
           return false;
         }
         if (!country.trim()) {
-          toast.error("Country is required");
+          toast.error(MESSAGES.MSG_COUNTRY_IS_REQUIRED);
           return false;
         }
         if (!state.trim()) {
-          toast.error("State is required");
+          toast.error(MESSAGES.MSG_STATE_IS_REQUIRED);
           return false;
         }
         if (!city.trim()) {
-          toast.error("City is required");
+          toast.error(MESSAGES.MSG_CITY_IS_REQUIRED);
           return false;
         }
         return true;
@@ -380,7 +391,7 @@ export default function CreatePropertyWizard() {
         );
         if (WizardStep.MEDIA_DOCS && !firstTimeUploadingMedia) {
           toast.error(
-            "Please upload photos for at least one property category before creating",
+            MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR,
           );
           return false;
         }
@@ -461,7 +472,7 @@ export default function CreatePropertyWizard() {
 
     if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
       toast.error(
-        "Please upload photos for at least one property category before creating",
+        MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR,
       );
       return false;
     };
@@ -472,7 +483,7 @@ export default function CreatePropertyWizard() {
       !values.google_place_id
     ) {
       toast.error(
-        "Address details are incomplete. Go back to step 1 and re-select the address.",
+        MESSAGES.MSG_ADDRESS_DETAILS_ARE_INCOMPLETE_GO_BACK_T,
       );
       return;
     }
@@ -509,7 +520,7 @@ export default function CreatePropertyWizard() {
     if (values.property_type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
         propertyPayload.event_types = availableEventTypes
             .filter(et => values.event_types.includes(et.name))
-            .map(et => Number(et.id));
+            .map(et => String(et.id));
     }
 
     createProperty(
@@ -518,7 +529,7 @@ export default function CreatePropertyWizard() {
         onSuccess: (response) => {
           const propertyId = response?.data?.data?.id;
           if (!propertyId) {
-            toast.error("Property created but failed to get ID");
+            toast.error(MESSAGES.MSG_PROPERTY_CREATED_BUT_FAILED_TO_GET_ID);
             return;
           }
 
@@ -527,7 +538,7 @@ export default function CreatePropertyWizard() {
           clearWizardDraft();
           clearWizardMediaDraft();
 
-          toast.success("Property created successfully");
+          toast.success(MESSAGES.MSG_PROPERTY_CREATED_SUCCESSFULLY);
 
           // Upload property media — one request per non-empty category, so
           // the server persists the `category` tag on each PropertyMedia row.
@@ -581,7 +592,7 @@ export default function CreatePropertyWizard() {
                 { propertyId, payload: docFormData },
                 {
                   onError: () =>
-                    toast.error("Document upload failed", {
+                    toast.error(MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED, {
                       duration: 6000,
                       style: { maxWidth: "500px", width: "max-content" },
                     }),
@@ -675,7 +686,7 @@ export default function CreatePropertyWizard() {
                   });
                 },
                 onError: () =>
-                  toast.error("Failed to create units", {
+                  toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNITS, {
                     duration: 6000,
                     style: { maxWidth: "500px", width: "max-content" },
                   }),
@@ -706,7 +717,7 @@ export default function CreatePropertyWizard() {
           const message =
             (typeof detail === "string" ? detail : detail?.message) ||
             error?.response?.data?.message ||
-            "Something went wrong";
+            MESSAGES.MSG_SOMETHING_WENT_WRONG;
           toast.error(message, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },

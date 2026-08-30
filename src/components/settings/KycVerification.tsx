@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -116,12 +117,12 @@ export default function KycVerification({ embedded = false }: KycVerificationPro
     if (!file) return;
 
     if (!ALLOWED_MIME.includes(file.type)) {
-      toast.error("Unsupported file type. Use JPG, PNG, WEBP, or PDF.");
+      toast.error(MESSAGES.MSG_UNSUPPORTED_FILE_TYPE_USE_JPG_PNG_WEBP_O);
       event.target.value = "";
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("File too large (max 10MB).");
+      toast.error(MESSAGES.MSG_FILE_TOO_LARGE_MAX_10MB);
       event.target.value = "";
       return;
     }
@@ -130,19 +131,19 @@ export default function KycVerification({ embedded = false }: KycVerificationPro
 
   const handleSubmit = () => {
     if (!selectedFile) {
-      toast.error("Pick a file first");
+      toast.error(MESSAGES.MSG_PICK_A_FILE_FIRST);
       return;
     }
     upload(
       { file: selectedFile, documentType: docType },
       {
         onSuccess: () => {
-          toast.success("Document uploaded — awaiting admin review");
+          toast.success(MESSAGES.MSG_DOCUMENT_UPLOADED_AWAITING_ADMIN_REVIEW);
           setSelectedFile(null);
           if (fileInputRef.current) fileInputRef.current.value = "";
         },
         onError: (err: any) => {
-          toast.error(err?.response?.data?.detail || "Upload failed");
+          toast.error(err?.response?.data?.detail || MESSAGES.MSG_UPLOAD_FAILED);
         },
       },
     );

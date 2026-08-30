@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import Image from "next/image";
 import { BellIcon, SettingsIcon } from "@/components/icons";
 import { NAV_LINKS } from "../lib/routes/nav_links";
@@ -237,7 +238,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     // routes reachable by URL, and the loop below only bounces paths that match
     // a nav entry the role may NOT see — a path matching nothing falls through.
     if (!networkEnabled && currentRoute.startsWith("/network")) {
-      toast.error("The Agent Network feature is currently disabled");
+      toast.error(MESSAGES.MSG_THE_AGENT_NETWORK_FEATURE_IS_CURRENTLY_D);
       router.replace(PAGE_ROUTES.dashboard.base);
       return;
     }
@@ -267,7 +268,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       (allow) => allow.length === 0 || allow.includes(role)
     );
     if (!isAllowed) {
-      toast.error("You don't have access to that page");
+      toast.error(MESSAGES.MSG_YOU_DON_T_HAVE_ACCESS_TO_THAT_PAGE);
       router.replace(PAGE_ROUTES.dashboard.base);
     }
   }, [user, currentRoute, router, effectiveNavLinks, networkEnabled]);

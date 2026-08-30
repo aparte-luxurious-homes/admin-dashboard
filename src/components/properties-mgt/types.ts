@@ -306,6 +306,8 @@ export interface ICreateProperty {
     zone_id?: string
     booking_mode?: BookingMode
     event_types?: string[]
+    long_stay_discount_policy?: IDiscountPolicy
+    extension_discount_policy?: IDiscountPolicy
 }
 
 export interface IAssignProperty {
@@ -340,7 +342,9 @@ export interface IUpdateProperty {
     owner_phone?: string,
     zone_id?: string,
     booking_mode?: BookingMode,
-    event_types?: string[]
+    event_types?: string[],
+    long_stay_discount_policy?: IDiscountPolicy,
+    extension_discount_policy?: IDiscountPolicy
 }
 
 export interface IUpdatePropertyUnit {

@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import { MdEdit, MdCopyAll, MdCheck } from "react-icons/md";
 import { LiaPrintSolid } from "react-icons/lia";
@@ -32,10 +33,10 @@ export default function BookingHeader({
     try {
       await navigator.clipboard.writeText(idToCopy);
       setCopied(true);
-      toast.success("Copied!");
+      toast.success(MESSAGES.MSG_COPIED);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Copy failed");
+      toast.error(MESSAGES.MSG_COPY_FAILED);
     }
   };
 

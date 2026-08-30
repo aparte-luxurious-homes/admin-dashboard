@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { PriceTagIcon, UnitIcon, UsersIcon } from "../../icons";
 import {
   formatDate,
@@ -137,42 +138,42 @@ export default function CreateBookingView() {
     },
     onSubmit: async (values) => {
       if (!selectedProperty) {
-        toast.error("Please select a property");
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_PROPERTY);
         return;
       }
 
       if (!selectedUnit) {
-        toast.error("Please select a unit");
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_UNIT);
         return;
       }
 
       if (!values.start_date) {
-        toast.error("Please select a check-in date");
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_CHECK_IN_DATE);
         return;
       }
 
       if (!values.end_date) {
-        toast.error("Please select a check-out date");
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_CHECK_OUT_DATE);
         return;
       }
 
       if (!isNewGuest && !selectedUser) {
-        toast.error("Please select a guest");
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_GUEST);
         return;
       }
 
       if (isNewGuest && !values.guest_email) {
-        toast.error("Guest email is required for new guests");
+        toast.error(MESSAGES.MSG_GUEST_EMAIL_IS_REQUIRED_FOR_NEW_GUESTS);
         return;
       }
 
       if (isNewGuest && !values.guest_first_name) {
-        toast.error("Guest first name is required for new guests");
+        toast.error(MESSAGES.MSG_GUEST_FIRST_NAME_IS_REQUIRED_FOR_NEW_GUE);
         return;
       }
 
       if (isNewGuest && !values.guest_last_name) {
-        toast.error("Guest last name is required for new guests");
+        toast.error(MESSAGES.MSG_GUEST_LAST_NAME_IS_REQUIRED_FOR_NEW_GUES);
         return;
       }
 
@@ -182,7 +183,7 @@ export default function CreateBookingView() {
         values.payment_method === "bank_transfer" &&
         !values.payment_proof_url
       ) {
-        toast.error("Proof of payment is mandatory for bank transfers");
+        toast.error(MESSAGES.MSG_PROOF_OF_PAYMENT_IS_MANDATORY_FOR_BANK_T);
         return;
       }
 
@@ -204,7 +205,7 @@ export default function CreateBookingView() {
         },
         {
           onSuccess: (values) => {
-            toast.success("Booking created successfully", {
+            toast.success(MESSAGES.MSG_BOOKING_CREATED_SUCCESSFULLY, {
               duration: 6000,
               style: {
                 maxWidth: "500px",
@@ -260,7 +261,7 @@ export default function CreateBookingView() {
             const message =
               (typeof detail === "string" ? detail : detail?.message) ||
               error?.response?.data?.message ||
-              "Something went wrong";
+              MESSAGES.MSG_SOMETHING_WENT_WRONG;
             toast.error(message, {
               duration: 6000,
               style: {
@@ -499,7 +500,7 @@ export default function CreateBookingView() {
           const url = data?.data?.data?.url;
           if (url) {
             formik.setFieldValue("payment_proof_url", url);
-            toast.success("Payment proof uploaded successfully");
+            toast.success(MESSAGES.MSG_PAYMENT_PROOF_UPLOADED_SUCCESSFULLY);
           }
         },
         onError: (error: any) => {

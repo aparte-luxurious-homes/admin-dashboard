@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isSameDay, startOfWeek, endOfWeek, isBefore, startOfDay } from "date-fns";
 import { IAvailability, ICreateAvailability } from "../types";
@@ -104,7 +105,7 @@ export default function AvailabilityCalendar({
     // Update selected dates
     const updateSelectedDates = (field: keyof ICreateAvailability, value: any) => {
         if (selectedDates.size === 0) {
-            toast.error("Please select dates first");
+            toast.error(MESSAGES.MSG_PLEASE_SELECT_DATES_FIRST);
             return;
         }
 
@@ -118,7 +119,7 @@ export default function AvailabilityCalendar({
     // Handle save
     const handleSave = () => {
         if (selectedDates.size === 0) {
-            toast.error("No dates selected");
+            toast.error(MESSAGES.MSG_NO_DATES_SELECTED);
             return;
         }
 

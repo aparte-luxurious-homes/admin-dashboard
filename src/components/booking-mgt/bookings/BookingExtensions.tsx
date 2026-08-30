@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { formatMoney, formatDate, formatDateToYYYYMMDD } from "@/src/lib/utils";
@@ -52,7 +53,7 @@ export default function BookingExtensions({ bookingId, currentEndDate, bookingSt
 
     const handleRequest = () => {
         if (!newEndDate) {
-            toast.error("Please select a new end date");
+            toast.error(MESSAGES.MSG_PLEASE_SELECT_A_NEW_END_DATE);
             return;
         }
         requestExtension.mutate({

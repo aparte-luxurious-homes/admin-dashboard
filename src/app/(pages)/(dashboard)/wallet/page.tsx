@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -269,7 +270,7 @@ const WalletPage = () => {
       await axiosRequest.delete(
         API_ROUTES.wallet.payoutAccounts.details(wallet.id, deleteAccount.id),
       );
-      toast.success("Bank account removed successfully");
+      toast.success(MESSAGES.MSG_BANK_ACCOUNT_REMOVED_SUCCESSFULLY);
       handleCloseDelete();
       fetchData();
     } catch (err: any) {

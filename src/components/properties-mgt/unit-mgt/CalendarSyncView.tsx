@@ -1,3 +1,4 @@
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useDispatch } from "react-redux";
@@ -38,7 +39,7 @@ export default function CalendarSyncView({ unitId }: { unitId: string | number }
     const handleCopy = () => {
         if (!outboundUrl) return;
         navigator.clipboard.writeText(outboundUrl);
-        toast.success("Link copied to clipboard!");
+        toast.success(MESSAGES.MSG_LINK_COPIED_TO_CLIPBOARD);
     };
 
     const handleRotate = () => {
@@ -50,7 +51,7 @@ export default function CalendarSyncView({ unitId }: { unitId: string | number }
                 cancelText: "Cancel",
                 onConfirm: () => {
                     rotateOutbound(unitId, {
-                        onSuccess: () => toast.success("Outbound link regenerated.")
+                        onSuccess: () => toast.success(MESSAGES.MSG_OUTBOUND_LINK_REGENERATED)
                     });
                 }
             })
@@ -62,7 +63,7 @@ export default function CalendarSyncView({ unitId }: { unitId: string | number }
         if (!newFeedUrl || !newFeedLabel) return;
         addFeed({ unitId, payload: { url: newFeedUrl, label: newFeedLabel } }, {
             onSuccess: () => {
-                toast.success("Feed added successfully!");
+                toast.success(MESSAGES.MSG_FEED_ADDED_SUCCESSFULLY);
                 setIsAddModalOpen(false);
                 setNewFeedUrl("");
                 setNewFeedLabel("");
@@ -78,12 +79,12 @@ export default function CalendarSyncView({ unitId }: { unitId: string | number }
 
     const handleSync = (feedId: string | number) => {
         syncFeed({ unitId, feedId }, {
-            onSuccess: () => toast.success("Feed synced successfully."),
+            onSuccess: () => toast.success(MESSAGES.MSG_FEED_SYNCED_SUCCESSFULLY),
             onError: (err: any) => {
                 if (err?.response?.status === 429) {
                     toast.error(err?.response?.data?.message || "Please wait before syncing again.");
                 } else {
-                    toast.error("Failed to sync feed.");
+                    toast.error(MESSAGES.MSG_FAILED_TO_SYNC_FEED);
                 }
             }
         });
@@ -98,7 +99,7 @@ export default function CalendarSyncView({ unitId }: { unitId: string | number }
                 cancelText: "Cancel",
                 onConfirm: () => {
                     deleteFeed({ unitId, feedId }, {
-                        onSuccess: () => toast.success("Feed removed.")
+                        onSuccess: () => toast.success(MESSAGES.MSG_FEED_REMOVED)
                     });
                 }
             })
