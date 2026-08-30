@@ -1,3 +1,4 @@
+import { MESSAGES } from '@/src/lib/messages';
 import { useFormik } from "formik";
 import { PriceTagIcon, ReturnIcon, UnitIcon, UsersIcon } from "../../icons";
 import CustomDropdown from "../../ui/customDropdown";
@@ -75,7 +76,7 @@ export default function EditBookingDetails({
                 },
                 {
                     onSuccess: () => {
-                        toast.success('Booking updated successfully', {
+                        toast.success(MESSAGES.MSG_BOOKING_UPDATED_SUCCESSFULLY, {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
@@ -124,14 +125,14 @@ export default function EditBookingDetails({
         // Validate file type
         const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
         if (!validTypes.includes(file.type)) {
-            toast.error('Invalid file type. Please upload an image or PDF.');
+            toast.error(MESSAGES.MSG_INVALID_FILE_TYPE_PLEASE_UPLOAD_AN_IMAGE);
             event.target.value = ''; // Reset input
             return;
         }
 
         // Validate file size (5MB)
         if (file.size > 5 * 1024 * 1024) {
-            toast.error('File size exceeds 5MB limit.');
+            toast.error(MESSAGES.MSG_FILE_SIZE_EXCEEDS_5MB_LIMIT);
             event.target.value = ''; // Reset input
             return;
         }
@@ -146,7 +147,7 @@ export default function EditBookingDetails({
                     const url = data?.data?.data?.url;
                     if (url) {
                         setFieldValue('payment_proof_url', url);
-                        toast.success('Payment proof uploaded successfully');
+                        toast.success(MESSAGES.MSG_PAYMENT_PROOF_UPLOADED_SUCCESSFULLY);
                     }
                 },
                 onError: (error: any) => {

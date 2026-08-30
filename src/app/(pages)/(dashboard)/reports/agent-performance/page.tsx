@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
@@ -162,7 +163,7 @@ const AgentPerformanceReportPage = () => {
 
     const handleExport = () => {
         if (filtered.length === 0) {
-            toast.error("No rows to export");
+            toast.error(MESSAGES.MSG_NO_ROWS_TO_EXPORT);
             return;
         }
         const stamp = new Date().toISOString().slice(0, 10);

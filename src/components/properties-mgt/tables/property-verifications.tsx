@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef, useState } from "react";
 import { DotsIcon, SearchIcon } from "../../icons";
 import { useRouter } from "next/navigation";
@@ -63,7 +64,7 @@ export default function PropertyVerificationsTable({
                         {
                             propertyId,
                             payload: {
-                                feedback: feedbackText || "Property verified successfully",
+                                feedback: feedbackText || MESSAGES.MSG_PROPERTY_VERIFIED_SUCCESSFULLY,
                                 status: PropertyVerificationStatus.VERIFIED,
                                 skip_kyc_check: skipKycCheck,
                                 skip_document_check: skipDocumentCheck
@@ -71,7 +72,7 @@ export default function PropertyVerificationsTable({
                         },
                         {
                             onSuccess: () => {
-                                toast.success('Property verified successfully', {
+                                toast.success(MESSAGES.MSG_PROPERTY_VERIFIED_SUCCESSFULLY, {
                                     duration: 6000,
                                     style: { maxWidth: '500px', width: 'max-content' }
                                 });
@@ -99,7 +100,7 @@ export default function PropertyVerificationsTable({
         if (!selectedVerification) return;
 
         if (!feedbackText.trim()) {
-            toast.error('Please provide feedback for rejection');
+            toast.error(MESSAGES.MSG_PLEASE_PROVIDE_FEEDBACK_FOR_REJECTION);
             return;
         }
 
@@ -120,7 +121,7 @@ export default function PropertyVerificationsTable({
                         },
                         {
                             onSuccess: () => {
-                                toast.success('Property verification rejected', {
+                                toast.success(MESSAGES.MSG_PROPERTY_VERIFICATION_REJECTED, {
                                     duration: 6000,
                                     style: { maxWidth: '500px', width: 'max-content' }
                                 });

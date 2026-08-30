@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import Modal from "../../modal/Modal";
 import { RejectWithdrawal } from "@/src/lib/request-handlers/financeMgt";
@@ -40,7 +41,7 @@ export function RejectWithdrawalModal({
             },
             {
                 onSuccess: () => {
-                    toast.success("Withdrawal rejected and funds returned to wallet");
+                    toast.success(MESSAGES.MSG_WITHDRAWAL_REJECTED_AND_FUNDS_RETURNED_T);
                     setReason("");
                     onClose();
                 },

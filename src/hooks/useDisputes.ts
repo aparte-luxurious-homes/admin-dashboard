@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
@@ -237,7 +238,7 @@ export const useCreateDispute = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-disputes"] });
-      toast.success("Dispute raised successfully");
+      toast.success(MESSAGES.MSG_DISPUTE_RAISED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to raise dispute");
@@ -278,7 +279,7 @@ export const useUploadDisputeEvidence = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["my-dispute-details", variables.id] });
       queryClient.invalidateQueries({ queryKey: ["dispute-details", variables.id] });
-      toast.success("Evidence uploaded successfully");
+      toast.success(MESSAGES.MSG_EVIDENCE_UPLOADED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to upload evidence");
@@ -299,7 +300,7 @@ export const useDeleteDisputeEvidence = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["my-dispute-details", variables.disputeId] });
       queryClient.invalidateQueries({ queryKey: ["dispute-details", variables.disputeId] });
-      toast.success("Evidence removed successfully");
+      toast.success(MESSAGES.MSG_EVIDENCE_REMOVED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to remove evidence");
@@ -318,7 +319,7 @@ export const useUpdateDisputeStatus = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-disputes"] });
       queryClient.invalidateQueries({ queryKey: ["dispute-details", variables.id] });
-      toast.success("Dispute status updated successfully");
+      toast.success(MESSAGES.MSG_DISPUTE_STATUS_UPDATED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to update status");
@@ -337,7 +338,7 @@ export const useRequestDisputeEvidence = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-disputes"] });
       queryClient.invalidateQueries({ queryKey: ["dispute-details", variables.id] });
-      toast.success("Evidence request sent successfully");
+      toast.success(MESSAGES.MSG_EVIDENCE_REQUEST_SENT_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to request evidence");
@@ -356,7 +357,7 @@ export const useResolveDispute = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-disputes"] });
       queryClient.invalidateQueries({ queryKey: ["dispute-details", variables.id] });
-      toast.success("Dispute resolved successfully");
+      toast.success(MESSAGES.MSG_DISPUTE_RESOLVED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to resolve dispute");

@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import Image from "next/image";
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Accept, useDropzone } from "react-dropzone";
@@ -73,7 +74,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
       );
 
       if (newFiles.length === 0) {
-        if (oversized.length === 0) toast.error("These files have already been added");
+        if (oversized.length === 0) toast.error(MESSAGES.MSG_THESE_FILES_HAVE_ALREADY_BEEN_ADDED);
         return;
       }
   

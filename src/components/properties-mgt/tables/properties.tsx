@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon, TrashIcon } from "../../icons";
 import { useRouter } from "next/navigation";
@@ -79,8 +80,8 @@ export default function PropertiesTable() {
                             deleteProperty(
                                 { propertyId: property.id },
                                 {
-                                    onSuccess: () => toast.success('Property deleted successfully'),
-                                    onError: () => toast.error('Failed to delete property')
+                                    onSuccess: () => toast.success(MESSAGES.MSG_PROPERTY_DELETED_SUCCESSFULLY),
+                                    onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_PROPERTY)
                                 }
                             );
                         },
@@ -102,8 +103,8 @@ export default function PropertiesTable() {
                     deleteProperty(
                         { propertyId: property.id },
                         {
-                            onSuccess: () => toast.success('Property deleted successfully'),
-                            onError: () => toast.error('Failed to delete property')
+                            onSuccess: () => toast.success(MESSAGES.MSG_PROPERTY_DELETED_SUCCESSFULLY),
+                            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_PROPERTY)
                         }
                     );
                 },

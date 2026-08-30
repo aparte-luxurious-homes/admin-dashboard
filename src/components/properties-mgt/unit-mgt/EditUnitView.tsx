@@ -1,3 +1,4 @@
+import { MESSAGES } from '@/src/lib/messages';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, PropertyType } from "../types";
 import { useDispatch } from "react-redux";
@@ -147,7 +148,7 @@ export default function EditUnitView({
             },
                 {
                     onSuccess: () => {
-                        toast.success('Unit updated successfully', {
+                        toast.success(MESSAGES.MSG_UNIT_UPDATED_SUCCESSFULLY, {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
@@ -158,7 +159,7 @@ export default function EditUnitView({
                         handleEditMode(false);
                     },
                     onError: () =>
-                        toast.error('Failed to update unit', {
+                        toast.error(MESSAGES.MSG_FAILED_TO_UPDATE_UNIT, {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
@@ -183,7 +184,7 @@ export default function EditUnitView({
                         mediaId: id
                     }, {
                         onSuccess: () => {
-                            toast.success("Image deleted successfully");
+                            toast.success(MESSAGES.MSG_IMAGE_DELETED_SUCCESSFULLY);
                         },
                         onError: (error: any) => {
                             toast.error(error?.response?.data?.detail || "Failed to delete image");
@@ -218,7 +219,7 @@ export default function EditUnitView({
                                 router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(unit.propertyId))
                             },
                             onError: () =>
-                                toast.error('Something went wrong', {
+                                toast.error(MESSAGES.MSG_SOMETHING_WENT_WRONG, {
                                     duration: 6000,
                                     style: {
                                         maxWidth: '500px',
@@ -630,8 +631,8 @@ export default function EditUnitView({
                                             formData.append("media_type", MediaType.IMAGE);
                                             formData.append("is_featured", "true");
                                             uploadMedia({ propertyId: String(propertyId), unitId: String(unitId), payload: formData }, {
-                                                onSuccess: () => toast.success('Media uploaded successfully'),
-                                                onError: () => toast.error('Upload failed')
+                                                onSuccess: () => toast.success(MESSAGES.MSG_MEDIA_UPLOADED_SUCCESSFULLY),
+                                                onError: () => toast.error(MESSAGES.MSG_UPLOAD_FAILED)
                                             });
                                         }}
                                         disabled={uploadedMediaPending}

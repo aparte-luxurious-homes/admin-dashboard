@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import Modal from "../../modal/Modal";
 import { ReverseWithdrawal } from "@/src/lib/request-handlers/financeMgt";
@@ -40,7 +41,7 @@ export function ReverseWithdrawalModal({
 
     const handleReverse = () => {
         if (!reasonValid) {
-            toast.error("Please enter a reason (at least 3 characters).");
+            toast.error(MESSAGES.MSG_PLEASE_ENTER_A_REASON_AT_LEAST_3_CHARACT);
             return;
         }
 
@@ -57,7 +58,7 @@ export function ReverseWithdrawalModal({
             },
             {
                 onSuccess: () => {
-                    toast.success("Withdrawal reversed and funds returned to wallet");
+                    toast.success(MESSAGES.MSG_WITHDRAWAL_REVERSED_AND_FUNDS_RETURNED_T);
                     reset();
                     onClose();
                 },

@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { FaMapLocationDot, FaPlus, FaArrowLeftLong } from "react-icons/fa6";
@@ -312,9 +313,9 @@ export default function EditPropertyView({
           {
             onSuccess: () => {
               setExistingUnits(prev => prev.map((u, i) => i === editingUnitIndex ? { ...unit, _key: existingId } : u));
-              toast.success('Unit updated');
+              toast.success(MESSAGES.MSG_UNIT_UPDATED);
             },
-            onError: () => toast.error('Failed to update unit'),
+            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_UPDATE_UNIT),
           },
         );
       } else {
@@ -329,9 +330,9 @@ export default function EditPropertyView({
             if (created) {
               setExistingUnits(prev => [...prev, { ...unit, _key: String(created.id) }]);
             }
-            toast.success('Unit added');
+            toast.success(MESSAGES.MSG_UNIT_ADDED);
           },
-          onError: () => toast.error('Failed to create unit'),
+          onError: () => toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNIT),
         },
       );
     }
@@ -354,9 +355,9 @@ export default function EditPropertyView({
               {
                 onSuccess: () => {
                   setExistingUnits(prev => prev.filter((_, i) => i !== index));
-                  toast.success('Unit deleted');
+                  toast.success(MESSAGES.MSG_UNIT_DELETED);
                 },
-                onError: () => toast.error('Failed to delete unit'),
+                onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_UNIT),
               },
             );
           },
@@ -454,7 +455,7 @@ export default function EditPropertyView({
       if (values.type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
         updatePayload.event_types = availableEventTypes
           .filter(et => values.event_types.includes(et.name))
-          .map(et => Number(et.id));
+          .map(et => String(et.id));
       }
 
       mutate(
@@ -472,7 +473,7 @@ export default function EditPropertyView({
                 { propertyId: propertyData.id, payload: formData },
                 {
                   onSuccess: () => {
-                    toast.success("Property updated with new images", {
+                    toast.success(MESSAGES.MSG_PROPERTY_UPDATED_WITH_NEW_IMAGES, {
                       duration: 6000,
                       style: { maxWidth: "500px", width: "max-content" },
                     });
@@ -490,7 +491,7 @@ export default function EditPropertyView({
                 },
               );
             } else {
-              toast.success("Property update successful", {
+              toast.success(MESSAGES.MSG_PROPERTY_UPDATE_SUCCESSFUL, {
                 duration: 6000,
                 style: { maxWidth: "500px", width: "max-content" },
               });
@@ -499,7 +500,7 @@ export default function EditPropertyView({
             }
           },
           onError: () =>
-            toast.error("Something went wrong, please try again", {
+            toast.error(MESSAGES.MSG_SOMETHING_WENT_WRONG_PLEASE_TRY_AGAIN, {
               duration: 6000,
               style: { maxWidth: "500px", width: "max-content" },
             }),
@@ -511,7 +512,7 @@ export default function EditPropertyView({
   const handleGeocode = async () => {
     const { address, city, state, country } = formik.values;
     if (!address) {
-      toast.error("Please enter a physical address first");
+      toast.error(MESSAGES.MSG_PLEASE_ENTER_A_PHYSICAL_ADDRESS_FIRST);
       return;
     }
     const fullAddress = `${address}, ${city}, ${state}, ${country}`;
@@ -528,12 +529,12 @@ export default function EditPropertyView({
         formik.setFieldValue("longitude", lng);
         toast.success(`Coordinates found: ${lat}, ${lng}`, { id: toastId });
       } else {
-        toast.error("Coordinates not found. Please enter manually.", {
+        toast.error(MESSAGES.MSG_COORDINATES_NOT_FOUND_PLEASE_ENTER_MANUA, {
           id: toastId,
         });
       }
     } catch (error) {
-      toast.error("Failed to fetch coordinates.", { id: toastId });
+      toast.error(MESSAGES.MSG_FAILED_TO_FETCH_COORDINATES, { id: toastId });
     }
   };
 
@@ -557,7 +558,7 @@ export default function EditPropertyView({
           deleteMedia(
             { propertyId: propertyData.id, mediaId: id },
             {
-              onSuccess: () => toast.success("Image deleted successfully"),
+              onSuccess: () => toast.success(MESSAGES.MSG_IMAGE_DELETED_SUCCESSFULLY),
               onError: (error: any) =>
                 toast.error(
                   error?.response?.data?.detail || "Failed to delete image",
@@ -1132,13 +1133,13 @@ export default function EditPropertyView({
                       { propertyId: propertyData.id, payload: formData },
                       {
                         onSuccess: () =>
-                          toast.success("Media uploaded successfully", {
+                          toast.success(MESSAGES.MSG_MEDIA_UPLOADED_SUCCESSFULLY, {
                             duration: 6000,
                             style: { maxWidth: "500px", width: "max-content" },
                           }),
                         onError: (error: any) =>
                           toast.error(
-                            error?.response?.data?.detail || error?.response?.data?.message || "Upload failed",
+                            error?.response?.data?.detail || error?.response?.data?.message || MESSAGES.MSG_UPLOAD_FAILED,
                             {
                               duration: 6000,
                               style: {
@@ -1224,11 +1225,11 @@ export default function EditPropertyView({
                                                 payload: formData
                                             }, {
                                                 onSuccess: () => {
-                                                    toast.success('Document uploaded successfully');
+                                                    toast.success(MESSAGES.MSG_DOCUMENT_UPLOADED_SUCCESSFULLY);
                                                     refetchDocs();
                                                 },
                                                 onError: (err: any) => {
-                                                    toast.error(err?.response?.data?.detail || 'Document upload failed');
+                                                    toast.error(err?.response?.data?.detail || MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED);
                                                 }
                                             });
                                             e.target.value = '';

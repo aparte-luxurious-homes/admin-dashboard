@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
@@ -54,7 +55,7 @@ export default function NetworkEventsSettingsPage() {
     // gets a redirect instead of a page that renders and then errors.
     useEffect(() => {
         if (!isFetching && user && !isSuperAdmin) {
-            toast.error("Only a super admin can change platform features");
+            toast.error(MESSAGES.MSG_ONLY_A_SUPER_ADMIN_CAN_CHANGE_PLATFORM_F);
             router.replace("/settings");
         }
     }, [isFetching, user, isSuperAdmin, router]);

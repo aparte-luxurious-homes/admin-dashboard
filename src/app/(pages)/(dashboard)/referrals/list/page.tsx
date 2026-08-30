@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useMyReferrals, useAgentReferralStats, useMyReferralInfo } from "@/src/hooks/useReferrals";
 import { useState } from "react";
 import { Skeleton } from "@/src/components/ui/skeleton";
@@ -24,7 +25,7 @@ const MyReferralsPage = () => {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard!");
+        toast.success(MESSAGES.MSG_COPIED_TO_CLIPBOARD);
     };
 
     return (
