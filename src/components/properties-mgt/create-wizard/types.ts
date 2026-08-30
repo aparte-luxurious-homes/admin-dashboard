@@ -153,7 +153,9 @@ export type PropertyFormValues = {
     description: string;
     latitude: number | null;
     longitude: number | null;
-    ownerId: number;
+    // UUID string. Was `number`, which forced the falsy sentinel 0 and is
+    // why a selected owner could be dropped without anything noticing.
+    ownerId: string;
     owner_name: string;
     owner_email: string;
     owner_phoneNumber: string;

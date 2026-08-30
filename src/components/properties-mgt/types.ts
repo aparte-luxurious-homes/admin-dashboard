@@ -296,8 +296,12 @@ export interface ICreateProperty {
     is_pet_allowed: boolean
     is_party_allowed: boolean
     rules?: string
+    owner_id?: string
     owner_email?: string
     owner_name?: string
+    owner_phone?: string
+    long_stay_discount_policy?: IDiscountPolicy
+    extension_discount_policy?: IDiscountPolicy
     event_types?: number[]
 }
 

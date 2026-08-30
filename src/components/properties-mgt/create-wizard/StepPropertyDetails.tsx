@@ -317,6 +317,7 @@ export default function StepPropertyDetails({
                   setIsNewOwner(false);
                   formik.setFieldValue("owner_email", "");
                   formik.setFieldValue("owner_name", "");
+                  formik.setFieldValue("owner_phoneNumber", "");
                 }}
                 className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${!isNewOwner ? "bg-white shadow-sm text-primary" : "text-zinc-500"}`}
               >
@@ -327,7 +328,7 @@ export default function StepPropertyDetails({
                 onClick={() => {
                   setIsNewOwner(true);
                   setSelectedOwner(null);
-                  formik.setFieldValue("ownerId", 0);
+                  formik.setFieldValue("ownerId", "");
                 }}
                 className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${isNewOwner ? "bg-white shadow-sm text-primary" : "text-zinc-500"}`}
               >
@@ -360,7 +361,7 @@ export default function StepPropertyDetails({
                   const selected = users.find((u: any) => u.email === val);
                   setOwnerSearchTerm(selected?.email || val);
                   setSelectedOwner(selected);
-                  formik.setFieldValue("ownerId", selected?.id);
+                  formik.setFieldValue("ownerId", selected?.id ? String(selected.id) : "");
                 }}
                 searchTerm={ownerSearchTerm}
                 setSearchTerm={setOwnerSearchTerm}

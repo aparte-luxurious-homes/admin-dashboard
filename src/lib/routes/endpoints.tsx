@@ -144,7 +144,15 @@ export const API_ROUTES = {
         reverseWithdrawal: (id: string | number) => `/wallets/${id}/reverse-withdrawal`,
         authorizeDisbursement: (id: string | number) => `/wallets/${id}/authorize-disbursement`,
         resendDisbursementOtp: (id: string | number) => `/wallets/${id}/resend-disbursement-otp`,
+        // Per-row manual override. Since withdrawals became PENDING-until-settled,
+        // the only automatic paths to SUCCESSFUL are the disbursement webhook and
+        // the reconciliation cron; when either is down, this is how an operator
+        // resolves a stuck payout instead of guessing.
+        refreshWithdrawalStatus: (walletId: string | number, transactionId: string | number) =>
+            `/wallets/${walletId}/withdrawals/${transactionId}/refresh-status`,
         pendingWithdrawals: '/wallets/pending-withdrawals',
+        // Bulk sweep, admin-runnable as well as cron-runnable.
+        reconcileDisbursementsJob: '/jobs/reconcile-stuck-disbursements',
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,
             details: (walletId: string, transactionId: string) => `/wallets/${walletId}/transactions/${transactionId}`,
@@ -315,12 +323,30 @@ export const API_ROUTES = {
 };
 
 
-export const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_STAGING_API_URL
-// (process.env.NEXT_PUBLIC_BASE_API_URL ||
-//     process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
-//     process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
-//     "").trim().replace(/\/+$/, "");
+// Read the general var FIRST. This chain was commented out and pinned to
+// NEXT_PUBLIC_BASE_STAGING_API_URL alone, which cloudbuild.yaml never sets —
+// it passes only NEXT_PUBLIC_BASE_API_URL. So on the Cloud Run build this was
+// `undefined`, axios fell back to a relative baseURL, `/profile` resolved
+// against the dashboard's own origin and returned the HTML 404 page, and the
+// login screen reported "Authentication failed. Please login with your
+// credentials." — which reads as a rejected password, not a missing env var.
+// Vercel-built and Cloud-Run-built dashboards therefore behaved differently
+// from identical source.
+//
+// These are inlined by Next at build time, so the chain resolves at compile
+// time, not runtime.
+export const BASE_API_URL = (
+    process.env.NEXT_PUBLIC_BASE_API_URL ||
+    process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
+    process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
+    ""
+).trim().replace(/\/+$/, "");
 
-if (typeof window !== 'undefined') {
-    console.log('[Endpoints] Initialized BASE_API_URL:', BASE_API_URL);
+if (typeof window !== 'undefined' && !BASE_API_URL) {
+    // Loud, because the silent version of this cost a release. Without a base
+    // URL every request targets this origin and fails as an auth error.
+    console.error(
+        '[Endpoints] No API base URL configured. Set NEXT_PUBLIC_BASE_API_URL ' +
+        'at build time — every API call will otherwise resolve against this origin.'
+    );
 }

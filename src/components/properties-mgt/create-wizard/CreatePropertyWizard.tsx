@@ -31,6 +31,7 @@ import StepUnits from "./StepUnits";
 import StepMediaDocs from "./StepMediaDocs";
 import UnitDrawer from "./UnitDrawer";
 import IncompleteProfileDialog from "@/src/components/shared/IncompleteProfileDialog";
+import { UserRole } from "@/src/lib/enums";
 import {
   readWizardDraft,
   writeWizardDraft,
@@ -174,7 +175,16 @@ export default function CreatePropertyWizard() {
   // restored draft here. Subsequent edits flow through formik state and
   // are persisted via the useEffect below.
   const formik = useFormik<PropertyFormValues>({
-    initialValues: draft?.values ?? {
+    initialValues: (draft?.values
+      ? {
+          ...draft.values,
+          // legacy numeric sentinel -> "" (see ownerId type change)
+          ownerId:
+            typeof draft.values.ownerId === "number"
+              ? ""
+              : (draft.values.ownerId ?? ""),
+        }
+      : undefined) ?? {
       name: "",
       address: "",
       street_number: "",
@@ -191,7 +201,7 @@ export default function CreatePropertyWizard() {
       description: "",
       latitude: null,
       longitude: null,
-      ownerId: 0,
+      ownerId: "",
       owner_name: "",
       owner_email: "",
       owner_phoneNumber: "",
@@ -201,6 +211,16 @@ export default function CreatePropertyWizard() {
       amenities: [],
       amenityIds: [],
       event_types: [],
+      long_stay_discount_policy: {
+        is_active: false,
+        discount_type: DiscountType.PERCENTAGE,
+        tiers: [],
+      },
+      extension_discount_policy: {
+        is_active: false,
+        discount_type: DiscountType.PERCENTAGE,
+        tiers: [],
+      },
     },
     enableReinitialize: true,
     onSubmit: (values) => {
@@ -477,6 +497,23 @@ export default function CreatePropertyWizard() {
       return;
     }
 
+    // Owner assignment is only collected for admins and agents (see
+    // showOwnerSection in StepPropertyDetails). Submitting it blank makes the
+    // backend fall back to the caller as owner, which silently self-attributes
+    // a listing an agent meant to file for someone else — and strips the agent
+    // off it in the process. Better to stop here than to manufacture a row that
+    // needs a two-step admin repair.
+    const ownerSectionShown =
+      user?.role === UserRole.ADMIN ||
+      user?.role === UserRole.SUPER_ADMIN ||
+      user?.role === UserRole.AGENT;
+    if (ownerSectionShown && !values.ownerId && !values.owner_email) {
+      toast.error(
+        "Select an existing owner, or enter the new owner's details, before creating this listing.",
+      );
+      return;
+    }
+
     const propertyPayload: ICreateProperty = {
       name: values.name,
       description: values.description,
@@ -496,11 +533,15 @@ export default function CreatePropertyWizard() {
       is_pet_allowed: values.is_pet_allowed,
       is_party_allowed: values.is_party_allowed,
       rules: values.rules || undefined,
-      ...(values.owner_email && { owner_email: values.owner_email }),
-      ...(values.owner_name && { owner_name: values.owner_name }),
-      ...(values.owner_phoneNumber && {
-        owner_phone: values.owner_phoneNumber,
-      }),
+      ...(values.ownerId
+        ? { owner_id: String(values.ownerId) }
+        : {
+            ...(values.owner_email && { owner_email: values.owner_email }),
+            ...(values.owner_name && { owner_name: values.owner_name }),
+            ...(values.owner_phoneNumber && {
+              owner_phone: values.owner_phoneNumber,
+            }),
+          }),
       long_stay_discount_policy: values.long_stay_discount_policy,
       extension_discount_policy: values.extension_discount_policy,
     };

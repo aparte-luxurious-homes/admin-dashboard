@@ -168,6 +168,7 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
     const [isWithdrawalReverseOpen, setIsWithdrawalReverseOpen] = useState(false);
+    const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
     const params = useParams();
     const id = params?.id;
     const { canManageFinances } = usePermissions();
@@ -213,6 +214,41 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     // in-flight, or marked successful but failed at the provider.
     const canReverseWithdrawal =
         isWithdrawal && ["AWAITING_AUTHORIZATION", "PENDING", "SUCCESSFUL"].includes(data?.status ?? "");
+
+    // Refresh asks the provider what actually happened and applies it. It is the
+    // counterpart to Reverse, which assumes the payout did not happen — and which
+    // 409s while one is genuinely in flight, so a stuck-PENDING payout previously
+    // had no operator action at all.
+    const canRefreshWithdrawal =
+        isWithdrawal && ["AWAITING_AUTHORIZATION", "PENDING"].includes(data?.status ?? "");
+
+    const handleRefreshWithdrawalStatus = async () => {
+        if (!data) return;
+        setIsRefreshingStatus(true);
+        try {
+            const res = await axiosRequest.post(
+                API_ROUTES.wallet.refreshWithdrawalStatus(data.wallet_id, data.id),
+            );
+            const message = res?.data?.message || "Status refreshed";
+            if (res?.data?.data?.changed) {
+                toast.success(message);
+            } else {
+                // Not an error: the provider still has it in flight. Saying so
+                // plainly stops operators from reaching for Reverse and
+                // double-refunding a payout that is about to land.
+                toast(message);
+            }
+            await fetchData();
+        } catch (err: any) {
+            toast.error(
+                err?.response?.data?.detail ||
+                err?.response?.data?.message ||
+                "Could not refresh the withdrawal status",
+            );
+        } finally {
+            setIsRefreshingStatus(false);
+        }
+    };
 
     return (
         <>
@@ -308,6 +344,24 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                                         >
                                             <Icon icon="mdi:check" className="mr-1" width="16" />
                                             {isWithdrawal ? "Approve Withdrawal" : "Approve Refund"}
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {/* Refresh — re-query the provider and apply the real outcome */}
+                                {canRefreshWithdrawal && canManageFinances && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <Button
+                                            onClick={handleRefreshWithdrawalStatus}
+                                            disabled={isRefreshingStatus}
+                                            className="bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-60"
+                                        >
+                                            <Icon
+                                                icon={isRefreshingStatus ? "mdi:loading" : "mdi:refresh"}
+                                                className={`mr-1 ${isRefreshingStatus ? "animate-spin" : ""}`}
+                                                width="16"
+                                            />
+                                            {isRefreshingStatus ? "Checking..." : "Refresh status"}
                                         </Button>
                                     </div>
                                 )}
