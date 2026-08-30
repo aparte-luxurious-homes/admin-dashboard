@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import UserEditForm from "./UserEditForm";
 
 import { Skeleton } from "@/src/components/ui/skeleton";
@@ -383,7 +384,7 @@ const UserManagementView = ({
                         { userId: user.id },
                         {
                           onSuccess: () => {
-                            toast.success("User deleted successfully");
+                            toast.success(MESSAGES.MSG_USER_DELETED_SUCCESSFULLY);
                             fetchUsers();
                           },
                           onError: (err: any) => {
@@ -1254,7 +1255,7 @@ const UserManagementView = ({
                 onCancel={() => setIsEditOpen(false)}
                 onSave={(formData) => {
                   if (!editUserId) {
-                    toast.error("Missing user id");
+                    toast.error(MESSAGES.MSG_MISSING_USER_ID);
                     return;
                   }
                   updateUser(
@@ -1278,7 +1279,7 @@ const UserManagementView = ({
                     },
                     {
                       onSuccess: () => {
-                        toast.success("User updated successfully");
+                        toast.success(MESSAGES.MSG_USER_UPDATED_SUCCESSFULLY);
                         setIsEditOpen(false);
                         fetchUsers();
                       },

@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import CustomModal from "../ui/CustomModal";
@@ -34,7 +35,7 @@ const RaiseDisputeModal = ({ isOpen, onClose, bookingId }: RaiseDisputeModalProp
 
     const handleSubmit = async () => {
         if (!description.trim()) {
-            toast.error("Please provide a description of the issue");
+            toast.error(MESSAGES.MSG_PLEASE_PROVIDE_A_DESCRIPTION_OF_THE_ISSU);
             return;
         }
 

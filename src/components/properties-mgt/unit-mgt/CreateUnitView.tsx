@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { IAmenity, ICreatePropertyUnit, IProperty, MediaType, PropertyType } from "../types";
@@ -424,7 +425,7 @@ export default function CreateUnitView({
                 );
               }
 
-              toast.success("Property unit created successfully");
+              toast.success(MESSAGES.MSG_PROPERTY_UNIT_CREATED_SUCCESSFULLY);
               router.push(
                 PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(
                   propertyId,

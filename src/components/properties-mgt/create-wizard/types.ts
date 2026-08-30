@@ -165,7 +165,7 @@ export type PropertyFormValues = {
     long_stay_discount_policy: IDiscountPolicy;
     extension_discount_policy: IDiscountPolicy;
     amenities: string[];
-    amenityIds: number[];
+    amenityIds: string[];
     event_types: string[];
 };
 

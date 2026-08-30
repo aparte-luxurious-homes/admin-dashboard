@@ -1,3 +1,4 @@
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import { FaMoneyBillWave } from "react-icons/fa";
 import { MdRefresh } from "react-icons/md";
@@ -88,7 +89,7 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
         onSuccess: (response) => {
           const url = response?.data?.data?.payment_link;
           if (url) {
-            toast.success("Payment link re-sent to guest");
+            toast.success(MESSAGES.MSG_PAYMENT_LINK_RE_SENT_TO_GUEST);
             navigator.clipboard?.writeText(url).catch(() => {});
           }
         },
@@ -102,11 +103,11 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
   const handleReconcile = () => {
     const ref = reconcileRef.trim();
     if (!reconcileProvider) {
-      toast.error("Pick the gateway the reference came from");
+      toast.error(MESSAGES.MSG_PICK_THE_GATEWAY_THE_REFERENCE_CAME_FROM);
       return;
     }
     if (ref.length < 4) {
-      toast.error("Paste the full payment reference from the gateway dashboard");
+      toast.error(MESSAGES.MSG_PASTE_THE_FULL_PAYMENT_REFERENCE_FROM_TH);
       return;
     }
     reconcilePayment(
@@ -165,13 +166,13 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
               // Popup blocked — fall back to toast + copy
               navigator.clipboard?.writeText(url).catch(() => {});
               toast.error(
-                "Browser blocked the popup — link copied to clipboard, paste it in a new tab",
+                MESSAGES.MSG_BROWSER_BLOCKED_THE_POPUP_LINK_COPIED_TO,
               );
             } else {
-              toast.success("Opening checkout in a new tab");
+              toast.success(MESSAGES.MSG_OPENING_CHECKOUT_IN_A_NEW_TAB);
             }
           } else {
-            toast.error("Could not generate payment link");
+            toast.error(MESSAGES.MSG_COULD_NOT_GENERATE_PAYMENT_LINK);
           }
         },
         onError: (error: any) => {

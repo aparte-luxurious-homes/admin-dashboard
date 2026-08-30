@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { format } from "date-fns";
@@ -19,22 +20,22 @@ export default function PlatformFeedsPage() {
 
     const handleForcePoll = (feedId: string) => {
         forcePoll(feedId, {
-            onSuccess: () => toast.success("Sync triggered successfully."),
-            onError: () => toast.error("Failed to trigger sync.")
+            onSuccess: () => toast.success(MESSAGES.MSG_SYNC_TRIGGERED_SUCCESSFULLY),
+            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_TRIGGER_SYNC)
         });
     };
 
     const handleDisable = (feedId: string) => {
         disableFeed(feedId, {
-            onSuccess: () => toast.success("Feed disabled."),
-            onError: () => toast.error("Failed to disable feed.")
+            onSuccess: () => toast.success(MESSAGES.MSG_FEED_DISABLED),
+            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DISABLE_FEED)
         });
     };
 
     const handleEnable = (feedId: string) => {
         enableFeed(feedId, {
-            onSuccess: () => toast.success("Feed enabled."),
-            onError: () => toast.error("Failed to enable feed.")
+            onSuccess: () => toast.success(MESSAGES.MSG_FEED_ENABLED),
+            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_ENABLE_FEED)
         });
     };
 

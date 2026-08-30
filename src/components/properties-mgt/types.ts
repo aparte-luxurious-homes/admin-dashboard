@@ -58,7 +58,7 @@ export interface IDiscountPolicy {
 }
 
 export interface IAmenity {
-    id: number
+    id: string
     name: string
     createdAt?: string
     updatedAt?: string
@@ -67,11 +67,11 @@ export interface IAmenity {
 
 
 export interface IPropertyVerification {
-    id: number
-    propertyId: number
-    property_id?: number
-    agentId: number
-    agent_id?: number
+    id: string
+    propertyId: string
+    property_id?: string
+    agentId: string
+    agent_id?: string
     status: PropertyVerificationStatus
     feedback: string
     evidence_urls?: string[]
@@ -91,24 +91,26 @@ export interface IPropertyVerification {
 }
 
 export interface IAmenityAssignment {
-    id: number
-    amenityId: number
-    assignableId: number
+    id: string
+    amenityId: string
+    assignableId: string
     assignableType: AssignableType
     createdAt: string
     amenity: IAmenity
 }
 
 export interface IAssignAmenity {
-    amenity_ids: number[]
+    amenity_ids: string[]
 }
 
 export interface IPropertyReview {
-    id: number
-    unitId: number
-    userId: number
+    id: string
+    unitId: string
+    userId: string
     rating: number
     review?: string
+    comment?: string
+    photo_urls?: string[]
     createdAt: string
 }
 
@@ -120,15 +122,15 @@ export interface IPropertyMedia {
     media_type?: MediaType
     isFeatured?: boolean
     is_featured?: boolean
-    assignableId: number
+    assignableId: string
     assignableType: AssignableType
     uploadedAt: string
 }
 
 export interface IPropertyUnit {
-    id: number
-    propertyId: number
-    property_id?: number
+    id: string
+    propertyId: string
+    property_id?: string
     name: string
     description?: string
     pricePerNight: string
@@ -189,13 +191,14 @@ export interface IPropertyUnit {
 
 export interface IProperty {
     [x: string]: any
-    id: number
-    ownerId: number
-    owner_id?: number
+    id: string
+    ownerId: string
+    owner_id?: string
     bookingMode?: BookingMode
     booking_mode?: BookingMode
-    assignedAgent?: number
-    assigned_agent?: number
+    assignedAgent?: string
+    assigned_agent?: string
+    zone_id?: string
     name: string
     description?: string
     address: string
@@ -206,8 +209,8 @@ export interface IProperty {
     country: string
     latitude?: number
     longitude?: number
-    kycId?: number
-    kyc_id?: number
+    kycId?: string
+    kyc_id?: string
     isVerified: boolean
     is_verified?: boolean
     isPetAllowed: boolean
@@ -292,7 +295,7 @@ export interface ICreateProperty {
     country: string
     latitude: number
     longitude: number
-    amenities: number[]
+    amenities: string[]
     is_pet_allowed: boolean
     is_party_allowed: boolean
     rules?: string
@@ -300,9 +303,11 @@ export interface ICreateProperty {
     owner_email?: string
     owner_name?: string
     owner_phone?: string
+    zone_id?: string
+    booking_mode?: BookingMode
+    event_types?: string[]
     long_stay_discount_policy?: IDiscountPolicy
     extension_discount_policy?: IDiscountPolicy
-    event_types?: number[]
 }
 
 export interface IAssignProperty {
@@ -325,16 +330,21 @@ export interface IUpdateProperty {
     country: string,
     latitude: number,
     longitude: number,
-    // kyc_id?: number,
-    ownerId: number,
-    amenities?: number[],
+    // kyc_id?: string,
+    ownerId: string,
+    amenities?: string[],
     // assignedAgent?: IUser,
     is_pet_allowed: boolean,
     is_party_allowed: boolean,
     rules?: string,
     owner_email?: string,
     owner_name?: string,
-    event_types?: number[]
+    owner_phone?: string,
+    zone_id?: string,
+    booking_mode?: BookingMode,
+    event_types?: string[],
+    long_stay_discount_policy?: IDiscountPolicy,
+    extension_discount_policy?: IDiscountPolicy
 }
 
 export interface IUpdatePropertyUnit {
@@ -349,7 +359,7 @@ export interface IUpdatePropertyUnit {
     living_room_count?: number,
     kitchen_count?: number,
     bathroom_count?: number,
-    amenities?: number[],
+    amenities?: string[],
     seating_capacity?: number,
     standing_capacity?: number,
     car_park_spaces?: number,
@@ -376,7 +386,7 @@ export interface ICreatePropertyUnit {
     kitchen_count: number,
     bathroom_count: number,
     caution_fee: string,
-    amenities: number[],
+    amenities: string[],
     seating_capacity?: number,
     standing_capacity?: number,
     car_park_spaces?: number,
@@ -398,8 +408,8 @@ export interface IUploadPropertyMedia {
 }
 
 export interface IAvailability {
-    id: string | number
-    unit_id: string | number
+    id: string
+    unit_id: string
     date: string
     count: number
     is_blackout: boolean

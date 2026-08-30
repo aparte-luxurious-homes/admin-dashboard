@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState, useCallback, useEffect } from "react";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
@@ -110,7 +111,7 @@ export function useUserDetail(userId: string | undefined) {
         user_id: userId,
         currency: "NGN",
       });
-      toast.success("Wallet created successfully");
+      toast.success(MESSAGES.MSG_WALLET_CREATED_SUCCESSFULLY);
       await fetchUser();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to create wallet");
