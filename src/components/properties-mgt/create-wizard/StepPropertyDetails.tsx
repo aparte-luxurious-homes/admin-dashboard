@@ -42,11 +42,20 @@ function extractAddressComponents(components: AddressComponent[] = []) {
     findByType("sublocality") ||
     findByType("postal_town");
 
+  // The LGA is captured SEPARATELY as well as feeding the city chain.
+  // In Nigeria `administrative_area_level_2` is the Local Government Area,
+  // and it was only ever read as a city fallback - so "Eti-Osa" and
+  // "Alimosho" were being stored as cities and the tier was lost. It stays in
+  // the chain because `city` is NOT NULL and Google omits `locality` for many
+  // Nigerian addresses; it is simply also recorded for what it is.
+  const lga = findByType("administrative_area_level_2");
+
   return {
     street_number: findByType("street_number"),
     street_name: findByType("route"),
     postal_code: findByType("postal_code"),
     city,
+    lga,
     state: findByType("administrative_area_level_1"),
     country: findByType("country"),
   };
@@ -69,6 +78,7 @@ function applyGeocodeResultToForm(
   formik.setFieldValue("street_name", parts.street_name);
   formik.setFieldValue("postal_code", parts.postal_code);
   if (parts.city) formik.setFieldValue("city", parts.city);
+  if (parts.lga) formik.setFieldValue("lga", parts.lga);
   if (parts.state) formik.setFieldValue("state", parts.state);
   // Country is locked to Nigeria — never overwrite from Google.
   // A fresh geocode means the user must re-confirm the pin.

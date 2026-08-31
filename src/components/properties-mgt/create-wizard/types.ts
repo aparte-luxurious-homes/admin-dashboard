@@ -150,6 +150,10 @@ export type PropertyFormValues = {
     country: string;
     state: string;
     city: string;
+    // Local Government Area (Google's administrative_area_level_2). Optional
+    // because older payloads and the public listing wizard omit it — the API
+    // resolves it from coordinates when absent.
+    lga: string;
     description: string;
     latitude: number | null;
     longitude: number | null;
