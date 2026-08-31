@@ -11,6 +11,10 @@ steps:
       - 'NEXT_PUBLIC_NODE_ENV=${_NEXT_PUBLIC_NODE_ENV}'
       - '--build-arg'
       - 'NEXT_PUBLIC_BASE_API_URL=${_NEXT_PUBLIC_BASE_API_URL}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_GA4_MEASUREMENT_ID=${_NEXT_PUBLIC_GA4_MEASUREMENT_ID}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_CLARITY_PROJECT_ID=${_NEXT_PUBLIC_CLARITY_PROJECT_ID}'
       - '.'
 
   # Push the container image to Artifact Registry
@@ -54,6 +58,12 @@ substitutions:
   _SERVICE_NAME: 'admin-dashboard'
   _NEXT_PUBLIC_NODE_ENV: 'production'
   _NEXT_PUBLIC_BASE_API_URL: 'https://api.aparteng.com/api/v1'
+  # Analytics ids — set per-environment in the Cloud Build trigger's
+  # substitutions. Blank on staging: src/lib/analytics.ts additionally requires
+  # NEXT_PUBLIC_NODE_ENV=production, so a leaked id there would still load
+  # nothing, but leaving them blank keeps that a belt AND braces.
+  _NEXT_PUBLIC_GA4_MEASUREMENT_ID: ''
+  _NEXT_PUBLIC_CLARITY_PROJECT_ID: ''
 
 options:
   logging: CLOUD_LOGGING_ONLY
