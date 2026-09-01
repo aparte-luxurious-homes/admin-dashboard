@@ -199,6 +199,7 @@ export default function CreatePropertyWizard() {
       country: "Nigeria",
       state: "Lagos",
       city: "Ikeja",
+      lga: "",
       description: "",
       latitude: null,
       longitude: null,
@@ -525,6 +526,10 @@ export default function CreatePropertyWizard() {
       landmark: values.landmark || undefined,
       google_place_id: values.google_place_id || "",
       city: values.city,
+      // Omitted rather than sent empty: the API resolves the LGA from
+      // coordinates when it is absent, but an empty string would overwrite
+      // a good value on the update path.
+      ...(values.lga ? { lga: values.lga } : {}),
       state: values.state,
       country: values.country,
       latitude: values.latitude || 0,

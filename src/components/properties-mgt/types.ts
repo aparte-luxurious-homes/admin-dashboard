@@ -205,6 +205,10 @@ export interface IProperty {
     propertyType: PropertyType
     property_type?: PropertyType
     city: string
+    // Local Government Area (Google's administrative_area_level_2). Optional
+    // because older payloads and the public listing wizard omit it — the API
+    // resolves it from coordinates when absent.
+    lga?: string
     state: string
     country: string
     latitude?: number
@@ -291,6 +295,7 @@ export interface ICreateProperty {
     geocode_raw?: Record<string, unknown>
     property_type: PropertyType
     city: string
+    lga?: string
     state: string
     country: string
     latitude: number
@@ -326,6 +331,7 @@ export interface IUpdateProperty {
     geocode_raw?: Record<string, unknown>,
     property_type: PropertyType,
     city: string,
+    lga?: string,
     state: string,
     country: string,
     latitude: number,
