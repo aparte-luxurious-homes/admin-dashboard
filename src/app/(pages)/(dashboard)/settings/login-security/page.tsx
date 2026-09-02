@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import BreadCrumb from "@/src/components/breadcrumb";
 import { useState, useRef } from "react";
 import Grid from "@mui/material/Grid2";
@@ -53,7 +54,7 @@ const LoginandSecurity = () => {
 
       // Check if passwords match
       if (!validatePasswordMatch()) {
-        toast.error("Passwords do not match", {
+        toast.error(MESSAGES.MSG_PASSWORDS_DO_NOT_MATCH, {
           duration: 3000,
           style: {
             maxWidth: "500px",
@@ -69,7 +70,7 @@ const LoginandSecurity = () => {
       }
 
       if (!otp || otp.length !== 6) {
-        toast.error("OTP must be exactly 6 digits.", {
+        toast.error(MESSAGES.MSG_OTP_MUST_BE_EXACTLY_6_DIGITS, {
           duration: 3000,
           style: {
             maxWidth: "500px",
@@ -124,7 +125,7 @@ const LoginandSecurity = () => {
 
       // Check if passwords match before sending OTP
       if (!validatePasswordMatch()) {
-        toast.error("Passwords do not match", {
+        toast.error(MESSAGES.MSG_PASSWORDS_DO_NOT_MATCH, {
           duration: 6000,
           style: {
             maxWidth: "500px",
@@ -141,7 +142,7 @@ const LoginandSecurity = () => {
       const { email, phone } = resetInfo;
 
       if (!email && !phone) {
-        toast.error("Please enter either an email or phone number.", {
+        toast.error(MESSAGES.MSG_PLEASE_ENTER_EITHER_AN_EMAIL_OR_PHONE_NU, {
           duration: 6000,
           style: {
             maxWidth: "500px",

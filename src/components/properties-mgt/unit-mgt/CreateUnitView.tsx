@@ -1,8 +1,9 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
-import { IAmenity, ICreatePropertyUnit, IProperty, MediaType } from "../types";
+import { IAmenity, ICreatePropertyUnit, IProperty, MediaType, PropertyType } from "../types";
 import MultipleChoice from "@/components/ui/MultipleChoice";
 import { FaArrowLeftLong, FaPlus, FaMinus } from "react-icons/fa6";
 import CustomDropzone from "@/components/ui/CustomDropzone";
@@ -46,8 +47,19 @@ type FormValues = {
   kitchen_count: number;
   bathroom_count: number;
   caution_fee: string;
-  amenities: never[];
-  amenityNames: never[];
+  amenities: string[];
+  amenityNames: string[];
+  seating_capacity?: number;
+  standing_capacity?: number;
+  car_park_spaces?: number;
+  power_supply_provision: string;
+  additional_fees: Array<{
+    fee_name: string;
+    fee_amount: number;
+    is_mandatory: boolean;
+  }>;
+  event_price_per_hour: string;
+  event_price_per_half_day: string;
 };
 
 // Define the type for configuration fields
@@ -59,6 +71,9 @@ type ConfigField = {
     | "bathroom_count"
     | "living_room_count"
     | "max_guests"
+    | "seating_capacity"
+    | "standing_capacity"
+    | "car_park_spaces"
   >;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -292,15 +307,20 @@ export default function CreateUnitView({
   const [loadedProperty, setLoadedProperty] = useState<IProperty>();
   const router = useRouter();
 
+  const isEventCentre = loadedProperty?.propertyType === PropertyType.EVENT_CENTRE || loadedProperty?.property_type === PropertyType.EVENT_CENTRE;
+
   // Define max values per field based on business rules
   const maxValues = {
-    bedroom_count: 20,
-    kitchen_count: 5,
-    bathroom_count: 15,
-    living_room_count: 10,
-    max_guests: 50,
+    bedroom_count: isEventCentre ? 0 : 20,
+    kitchen_count: isEventCentre ? 0 : 5,
+    bathroom_count: isEventCentre ? 50 : 15,
+    living_room_count: isEventCentre ? 0 : 10,
+    max_guests: isEventCentre ? 5000 : 50,
+    seating_capacity: isEventCentre ? 10000 : undefined,
+    standing_capacity: isEventCentre ? 10000 : undefined,
+    car_park_spaces: isEventCentre ? 1000 : undefined,
     count: 100,
-  };
+  } as Record<string, number | undefined>;
 
   const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
     const sortedAmenities = [];
@@ -337,6 +357,13 @@ export default function CreateUnitView({
       caution_fee: "0.00",
       amenities: [],
       amenityNames: [],
+      seating_capacity: 0,
+      standing_capacity: 0,
+      car_park_spaces: 0,
+      power_supply_provision: "",
+      additional_fees: [],
+      event_price_per_hour: "",
+      event_price_per_half_day: "",
     },
 
     onSubmit: (values) => {
@@ -351,6 +378,14 @@ export default function CreateUnitView({
           amenities: sortedAmenities,
           price_per_night: String(values.price_per_night),
           caution_fee: String(values.caution_fee),
+          seating_capacity: isEventCentre ? values.seating_capacity : undefined,
+          standing_capacity: isEventCentre ? values.standing_capacity : undefined,
+          car_park_spaces: isEventCentre ? values.car_park_spaces : undefined,
+          power_supply_provision: isEventCentre ? values.power_supply_provision : undefined,
+          event_price_per_day: isEventCentre ? String(values.price_per_night) : undefined,
+          event_price_per_hour: isEventCentre && values.event_price_per_hour ? String(values.event_price_per_hour) : undefined,
+          event_price_per_half_day: isEventCentre && values.event_price_per_half_day ? String(values.event_price_per_half_day) : undefined,
+          additional_fees: values.additional_fees,
         },
       ];
 
@@ -390,7 +425,7 @@ export default function CreateUnitView({
                 );
               }
 
-              toast.success("Property unit created successfully");
+              toast.success(MESSAGES.MSG_PROPERTY_UNIT_CREATED_SUCCESSFULLY);
               router.push(
                 PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(
                   propertyId,
@@ -412,36 +447,56 @@ export default function CreateUnitView({
   });
 
   const configFields: ConfigField[] = [
-    {
-      id: "bedroom_count",
+    ...(isEventCentre ? [] : [{
+      id: "bedroom_count" as const,
       label: "Bedrooms",
       icon: IoBedOutline,
       description: "No. of bedrooms",
     },
     {
-      id: "kitchen_count",
+      id: "kitchen_count" as const,
       label: "Kitchens",
       icon: TbToolsKitchen,
       description: "No. of kitchens",
-    },
+    }]),
     {
-      id: "bathroom_count",
-      label: "Bathrooms",
+      id: "bathroom_count" as const,
+      label: isEventCentre ? "Toilets/Baths" : "Bathrooms",
       icon: PiBathtub,
-      description: "No. of bathrooms",
+      description: isEventCentre ? "No. of toilets/baths" : "No. of bathrooms",
     },
-    {
-      id: "living_room_count",
+    ...(isEventCentre ? [] : [{
+      id: "living_room_count" as const,
       label: "Living Rooms",
       icon: LuSofa,
       description: "No. of living rooms",
-    },
-    {
-      id: "max_guests",
+    }]),
+    ...(isEventCentre ? [] : [{
+      id: "max_guests" as const,
       label: "Max Guests",
       icon: LuUsers,
       description: "Max occupancy",
-    },
+    }]),
+    ...(isEventCentre ? [
+      {
+        id: "seating_capacity" as const,
+        label: "Seating Capacity",
+        icon: LuUsers,
+        description: "Max seated guests",
+      },
+      {
+        id: "standing_capacity" as const,
+        label: "Standing Capacity",
+        icon: LuUsers,
+        description: "Max standing guests",
+      },
+      {
+        id: "car_park_spaces" as const,
+        label: "Car Park Spaces",
+        icon: IoBedOutline, // Just a placeholder icon, we don't strictly need a car icon for this view
+        description: "Available parking",
+      }
+    ] : [])
   ];
 
   return (
@@ -479,33 +534,57 @@ export default function CreateUnitView({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-3">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-          <StatCard
-            icon={IoBedOutline}
-            label="Bedrooms"
-            value={formik.values.bedroom_count}
-          />
-          <StatCard
-            icon={TbToolsKitchen}
-            label="Kitchens"
-            value={formik.values.kitchen_count}
-          />
+        <div className={`grid gap-2 ${isEventCentre ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5'}`}>
+          {!isEventCentre && (
+            <>
+              <StatCard
+                icon={IoBedOutline}
+                label="Bedrooms"
+                value={formik.values.bedroom_count}
+              />
+              <StatCard
+                icon={TbToolsKitchen}
+                label="Kitchens"
+                value={formik.values.kitchen_count}
+              />
+            </>
+          )}
           <StatCard
             icon={PiBathtub}
-            label="Bathrooms"
+            label={isEventCentre ? "Toilets/Baths" : "Bathrooms"}
             value={formik.values.bathroom_count}
           />
-          <StatCard
-            icon={LuSofa}
-            label="Living Rooms"
-            value={formik.values.living_room_count}
-          />
-          <StatCard
-            icon={LuUsers}
-            label="Guests"
-            value={formik.values.max_guests}
-            suffix=""
-          />
+          {!isEventCentre && (
+            <>
+              <StatCard
+                icon={LuSofa}
+                label="Living Rooms"
+                value={formik.values.living_room_count}
+              />
+              <StatCard
+                icon={LuUsers}
+                label="Guests"
+                value={formik.values.max_guests}
+                suffix=""
+              />
+            </>
+          )}
+          {isEventCentre && (
+            <>
+              <StatCard
+                icon={LuUsers}
+                label="Seating Cap."
+                value={formik.values.seating_capacity ?? 0}
+                suffix=""
+              />
+              <StatCard
+                icon={LuUsers}
+                label="Standing Cap."
+                value={formik.values.standing_capacity ?? 0}
+                suffix=""
+              />
+            </>
+          )}
         </div>
       </div>
       {showAmenityForm && (
@@ -622,7 +701,7 @@ export default function CreateUnitView({
                     </label>
                     <NumberInput
                       field={field}
-                      value={formik.values[field.id]}
+                      value={formik.values[field.id] || 0}
                       onChange={(newValue) =>
                         formik.setFieldValue(field.id, newValue)
                       }
@@ -657,10 +736,30 @@ export default function CreateUnitView({
                       formik.setFieldValue("count", newValue)
                     }
                     min={0}
-                    max={maxValues.count}
+                    max={maxValues.count!}
                   />
                 </div>
               </div>
+
+              {isEventCentre && (
+                <div className="pt-3 mt-1 border-t border-zinc-100">
+                  <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1 block mb-2">
+                    Power Supply Provision
+                  </label>
+                  <select
+                    value={formik.values.power_supply_provision || ""}
+                    onChange={(e) => formik.setFieldValue("power_supply_provision", e.target.value)}
+                    className="w-full md:w-1/2 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all text-sm"
+                  >
+                    <option value="" disabled>Select provision...</option>
+                    <option value="Grid only">Grid only</option>
+                    <option value="Generator backup">Generator backup</option>
+                    <option value="Grid and Generator">Grid and Generator</option>
+                    <option value="Inverter/solar">Inverter/solar</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Amenities */}
@@ -702,6 +801,91 @@ export default function CreateUnitView({
                   }
                 />
               </div>
+            </div>
+
+            {/* Additional Fees */}
+            <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-primary/10 rounded-lg">
+                    <Icon
+                      icon="solar:wallet-money-bold-duotone"
+                      className="text-base text-primary"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-900">
+                      Additional Fees (Optional)
+                    </h3>
+                    <p className="text-[10px] text-zinc-500">
+                      Extra charges like cleaning, security, etc.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentFees = formik.values.additional_fees || [];
+                    formik.setFieldValue("additional_fees", [
+                      ...currentFees,
+                      { fee_name: "", fee_amount: 0, is_mandatory: false }
+                    ]);
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                >
+                  + Add Fee
+                </button>
+              </div>
+
+              {formik.values.additional_fees?.map((fee, index) => (
+                <div key={index} className="flex flex-col sm:flex-row gap-3 items-end border-b border-zinc-100 pb-3 mb-3">
+                  <div className="w-full sm:w-1/3">
+                    <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">Fee Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Security Fee"
+                      value={fee.fee_name}
+                      onChange={(e) => formik.setFieldValue(`additional_fees.${index}.fee_name`, e.target.value)}
+                      className="w-full mt-1 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none text-sm"
+                    />
+                  </div>
+                  <div className="w-full sm:w-1/3">
+                    <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">Amount (₦)</label>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      value={fee.fee_amount || ""}
+                      onChange={(e) => formik.setFieldValue(`additional_fees.${index}.fee_amount`, parseFloat(e.target.value) || 0)}
+                      className="w-full mt-1 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none text-sm"
+                    />
+                  </div>
+                  <div className="w-full sm:w-1/6 pb-2">
+                    <CustomCheckbox
+                      label="Mandatory"
+                      checked={fee.is_mandatory}
+                      onChange={(val: boolean) => formik.setFieldValue(`additional_fees.${index}.is_mandatory`, val)}
+                    />
+                  </div>
+                  <div className="pb-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newFees = [...(formik.values.additional_fees || [])];
+                        newFees.splice(index, 1);
+                        formik.setFieldValue("additional_fees", newFees);
+                      }}
+                      className="p-2 text-red-500 bg-red-50 rounded-lg hover:bg-red-100"
+                    >
+                      <Icon icon="solar:trash-bin-trash-bold" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {(!formik.values.additional_fees || formik.values.additional_fees.length === 0) && (
+                <div className="text-center py-4 text-xs text-zinc-500 bg-zinc-50 rounded-lg border border-dashed border-zinc-200">
+                  No additional fees added. Click "+ Add Fee" to add one.
+                </div>
+              )}
             </div>
 
             {/* Media */}
@@ -754,7 +938,7 @@ export default function CreateUnitView({
                     htmlFor="price_per_night"
                     className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1"
                   >
-                    Price Per Night
+                    {isEventCentre ? "Price (Per Day/Event)" : "Price Per Night"}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -774,6 +958,61 @@ export default function CreateUnitView({
                     />
                   </div>
                 </div>
+
+                {isEventCentre && (
+                  <>
+                    <div>
+                      <label
+                        htmlFor="event_price_per_hour"
+                        className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1"
+                      >
+                        Price (Per Hour)
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                          <TbCurrencyNaira className="text-base text-zinc-500" />
+                        </div>
+                        <input
+                          id="event_price_per_hour"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={formik.values.event_price_per_hour}
+                          onChange={(e) =>
+                            formik.setFieldValue("event_price_per_hour", e.target.value)
+                          }
+                          className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-2 focus:bg-white/10 focus:border-primary/50 outline-none transition-all font-semibold text-base text-white placeholder:text-zinc-700"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="event_price_per_half_day"
+                        className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1"
+                      >
+                        Price (Per Half-Day)
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                          <TbCurrencyNaira className="text-base text-zinc-500" />
+                        </div>
+                        <input
+                          id="event_price_per_half_day"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={formik.values.event_price_per_half_day}
+                          onChange={(e) =>
+                            formik.setFieldValue("event_price_per_half_day", e.target.value)
+                          }
+                          className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-2 focus:bg-white/10 focus:border-primary/50 outline-none transition-all font-semibold text-base text-white placeholder:text-zinc-700"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <label

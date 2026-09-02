@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -126,7 +127,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
       pdf.save(`booking-${booking?.bookingId || booking?.id}.pdf`);
       setShowPrintPreview(false);
     } catch {
-      toast.error("Failed to generate PDF");
+      toast.error(MESSAGES.MSG_FAILED_TO_GENERATE_PDF);
     } finally {
       setIsGeneratingPDF(false);
     }

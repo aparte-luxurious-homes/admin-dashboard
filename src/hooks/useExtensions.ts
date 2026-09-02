@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
@@ -18,6 +19,21 @@ export const useBookingExtensions = (bookingId: string | number, params?: { page
       return response.data.data;
     },
     enabled: !!bookingId,
+  });
+};
+
+// 🔹 Get Extension Quote
+export const useExtensionQuote = (bookingId: string | number, newEndDate: string) => {
+  return useQuery({
+    queryKey: ["extension-quote", bookingId, newEndDate],
+    queryFn: async () => {
+      const response = await axiosRequest.get<IBaseResponse<any>>(
+        API_ROUTES.bookings.extensions.quote(bookingId),
+        { params: { new_end_date: newEndDate } }
+      );
+      return response.data.data;
+    },
+    enabled: !!bookingId && !!newEndDate,
   });
 };
 
@@ -63,7 +79,7 @@ export const useRequestExtension = () => {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["booking-extensions", variables.bookingId] });
-      toast.success("Stay extension requested successfully");
+      toast.success(MESSAGES.MSG_STAY_EXTENSION_REQUESTED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to request extension");
@@ -84,7 +100,7 @@ export const useApproveExtension = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["booking-extensions", variables.bookingId] });
       queryClient.invalidateQueries({ queryKey: ["extension-details", variables.bookingId, variables.extensionId] });
-      toast.success("Extension approved successfully");
+      toast.success(MESSAGES.MSG_EXTENSION_APPROVED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to approve extension");
@@ -106,7 +122,7 @@ export const useRejectExtension = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["booking-extensions", variables.bookingId] });
       queryClient.invalidateQueries({ queryKey: ["extension-details", variables.bookingId, variables.extensionId] });
-      toast.success("Extension rejected successfully");
+      toast.success(MESSAGES.MSG_EXTENSION_REJECTED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to reject extension");
@@ -127,7 +143,7 @@ export const useCancelExtension = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["booking-extensions", variables.bookingId] });
       queryClient.invalidateQueries({ queryKey: ["extension-details", variables.bookingId, variables.extensionId] });
-      toast.success("Extension cancelled successfully");
+      toast.success(MESSAGES.MSG_EXTENSION_CANCELLED_SUCCESSFULLY);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to cancel extension");

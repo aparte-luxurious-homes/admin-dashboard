@@ -1,5 +1,6 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useState, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isSameDay, startOfWeek, endOfWeek, isBefore, startOfToday, isWithinInterval, isAfter } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react";
@@ -84,7 +85,7 @@ export default function BookingAvailabilityCalendar({
         const isRangeAvailable = daysInterval.every(d => !isDateDisabled(d));
 
         if (!isRangeAvailable) {
-        toast.error("Some dates in this range are unavailable");
+        toast.error(MESSAGES.MSG_SOME_DATES_IN_THIS_RANGE_ARE_UNAVAILABLE);
         return;
         }
 

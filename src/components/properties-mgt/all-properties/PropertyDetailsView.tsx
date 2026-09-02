@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import Image from "next/image";
 import { TrashIcon } from "../../icons";
 import { TbAirConditioning } from "react-icons/tb";
@@ -57,6 +58,7 @@ import { IUser } from "@/src/lib/types";
 import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
 import Spinner from "../../ui/Spinner";
 import { formatDate } from "@/src/lib/utils";
+import DiscountProposalModal from "./DiscountProposalModal";
 
 export default function PropertyDetailsView({
   propertyId,
@@ -101,6 +103,8 @@ export default function PropertyDetailsView({
     ownerSearchTerm,
     UserRole.OWNER,
   );
+
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [owners, setOwners] = useState<IUser[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<IUser | null>(null);
   const [editMode, setEditMode] = useState<boolean>(
@@ -180,7 +184,7 @@ export default function PropertyDetailsView({
       { payload: { agent_id: agentId } },
       {
         onSuccess: () => {
-          toast.success("Agent assigned successfully", {
+          toast.success(MESSAGES.MSG_AGENT_ASSIGNED_SUCCESSFULLY, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
           });
@@ -188,7 +192,7 @@ export default function PropertyDetailsView({
           setSelectedAgent(null);
         },
         onError: () =>
-          toast.error("Something went wrong", {
+          toast.error(MESSAGES.MSG_SOMETHING_WENT_WRONG, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
           }),
@@ -206,7 +210,7 @@ export default function PropertyDetailsView({
       { payload: { owner_id: ownerId } },
       {
         onSuccess: () => {
-          toast.success("Owner reassigned successfully", {
+          toast.success(MESSAGES.MSG_OWNER_REASSIGNED_SUCCESSFULLY, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
           });
@@ -214,7 +218,7 @@ export default function PropertyDetailsView({
           setSelectedOwner(null);
         },
         onError: (err: any) =>
-          toast.error(err?.response?.data?.detail || "Something went wrong", {
+          toast.error(err?.response?.data?.detail || MESSAGES.MSG_SOMETHING_WENT_WRONG, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
           }),
@@ -345,6 +349,22 @@ export default function PropertyDetailsView({
               <div className="lg:col-span-8 p-4 sm:p-6 md:p-8 space-y-8 md:space-y-10">
                 {!editMode ? (
                   <>
+                    {(property?.proposed_long_stay_discount_policy || property?.proposed_extension_discount_policy) && user?.role === UserRole.OWNER && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                        <Icon icon="solar:info-circle-bold-duotone" className="text-amber-500 text-xl mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-bold text-amber-800">Pending Discount Proposal</h4>
+                          <p className="text-xs text-amber-700 mt-1">An admin has proposed changes to your discount policies. Please review them.</p>
+                          <button
+                            onClick={() => setShowDiscountModal(true)}
+                            className="mt-3 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors"
+                          >
+                            Review Proposal
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Title + Rating */}
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -968,7 +988,7 @@ export default function PropertyDetailsView({
                                       booking_mode: BookingMode.INSTANT,
                                       bookingMode: BookingMode.INSTANT,
                                     }));
-                                    toast.success("Switched to Instant Book");
+                                    toast.success(MESSAGES.MSG_SWITCHED_TO_INSTANT_BOOK);
                                   },
                                   onError: (err: any) =>
                                     toast.error(
@@ -1034,7 +1054,7 @@ export default function PropertyDetailsView({
                                       bookingMode: BookingMode.REQUEST_TO_BOOK,
                                     }));
                                     toast.success(
-                                      "Switched to Request to Book",
+                                      MESSAGES.MSG_SWITCHED_TO_REQUEST_TO_BOOK,
                                     );
                                   },
                                   onError: (err: any) =>
@@ -1340,14 +1360,14 @@ export default function PropertyDetailsView({
                           },
                           {
                             onSuccess: () => {
-                              toast.success("Document uploaded successfully");
+                              toast.success(MESSAGES.MSG_DOCUMENT_UPLOADED_SUCCESSFULLY);
                               setShowDocUpload(false);
                               setDocUploadPending(false);
                               docPreviewsRef.current = [];
                             },
                             onError: (err: any) => {
                               toast.error(
-                                err?.response?.data?.detail || "Upload failed",
+                                err?.response?.data?.detail || MESSAGES.MSG_UPLOAD_FAILED,
                               );
                               setDocUploadPending(false);
                             },
@@ -1399,7 +1419,7 @@ export default function PropertyDetailsView({
                         },
                         {
                           onSuccess: () => {
-                            toast.success("Document verified");
+                            toast.success(MESSAGES.MSG_DOCUMENT_VERIFIED);
                             setShowDocVerify(false);
                           },
                         },
@@ -1425,7 +1445,7 @@ export default function PropertyDetailsView({
                           },
                           {
                             onSuccess: () => {
-                              toast.success("Document rejected");
+                              toast.success(MESSAGES.MSG_DOCUMENT_REJECTED);
                               setShowDocVerify(false);
                             },
                           },
@@ -1443,6 +1463,14 @@ export default function PropertyDetailsView({
           </div>
         )}
       </div>
+
+      {showDiscountModal && property && (
+        <DiscountProposalModal
+          isOpen={showDiscountModal}
+          onClose={() => setShowDiscountModal(false)}
+          property={property}
+        />
+      )}
     </div>
   );
 }

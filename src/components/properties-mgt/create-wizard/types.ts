@@ -1,9 +1,10 @@
-import { PropertyType } from '../types';
+import { PropertyType, IDiscountPolicy } from '../types';
 
 export enum WizardStep {
     PROPERTY_DETAILS = 0,
     UNITS = 1,
-    MEDIA_DOCS = 2,
+    DISCOUNTS = 2,
+    MEDIA_DOCS = 3,
 }
 
 // Mirrors services/properties/models.py::PropertyMediaCategory
@@ -115,6 +116,7 @@ export type CategorizedMedia = Partial<Record<PropertyMediaCategory, File[]>>;
 export const WIZARD_STEPS = [
     { key: WizardStep.PROPERTY_DETAILS, label: 'Property Details', icon: 'solar:home-2-bold-duotone' },
     { key: WizardStep.UNITS, label: 'Units', icon: 'solar:widget-3-bold-duotone' },
+    { key: WizardStep.DISCOUNTS, label: 'Discounts', icon: 'solar:tag-price-bold-duotone' },
     { key: WizardStep.MEDIA_DOCS, label: 'Media & Docs', icon: 'solar:camera-bold-duotone' },
 ] as const;
 
@@ -148,18 +150,27 @@ export type PropertyFormValues = {
     country: string;
     state: string;
     city: string;
+    // Local Government Area (Google's administrative_area_level_2). Optional
+    // because older payloads and the public listing wizard omit it — the API
+    // resolves it from coordinates when absent.
+    lga: string;
     description: string;
     latitude: number | null;
     longitude: number | null;
-    ownerId: number;
+    // UUID string. Was `number`, which forced the falsy sentinel 0 and is
+    // why a selected owner could be dropped without anything noticing.
+    ownerId: string;
     owner_name: string;
     owner_email: string;
     owner_phoneNumber: string;
     is_pet_allowed: boolean;
     is_party_allowed: boolean;
     rules: string;
+    long_stay_discount_policy: IDiscountPolicy;
+    extension_discount_policy: IDiscountPolicy;
     amenities: string[];
-    amenityIds: number[];
+    amenityIds: string[];
+    event_types: string[];
 };
 
 export function createEmptyUnit(): UnitFormValues {

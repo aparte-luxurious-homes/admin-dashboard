@@ -11,6 +11,7 @@ enum PropertyRequestKeys {
     propertyAmenities = "assignPropertyAmenities",
     getAmenities = "getAmenities",
     createAmenities = "getAmenities",
+    getEventTypes = "getEventTypes",
     featureProperty = "featureProperty",
     createProperty = "createProperty",
     propertyVerification = "propertyVerification",
@@ -161,6 +162,12 @@ export function GetAmenities() {
     });
 }
 
+export function GetEventTypes() {
+    return useQuery({
+        queryKey: [PropertyRequestKeys.getEventTypes],
+        queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.eventTypes.base),
+    });
+}
 
 export function CreateAmenity() {
     const queryClient = useQueryClient();
@@ -452,5 +459,17 @@ export function ResubmitOwnerVerification() {
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.getAllVerifications] });
             queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.verificationHistory] });
         },
+    });
+}
+
+export function ReviewDiscountProposal() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, payload }: { propertyId: string | number; payload: { action: 'approve' | 'reject' } }) => 
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.reviewDiscountProposal(propertyId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.singleProperty] });
+            queryClient.invalidateQueries({ queryKey: [PropertyRequestKeys.allProperties] });
+        }
     });
 }

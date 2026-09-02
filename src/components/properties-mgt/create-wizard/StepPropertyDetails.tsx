@@ -42,11 +42,20 @@ function extractAddressComponents(components: AddressComponent[] = []) {
     findByType("sublocality") ||
     findByType("postal_town");
 
+  // The LGA is captured SEPARATELY as well as feeding the city chain.
+  // In Nigeria `administrative_area_level_2` is the Local Government Area,
+  // and it was only ever read as a city fallback - so "Eti-Osa" and
+  // "Alimosho" were being stored as cities and the tier was lost. It stays in
+  // the chain because `city` is NOT NULL and Google omits `locality` for many
+  // Nigerian addresses; it is simply also recorded for what it is.
+  const lga = findByType("administrative_area_level_2");
+
   return {
     street_number: findByType("street_number"),
     street_name: findByType("route"),
     postal_code: findByType("postal_code"),
     city,
+    lga,
     state: findByType("administrative_area_level_1"),
     country: findByType("country"),
   };
@@ -69,6 +78,7 @@ function applyGeocodeResultToForm(
   formik.setFieldValue("street_name", parts.street_name);
   formik.setFieldValue("postal_code", parts.postal_code);
   if (parts.city) formik.setFieldValue("city", parts.city);
+  if (parts.lga) formik.setFieldValue("lga", parts.lga);
   if (parts.state) formik.setFieldValue("state", parts.state);
   // Country is locked to Nigeria — never overwrite from Google.
   // A fresh geocode means the user must re-confirm the pin.
@@ -172,6 +182,7 @@ function AddressAutocomplete({
 interface StepPropertyDetailsProps {
   formik: ReturnType<typeof useFormik<PropertyFormValues>>;
   availableAmenities: IAmenity[];
+  availableEventTypes?: { id: string; name: string }[];
   userRole?: string;
   isLoaded: boolean;
 }
@@ -179,6 +190,7 @@ interface StepPropertyDetailsProps {
 export default function StepPropertyDetails({
   formik,
   availableAmenities,
+  availableEventTypes = [],
   userRole,
   isLoaded,
 }: StepPropertyDetailsProps) {
@@ -315,6 +327,7 @@ export default function StepPropertyDetails({
                   setIsNewOwner(false);
                   formik.setFieldValue("owner_email", "");
                   formik.setFieldValue("owner_name", "");
+                  formik.setFieldValue("owner_phoneNumber", "");
                 }}
                 className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${!isNewOwner ? "bg-white shadow-sm text-primary" : "text-zinc-500"}`}
               >
@@ -325,7 +338,7 @@ export default function StepPropertyDetails({
                 onClick={() => {
                   setIsNewOwner(true);
                   setSelectedOwner(null);
-                  formik.setFieldValue("ownerId", 0);
+                  formik.setFieldValue("ownerId", "");
                 }}
                 className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${isNewOwner ? "bg-white shadow-sm text-primary" : "text-zinc-500"}`}
               >
@@ -358,7 +371,7 @@ export default function StepPropertyDetails({
                   const selected = users.find((u: any) => u.email === val);
                   setOwnerSearchTerm(selected?.email || val);
                   setSelectedOwner(selected);
-                  formik.setFieldValue("ownerId", selected?.id);
+                  formik.setFieldValue("ownerId", selected?.id ? String(selected.id) : "");
                 }}
                 searchTerm={ownerSearchTerm}
                 setSearchTerm={setOwnerSearchTerm}
@@ -685,6 +698,30 @@ export default function StepPropertyDetails({
           </div>
         </div>
       </div>
+
+      {formik.values.property_type === PropertyType.EVENT_CENTRE && (
+        <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
+              <Icon
+                icon="solar:calendar-bold-duotone"
+                className="text-lg text-primary"
+              />
+              Event Types
+            </h3>
+          </div>
+          <p className="text-xs text-zinc-500">
+            Select all event types that this venue can accommodate.
+          </p>
+          <div className="bg-zinc-50 border border-zinc-100 rounded-xl p-4">
+            <MultipleChoice
+              options={availableEventTypes.map((et) => et.name)}
+              selected={formik.values.event_types}
+              onChange={(val) => formik.setFieldValue("event_types", [...val])}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Property Rules */}
       <div className="bg-white border border-zinc-200 rounded-2xl p-4 sm:p-6 space-y-5 shadow-sm">

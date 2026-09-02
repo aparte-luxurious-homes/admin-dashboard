@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowIcon,
@@ -79,10 +80,10 @@ export default function AllVerificationsTable() {
     try {
       await navigator.clipboard.writeText(idToCopy);
       setCopiedId(String(id));
-      toast.success("ID copied!", { duration: 1500 });
+      toast.success(MESSAGES.MSG_ID_COPIED, { duration: 1500 });
       setTimeout(() => setCopiedId(null), 1500);
     } catch (err) {
-      toast.error("Copy failed");
+      toast.error(MESSAGES.MSG_COPY_FAILED);
     }
   };
 
@@ -105,7 +106,7 @@ export default function AllVerificationsTable() {
             {
               propertyId,
               payload: {
-                feedback: feedbackText || "Property verified successfully",
+                feedback: feedbackText || MESSAGES.MSG_PROPERTY_VERIFIED_SUCCESSFULLY,
                 status: PropertyVerificationStatus.VERIFIED,
                 skip_kyc_check: skipKycCheck,
                 skip_document_check: skipDocumentCheck,
@@ -113,7 +114,7 @@ export default function AllVerificationsTable() {
             },
             {
               onSuccess: () => {
-                toast.success("Property verified successfully", {
+                toast.success(MESSAGES.MSG_PROPERTY_VERIFIED_SUCCESSFULLY, {
                   duration: 6000,
                   style: {
                     maxWidth: "500px",
@@ -155,7 +156,7 @@ export default function AllVerificationsTable() {
       selectedVerification?.property?.id;
 
     if (!feedbackText.trim()) {
-      toast.error("Please provide feedback for rejection");
+      toast.error(MESSAGES.MSG_PLEASE_PROVIDE_FEEDBACK_FOR_REJECTION);
       return;
     }
 
@@ -176,7 +177,7 @@ export default function AllVerificationsTable() {
             },
             {
               onSuccess: () => {
-                toast.success("Property verification rejected", {
+                toast.success(MESSAGES.MSG_PROPERTY_VERIFICATION_REJECTED, {
                   duration: 6000,
                   style: {
                     maxWidth: "500px",

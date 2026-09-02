@@ -32,6 +32,7 @@ export enum PropertyType {
     VILLA = 'VILLA',
     APARTMENT = 'APARTMENT',
     HOTEL = 'HOTEL',
+    EVENT_CENTRE = 'EVENT_CENTRE',
     OTHERS = 'OTHERS',
 }
 
@@ -40,8 +41,24 @@ export enum BookingMode {
     REQUEST_TO_BOOK = 'REQUEST_TO_BOOK',
 }
 
+export enum DiscountType {
+    PERCENTAGE = 'PERCENTAGE',
+    FIXED = 'FIXED',
+}
+
+export interface IDiscountTier {
+    min_nights: number;
+    value: number | string;
+}
+
+export interface IDiscountPolicy {
+    is_active: boolean;
+    discount_type: DiscountType;
+    tiers: IDiscountTier[];
+}
+
 export interface IAmenity {
-    id: number
+    id: string
     name: string
     createdAt?: string
     updatedAt?: string
@@ -50,11 +67,11 @@ export interface IAmenity {
 
 
 export interface IPropertyVerification {
-    id: number
-    propertyId: number
-    property_id?: number
-    agentId: number
-    agent_id?: number
+    id: string
+    propertyId: string
+    property_id?: string
+    agentId: string
+    agent_id?: string
     status: PropertyVerificationStatus
     feedback: string
     evidence_urls?: string[]
@@ -74,24 +91,26 @@ export interface IPropertyVerification {
 }
 
 export interface IAmenityAssignment {
-    id: number
-    amenityId: number
-    assignableId: number
+    id: string
+    amenityId: string
+    assignableId: string
     assignableType: AssignableType
     createdAt: string
     amenity: IAmenity
 }
 
 export interface IAssignAmenity {
-    amenity_ids: number[]
+    amenity_ids: string[]
 }
 
 export interface IPropertyReview {
-    id: number
-    unitId: number
-    userId: number
+    id: string
+    unitId: string
+    userId: string
     rating: number
     review?: string
+    comment?: string
+    photo_urls?: string[]
     createdAt: string
 }
 
@@ -103,15 +122,15 @@ export interface IPropertyMedia {
     media_type?: MediaType
     isFeatured?: boolean
     is_featured?: boolean
-    assignableId: number
+    assignableId: string
     assignableType: AssignableType
     uploadedAt: string
 }
 
 export interface IPropertyUnit {
-    id: number
-    propertyId: number
-    property_id?: number
+    id: string
+    propertyId: string
+    property_id?: string
     name: string
     description?: string
     pricePerNight: string
@@ -131,6 +150,30 @@ export interface IPropertyUnit {
     kitchen_count?: number
     bathroomCount: number
     bathroom_count?: number
+    seatingCapacity?: number
+    seating_capacity?: number
+    standingCapacity?: number
+    standing_capacity?: number
+    carParkSpaces?: number
+    car_park_spaces?: number
+    powerSupplyProvision?: string
+    power_supply_provision?: string
+    additionalFees?: Array<{
+        fee_name: string
+        fee_amount: number
+        is_mandatory: boolean
+    }>
+    additional_fees?: Array<{
+        fee_name: string
+        fee_amount: number
+        is_mandatory: boolean
+    }>
+    eventPricePerDay?: string
+    event_price_per_day?: string
+    eventPricePerHour?: string
+    event_price_per_hour?: string
+    eventPricePerHalfDay?: string
+    event_price_per_half_day?: string
     isVerified: boolean
     is_verified?: boolean
     createdAt: string
@@ -148,25 +191,30 @@ export interface IPropertyUnit {
 
 export interface IProperty {
     [x: string]: any
-    id: number
-    ownerId: number
-    owner_id?: number
+    id: string
+    ownerId: string
+    owner_id?: string
     bookingMode?: BookingMode
     booking_mode?: BookingMode
-    assignedAgent?: number
-    assigned_agent?: number
+    assignedAgent?: string
+    assigned_agent?: string
+    zone_id?: string
     name: string
     description?: string
     address: string
     propertyType: PropertyType
     property_type?: PropertyType
     city: string
+    // Local Government Area (Google's administrative_area_level_2). Optional
+    // because older payloads and the public listing wizard omit it — the API
+    // resolves it from coordinates when absent.
+    lga?: string
     state: string
     country: string
     latitude?: number
     longitude?: number
-    kycId?: number
-    kyc_id?: number
+    kycId?: string
+    kyc_id?: string
     isVerified: boolean
     is_verified?: boolean
     isPetAllowed: boolean
@@ -176,6 +224,13 @@ export interface IProperty {
     rules?: string
     isFeatured: boolean
     is_featured?: boolean
+    
+    // Discount Policies
+    long_stay_discount_policy?: IDiscountPolicy
+    extension_discount_policy?: IDiscountPolicy
+    proposed_long_stay_discount_policy?: IDiscountPolicy
+    proposed_extension_discount_policy?: IDiscountPolicy
+    
     createdAt: string
     created_at?: string
     updatedAt: string
@@ -187,6 +242,8 @@ export interface IProperty {
     media: IPropertyMedia[]
     amenities: IAmenity[]
     documents: IPropertyDocument[]
+    eventTypes?: any[]
+    event_types?: any[]
 }
 
 export enum DocumentType {
@@ -197,6 +254,9 @@ export enum DocumentType {
     TENANCY_AGREEMENT = 'TENANCY_AGREEMENT',
     TITLE_DEED = 'TITLE_DEED',
     CERTIFICATE_OF_OCCUPANCY = 'CERTIFICATE_OF_OCCUPANCY',
+    EVENT_PERMIT = 'EVENT_PERMIT',
+    INSURANCE_CERTIFICATE = 'INSURANCE_CERTIFICATE',
+    OTHER_SUPPORTING_DOCUMENT = 'OTHER_SUPPORTING_DOCUMENT',
 }
 
 export interface IPropertyDocument {
@@ -235,18 +295,24 @@ export interface ICreateProperty {
     geocode_raw?: Record<string, unknown>
     property_type: PropertyType
     city: string
+    lga?: string
     state: string
     country: string
     latitude: number
     longitude: number
-    amenities: number[]
+    amenities: string[]
     is_pet_allowed: boolean
     is_party_allowed: boolean
     rules?: string
+    owner_id?: string
     owner_email?: string
     owner_name?: string
     owner_phone?: string
-    units?: ICreatePropertyUnit[],
+    zone_id?: string
+    booking_mode?: BookingMode
+    event_types?: string[]
+    long_stay_discount_policy?: IDiscountPolicy
+    extension_discount_policy?: IDiscountPolicy
 }
 
 export interface IAssignProperty {
@@ -265,19 +331,26 @@ export interface IUpdateProperty {
     geocode_raw?: Record<string, unknown>,
     property_type: PropertyType,
     city: string,
+    lga?: string,
     state: string,
     country: string,
     latitude: number,
     longitude: number,
-    // kyc_id?: number,
-    ownerId: number,
-    amenities?: number[],
+    // kyc_id?: string,
+    ownerId: string,
+    amenities?: string[],
     // assignedAgent?: IUser,
     is_pet_allowed: boolean,
     is_party_allowed: boolean,
     rules?: string,
     owner_email?: string,
-    owner_name?: string
+    owner_name?: string,
+    owner_phone?: string,
+    zone_id?: string,
+    booking_mode?: BookingMode,
+    event_types?: string[],
+    long_stay_discount_policy?: IDiscountPolicy,
+    extension_discount_policy?: IDiscountPolicy
 }
 
 export interface IUpdatePropertyUnit {
@@ -292,7 +365,19 @@ export interface IUpdatePropertyUnit {
     living_room_count?: number,
     kitchen_count?: number,
     bathroom_count?: number,
-    amenities?: number[],
+    amenities?: string[],
+    seating_capacity?: number,
+    standing_capacity?: number,
+    car_park_spaces?: number,
+    power_supply_provision?: string,
+    event_price_per_day?: string,
+    event_price_per_hour?: string,
+    event_price_per_half_day?: string,
+    additional_fees?: Array<{
+        fee_name: string,
+        fee_amount: number,
+        is_mandatory: boolean
+    }>,
 }
 
 export interface ICreatePropertyUnit {
@@ -307,8 +392,19 @@ export interface ICreatePropertyUnit {
     kitchen_count: number,
     bathroom_count: number,
     caution_fee: string,
-    amenities: number[],
-    media?: string[],
+    amenities: string[],
+    seating_capacity?: number,
+    standing_capacity?: number,
+    car_park_spaces?: number,
+    power_supply_provision?: string,
+    event_price_per_day?: string,
+    event_price_per_hour?: string,
+    event_price_per_half_day?: string,
+    additional_fees?: Array<{
+        fee_name: string,
+        fee_amount: number,
+        is_mandatory: boolean
+    }>,
 }
 
 export interface IUploadPropertyMedia {
@@ -318,8 +414,8 @@ export interface IUploadPropertyMedia {
 }
 
 export interface IAvailability {
-    id: string | number
-    unit_id: string | number
+    id: string
+    unit_id: string
     date: string
     count: number
     is_blackout: boolean

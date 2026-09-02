@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { FaMapLocationDot, FaPlus, FaArrowLeftLong } from "react-icons/fa6";
@@ -24,12 +25,13 @@ import { useDispatch } from "react-redux";
 import CustomDropzone from "../../ui/CustomDropzone";
 import { useFormik } from "formik";
 import {
-  DeleteProperty,
   FeatureProperty,
   UpdateProperty,
   UpdateBookingMode,
   UploadPropertyMedia,
+  DeleteProperty,
   DeletePropertyMedia, UploadPropertyDocument, GetPropertyDocuments,
+  GetEventTypes,
 } from "@/src/lib/request-handlers/propertyMgt";
 import { CreatePropertyUnit, UpdatePropertyUnit, DeletePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { BookingMode } from "../types";
@@ -46,6 +48,7 @@ import { Icon } from "@iconify/react";
 import UnitDrawer from "../create-wizard/UnitDrawer";
 import { UnitFormValues, createEmptyUnit } from "../create-wizard/types";
 import UnitCard from "../create-wizard/UnitCard";
+import StepDiscounts from "../create-wizard/StepDiscounts";
 import axios from "axios";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import usePlacesAutocomplete, {
@@ -104,10 +107,18 @@ function AddressAutocomplete({
         findByType("sublocality") ||
         findByType("postal_town");
       const state = findByType("administrative_area_level_1");
+      // The LGA is captured SEPARATELY as well as feeding the city chain.
+      // In Nigeria `administrative_area_level_2` is the Local Government Area,
+      // and it was only ever read as a city fallback - so "Eti-Osa" and
+      // "Alimosho" were being stored as cities and the tier was lost. It stays in
+      // the chain because `city` is NOT NULL and Google omits `locality` for many
+      // Nigerian addresses; it is simply also recorded for what it is.
+      const lga = findByType("administrative_area_level_2");
       const street_number = findByType("street_number");
       const street_name = findByType("route");
       const postal_code = findByType("postal_code");
       if (city) formik.setFieldValue("city", city);
+      if (lga) formik.setFieldValue("lga", lga);
       if (state) formik.setFieldValue("state", state);
       formik.setFieldValue("street_number", street_number);
       formik.setFieldValue("street_name", street_name);
@@ -226,6 +237,18 @@ export default function EditPropertyView({
     const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
     const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
 
+  // Event types
+  const { data: fetchedEventTypes } = GetEventTypes();
+  const [availableEventTypes, setAvailableEventTypes] = useState<
+    { id: string; name: string }[]
+  >([]);
+
+  useEffect(() => {
+    if (fetchedEventTypes?.data?.data) {
+      setAvailableEventTypes(fetchedEventTypes.data.data);
+    }
+  }, [fetchedEventTypes]);
+
   // Unit management state
   const { mutate: createUnit, isPending: isCreatingUnit } = CreatePropertyUnit();
   const { mutate: updateUnit } = UpdatePropertyUnit();
@@ -298,9 +321,9 @@ export default function EditPropertyView({
           {
             onSuccess: () => {
               setExistingUnits(prev => prev.map((u, i) => i === editingUnitIndex ? { ...unit, _key: existingId } : u));
-              toast.success('Unit updated');
+              toast.success(MESSAGES.MSG_UNIT_UPDATED);
             },
-            onError: () => toast.error('Failed to update unit'),
+            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_UPDATE_UNIT),
           },
         );
       } else {
@@ -315,9 +338,9 @@ export default function EditPropertyView({
             if (created) {
               setExistingUnits(prev => [...prev, { ...unit, _key: String(created.id) }]);
             }
-            toast.success('Unit added');
+            toast.success(MESSAGES.MSG_UNIT_ADDED);
           },
-          onError: () => toast.error('Failed to create unit'),
+          onError: () => toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNIT),
         },
       );
     }
@@ -340,9 +363,9 @@ export default function EditPropertyView({
               {
                 onSuccess: () => {
                   setExistingUnits(prev => prev.filter((_, i) => i !== index));
-                  toast.success('Unit deleted');
+                  toast.success(MESSAGES.MSG_UNIT_DELETED);
                 },
-                onError: () => toast.error('Failed to delete unit'),
+                onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_UNIT),
               },
             );
           },
@@ -381,6 +404,7 @@ export default function EditPropertyView({
       country: "Nigeria",
       state: propertyData?.state ?? "",
       city: propertyData?.city ?? "",
+      lga: propertyData?.lga ?? "",
       street_number: (propertyData as any)?.street_number ?? "",
       street_name: (propertyData as any)?.street_name ?? "",
       postal_code: (propertyData as any)?.postal_code ?? "",
@@ -401,6 +425,7 @@ export default function EditPropertyView({
         BookingMode.INSTANT) as BookingMode,
       amenities: propertyData?.amenities.map((el) => el.id),
       amenityNames: propertyData?.amenities.map((el) => el.name),
+      event_types: (propertyData?.eventTypes ?? propertyData?.event_types ?? []).map((el: any) => el.name ?? el),
     },
     onSubmit: (values: any) => {
       const sortedAmenities = sortAmenities(
@@ -432,7 +457,15 @@ export default function EditPropertyView({
         postal_code: values.postal_code || undefined,
         landmark: values.landmark || undefined,
         google_place_id: values.google_place_id || undefined,
+        long_stay_discount_policy: values.long_stay_discount_policy,
+        extension_discount_policy: values.extension_discount_policy,
       };
+
+      if (values.type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
+        updatePayload.event_types = availableEventTypes
+          .filter(et => values.event_types.includes(et.name))
+          .map(et => String(et.id));
+      }
 
       mutate(
         { propertyId: propertyData.id, payload: updatePayload },
@@ -449,7 +482,7 @@ export default function EditPropertyView({
                 { propertyId: propertyData.id, payload: formData },
                 {
                   onSuccess: () => {
-                    toast.success("Property updated with new images", {
+                    toast.success(MESSAGES.MSG_PROPERTY_UPDATED_WITH_NEW_IMAGES, {
                       duration: 6000,
                       style: { maxWidth: "500px", width: "max-content" },
                     });
@@ -467,7 +500,7 @@ export default function EditPropertyView({
                 },
               );
             } else {
-              toast.success("Property update successful", {
+              toast.success(MESSAGES.MSG_PROPERTY_UPDATE_SUCCESSFUL, {
                 duration: 6000,
                 style: { maxWidth: "500px", width: "max-content" },
               });
@@ -476,7 +509,7 @@ export default function EditPropertyView({
             }
           },
           onError: () =>
-            toast.error("Something went wrong, please try again", {
+            toast.error(MESSAGES.MSG_SOMETHING_WENT_WRONG_PLEASE_TRY_AGAIN, {
               duration: 6000,
               style: { maxWidth: "500px", width: "max-content" },
             }),
@@ -488,7 +521,7 @@ export default function EditPropertyView({
   const handleGeocode = async () => {
     const { address, city, state, country } = formik.values;
     if (!address) {
-      toast.error("Please enter a physical address first");
+      toast.error(MESSAGES.MSG_PLEASE_ENTER_A_PHYSICAL_ADDRESS_FIRST);
       return;
     }
     const fullAddress = `${address}, ${city}, ${state}, ${country}`;
@@ -505,12 +538,12 @@ export default function EditPropertyView({
         formik.setFieldValue("longitude", lng);
         toast.success(`Coordinates found: ${lat}, ${lng}`, { id: toastId });
       } else {
-        toast.error("Coordinates not found. Please enter manually.", {
+        toast.error(MESSAGES.MSG_COORDINATES_NOT_FOUND_PLEASE_ENTER_MANUA, {
           id: toastId,
         });
       }
     } catch (error) {
-      toast.error("Failed to fetch coordinates.", { id: toastId });
+      toast.error(MESSAGES.MSG_FAILED_TO_FETCH_COORDINATES, { id: toastId });
     }
   };
 
@@ -534,7 +567,7 @@ export default function EditPropertyView({
           deleteMedia(
             { propertyId: propertyData.id, mediaId: id },
             {
-              onSuccess: () => toast.success("Image deleted successfully"),
+              onSuccess: () => toast.success(MESSAGES.MSG_IMAGE_DELETED_SUCCESSFULLY),
               onError: (error: any) =>
                 toast.error(
                   error?.response?.data?.detail || "Failed to delete image",
@@ -558,7 +591,7 @@ export default function EditPropertyView({
           deleteMutation(
             { propertyId: propertyData.id },
             {
-              onSuccess: (response) => {
+              onSuccess: (response: any) => {
                 removeParam("edit");
                 toast.success(response?.data?.message, {
                   duration: 6000,
@@ -879,6 +912,25 @@ export default function EditPropertyView({
                 }
               />
 
+              {formik.values.type === PropertyType.EVENT_CENTRE && (
+                <div className="pt-4 border-t border-zinc-50">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <Icon
+                      icon="solar:calendar-bold-duotone"
+                      className="text-sm text-primary"
+                    />
+                    Event Types
+                  </p>
+                  <MultipleChoice
+                    options={availableEventTypes.map((et) => et.name)}
+                    selected={formik.values.event_types}
+                    onChange={(val) =>
+                      formik.setFieldValue("event_types", [...val])
+                    }
+                  />
+                </div>
+              )}
+
               {/* Flags */}
               <div className="pt-4 border-t border-zinc-50">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">
@@ -1090,13 +1142,13 @@ export default function EditPropertyView({
                       { propertyId: propertyData.id, payload: formData },
                       {
                         onSuccess: () =>
-                          toast.success("Media uploaded successfully", {
+                          toast.success(MESSAGES.MSG_MEDIA_UPLOADED_SUCCESSFULLY, {
                             duration: 6000,
                             style: { maxWidth: "500px", width: "max-content" },
                           }),
                         onError: (error: any) =>
                           toast.error(
-                            error?.response?.data?.detail || error?.response?.data?.message || "Upload failed",
+                            error?.response?.data?.detail || error?.response?.data?.message || MESSAGES.MSG_UPLOAD_FAILED,
                             {
                               duration: 6000,
                               style: {
@@ -1182,11 +1234,11 @@ export default function EditPropertyView({
                                                 payload: formData
                                             }, {
                                                 onSuccess: () => {
-                                                    toast.success('Document uploaded successfully');
+                                                    toast.success(MESSAGES.MSG_DOCUMENT_UPLOADED_SUCCESSFULLY);
                                                     refetchDocs();
                                                 },
                                                 onError: (err: any) => {
-                                                    toast.error(err?.response?.data?.detail || 'Document upload failed');
+                                                    toast.error(err?.response?.data?.detail || MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED);
                                                 }
                                             });
                                             e.target.value = '';
@@ -1203,6 +1255,10 @@ export default function EditPropertyView({
                             </div>
                         </div>
                     </div>
+          {/* Discounts Management Section */}
+          <div className="bg-white border border-zinc-100 rounded-2xl p-0 shadow-sm mt-4">
+            <StepDiscounts formik={formik} />
+          </div>
 
           {/* Units Management Section */}
           <FormCard icon="solar:home-2-bold-duotone" title="Units">

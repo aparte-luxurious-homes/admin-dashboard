@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useRef, useState } from "react";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { fixedAmenities } from "@/src/data/amenities";
 import {
   GetAmenities,
+  GetEventTypes,
   CreateProperty,
   UploadPropertyMedia,
   UploadPropertyDocument,
@@ -30,6 +32,7 @@ import StepUnits from "./StepUnits";
 import StepMediaDocs from "./StepMediaDocs";
 import UnitDrawer from "./UnitDrawer";
 import IncompleteProfileDialog from "@/src/components/shared/IncompleteProfileDialog";
+import { UserRole } from "@/src/lib/enums";
 import {
   readWizardDraft,
   writeWizardDraft,
@@ -46,6 +49,7 @@ import {
   DocumentType,
   MediaType,
   PropertyType,
+  DiscountType,
 } from "../types";
 import {
   WizardStep,
@@ -56,6 +60,7 @@ import {
 } from "./types";
 import { validatePropertyName } from "./nameValidator";
 import Modal from "../../modal/Modal";
+import StepDiscounts from "./StepDiscounts";
 
 const libraries: any = ["places"];
 
@@ -112,14 +117,24 @@ export default function CreatePropertyWizard() {
   // empty startup state doesn't clobber a previously-saved draft.
   const [mediaHydrated, setMediaHydrated] = useState(false);
 
-  // Amenities
+  // Amenities and Event Types
   const { data: fetchedAmenities } = GetAmenities();
+  const { data: fetchedEventTypes } = GetEventTypes();
   const [availableAmenities, setAvailableAmenities] =
     useState<IAmenity[]>(fixedAmenities);
+  const [availableEventTypes, setAvailableEventTypes] = useState<
+    { id: string; name: string }[]
+  >([]);
 
   useEffect(() => {
     setAvailableAmenities(fetchedAmenities?.data?.data ?? fixedAmenities);
   }, [fetchedAmenities]);
+
+  useEffect(() => {
+    if (fetchedEventTypes?.data?.data) {
+      setAvailableEventTypes(fetchedEventTypes.data.data);
+    }
+  }, [fetchedEventTypes]);
 
   // API mutations
   const { mutate: createProperty, isPending: isCreating } = CreateProperty();
@@ -143,8 +158,8 @@ export default function CreatePropertyWizard() {
   const sortAmenities = (
     amenities: IAmenity[] = [],
     selectedNames: string[] = [],
-  ): number[] => {
-    const sorted: number[] = [];
+  ): string[] => {
+    const sorted: string[] = [];
     const safeAmenities = Array.isArray(amenities) ? amenities : [];
     const safeNames = Array.isArray(selectedNames) ? selectedNames : [];
     const amenityNames = safeAmenities.map((a) => a.name);
@@ -161,7 +176,16 @@ export default function CreatePropertyWizard() {
   // restored draft here. Subsequent edits flow through formik state and
   // are persisted via the useEffect below.
   const formik = useFormik<PropertyFormValues>({
-    initialValues: draft?.values ?? {
+    initialValues: (draft?.values
+      ? {
+          ...draft.values,
+          // legacy numeric sentinel -> "" (see ownerId type change)
+          ownerId:
+            typeof draft.values.ownerId === "number"
+              ? ""
+              : (draft.values.ownerId ?? ""),
+        }
+      : undefined) ?? {
       name: "",
       address: "",
       street_number: "",
@@ -175,18 +199,30 @@ export default function CreatePropertyWizard() {
       country: "Nigeria",
       state: "Lagos",
       city: "Ikeja",
+      lga: "",
       description: "",
       latitude: null,
       longitude: null,
-      ownerId: 0,
+      ownerId: "",
       owner_name: "",
       owner_email: "",
       owner_phoneNumber: "",
       is_pet_allowed: false,
       is_party_allowed: false,
       rules: "",
+      long_stay_discount_policy: {
+        is_active: false,
+        discount_type: DiscountType.PERCENTAGE,
+        tiers: []
+      },
+      extension_discount_policy: {
+        is_active: false,
+        discount_type: DiscountType.PERCENTAGE,
+        tiers: []
+      },
       amenities: [],
       amenityIds: [],
+      event_types: [],
     },
     enableReinitialize: true,
     onSubmit: (values) => {
@@ -258,7 +294,7 @@ export default function CreatePropertyWizard() {
       (draft.units?.length ?? 0) > 0 ||
       draft.currentStep !== WizardStep.PROPERTY_DETAILS;
     if (hasMeaningfulDraft) {
-      toast.success("Welcome back — we restored your property draft.", {
+      toast.success(MESSAGES.MSG_WELCOME_BACK_WE_RESTORED_YOUR_PROPERTY_D, {
         duration: 4500,
       });
       setShowDiscontinueModal(true);
@@ -288,6 +324,14 @@ export default function CreatePropertyWizard() {
 
   const handleCloseShowDiscontinueModal = () => setShowDiscontinueModal(false);
   const handleOpenShowDiscontinueModal = () => setShowDiscontinueModal(true);
+
+  const [firstTimeUploadingMedia, setFirstTimeUploadingMedia] = useState(false);
+  useEffect(() => {
+    if (WizardStep.MEDIA_DOCS) {
+      setFirstTimeUploadingMedia(true);
+    }
+  }, []);
+
   // Step validation
   const validateStep = (step: WizardStep): boolean => {
     switch (step) {
@@ -311,41 +355,41 @@ export default function CreatePropertyWizard() {
           return false;
         }
         if (!address.trim()) {
-          toast.error("Address is required");
-          return false;
+          toast.error(MESSAGES.MSG_ADDRESS_IS_REQUIRED);
+          return false; 
         }
         if (!google_place_id) {
           toast.error(
-            "Please select the address from the suggestions so we can pin it on the map",
+            MESSAGES.MSG_PLEASE_SELECT_THE_ADDRESS_FROM_THE_SUGGE,
           );
           return false;
         }
         if (latitude == null || longitude == null) {
           toast.error(
-            "Coordinates missing \u2014 pick the address from the suggestions again",
+            MESSAGES.MSG_COORDINATES_MISSING_U2014_PICK_THE_ADDRE,
           );
           return false;
         }
         if (!pin_confirmed) {
           toast.error(
-            "Please confirm the map pin matches the actual property location",
+            MESSAGES.MSG_PLEASE_CONFIRM_THE_MAP_PIN_MATCHES_THE_A,
           );
           return false;
         }
         if (!property_type) {
-          toast.error("Property type is required");
+          toast.error(MESSAGES.MSG_PROPERTY_TYPE_IS_REQUIRED);
           return false;
         }
         if (!country.trim()) {
-          toast.error("Country is required");
+          toast.error(MESSAGES.MSG_COUNTRY_IS_REQUIRED);
           return false;
         }
         if (!state.trim()) {
-          toast.error("State is required");
+          toast.error(MESSAGES.MSG_STATE_IS_REQUIRED);
           return false;
         }
         if (!city.trim()) {
-          toast.error("City is required");
+          toast.error(MESSAGES.MSG_CITY_IS_REQUIRED);
           return false;
         }
         return true;
@@ -356,14 +400,16 @@ export default function CreatePropertyWizard() {
         const anyPropertyMedia = Object.values(propertyMedia).some(
           (files) => (files?.length ?? 0) > 0,
         );
-        if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
+        if (WizardStep.MEDIA_DOCS && !firstTimeUploadingMedia) {
           toast.error(
-            "Please upload photos for at least one property category before creating",
+            MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR,
           );
           return false;
         }
         return true;
       }
+      case WizardStep.DISCOUNTS:
+        return true;
       default:
         return true;
     }
@@ -431,51 +477,94 @@ export default function CreatePropertyWizard() {
 
     const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
 
+    const anyPropertyMedia = Object.values(propertyMedia).some(
+      (files) => (files?.length ?? 0) > 0,
+    );
+
+    if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
+      toast.error(
+        MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR,
+      );
+      return false;
+    };
+
     if (
       values.latitude == null ||
       values.longitude == null ||
       !values.google_place_id
     ) {
       toast.error(
-        "Address details are incomplete. Go back to step 1 and re-select the address.",
+        MESSAGES.MSG_ADDRESS_DETAILS_ARE_INCOMPLETE_GO_BACK_T,
       );
       return;
     }
 
-    const payload: ICreateProperty = {
+    // Owner assignment is only collected for admins and agents (see
+    // showOwnerSection in StepPropertyDetails). Submitting it blank makes the
+    // backend fall back to the caller as owner, which silently self-attributes
+    // a listing an agent meant to file for someone else — and strips the agent
+    // off it in the process. Better to stop here than to manufacture a row that
+    // needs a two-step admin repair.
+    const ownerSectionShown =
+      user?.role === UserRole.ADMIN ||
+      user?.role === UserRole.SUPER_ADMIN ||
+      user?.role === UserRole.AGENT;
+    if (ownerSectionShown && !values.ownerId && !values.owner_email) {
+      toast.error(
+        "Select an existing owner, or enter the new owner's details, before creating this listing.",
+      );
+      return;
+    }
+
+    const propertyPayload: ICreateProperty = {
       name: values.name,
       description: values.description,
       address: values.address,
-      property_type: values.property_type as PropertyType,
+      street_number: values.street_number || undefined,
+      street_name: values.street_name || undefined,
+      postal_code: values.postal_code || undefined,
+      landmark: values.landmark || undefined,
+      google_place_id: values.google_place_id || "",
       city: values.city,
+      // Omitted rather than sent empty: the API resolves the LGA from
+      // coordinates when it is absent, but an empty string would overwrite
+      // a good value on the update path.
+      ...(values.lga ? { lga: values.lga } : {}),
       state: values.state,
       country: values.country,
-      latitude: values.latitude,
-      longitude: values.longitude,
-      google_place_id: values.google_place_id,
+      latitude: values.latitude || 0,
+      longitude: values.longitude || 0,
+      property_type: values.property_type as PropertyType,
       amenities: sortedAmenities,
       is_pet_allowed: values.is_pet_allowed,
       is_party_allowed: values.is_party_allowed,
-      ...(values.street_number && { street_number: values.street_number }),
-      ...(values.street_name && { street_name: values.street_name }),
-      ...(values.postal_code && { postal_code: values.postal_code }),
-      ...(values.landmark && { landmark: values.landmark }),
-      ...(values.geocode_raw && { geocode_raw: values.geocode_raw }),
-      ...(values.rules && { rules: values.rules }),
-      ...(values.owner_email && { owner_email: values.owner_email }),
-      ...(values.owner_name && { owner_name: values.owner_name }),
-      ...(values.owner_phoneNumber && {
-        owner_phone: values.owner_phoneNumber,
-      }),
+      rules: values.rules || undefined,
+      ...(values.ownerId
+        ? { owner_id: String(values.ownerId) }
+        : {
+            ...(values.owner_email && { owner_email: values.owner_email }),
+            ...(values.owner_name && { owner_name: values.owner_name }),
+            ...(values.owner_phoneNumber && {
+              owner_phone: values.owner_phoneNumber,
+            }),
+          }),
+      long_stay_discount_policy: values.long_stay_discount_policy,
+      extension_discount_policy: values.extension_discount_policy,
     };
 
+    if (values.property_type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
+        propertyPayload.event_types = availableEventTypes
+            .filter(et => values.event_types.includes(et.name))
+            .map(et => String(et.id));
+    }
+
     createProperty(
-      { payload },
+      { payload: propertyPayload },
       {
         onSuccess: (response) => {
           const propertyId = response?.data?.data?.id;
           if (!propertyId) {
-            toast.error("Property created but failed to get ID");
+            toast.error(MESSAGES.MSG_PROPERTY_CREATED_BUT_FAILED_TO_GET_ID);
             return;
           }
 
@@ -484,7 +573,7 @@ export default function CreatePropertyWizard() {
           clearWizardDraft();
           clearWizardMediaDraft();
 
-          toast.success("Property created successfully");
+          toast.success(MESSAGES.MSG_PROPERTY_CREATED_SUCCESSFULLY);
 
           // Upload property media — one request per non-empty category, so
           // the server persists the `category` tag on each PropertyMedia row.
@@ -538,7 +627,7 @@ export default function CreatePropertyWizard() {
                 { propertyId, payload: docFormData },
                 {
                   onError: () =>
-                    toast.error("Document upload failed", {
+                    toast.error(MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED, {
                       duration: 6000,
                       style: { maxWidth: "500px", width: "max-content" },
                     }),
@@ -632,7 +721,7 @@ export default function CreatePropertyWizard() {
                   });
                 },
                 onError: () =>
-                  toast.error("Failed to create units", {
+                  toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNITS, {
                     duration: 6000,
                     style: { maxWidth: "500px", width: "max-content" },
                   }),
@@ -663,7 +752,7 @@ export default function CreatePropertyWizard() {
           const message =
             (typeof detail === "string" ? detail : detail?.message) ||
             error?.response?.data?.message ||
-            "Something went wrong";
+            MESSAGES.MSG_SOMETHING_WENT_WRONG;
           toast.error(message, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
@@ -748,6 +837,7 @@ export default function CreatePropertyWizard() {
           <StepPropertyDetails
             formik={formik}
             availableAmenities={availableAmenities}
+            availableEventTypes={availableEventTypes}
             userRole={user?.role}
             isLoaded={isLoaded}
           />
@@ -774,6 +864,10 @@ export default function CreatePropertyWizard() {
             setUnitMediaByCategory={setUnitMediaByCategory}
             onDiscontinueListing={handleOpenShowDiscontinueModal}
           />
+        )}
+
+        {currentStep === WizardStep.DISCOUNTS && (
+          <StepDiscounts formik={formik} />
         )}
 
         {/* Navigation Buttons */}

@@ -1,7 +1,7 @@
 "use client"
 
 import { Skeleton } from "@/src/components/ui/skeleton";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import axiosRequest from "@/src/lib/api";
 import Badge from "@/src/components/badge";
@@ -68,9 +68,17 @@ interface TransactionListViewProps {
      * Defaults to `${basePath}/{tx.id}` when omitted.
      */
     resolveRowHref?: (tx: Transaction) => string;
+    /**
+     * Extra controls for the header, rendered left of Export. Receives a
+     * `reload` callback so an action that changes rows (e.g. the disbursement
+     * settlement sweep) can refresh the table without a full page navigation —
+     * this list fetches through axios directly, so React Query invalidation
+     * would not reach it.
+     */
+    headerActions?: (reload: () => void) => ReactNode;
 }
 
-const TransactionListView = ({ title, description, basePath, apiUrl, filters, resolveRowHref }: TransactionListViewProps) => {
+const TransactionListView = ({ title, description, basePath, apiUrl, filters, resolveRowHref, headerActions }: TransactionListViewProps) => {
     const getRowHref = (tx: Transaction) =>
         resolveRowHref ? resolveRowHref(tx) : `${basePath}/${tx.id}`;
     const router = useRouter();
@@ -334,6 +342,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
                             <p className="text-sm text-gray-500 mt-1">{description}</p>
                         </div>
                         <div className="flex items-center gap-3">
+                            {headerActions?.(fetchTransactions)}
                             <div className="relative">
                                 <button
                                     onClick={() => setIsOpen(!isOpen)}

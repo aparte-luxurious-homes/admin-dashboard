@@ -17,9 +17,18 @@ COPY . .
 # Build arguments for NEXT_PUBLIC environment variables
 ARG NEXT_PUBLIC_NODE_ENV=production
 ARG NEXT_PUBLIC_BASE_API_URL
+# Analytics ids. These must exist at BUILD time, not run time: Next replaces
+# every `process.env.NEXT_PUBLIC_*` with a literal while compiling, so a value
+# supplied only to the running container arrives too late and the bundle keeps
+# the `undefined` it was built with. Empty is a valid value — src/lib/analytics.ts
+# treats a missing id as "not configured" and loads nothing.
+ARG NEXT_PUBLIC_GA4_MEASUREMENT_ID
+ARG NEXT_PUBLIC_CLARITY_PROJECT_ID
 
 ENV NEXT_PUBLIC_NODE_ENV=$NEXT_PUBLIC_NODE_ENV
 ENV NEXT_PUBLIC_BASE_API_URL=$NEXT_PUBLIC_BASE_API_URL
+ENV NEXT_PUBLIC_GA4_MEASUREMENT_ID=$NEXT_PUBLIC_GA4_MEASUREMENT_ID
+ENV NEXT_PUBLIC_CLARITY_PROJECT_ID=$NEXT_PUBLIC_CLARITY_PROJECT_ID
 
 RUN npm run build
 

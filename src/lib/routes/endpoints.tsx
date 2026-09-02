@@ -97,9 +97,13 @@ export const API_ROUTES = {
             documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
             verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
             bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
+            reviewDiscountProposal: (propertyId: string | number) => `/properties/${propertyId}/discounts/review-proposal`,
         },
         amenities: {
             base: '/amenities',
+        },
+        eventTypes: {
+            base: '/event-types',
         },
     },
     verifications: {
@@ -122,6 +126,7 @@ export const API_ROUTES = {
         reconcilePayment: (id: string | number) => `/bookings/${id}/reconcile-payment`,
         extensions: {
             base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
+            quote: (bookingId: string | number) => `/bookings/${bookingId}/extensions/quote`,
             listAll: '/bookings/extensions/all',
             details: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}`,
             approve: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/approve`,
@@ -139,7 +144,15 @@ export const API_ROUTES = {
         reverseWithdrawal: (id: string | number) => `/wallets/${id}/reverse-withdrawal`,
         authorizeDisbursement: (id: string | number) => `/wallets/${id}/authorize-disbursement`,
         resendDisbursementOtp: (id: string | number) => `/wallets/${id}/resend-disbursement-otp`,
+        // Per-row manual override. Since withdrawals became PENDING-until-settled,
+        // the only automatic paths to SUCCESSFUL are the disbursement webhook and
+        // the reconciliation cron; when either is down, this is how an operator
+        // resolves a stuck payout instead of guessing.
+        refreshWithdrawalStatus: (walletId: string | number, transactionId: string | number) =>
+            `/wallets/${walletId}/withdrawals/${transactionId}/refresh-status`,
         pendingWithdrawals: '/wallets/pending-withdrawals',
+        // Bulk sweep, admin-runnable as well as cron-runnable.
+        reconcileDisbursementsJob: '/jobs/reconcile-stuck-disbursements',
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,
             details: (walletId: string, transactionId: string) => `/wallets/${walletId}/transactions/${transactionId}`,
@@ -216,10 +229,25 @@ export const API_ROUTES = {
         // a property in their zone tree. Distinct from `network.agents` above,
         // which is the admin tier/adjust pair.
         myNetworkAgents: `/network/agents`,
+        // Read-only profile of one agent in the caller's scope. Narrower than
+        // the admin user detail on purpose: agents do not hold users.read, so
+        // no NIN/BVN, KYC state, wallet or payout data is returned.
+        myNetworkAgentProfile: (id: string) => `/network/agents/${id}`,
         myMentorship: `/network/mentorship`,
         myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
         mentorshipCandidates: `/network/mentorship/candidates`,
+        // A mentor's create is a REQUEST: it lands PENDING and is settled by the
+        // mentee's immediate zone lead or an admin. It does not become active
+        // on submit.
         createMentorshipInvite: `/network/mentorship/invite`,
+        // Settle a PENDING request. Approve → ACTIVE; reject DELETES the row
+        // and notifies both parties naming the decider.
+        approveMentorship: (id: string) => `/network/mentorship/${id}/approve`,
+        rejectMentorship: (id: string) => `/network/mentorship/${id}/reject`,
+        // Area Manager / Regional Lead pairing two agents inside their own zone
+        // tree — created ACTIVE, no approval step, since the lead is already
+        // the approver.
+        assignMentorship: `/network/mentorship/assign`,
     },
     platform: {
         // Readable by any authenticated user — every client needs to know
@@ -295,12 +323,30 @@ export const API_ROUTES = {
 };
 
 
-export const BASE_API_URL = process.env.NEXT_PUBLIC_BASE_STAGING_API_URL
-// (process.env.NEXT_PUBLIC_BASE_API_URL ||
-//     process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
-//     process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
-//     "").trim().replace(/\/+$/, "");
+// Read the general var FIRST. This chain was commented out and pinned to
+// NEXT_PUBLIC_BASE_STAGING_API_URL alone, which cloudbuild.yaml never sets —
+// it passes only NEXT_PUBLIC_BASE_API_URL. So on the Cloud Run build this was
+// `undefined`, axios fell back to a relative baseURL, `/profile` resolved
+// against the dashboard's own origin and returned the HTML 404 page, and the
+// login screen reported "Authentication failed. Please login with your
+// credentials." — which reads as a rejected password, not a missing env var.
+// Vercel-built and Cloud-Run-built dashboards therefore behaved differently
+// from identical source.
+//
+// These are inlined by Next at build time, so the chain resolves at compile
+// time, not runtime.
+export const BASE_API_URL = (
+    process.env.NEXT_PUBLIC_BASE_API_URL ||
+    process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
+    process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
+    ""
+).trim().replace(/\/+$/, "");
 
-if (typeof window !== 'undefined') {
-    console.log('[Endpoints] Initialized BASE_API_URL:', BASE_API_URL);
+if (typeof window !== 'undefined' && !BASE_API_URL) {
+    // Loud, because the silent version of this cost a release. Without a base
+    // URL every request targets this origin and fails as an auth error.
+    console.error(
+        '[Endpoints] No API base URL configured. Set NEXT_PUBLIC_BASE_API_URL ' +
+        'at build time — every API call will otherwise resolve against this origin.'
+    );
 }

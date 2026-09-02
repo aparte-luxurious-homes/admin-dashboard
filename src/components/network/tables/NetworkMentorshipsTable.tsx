@@ -58,8 +58,8 @@ interface Agent {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string }> = {
-    // PENDING is legacy — nothing is created in this state any more (both agent
-    // and admin mentorship creation are now immediate/ACTIVE). Retained so any
+    // PENDING is a mentor's request awaiting a zone lead or an admin. Approve
+    // moves it to ACTIVE; reject deletes the row. Retained so any
     // row predating the drop_mentorship_acceptance_001 migration still renders.
     PENDING: { bg: "bg-blue-100",   text: "text-blue-700"   },
     ACTIVE:  { bg: "bg-green-100",  text: "text-green-800"  },
@@ -119,6 +119,12 @@ export default function NetworkMentorshipsTable() {
     // Status update
     const [statusTarget, setStatusTarget]         = useState<{ id: string; newStatus: string; name: string } | null>(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    // Settling a PENDING request is a different operation from a status PATCH:
+    // it has its own endpoints, and a rejection deletes the row rather than
+    // moving it to another status.
+    const [decisionTarget, setDecisionTarget] = useState<{ id: string; action: "approve" | "reject"; pair: string } | null>(null);
+    const [rejectReason, setRejectReason]     = useState("");
+    const [isDeciding, setIsDeciding]         = useState(false);
 
     // Create mapping modal
     const [showCreateModal, setShowCreateModal]   = useState(false);
@@ -349,6 +355,36 @@ export default function NetworkMentorshipsTable() {
         }
     };
 
+    const handleDecision = async () => {
+        if (!decisionTarget) return;
+        const { id, action } = decisionTarget;
+        setIsDeciding(true);
+        try {
+            await toast.promise(
+                action === "approve"
+                    ? axiosRequest.post(API_ROUTES.network.approveMentorship(id), {})
+                    : axiosRequest.post(API_ROUTES.network.rejectMentorship(id), {
+                        ...(rejectReason.trim() ? { reason: rejectReason.trim() } : {}),
+                    }),
+                {
+                    loading: action === "approve" ? "Approving request..." : "Rejecting request...",
+                    success: action === "approve"
+                        ? "Request approved — the mentorship is now active"
+                        : "Request rejected and removed",
+                    error: (err) => err?.response?.data?.detail || err?.response?.data?.message
+                        || `Failed to ${action} the request`,
+                }
+            );
+            setDecisionTarget(null);
+            setRejectReason("");
+            fetchMentorships();
+        } catch {
+            // surfaced by toast.promise; leave the modal open so it can be retried
+        } finally {
+            setIsDeciding(false);
+        }
+    };
+
     const contextMentorship = selectedRow !== null ? mentorships[selectedRow] : null;
 
     return (
@@ -366,7 +402,7 @@ export default function NetworkMentorshipsTable() {
                             onClick={() => setShowCreateModal(true)}
                             className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                         >
-                            <Icon icon="mdi:plus" width="16" />
+                            <Icon icon="mdi:account-switch-outline" width="16" />
                             Create Mapping
                         </button>
                     </div>
@@ -579,10 +615,50 @@ export default function NetworkMentorshipsTable() {
                         <span>View details</span>
                     </button>
 
-                    {/* Status transitions — hide the current status. PENDING is not a
-                        valid transition target: admin PATCH only accepts ACTIVE/PAUSED/ENDED
-                        since the acceptance flow was removed. */}
-                    {(["ACTIVE", "PAUSED", "ENDED"] as const)
+                    {/* A PENDING row is a request, not a live mentorship: it is settled
+                        through the approve / reject endpoints, not the status PATCH (which
+                        rejects PENDING as a transition target anyway). Rejecting DELETES it,
+                        so the two paths are kept apart to avoid a status menu implying an
+                        ENDED tombstone is left behind. */}
+                    {contextMentorship.status === "PENDING" && (
+                        <>
+                            <button
+                                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 transition-colors border-b border-gray-100"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDecisionTarget({
+                                        id: contextMentorship.id,
+                                        action: "approve",
+                                        pair: `${fullName(contextMentorship.mentor, contextMentorship.mentor_id)} → ${fullName(contextMentorship.mentee, contextMentorship.mentee_id)}`,
+                                    });
+                                    setSelectedRow(null);
+                                }}
+                            >
+                                <Icon icon="mdi:check-decagram-outline" width="14" className="text-green-600" />
+                                <span>Approve request</span>
+                            </button>
+                            <button
+                                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 transition-colors border-b border-gray-100"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRejectReason("");
+                                    setDecisionTarget({
+                                        id: contextMentorship.id,
+                                        action: "reject",
+                                        pair: `${fullName(contextMentorship.mentor, contextMentorship.mentor_id)} → ${fullName(contextMentorship.mentee, contextMentorship.mentee_id)}`,
+                                    });
+                                    setSelectedRow(null);
+                                }}
+                            >
+                                <Icon icon="mdi:close-octagon-outline" width="14" className="text-red-600" />
+                                <span>Reject request</span>
+                            </button>
+                        </>
+                    )}
+
+                    {/* Status transitions — live mentorships only, and never the
+                        current status. */}
+                    {contextMentorship.status !== "PENDING" && (["ACTIVE", "PAUSED", "ENDED"] as const)
                         .filter((s) => s !== contextMentorship.status)
                         .map((s) => {
                             const icons: Record<string, string> = {
@@ -613,6 +689,77 @@ export default function NetworkMentorshipsTable() {
                     }
                 </div>
             )}
+
+            {/* Approve / reject a PENDING request */}
+            {decisionTarget && (() => {
+                const isReject = decisionTarget.action === "reject";
+                return (
+                    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                            <div className="p-6">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${isReject ? "bg-red-50" : "bg-green-50"}`}>
+                                    <Icon
+                                        icon={isReject ? "mdi:close-octagon-outline" : "mdi:check-decagram-outline"}
+                                        width="24"
+                                        className={isReject ? "text-red-600" : "text-green-600"}
+                                    />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                    {isReject ? "Reject this request?" : "Approve this request?"}
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    <span className="font-semibold text-gray-700">{decisionTarget.pair}</span>
+                                    {isReject ? (
+                                        <>
+                                            {" "}will be <span className="font-semibold text-red-600">permanently deleted</span>,
+                                            not archived. Both the mentor and the mentee are notified, naming you.
+                                            The mentor may submit the same request again.
+                                        </>
+                                    ) : (
+                                        <>
+                                            {" "}becomes <span className="font-semibold text-green-700">active</span> immediately
+                                            and overrides begin accruing from now. Both parties are notified.
+                                        </>
+                                    )}
+                                </p>
+                                {isReject && (
+                                    <div className="mt-4">
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                                            Reason <span className="font-normal normal-case tracking-normal text-gray-400">(optional)</span>
+                                        </label>
+                                        <textarea
+                                            value={rejectReason}
+                                            onChange={(e) => setRejectReason(e.target.value)}
+                                            rows={3}
+                                            placeholder="Included in the notification sent to both agents"
+                                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-100">
+                                <button
+                                    onClick={() => { setDecisionTarget(null); setRejectReason(""); }}
+                                    className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDecision}
+                                    disabled={isDeciding}
+                                    className={`px-8 py-2.5 text-sm font-bold text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg ${
+                                        isReject
+                                            ? "bg-red-600 hover:bg-red-700 shadow-red-600/20"
+                                            : "bg-primary hover:bg-primary/90 shadow-primary/20"
+                                    }`}
+                                >
+                                    {isReject ? "Yes, reject" : "Yes, approve"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Status update confirm modal */}
             {statusTarget && (

@@ -137,6 +137,36 @@ export function AuthorizeDisbursement() {
     });
 }
 
+// Re-query the provider for ONE withdrawal and apply the result. The
+// counterpart to Reverse: Reverse assumes the payout did not happen and
+// refunds, this asks the provider what actually happened and acts on the
+// answer. Reverse 409s while a payout is genuinely in flight, so before this
+// existed a stuck-PENDING row had no operator action at all.
+export function RefreshWithdrawalStatus() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, transactionId }: { walletId: string, transactionId: string }) =>
+            axiosRequest.post(API_ROUTES.wallet.refreshWithdrawalStatus(walletId, transactionId)),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+
+// Bulk equivalent — runs the reconciliation sweep across every stuck payout.
+// Gated on verify_job_token_or_admin server-side, so an admin JWT is accepted.
+export function RunDisbursementSweep() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => axiosRequest.post(API_ROUTES.wallet.reconcileDisbursementsJob),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+
 export function ResendDisbursementOtp() {
     return useMutation({
         mutationFn: ({ walletId, payload }: { walletId: string, payload: { transaction_id: string } }) =>

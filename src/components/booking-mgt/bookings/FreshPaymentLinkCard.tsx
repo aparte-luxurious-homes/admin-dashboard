@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 
@@ -42,9 +43,9 @@ export default function FreshPaymentLinkCard({ bookingUuid }: { bookingUuid: str
     if (!link?.url) return;
     try {
       await navigator.clipboard.writeText(link.url);
-      toast.success("Payment link copied to clipboard");
+      toast.success(MESSAGES.MSG_PAYMENT_LINK_COPIED_TO_CLIPBOARD);
     } catch {
-      toast.error("Could not copy automatically — select and copy manually");
+      toast.error(MESSAGES.MSG_COULD_NOT_COPY_AUTOMATICALLY_SELECT_AND_);
     }
   };
 

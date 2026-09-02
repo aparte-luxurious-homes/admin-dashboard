@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGES } from '@/src/lib/messages';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { SlLocationPin } from "react-icons/sl";
@@ -65,7 +66,7 @@ export function CreateAmenityForm({
       { name },
       {
         onSuccess: () => {
-          (toast.success("Amenity created successfully", {
+          (toast.success(MESSAGES.MSG_AMENITY_CREATED_SUCCESSFULLY, {
             duration: 6000,
             style: {
               maxWidth: "500px",
@@ -75,7 +76,7 @@ export function CreateAmenityForm({
             show(false));
         },
         onError: () =>
-          toast.error("Something went wrong", {
+          toast.error(MESSAGES.MSG_SOMETHING_WENT_WRONG, {
             duration: 6000,
             style: {
               maxWidth: "500px",
@@ -164,7 +165,15 @@ function AddressAutocomplete({
         findByType("sublocality") ||
         findByType("postal_town");
       const state = findByType("administrative_area_level_1");
+      // The LGA is captured SEPARATELY as well as feeding the city chain.
+      // In Nigeria `administrative_area_level_2` is the Local Government Area,
+      // and it was only ever read as a city fallback - so "Eti-Osa" and
+      // "Alimosho" were being stored as cities and the tier was lost. It stays in
+      // the chain because `city` is NOT NULL and Google omits `locality` for many
+      // Nigerian addresses; it is simply also recorded for what it is.
+      const lga = findByType("administrative_area_level_2");
       if (city) formik.setFieldValue("city", city);
+      if (lga) formik.setFieldValue("lga", lga);
       if (state) formik.setFieldValue("state", state);
       formik.setFieldValue("google_place_id", results[0].place_id || "");
     } catch (error) {
@@ -260,8 +269,8 @@ export default function CreatePropertyView({}) {
   const sortAmenities = (
     amenities: IAmenity[] = [],
     newAmeities: string[] = [],
-  ): number[] => {
-    const sortedAmenities: number[] = [];
+  ): string[] => {
+    const sortedAmenities: string[] = [];
     const safeAmenities = Array.isArray(amenities) ? amenities : [];
     const safeNew = Array.isArray(newAmeities) ? newAmeities : [];
     const prevAmenityNames = safeAmenities.map((a) => a.name);
@@ -288,6 +297,7 @@ export default function CreatePropertyView({}) {
       country: "Nigeria",
       state: "",
       city: "",
+      lga: "",
       description: "",
       latitude: 0,
       longitude: 0,
@@ -378,7 +388,7 @@ export default function CreatePropertyView({}) {
                     },
                     {
                       onError: () =>
-                        toast.error("Document upload failed", {
+                        toast.error(MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED, {
                           duration: 6000,
                           style: { maxWidth: "500px", width: "max-content" },
                         }),
@@ -387,7 +397,7 @@ export default function CreatePropertyView({}) {
                 });
               }
 
-              (toast.success("Property created successfully", {
+              (toast.success(MESSAGES.MSG_PROPERTY_CREATED_SUCCESSFULLY, {
                 duration: 6000,
                 style: {
                   maxWidth: "500px",
@@ -405,7 +415,7 @@ export default function CreatePropertyView({}) {
             toast.error(
               error?.response?.data?.detail ||
                 error?.response?.data?.message ||
-                "Something went wrong",
+                MESSAGES.MSG_SOMETHING_WENT_WRONG,
               {
                 duration: 6000,
                 style: {
@@ -423,7 +433,7 @@ export default function CreatePropertyView({}) {
     // This is kept for backward compatibility if needed, but the map/autocomplete should handle this now
     const { address, city, state, country } = formik.values;
     if (!address) {
-      toast.error("Please enter a physical address first");
+      toast.error(MESSAGES.MSG_PLEASE_ENTER_A_PHYSICAL_ADDRESS_FIRST);
       return;
     }
     const fullAddress = `${address}, ${city}, ${state}, ${country}`;
@@ -448,13 +458,13 @@ export default function CreatePropertyView({}) {
         toast.success(`Coordinates found: ${lat}, ${lng}`, { id: toastId });
       } else {
         toast.error(
-          "Coordinates not found for this address. Please enter manually.",
+          MESSAGES.MSG_COORDINATES_NOT_FOUND_FOR_THIS_ADDRESS_P,
           { id: toastId },
         );
       }
     } catch (error) {
       console.error("Geocoding failed:", error);
-      toast.error("Failed to fetch coordinates. Please enter manually.", {
+      toast.error(MESSAGES.MSG_FAILED_TO_FETCH_COORDINATES_PLEASE_ENTER, {
         id: toastId,
       });
     }

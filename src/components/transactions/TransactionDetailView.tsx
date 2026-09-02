@@ -160,10 +160,15 @@ function DetailSkeleton() {
 const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDetailViewProps) => {
     const [data, setData] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(false);
+    // Kept so the empty state can tell "no such transaction" apart from "not
+    // yours to see" — rendering both as "not found" hid a real 403 behind a
+    // message that sent people looking for a missing record.
+    const [loadError, setLoadError] = useState<{ status?: number; message: string } | null>(null);
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
     const [isWithdrawalReverseOpen, setIsWithdrawalReverseOpen] = useState(false);
+    const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
     const params = useParams();
     const id = params?.id;
     const { canManageFinances } = usePermissions();
@@ -171,13 +176,23 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const fetchData = useCallback(async () => {
         if (!id) return;
         setLoading(true);
+        setLoadError(null);
         try {
             const response = await axiosRequest.get(
                 API_ROUTES.transactions.details(String(id))
             );
             setData(response?.data?.data);
         } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to fetch transaction details");
+            // FastAPI raises HTTPException with the reason under `detail`;
+            // `message` only exists on the success wrapper, so reading it alone
+            // always fell through to the generic fallback.
+            const message =
+                error?.response?.data?.detail ||
+                error?.response?.data?.message ||
+                "Failed to fetch transaction details";
+            setData(null);
+            setLoadError({ status: error?.response?.status, message });
+            toast.error(message);
         } finally {
             setLoading(false);
         }
@@ -200,6 +215,41 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const canReverseWithdrawal =
         isWithdrawal && ["AWAITING_AUTHORIZATION", "PENDING", "SUCCESSFUL"].includes(data?.status ?? "");
 
+    // Refresh asks the provider what actually happened and applies it. It is the
+    // counterpart to Reverse, which assumes the payout did not happen — and which
+    // 409s while one is genuinely in flight, so a stuck-PENDING payout previously
+    // had no operator action at all.
+    const canRefreshWithdrawal =
+        isWithdrawal && ["AWAITING_AUTHORIZATION", "PENDING"].includes(data?.status ?? "");
+
+    const handleRefreshWithdrawalStatus = async () => {
+        if (!data) return;
+        setIsRefreshingStatus(true);
+        try {
+            const res = await axiosRequest.post(
+                API_ROUTES.wallet.refreshWithdrawalStatus(data.wallet_id, data.id),
+            );
+            const message = res?.data?.message || "Status refreshed";
+            if (res?.data?.data?.changed) {
+                toast.success(message);
+            } else {
+                // Not an error: the provider still has it in flight. Saying so
+                // plainly stops operators from reaching for Reverse and
+                // double-refunding a payout that is about to land.
+                toast(message);
+            }
+            await fetchData();
+        } catch (err: any) {
+            toast.error(
+                err?.response?.data?.detail ||
+                err?.response?.data?.message ||
+                "Could not refresh the withdrawal status",
+            );
+        } finally {
+            setIsRefreshingStatus(false);
+        }
+    };
+
     return (
         <>
             <div className="p-[20px] mr-5 ml-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
@@ -218,8 +268,19 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                     <DetailSkeleton />
                 ) : !data ? (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                        <Icon icon="mdi:receipt-text-remove-outline" width="48" className="mb-3" />
-                        <p className="text-lg font-medium">Transaction not found</p>
+                        <Icon
+                            icon={loadError?.status === 403 ? "mdi:lock-outline" : "mdi:receipt-text-remove-outline"}
+                            width="48"
+                            className="mb-3"
+                        />
+                        <p className="text-lg font-medium">
+                            {loadError?.status === 403
+                                ? "You don't have access to this transaction"
+                                : "Transaction not found"}
+                        </p>
+                        {loadError?.message && (
+                            <p className="text-sm mt-1">{loadError.message}</p>
+                        )}
                     </div>
                 ) : (
                     <>
@@ -283,6 +344,24 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                                         >
                                             <Icon icon="mdi:check" className="mr-1" width="16" />
                                             {isWithdrawal ? "Approve Withdrawal" : "Approve Refund"}
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {/* Refresh — re-query the provider and apply the real outcome */}
+                                {canRefreshWithdrawal && canManageFinances && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <Button
+                                            onClick={handleRefreshWithdrawalStatus}
+                                            disabled={isRefreshingStatus}
+                                            className="bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-60"
+                                        >
+                                            <Icon
+                                                icon={isRefreshingStatus ? "mdi:loading" : "mdi:refresh"}
+                                                className={`mr-1 ${isRefreshingStatus ? "animate-spin" : ""}`}
+                                                width="16"
+                                            />
+                                            {isRefreshingStatus ? "Checking..." : "Refresh status"}
                                         </Button>
                                     </div>
                                 )}

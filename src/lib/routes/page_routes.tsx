@@ -110,6 +110,9 @@ export const PAGE_ROUTES = {
         settings: {
             base: '/settings',
             kyc: '/settings/kyc',
+            // Where a "view profile" link points when the target IS the caller —
+            // they edit their own record here rather than reading a scoped copy.
+            personalInfo: '/settings/personal-info',
         },
         rolesPermissions: {
             base: '/roles-permissions',
@@ -134,6 +137,11 @@ export const PAGE_ROUTES = {
             },
             history: {
                 base: '/network/history',
+            },
+            // Zone leads only — the roster of agents inside their zone tree.
+            zoneMembers: {
+                base: '/network/zone-members',
+                details: (id: string) => `/network/zone-members/${id}`,
             },
             mentorship: {
                 base: '/network/mentorship',
