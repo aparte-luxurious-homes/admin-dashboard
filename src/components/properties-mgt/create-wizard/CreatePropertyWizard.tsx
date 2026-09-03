@@ -1,6 +1,6 @@
 "use client";
 
-import { MESSAGES } from '@/src/lib/messages';
+import { MESSAGES } from "@/src/lib/messages";
 import { useEffect, useRef, useState } from "react";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
@@ -23,6 +23,7 @@ import {
   CreatePropertyUnit,
   UploadPropertyUnitMedia,
 } from "@/src/lib/request-handlers/unitMgt";
+import { isVideoFile } from "@/src/lib/mediaFiles";
 import Spinner from "@/components/ui/Spinner";
 import CustomModal from "@/components/ui/CustomModal";
 import { CreateAmenityForm } from "../all-properties/CreatePropertyView";
@@ -137,11 +138,17 @@ export default function CreatePropertyWizard() {
   }, [fetchedEventTypes]);
 
   // API mutations
-  const { mutate: createProperty, isPending: isCreating } = CreateProperty();
-  const { mutate: uploadMedia } = UploadPropertyMedia();
-  const { mutate: uploadDoc } = UploadPropertyDocument();
-  const { mutate: createUnits } = CreatePropertyUnit();
-  const { mutate: uploadUnitMedia } = UploadPropertyUnitMedia();
+  const { mutateAsync: createProperty, isPending: isCreatingProperty } =
+    CreateProperty();
+  const { mutateAsync: uploadMedia } = UploadPropertyMedia();
+  const { mutateAsync: uploadDoc } = UploadPropertyDocument();
+  const { mutateAsync: createUnits } = CreatePropertyUnit();
+  const { mutateAsync: uploadUnitMedia } = UploadPropertyUnitMedia();
+  // Covers property create + nested unit/media uploads. isCreatingProperty
+  // alone flips false before unit photos finish — on mobile that lets the
+  // user leave (or Safari suspend the tab) mid-upload.
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isCreating = isCreatingProperty || isSubmitting;
 
   // Google Maps
   const { isLoaded, loadError } = useJsApiLoader({
@@ -212,12 +219,12 @@ export default function CreatePropertyWizard() {
       long_stay_discount_policy: {
         is_active: false,
         discount_type: DiscountType.PERCENTAGE,
-        tiers: []
+        tiers: [],
       },
       extension_discount_policy: {
         is_active: false,
         discount_type: DiscountType.PERCENTAGE,
-        tiers: []
+        tiers: [],
       },
       amenities: [],
       amenityIds: [],
@@ -324,7 +331,8 @@ export default function CreatePropertyWizard() {
   const handleCloseShowDiscontinueModal = () => setShowDiscontinueModal(false);
   const handleOpenShowDiscontinueModal = () => setShowDiscontinueModal(true);
 
-  const [firstTimeUploadingMedia, setFirstTimeUploadingMedia] = useState(false);
+  const [firstTimeUploadingMedia, setFirstTimeUploadingMedia] = useState(true);
+
   useEffect(() => {
     if (WizardStep.MEDIA_DOCS) {
       setFirstTimeUploadingMedia(true);
@@ -355,24 +363,18 @@ export default function CreatePropertyWizard() {
         }
         if (!address.trim()) {
           toast.error(MESSAGES.MSG_ADDRESS_IS_REQUIRED);
-          return false; 
+          return false;
         }
         if (!google_place_id) {
-          toast.error(
-            MESSAGES.MSG_PLEASE_SELECT_THE_ADDRESS_FROM_THE_SUGGE,
-          );
+          toast.error(MESSAGES.MSG_PLEASE_SELECT_THE_ADDRESS_FROM_THE_SUGGE);
           return false;
         }
         if (latitude == null || longitude == null) {
-          toast.error(
-            MESSAGES.MSG_COORDINATES_MISSING_U2014_PICK_THE_ADDRE,
-          );
+          toast.error(MESSAGES.MSG_COORDINATES_MISSING_U2014_PICK_THE_ADDRE);
           return false;
         }
         if (!pin_confirmed) {
-          toast.error(
-            MESSAGES.MSG_PLEASE_CONFIRM_THE_MAP_PIN_MATCHES_THE_A,
-          );
+          toast.error(MESSAGES.MSG_PLEASE_CONFIRM_THE_MAP_PIN_MATCHES_THE_A);
           return false;
         }
         if (!property_type) {
@@ -396,13 +398,8 @@ export default function CreatePropertyWizard() {
       case WizardStep.UNITS:
         return true; // Units are optional
       case WizardStep.MEDIA_DOCS: {
-        const anyPropertyMedia = Object.values(propertyMedia).some(
-          (files) => (files?.length ?? 0) > 0,
-        );
         if (WizardStep.MEDIA_DOCS && !firstTimeUploadingMedia) {
-          toast.error(
-            MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR,
-          );
+          toast.error(MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR);
           return false;
         }
         return true;
@@ -471,7 +468,7 @@ export default function CreatePropertyWizard() {
   };
 
   // Submit
-  const handleCreateProperty = (values: PropertyFormValues) => {
+  const handleCreateProperty = async (values: PropertyFormValues) => {
     if (!validateStep(WizardStep.MEDIA_DOCS)) return;
 
     const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
@@ -481,20 +478,16 @@ export default function CreatePropertyWizard() {
     );
 
     if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
-      toast.error(
-        MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR,
-      );
+      toast.error(MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR);
       return false;
-    };
+    }
 
     if (
       values.latitude == null ||
       values.longitude == null ||
       !values.google_place_id
     ) {
-      toast.error(
-        MESSAGES.MSG_ADDRESS_DETAILS_ARE_INCOMPLETE_GO_BACK_T,
-      );
+      toast.error(MESSAGES.MSG_ADDRESS_DETAILS_ARE_INCOMPLETE_GO_BACK_T);
       return;
     }
 
@@ -547,214 +540,228 @@ export default function CreatePropertyWizard() {
       extension_discount_policy: values.extension_discount_policy,
     };
 
-    if (values.property_type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
-        propertyPayload.event_types = availableEventTypes
-            .filter(et => values.event_types.includes(et.name))
-            .map(et => String(et.id));
+    if (
+      values.property_type === PropertyType.EVENT_CENTRE &&
+      values.event_types?.length > 0
+    ) {
+      propertyPayload.event_types = availableEventTypes
+        .filter((et) => values.event_types.includes(et.name))
+        .map((et) => String(et.id));
     }
 
-    createProperty(
-      { payload: propertyPayload },
-      {
-        onSuccess: (response) => {
-          const propertyId = response?.data?.data?.id;
-          if (!propertyId) {
-            toast.error(MESSAGES.MSG_PROPERTY_CREATED_BUT_FAILED_TO_GET_ID);
-            return;
-          }
+    console.log("MEDIA", propertyMedia);
+    console.log("DOCFILES", docFiles);
+    console.log("PAYLOAD", propertyPayload);
 
-          // Property persisted — drop the drafts (JSON + media) so a future
-          // visit starts fresh.
-          clearWizardDraft();
-          clearWizardMediaDraft();
+    setIsSubmitting(true);
+    try {
+      const response = await createProperty({ payload: propertyPayload });
+      const propertyId = response?.data?.data?.id;
+      console.log("=== PROPERTY ID ===", propertyId);
+      if (!propertyId) {
+        toast.error(MESSAGES.MSG_PROPERTY_CREATED_BUT_FAILED_TO_GET_ID);
+        return;
+      }
 
-          toast.success(MESSAGES.MSG_PROPERTY_CREATED_SUCCESSFULLY);
+      // Snapshot media before clearing drafts — uploads still need these Files.
+      const propertyMediaSnapshot = propertyMedia;
+      const unitMediaSnapshot = unitMediaByCategory;
+      const docFilesSnapshot = docFiles;
+      const unitsSnapshot = units;
 
-          // Upload property media — one request per non-empty category, so
-          // the server persists the `category` tag on each PropertyMedia row.
-          const propertyMediaEntries = Object.entries(propertyMedia).filter(
-            ([, files]) => (files?.length ?? 0) > 0,
-          ) as [PropertyMediaCategory, File[]][];
-          propertyMediaEntries.forEach(([category, files]) => {
-            const imageFiles = files.filter(
-              (f) => !f.type.startsWith("video/"),
+      clearWizardDraft();
+      clearWizardMediaDraft();
+
+      const mediaErrors: string[] = [];
+
+      // Property gallery — one request per non-empty category.
+      const propertyMediaEntries = Object.entries(propertyMediaSnapshot).filter(
+        ([, files]) => (files?.length ?? 0) > 0,
+      ) as [PropertyMediaCategory, File[]][];
+
+      await Promise.all(
+        propertyMediaEntries.flatMap(([category, files]) => {
+          const imageFiles = files.filter((f) => !isVideoFile(f));
+          const videoFiles = files.filter(isVideoFile);
+          const uploadCategoryBatch = async (
+            batch: File[],
+            mediaType: string,
+          ) => {
+            if (batch.length === 0) return;
+            const formData = new FormData();
+            batch.forEach((file) => formData.append("media_file", file));
+            formData.append("media_type", mediaType);
+            formData.append(
+              "is_featured",
+              category === PropertyMediaCategory.EXTERIOR_FRONT
+                ? "true"
+                : "false",
             );
-            const videoFiles = files.filter((f) => f.type.startsWith("video/"));
-            const uploadCategoryBatch = (batch: File[], mediaType: string) => {
-              if (batch.length === 0) return;
-              const formData = new FormData();
-              batch.forEach((file) => formData.append("media_file", file));
-              formData.append("media_type", mediaType);
-              formData.append(
-                "is_featured",
-                category === PropertyMediaCategory.EXTERIOR_FRONT
-                  ? "true"
-                  : "false",
+            formData.append("category", category);
+            try {
+              await uploadMedia({ propertyId, payload: formData });
+            } catch (error: any) {
+              mediaErrors.push(
+                error?.response?.data?.detail ||
+                  error?.response?.data?.message ||
+                  `Media upload failed for ${category}`,
               );
-              formData.append("category", category);
-              uploadMedia(
-                { propertyId, payload: formData },
-                {
-                  onError: (error: any) =>
-                    toast.error(
-                      error?.response?.data?.detail ||
-                        error?.response?.data?.message ||
-                        `Media upload failed for ${category}`,
-                      {
-                        duration: 6000,
-                        style: { maxWidth: "500px", width: "max-content" },
-                      },
-                    ),
-                },
-              );
-            };
-            uploadCategoryBatch(imageFiles, MediaType.IMAGE);
-            uploadCategoryBatch(videoFiles, MediaType.VIDEO);
-          });
+            }
+          };
+          return [
+            uploadCategoryBatch(imageFiles, MediaType.IMAGE),
+            uploadCategoryBatch(videoFiles, MediaType.VIDEO),
+          ];
+        }),
+      );
 
-          // Upload documents
-          if (docFiles.length > 0) {
-            docFiles.forEach(({ file, type }) => {
-              const docFormData = new FormData();
-              docFormData.append("document_file", file);
-              docFormData.append("document_type", type);
-              uploadDoc(
-                { propertyId, payload: docFormData },
-                {
-                  onError: () =>
-                    toast.error(MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED, {
-                      duration: 6000,
-                      style: { maxWidth: "500px", width: "max-content" },
-                    }),
-                },
+      // Ownership documents
+      await Promise.all(
+        docFilesSnapshot.map(async ({ file, type }) => {
+          const docFormData = new FormData();
+          docFormData.append("document_file", file);
+          docFormData.append("document_type", type);
+          try {
+            await uploadDoc({ propertyId, payload: docFormData });
+          } catch {
+            mediaErrors.push(MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED);
+          }
+        }),
+      );
+
+      // Units + per-unit media (awaited so mobile tabs don't suspend mid-upload)
+      if (unitsSnapshot.length > 0) {
+        const unitPayloads = unitsSnapshot.map((u) => ({
+          name: u.name,
+          description: u.description,
+          price_per_night: u.price_per_night,
+          caution_fee: u.caution_fee,
+          max_guests: u.max_guests,
+          count: u.count,
+          is_whole_property: u.is_whole_property,
+          bedroom_count: u.bedroom_count,
+          living_room_count: u.living_room_count,
+          kitchen_count: u.kitchen_count,
+          bathroom_count: u.bathroom_count,
+          amenities: sortAmenities(availableAmenities, u.amenityNames),
+        }));
+
+        try {
+          const unitResponse = await createUnits({
+            propertyId: String(propertyId),
+            payload: unitPayloads,
+          });
+          const raw = unitResponse?.data?.data;
+          const createdUnits: any[] = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.units)
+              ? raw.units
+              : [];
+
+          const unitUploadTasks: Promise<void>[] = [];
+          unitsSnapshot.forEach((localUnit, index) => {
+            if (localUnit.is_whole_property) return;
+            const bucket = unitMediaSnapshot[localUnit._key] ?? {};
+            const hasFiles = Object.values(bucket).some(
+              (files) => (files?.length ?? 0) > 0,
+            );
+            if (!hasFiles) return;
+
+            const createdUnit =
+              createdUnits[index] ??
+              createdUnits.find(
+                (u) =>
+                  String(u?.name || "").trim().toLowerCase() ===
+                  localUnit.name.trim().toLowerCase(),
+              );
+
+            if (!createdUnit?.id) {
+              mediaErrors.push(
+                `Could not attach photos for unit "${localUnit.name}" — unit id missing from server response`,
+              );
+              return;
+            }
+
+            (
+              Object.entries(bucket) as [PropertyMediaCategory, File[]][]
+            ).forEach(([category, files]) => {
+              if (!files || files.length === 0) return;
+              const imageFiles = files.filter((f) => !isVideoFile(f));
+              const videoFiles = files.filter(isVideoFile);
+              const uploadCategoryBatch = async (
+                batch: File[],
+                mediaType: string,
+              ) => {
+                if (batch.length === 0) return;
+                const formData = new FormData();
+                batch.forEach((file) => formData.append("media_file", file));
+                formData.append("media_type", mediaType);
+                formData.append("is_featured", "false");
+                formData.append("category", category);
+                try {
+                  await uploadUnitMedia({
+                    propertyId,
+                    unitId: createdUnit.id,
+                    payload: formData,
+                  });
+                } catch {
+                  mediaErrors.push(
+                    `Failed to upload ${category} for unit: ${localUnit.name}`,
+                  );
+                }
+              };
+              unitUploadTasks.push(
+                uploadCategoryBatch(imageFiles, MediaType.IMAGE),
+              );
+              unitUploadTasks.push(
+                uploadCategoryBatch(videoFiles, MediaType.VIDEO),
               );
             });
-          }
-
-          // Create units
-          if (units.length > 0) {
-            const unitPayloads = units.map((u) => ({
-              name: u.name,
-              description: u.description,
-              price_per_night: u.price_per_night,
-              caution_fee: u.caution_fee,
-              max_guests: u.max_guests,
-              count: u.count,
-              is_whole_property: u.is_whole_property,
-              bedroom_count: u.bedroom_count,
-              living_room_count: u.living_room_count,
-              kitchen_count: u.kitchen_count,
-              bathroom_count: u.bathroom_count,
-              amenities: sortAmenities(availableAmenities, u.amenityNames),
-            }));
-
-            createUnits(
-              { propertyId: String(propertyId), payload: unitPayloads },
-              {
-                onSuccess: (unitResponse) => {
-                  // Upload unit media — one request per non-empty category.
-                  const createdUnits =
-                    unitResponse?.data?.data?.units ??
-                    unitResponse?.data?.data ??
-                    [];
-                  units.forEach((localUnit, index) => {
-                    const createdUnit = createdUnits[index];
-                    // Whole-property units use the property gallery — never had per-unit media collected.
-                    if (localUnit.is_whole_property) return;
-                    const bucket = unitMediaByCategory[localUnit._key] ?? {};
-                    if (!createdUnit?.id) return;
-
-                    (
-                      Object.entries(bucket) as [
-                        PropertyMediaCategory,
-                        File[],
-                      ][]
-                    ).forEach(([category, files]) => {
-                      if (!files || files.length === 0) return;
-                      const imageFiles = files.filter(
-                        (f) => !f.type.startsWith("video/"),
-                      );
-                      const videoFiles = files.filter((f) =>
-                        f.type.startsWith("video/"),
-                      );
-                      const uploadCategoryBatch = (
-                        batch: File[],
-                        mediaType: string,
-                      ) => {
-                        if (batch.length === 0) return;
-                        const formData = new FormData();
-                        batch.forEach((file) =>
-                          formData.append("media_file", file),
-                        );
-                        formData.append("media_type", mediaType);
-                        formData.append("is_featured", "false");
-                        // formData.append("category", category);
-                        uploadUnitMedia(
-                          {
-                            propertyId,
-                            unitId: createdUnit.id,
-                            payload: formData,
-                          },
-                          {
-                            onError: () =>
-                              toast.error(
-                                `Failed to upload ${category} for unit: ${localUnit.name}`,
-                                {
-                                  duration: 6000,
-                                  style: {
-                                    maxWidth: "500px",
-                                    width: "max-content",
-                                  },
-                                },
-                              ),
-                          },
-                        );
-                      };
-                      uploadCategoryBatch(imageFiles, MediaType.IMAGE);
-                      uploadCategoryBatch(videoFiles, MediaType.VIDEO);
-                    });
-                  });
-                },
-                onError: () =>
-                  toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNITS, {
-                    duration: 6000,
-                    style: { maxWidth: "500px", width: "max-content" },
-                  }),
-              },
-            );
-          }
-
-          // Navigate to property details
-          router.push(
-            PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(
-              propertyId,
-            ),
-          );
-        },
-        onError: (error: any) => {
-          const detail = error?.response?.data?.detail;
-          // Surface PROFILE_INCOMPLETE with the dedicated dialog so
-          // the user gets a clear list of missing fields + CTA.
-          if (
-            error?.response?.status === 403 &&
-            typeof detail === "object" &&
-            detail?.code === "PROFILE_INCOMPLETE"
-          ) {
-            setIncompleteFields(detail.missing_fields ?? []);
-            return;
-          }
-          // Otherwise, fall back to a toast but never render an object.
-          const message =
-            (typeof detail === "string" ? detail : detail?.message) ||
-            error?.response?.data?.message ||
-            MESSAGES.MSG_SOMETHING_WENT_WRONG;
-          toast.error(message, {
+          });
+          await Promise.all(unitUploadTasks);
+        } catch {
+          toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNITS, {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
           });
-        },
-      },
-    );
+        }
+      }
+
+      if (mediaErrors.length > 0) {
+        toast.error(
+          `Property created, but ${mediaErrors.length} upload(s) failed. Open the listing and re-add the missing photos.`,
+          { duration: 8000, style: { maxWidth: "500px", width: "max-content" } },
+        );
+      } else {
+        toast.success(MESSAGES.MSG_PROPERTY_CREATED_SUCCESSFULLY);
+      }
+
+      router.push(
+        PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(
+          propertyId,
+        ),
+      );
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      if (
+        error?.response?.status === 403 &&
+        typeof detail === "object" &&
+        detail?.code === "PROFILE_INCOMPLETE"
+      ) {
+        setIncompleteFields(detail.missing_fields ?? []);
+        return;
+      }
+      const message =
+        (typeof detail === "string" ? detail : detail?.message) ||
+        error?.response?.data?.message ||
+        MESSAGES.MSG_SOMETHING_WENT_WRONG;
+      toast.error(message, {
+        duration: 6000,
+        style: { maxWidth: "500px", width: "max-content" },
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

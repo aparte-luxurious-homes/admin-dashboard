@@ -525,7 +525,7 @@ export default function CreatePropertyView({}) {
                   className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
                 >
                   Property Name
-                </label>
+                </label> 
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
                     <FaRegBuilding />
