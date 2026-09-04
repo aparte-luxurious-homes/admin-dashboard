@@ -22,6 +22,7 @@ import AgentReferralCard from "@/src/components/dashboard/AgentReferralCard";
 import AgentVerificationQueueCard from "@/src/components/dashboard/AgentVerificationQueueCard";
 import TopAgentsCard from "@/src/components/dashboard/TopAgentsCard";
 import AgentNetworkDashboardCard from "@/src/components/dashboard/AgentNetworkDashboardCard";
+import ShareMyLinkCard from "@/src/components/links/ShareMyLinkCard";
 import { useNetworkEnabled } from "@/src/lib/request-handlers/platformMgt";
 
 interface Wallet {
@@ -219,6 +220,13 @@ const DashboardHome = () => {
                 {/* Main column */}
                 <Grid size={{ xs: 12, lg: showSidebar ? 9 : 12 }}>
                     <div className="space-y-4">
+
+                        {/* OWNER/AGENT: their shareable public catalog link.
+                            First card, because sending it is the single highest-
+                            leverage thing an owner or agent does here, and the
+                            feature was invisible until now. The component
+                            self-hides for every other role. */}
+                        {(isOwner || isAgent) && <ShareMyLinkCard />}
 
                         {/* ADMIN: queues → gateway → charts */}
                         {isAdmin && (

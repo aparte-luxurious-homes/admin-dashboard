@@ -6,6 +6,7 @@ import { DotsIcon, FilterIcon, PrinterIcon, SearchIcon } from "../../icons";
 import { DeleteBooking, GetAllBookings } from "@/src/lib/request-handlers/bookingMgt";
 import { GetAllProperties } from "@/src/lib/request-handlers/propertyMgt";
 import { useEffect, useRef, useState } from "react";
+import { useTableState } from "@/src/hooks/useTableState";
 import { IBooking } from "../types";
 import { BookingBadge } from "../../badge";
 import TablePagination from "../../TablePagination";
@@ -32,26 +33,35 @@ export default function BookingsTable({
     mode?: 'all' | 'requests',
 }) {
     const isRequestsMode = mode === 'requests';
-    const [page, setPage] = useState<number>(1);
-    const [searchTerm, setSearchTerm] = useState<string>("");
 
-    // Filter states
-    const [propertyFilter, setPropertyFilter] = useState<string>("");
-    const [statusFilter, setStatusFilter] = useState<string>("");
-    const [startDateFrom, setStartDateFrom] = useState<string>("");
-    const [startDateTo, setStartDateTo] = useState<string>("");
+    // Search / filters / sort / page all live in the URL — see useTableState.
+    // Previously these were useState, so opening a booking and pressing Back
+    // dropped every filter, and typing in the search box did not reset the
+    // page (leaving you on page 3 of a one-page result set, i.e. an empty
+    // table) and fired a request per keystroke.
+    const table = useTableState({
+        filterKeys: ["property", "status", "from", "to"],
+        defaultSort: "recent",
+        prefix: isRequestsMode ? "req" : "",
+    });
+    const { page, setPage, search: searchTerm, debouncedSearch, sort, setSort } = table;
+    const propertyFilter = table.filters.property;
+    const statusFilter = table.filters.status;
+    const startDateFrom = table.filters.from;
+    const startDateTo = table.filters.to;
 
     const effectiveStatus = isRequestsMode ? 'APPROVAL_PENDING' : (statusFilter || undefined);
 
     const { data: bookings, isLoading, refetch: refetchBookings } = GetAllBookings(
         page,
         10,
-        searchTerm,
+        debouncedSearch,
         unitId,
         propertyFilter || undefined,
         effectiveStatus,
         startDateFrom || undefined,
-        startDateTo || undefined
+        startDateTo || undefined,
+        sort || undefined,
     );
     const [bookingList, setBookingList] = useState<IBooking[]>([]);
     const router = useRouter();
@@ -168,9 +178,9 @@ export default function BookingsTable({
                             <input
                                 type="text"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => table.setSearch(e.target.value)}
                                 className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                placeholder="Search bookings..."
+                                placeholder="Search by guest, property, booking ID, phone…"
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                         </div>
@@ -183,10 +193,7 @@ export default function BookingsTable({
                             <div className="w-full sm:w-auto sm:min-w-[200px]">
                                 <select
                                     value={propertyFilter}
-                                    onChange={(e) => {
-                                        setPropertyFilter(e.target.value);
-                                        setPage(1);
-                                    }}
+                                    onChange={(e) => table.setFilter("property", e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                                 >
                                     <option value="">All Properties</option>
@@ -204,10 +211,7 @@ export default function BookingsTable({
                             <div className="w-full sm:w-auto sm:min-w-[180px]">
                                 <select
                                     value={statusFilter}
-                                    onChange={(e) => {
-                                        setStatusFilter(e.target.value);
-                                        setPage(1);
-                                    }}
+                                    onChange={(e) => table.setFilter("status", e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                                 >
                                     <option value="">All Statuses</option>
@@ -225,10 +229,7 @@ export default function BookingsTable({
                             <input
                                 type="date"
                                 value={startDateFrom}
-                                onChange={(e) => {
-                                    setStartDateFrom(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => table.setFilter("from", e.target.value)}
                                 className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                                 placeholder="From date"
                             />
@@ -236,25 +237,35 @@ export default function BookingsTable({
                             <input
                                 type="date"
                                 value={startDateTo}
-                                onChange={(e) => {
-                                    setStartDateTo(e.target.value);
-                                    setPage(1);
-                                }}
+                                onChange={(e) => table.setFilter("to", e.target.value)}
                                 className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                                 placeholder="To date"
                             />
                         </div>
 
+                        {/* Sort — server-side, so it orders the whole result
+                            set rather than just the ten rows on this page. */}
+                        <div className="w-full sm:w-auto sm:min-w-[190px]">
+                            <select
+                                value={sort}
+                                onChange={(e) => setSort(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                aria-label="Sort bookings"
+                            >
+                                <option value="recent">Newest first</option>
+                                <option value="oldest">Oldest first</option>
+                                <option value="check_in_soonest">Check-in: soonest</option>
+                                <option value="check_in_latest">Check-in: latest</option>
+                                <option value="amount_high">Amount: high to low</option>
+                                <option value="amount_low">Amount: low to high</option>
+                                <option value="status">Status</option>
+                            </select>
+                        </div>
+
                         {/* Clear Filters Button */}
-                        {(propertyFilter || statusFilter || startDateFrom || startDateTo) && (
+                        {table.hasActiveFilters && (
                             <button
-                                onClick={() => {
-                                    setPropertyFilter("");
-                                    setStatusFilter("");
-                                    setStartDateFrom("");
-                                    setStartDateTo("");
-                                    setPage(1);
-                                }}
+                                onClick={table.clearFilters}
                                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
                             >
                                 <Icon icon="lucide:x" width="16" height="16" />

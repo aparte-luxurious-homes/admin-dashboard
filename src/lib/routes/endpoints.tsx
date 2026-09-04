@@ -302,6 +302,14 @@ export const API_ROUTES = {
             export: '/reports/agents/bookings/export',
         }
     },
+    // Aparte Link — the owner/agent's public catalog page at aparte.ng/@handle
+    links: {
+        myCatalog: '/links/catalogs/me',
+        myCatalogAnalytics: (window: string) => `/links/catalogs/me/analytics?window=${window}`,
+        // Returns PNG bytes, not JSON — fetch it as a blob.
+        catalogQr: (userId: string, size = 512) =>
+            `/links/qr?target=catalog&id=${userId}&size=${size}`,
+    },
     ical: {
         units: {
             outbound: (unitId: string | number) => `/ical/units/${unitId}/outbound`,
