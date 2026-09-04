@@ -33,18 +33,18 @@ function DiscountPolicyEditor({
   allowedTypes = DISCOUNT_TYPES,
 }: DiscountPolicyEditorProps) {
   const addTier = () => {
-    if (policy.tiers.length >= 4) return;
-    const newTiers = [...policy.tiers, { min_nights: 1, value: 0 }];
+    if (policy?.tiers.length >= 4) return;
+    const newTiers = [...policy?.tiers, { min_nights: 1, value: 0 }];
     formik.setFieldValue(`${fieldPrefix}.tiers`, newTiers);
   };
 
   const removeTier = (index: number) => {
-    const newTiers = policy.tiers.filter((_, i) => i !== index);
+    const newTiers = policy?.tiers.filter((_, i) => i !== index);
     formik.setFieldValue(`${fieldPrefix}.tiers`, newTiers);
   };
 
   const updateTier = (index: number, field: keyof IDiscountTier, value: any) => {
-    const newTiers = [...policy.tiers];
+    const newTiers = [...policy?.tiers];
     newTiers[index] = { ...newTiers[index], [field]: value };
     formik.setFieldValue(`${fieldPrefix}.tiers`, newTiers);
   };
@@ -62,13 +62,13 @@ function DiscountPolicyEditor({
         {/* CustomCheckbox hands back the new boolean, not a change event —
             reading e.target.checked off it yielded undefined. */}
         <CustomCheckbox
-          checked={policy.is_active}
+          checked={policy?.is_active}
           onChange={(checked) => formik.setFieldValue(`${fieldPrefix}.is_active`, checked)}
           label="Enable Policy"
         />
       </div>
 
-      {policy.is_active && (
+      {policy?.is_active && (
         <div className="space-y-6 pt-4 border-t border-zinc-100">
           <div className="w-full sm:w-1/2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1.5 ml-0.5">
@@ -81,7 +81,7 @@ function DiscountPolicyEditor({
             <CustomDropdown
               options={allowedTypes.map((t) => t.label)}
               selected={
-                allowedTypes.find((t) => t.value === policy.discount_type)?.label ??
+                allowedTypes.find((t) => t.value === policy?.discount_type)?.label ??
                 "Select Type"
               }
               handleSelection={(label: string) => {
@@ -97,13 +97,13 @@ function DiscountPolicyEditor({
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block ml-0.5">
               Discount Tiers (Max 4)
             </label>
-            {policy.tiers.length === 0 ? (
+            {policy?.tiers.length === 0 ? (
               <div className="text-sm text-zinc-500 py-4 text-center bg-zinc-50 rounded-xl border border-zinc-200 border-dashed">
                 No discount tiers added yet.
               </div>
             ) : (
               <div className="space-y-3">
-                {policy.tiers.map((tier, index) => (
+                {policy?.tiers.map((tier, index) => (
                   <div key={index} className="flex items-center gap-3 bg-zinc-50 p-3 rounded-xl border border-zinc-200">
                     <div className="flex-1">
                       <label className="text-xs text-zinc-500 mb-1 block">Min Nights</label>
@@ -120,12 +120,12 @@ function DiscountPolicyEditor({
                     </div>
                     <div className="flex-1">
                       <label className="text-xs text-zinc-500 mb-1 block">
-                        Discount Value {policy.discount_type === DiscountType.PERCENTAGE ? "(%)" : "(Amount)"}
+                        Discount Value {policy?.discount_type === DiscountType.PERCENTAGE ? "(%)" : "(Amount)"}
                       </label>
                       <input
                         type="number"
                         min="0"
-                        step={policy.discount_type === DiscountType.PERCENTAGE ? "0.01" : "1"}
+                        step={policy?.discount_type === DiscountType.PERCENTAGE ? "0.01" : "1"}
                         value={tier.value === ("" as any) ? "" : tier.value.toString()}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -148,7 +148,7 @@ function DiscountPolicyEditor({
               </div>
             )}
             
-            {policy.tiers.length < 4 && (
+            {policy?.tiers.length < 4 && (
               <button
                 type="button"
                 onClick={addTier}
