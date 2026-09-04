@@ -28,11 +28,17 @@ enum PropertyRequestKeys {
     ownerResubmit = "ownerResubmit",
 }
 
-export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: UserRole, id?: string | number, isVerified?: boolean | null, includeAll = false) {
+export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: UserRole, id?: string | number, isVerified?: boolean | null, includeAll = false, sortBy: string = 'recent') {
     const params: Record<string, any> = {
         page,
         limit,
         search: searchTerm,
+        // Newest-listed first, by default, everywhere in the admin dashboard.
+        // The API's default ordering ranks by AGENT TIER before recency, so a
+        // Gold agent's month-old listing outranked one added this morning —
+        // the opposite of what someone scanning for new inventory wants.
+        // Pass an explicit value to override (e.g. 'recently_verified').
+        sort_by: sortBy,
     };
     if (role) params.role = role;
     // User IDs are UUID strings, not numbers — the previous `typeof id === 'number'`
@@ -52,7 +58,7 @@ export function GetAllProperties(page = 1, limit = 10, searchTerm = '', role?: U
     if (includeAll) params.include_all = true;
 
     return useQuery({
-        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role ?? null, id ?? null, isVerified ?? null, includeAll],
+        queryKey: [PropertyRequestKeys.allProperties, page, limit, searchTerm, role ?? null, id ?? null, isVerified ?? null, includeAll, sortBy],
         queryFn: () => axiosRequest.get(API_ROUTES.propertyManagement.properties.base, { params }),
         refetchOnWindowFocus: true,
     });
