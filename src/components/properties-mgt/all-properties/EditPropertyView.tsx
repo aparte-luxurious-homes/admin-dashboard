@@ -1,6 +1,6 @@
 "use client";
 
-import { MESSAGES } from '@/src/lib/messages';
+import { MESSAGES } from "@/src/lib/messages";
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { FaMapLocationDot, FaPlus, FaArrowLeftLong } from "react-icons/fa6";
@@ -8,9 +8,11 @@ import { TrashIcon } from "../../icons";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
 import {
-  DocumentType, IAmenity,
+  DocumentType,
+  IAmenity,
   IProperty,
-  IPropertyDocument, IPropertyMedia,
+  IPropertyDocument,
+  IPropertyMedia,
   IUpdateProperty,
   MediaType,
   PropertyType,
@@ -30,10 +32,17 @@ import {
   UpdateBookingMode,
   UploadPropertyMedia,
   DeleteProperty,
-  DeletePropertyMedia, UploadPropertyDocument, GetPropertyDocuments,
+  DeletePropertyMedia,
+  UploadPropertyDocument,
+  GetPropertyDocuments,
   GetEventTypes,
 } from "@/src/lib/request-handlers/propertyMgt";
-import { CreatePropertyUnit, UpdatePropertyUnit, DeletePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import {
+  CreatePropertyUnit,
+  UpdatePropertyUnit,
+  DeletePropertyUnit,
+  UploadPropertyUnitMedia,
+} from "@/src/lib/request-handlers/unitMgt";
 import { BookingMode } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
@@ -122,33 +131,35 @@ function AddressAutocomplete({
     }
   };
 
-    return (
-        <div className="relative group w-full">
-            <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400 z-10">
-                <SlLocationPin className="text-base sm:text-lg" />
-            </div>
-            <input
-                value={value}
-                onChange={handleInput}
-                disabled={!isLoaded}
-                placeholder={isLoaded ? "Search for an address..." : "Loading Map API..."}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl sm:rounded-2xl pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 text-sm sm:text-base focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
-            />
-            {status === "OK" && (
-                <ul className="absolute z-50 w-full bg-white border border-zinc-200 rounded-lg sm:rounded-xl mt-1 shadow-lg max-h-48 sm:max-h-60 overflow-auto text-sm">
-                    {data.map(({ place_id, description }) => (
-                        <li
-                            key={place_id}
-                            onClick={() => handleSelect(description)}
-                            className="px-3 sm:px-4 py-2 sm:py-3 hover:bg-zinc-50 cursor-pointer text-xs sm:text-sm font-medium border-b border-zinc-100 last:border-0"
-                        >
-                            {description}
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
+  return (
+    <div className="relative group w-full">
+      <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400 z-10">
+        <SlLocationPin className="text-base sm:text-lg" />
+      </div>
+      <input
+        value={value}
+        onChange={handleInput}
+        disabled={!isLoaded}
+        placeholder={
+          isLoaded ? "Search for an address..." : "Loading Map API..."
+        }
+        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl sm:rounded-2xl pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 text-sm sm:text-base focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
+      />
+      {status === "OK" && (
+        <ul className="absolute z-50 w-full bg-white border border-zinc-200 rounded-lg sm:rounded-xl mt-1 shadow-lg max-h-48 sm:max-h-60 overflow-auto text-sm">
+          {data.map(({ place_id, description }) => (
+            <li
+              key={place_id}
+              onClick={() => handleSelect(description)}
+              className="px-3 sm:px-4 py-2 sm:py-3 hover:bg-zinc-50 cursor-pointer text-xs sm:text-sm font-medium border-b border-zinc-100 last:border-0"
+            >
+              {description}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function FormCard({
@@ -223,11 +234,16 @@ export default function EditPropertyView({
   const uploadRef = useRef<{ url: string; file: File }[]>([]);
   const [showAmenityForm, setShowAmenityForm] = useState<boolean>(false);
 
-    // Document upload state
-    const { mutate: uploadDoc, isPending: docUploadPending } = UploadPropertyDocument();
-    const { data: docsData, refetch: refetchDocs } = GetPropertyDocuments(propertyData.id);
-    const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
-    const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
+  // Document upload state
+  const { mutate: uploadDoc, isPending: docUploadPending } =
+    UploadPropertyDocument();
+  const { data: docsData, refetch: refetchDocs } = GetPropertyDocuments(
+    propertyData.id,
+  );
+  const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
+  const [selectedDocType, setSelectedDocType] = useState<DocumentType>(
+    DocumentType.UTILITY_BILL,
+  );
 
   // Event types
   const { data: fetchedEventTypes } = GetEventTypes();
@@ -242,7 +258,8 @@ export default function EditPropertyView({
   }, [fetchedEventTypes]);
 
   // Unit management state
-  const { mutate: createUnit, isPending: isCreatingUnit } = CreatePropertyUnit();
+  const { mutate: createUnit, isPending: isCreatingUnit } =
+    CreatePropertyUnit();
   const { mutate: updateUnit } = UpdatePropertyUnit();
   const { mutate: deleteUnit } = DeletePropertyUnit();
   const { mutate: uploadUnitMedia } = UploadPropertyUnitMedia();
@@ -251,10 +268,10 @@ export default function EditPropertyView({
   const [existingUnits, setExistingUnits] = useState<UnitFormValues[]>(
     (propertyData?.units ?? []).map((u) => ({
       _key: String(u.id),
-      name: u.name ?? '',
-      description: u.description ?? '',
-      price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ''),
-      caution_fee: String(u.caution_fee ?? u.cautionFee ?? '0'),
+      name: u.name ?? "",
+      description: u.description ?? "",
+      price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ""),
+      caution_fee: String(u.caution_fee ?? u.cautionFee ?? "0"),
       max_guests: u.max_guests ?? u.maxGuests ?? 1,
       count: u.count ?? 1,
       is_whole_property: u.is_whole_property ?? u.isWholeProperty ?? false,
@@ -263,17 +280,17 @@ export default function EditPropertyView({
       kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
       bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
       amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
-    }))
+    })),
   );
 
   useEffect(() => {
     setExistingUnits(
       (propertyData?.units ?? []).map((u) => ({
         _key: String(u.id),
-        name: u.name ?? '',
-        description: u.description ?? '',
-        price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ''),
-        caution_fee: String(u.caution_fee ?? u.cautionFee ?? '0'),
+        name: u.name ?? "",
+        description: u.description ?? "",
+        price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ""),
+        caution_fee: String(u.caution_fee ?? u.cautionFee ?? "0"),
         max_guests: u.max_guests ?? u.maxGuests ?? 1,
         count: u.count ?? 1,
         is_whole_property: u.is_whole_property ?? u.isWholeProperty ?? false,
@@ -282,12 +299,15 @@ export default function EditPropertyView({
         kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
         bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
         amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
-      }))
+      })),
     );
   }, [propertyData]);
 
   const handleSaveUnit = (unit: UnitFormValues) => {
-    const unitAmenityIds = sortAmenities(availableAmenities ?? [], unit.amenityNames);
+    const unitAmenityIds = sortAmenities(
+      availableAmenities ?? [],
+      unit.amenityNames,
+    );
     const unitPayload = {
       name: unit.name,
       description: unit.description,
@@ -305,21 +325,35 @@ export default function EditPropertyView({
 
     if (editingUnitIndex !== null) {
       const existingId = existingUnits[editingUnitIndex]._key;
-      const isExistingUnit = propertyData?.units?.some((u) => String(u.id) === existingId);
+      const isExistingUnit = propertyData?.units?.some(
+        (u) => String(u.id) === existingId,
+      );
 
       if (isExistingUnit) {
         updateUnit(
-          { propertyId: propertyData.id, unitId: existingId, payload: unitPayload },
+          {
+            propertyId: propertyData.id,
+            unitId: existingId,
+            payload: unitPayload,
+          },
           {
             onSuccess: () => {
-              setExistingUnits(prev => prev.map((u, i) => i === editingUnitIndex ? { ...unit, _key: existingId } : u));
+              setExistingUnits((prev) =>
+                prev.map((u, i) =>
+                  i === editingUnitIndex ? { ...unit, _key: existingId } : u,
+                ),
+              );
               toast.success(MESSAGES.MSG_UNIT_UPDATED);
             },
             onError: () => toast.error(MESSAGES.MSG_FAILED_TO_UPDATE_UNIT),
           },
         );
       } else {
-        setExistingUnits(prev => prev.map((u, i) => i === editingUnitIndex ? { ...unit, _key: u._key } : u));
+        setExistingUnits((prev) =>
+          prev.map((u, i) =>
+            i === editingUnitIndex ? { ...unit, _key: u._key } : u,
+          ),
+        );
       }
     } else {
       createUnit(
@@ -328,7 +362,10 @@ export default function EditPropertyView({
           onSuccess: (response) => {
             const created = response?.data?.data?.[0];
             if (created) {
-              setExistingUnits(prev => [...prev, { ...unit, _key: String(created.id) }]);
+              setExistingUnits((prev) => [
+                ...prev,
+                { ...unit, _key: String(created.id) },
+              ]);
             }
             toast.success(MESSAGES.MSG_UNIT_ADDED);
           },
@@ -342,19 +379,23 @@ export default function EditPropertyView({
 
   const handleDeleteUnit = (index: number) => {
     const unit = existingUnits[index];
-    const isExistingUnit = propertyData?.units?.some((u) => String(u.id) === unit._key);
+    const isExistingUnit = propertyData?.units?.some(
+      (u) => String(u.id) === unit._key,
+    );
 
     if (isExistingUnit) {
       dispatch(
         showAlert({
-          title: 'Delete Unit',
-          description: `Are you sure you want to delete "${unit.name || 'this unit'}"? This action cannot be undone.`,
+          title: "Delete Unit",
+          description: `Are you sure you want to delete "${unit.name || "this unit"}"? This action cannot be undone.`,
           onConfirm: () => {
             deleteUnit(
               { propertyId: propertyData.id, unitId: unit._key },
               {
                 onSuccess: () => {
-                  setExistingUnits(prev => prev.filter((_, i) => i !== index));
+                  setExistingUnits((prev) =>
+                    prev.filter((_, i) => i !== index),
+                  );
                   toast.success(MESSAGES.MSG_UNIT_DELETED);
                 },
                 onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_UNIT),
@@ -364,7 +405,7 @@ export default function EditPropertyView({
         }),
       );
     } else {
-      setExistingUnits(prev => prev.filter((_, i) => i !== index));
+      setExistingUnits((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -392,7 +433,10 @@ export default function EditPropertyView({
     initialValues: {
       name: propertyData?.name ?? "",
       address: propertyData?.address ?? "",
-      type: propertyData?.propertyType ?? propertyData?.property_type ?? PropertyType.DUPLEX,
+      type:
+        propertyData?.propertyType ??
+        propertyData?.property_type ??
+        PropertyType.DUPLEX,
       country: "Nigeria",
       state: propertyData?.state ?? "",
       city: propertyData?.city ?? "",
@@ -409,14 +453,19 @@ export default function EditPropertyView({
       isVerified: propertyData?.isVerified ?? false,
       isFeatured: propertyData?.isFeatured ?? false,
       petsAllowed: propertyData?.isPetAllowed ?? false,
-      partyAllowed: propertyData?.isPartyAllowed ?? propertyData?.is_party_allowed ?? false,
-      rules: propertyData?.rules ?? '',
+      partyAllowed:
+        propertyData?.isPartyAllowed ?? propertyData?.is_party_allowed ?? false,
+      rules: propertyData?.rules ?? "",
       bookingMode: (propertyData?.bookingMode ??
         propertyData?.booking_mode ??
         BookingMode.INSTANT) as BookingMode,
       amenities: propertyData?.amenities.map((el) => el.id),
       amenityNames: propertyData?.amenities.map((el) => el.name),
-      event_types: (propertyData?.eventTypes ?? propertyData?.event_types ?? []).map((el: any) => el.name ?? el),
+      event_types: (
+        propertyData?.eventTypes ??
+        propertyData?.event_types ??
+        []
+      ).map((el: any) => el.name ?? el),
     },
     onSubmit: (values: any) => {
       const sortedAmenities = sortAmenities(
@@ -452,10 +501,13 @@ export default function EditPropertyView({
         extension_discount_policy: values.extension_discount_policy,
       };
 
-      if (values.type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
+      if (
+        values.type === PropertyType.EVENT_CENTRE &&
+        values.event_types?.length > 0
+      ) {
         updatePayload.event_types = availableEventTypes
-          .filter(et => values.event_types.includes(et.name))
-          .map(et => String(et.id));
+          .filter((et) => values.event_types.includes(et.name))
+          .map((et) => String(et.id));
       }
 
       mutate(
@@ -473,18 +525,25 @@ export default function EditPropertyView({
                 { propertyId: propertyData.id, payload: formData },
                 {
                   onSuccess: () => {
-                    toast.success(MESSAGES.MSG_PROPERTY_UPDATED_WITH_NEW_IMAGES, {
-                      duration: 6000,
-                      style: { maxWidth: "500px", width: "max-content" },
-                    });
+                    toast.success(
+                      MESSAGES.MSG_PROPERTY_UPDATED_WITH_NEW_IMAGES,
+                      {
+                        duration: 6000,
+                        style: { maxWidth: "500px", width: "max-content" },
+                      },
+                    );
                     removeParam("edit");
                     handleEditMode(false);
                   },
                   onError: (error: any) => {
-                    toast.error(error?.response?.data?.detail || "Property updated but media upload failed", {
-                      duration: 6000,
-                      style: { maxWidth: "500px", width: "max-content" },
-                    });
+                    toast.error(
+                      error?.response?.data?.detail ||
+                        "Property updated but media upload failed",
+                      {
+                        duration: 6000,
+                        style: { maxWidth: "500px", width: "max-content" },
+                      },
+                    );
                     removeParam("edit");
                     handleEditMode(false);
                   },
@@ -558,7 +617,8 @@ export default function EditPropertyView({
           deleteMedia(
             { propertyId: propertyData.id, mediaId: id },
             {
-              onSuccess: () => toast.success(MESSAGES.MSG_IMAGE_DELETED_SUCCESSFULLY),
+              onSuccess: () =>
+                toast.success(MESSAGES.MSG_IMAGE_DELETED_SUCCESSFULLY),
               onError: (error: any) =>
                 toast.error(
                   error?.response?.data?.detail || "Failed to delete image",
@@ -617,19 +677,24 @@ export default function EditPropertyView({
   const isInstant = formik.values.bookingMode === BookingMode.INSTANT;
   const isRequest = formik.values.bookingMode === BookingMode.REQUEST_TO_BOOK;
 
-    useEffect(() => {
-        const docs = docsData?.data?.data?.data ?? docsData?.data?.data ?? [];
-        if (Array.isArray(docs)) setDocuments(docs);
-    }, [docsData]);
+  useEffect(() => {
+    const docs = docsData?.data?.data?.data ?? docsData?.data?.data ?? [];
+    if (Array.isArray(docs)) setDocuments(docs);
+  }, [docsData]);
 
   return (
     <div className="relative">
       {/* Unit Drawer */}
       <UnitDrawer
         isOpen={unitDrawerOpen}
-        onClose={() => { setUnitDrawerOpen(false); setEditingUnitIndex(null); }}
+        onClose={() => {
+          setUnitDrawerOpen(false);
+          setEditingUnitIndex(null);
+        }}
         onSave={handleSaveUnit}
-        editingUnit={editingUnitIndex !== null ? existingUnits[editingUnitIndex] : null}
+        editingUnit={
+          editingUnitIndex !== null ? existingUnits[editingUnitIndex] : null
+        }
         availableAmenities={availableAmenities ?? []}
         showAmenityForm={() => setShowAmenityForm(true)}
         userRole={user?.role}
@@ -936,7 +1001,9 @@ export default function EditPropertyView({
                   <CustomCheckbox
                     label="Parties allowed"
                     checked={formik.values.partyAllowed}
-                    onChange={(val) => formik.setFieldValue("partyAllowed", val)}
+                    onChange={(val) =>
+                      formik.setFieldValue("partyAllowed", val)
+                    }
                   />
                   {user?.role === UserRole.ADMIN && (
                     <CustomCheckbox
@@ -964,7 +1031,10 @@ export default function EditPropertyView({
               {/* Property Rules */}
               <div className="pt-4 border-t border-zinc-50">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                  <Icon icon="solar:document-text-bold-duotone" className="text-sm text-primary" />
+                  <Icon
+                    icon="solar:document-text-bold-duotone"
+                    className="text-sm text-primary"
+                  />
                   Property Rules
                 </p>
                 <div className="relative">
@@ -1077,7 +1147,7 @@ export default function EditPropertyView({
                       key={item.id}
                       className="relative group aspect-square rounded-xl overflow-hidden bg-zinc-100 border border-zinc-100"
                     >
-                      {(item.media_type || item.mediaType) === 'VIDEO' ? (
+                      {(item.media_type || item.mediaType) === "VIDEO" ? (
                         <video
                           src={item.media_url || item.mediaUrl || ""}
                           muted
@@ -1086,7 +1156,11 @@ export default function EditPropertyView({
                         />
                       ) : (
                         <Image
-                          src={item.media_url || item.mediaUrl || "/png/placeholder.png"}
+                          src={
+                            item.media_url ||
+                            item.mediaUrl ||
+                            "/png/placeholder.png"
+                          }
                           alt="Property media"
                           fill
                           className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -1133,13 +1207,21 @@ export default function EditPropertyView({
                       { propertyId: propertyData.id, payload: formData },
                       {
                         onSuccess: () =>
-                          toast.success(MESSAGES.MSG_MEDIA_UPLOADED_SUCCESSFULLY, {
-                            duration: 6000,
-                            style: { maxWidth: "500px", width: "max-content" },
-                          }),
+                          toast.success(
+                            MESSAGES.MSG_MEDIA_UPLOADED_SUCCESSFULLY,
+                            {
+                              duration: 6000,
+                              style: {
+                                maxWidth: "500px",
+                                width: "max-content",
+                              },
+                            },
+                          ),
                         onError: (error: any) =>
                           toast.error(
-                            error?.response?.data?.detail || error?.response?.data?.message || MESSAGES.MSG_UPLOAD_FAILED,
+                            error?.response?.data?.detail ||
+                              error?.response?.data?.message ||
+                              MESSAGES.MSG_UPLOAD_FAILED,
                             {
                               duration: 6000,
                               style: {
@@ -1153,7 +1235,7 @@ export default function EditPropertyView({
                   }}
                   disabled={uploadedMediaPending}
                   className="w-full flex items-center justify-center gap-2 py-3 bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-60"
-                >
+                  >
                   {uploadedMediaPending ? (
                     <Spinner color="white" />
                   ) : (
@@ -1171,81 +1253,119 @@ export default function EditPropertyView({
             </div>
           </FormCard>
 
-                    {/* Documents Section */}
-                    <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-8 space-y-4 md:space-y-5 shadow-sm">
-                        <h3 className="text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-1.5">
-                            <Icon icon="solar:file-text-bold-duotone" className="text-lg sm:text-xl text-primary" />
-                            Ownership Documents
-                        </h3>
-                        <p className="text-[10px] sm:text-xs text-zinc-500">Upload proof of ownership documents (PDF, JPG, PNG). These will be reviewed during verification.</p>
+          {/* Documents Section */}
+          <div className="bg-white border border-zinc-200 rounded-xl md:rounded-2xl lg:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-8 space-y-4 md:space-y-5 shadow-sm">
+            <h3 className="text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-1.5">
+              <Icon
+                icon="solar:file-text-bold-duotone"
+                className="text-lg sm:text-xl text-primary"
+              />
+              Ownership Documents
+            </h3>
+            <p className="text-[10px] sm:text-xs text-zinc-500">
+              Upload proof of ownership documents (PDF, JPG, PNG). These will be
+              reviewed during verification.
+            </p>
 
-                        {/* Existing Documents */}
-                        {documents.length > 0 && (
-                            <div className="space-y-2">
-                                {documents.map((doc) => (
-                                    <div key={doc.id} className="flex items-center justify-between p-2.5 sm:p-3 bg-zinc-50 rounded-lg sm:rounded-xl border border-zinc-100 group">
-                                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                            <Icon icon="solar:file-text-bold-duotone" className="text-base sm:text-lg text-primary flex-shrink-0" />
-                                            <div className="min-w-0">
-                                                <p className="text-xs sm:text-sm font-bold text-zinc-800 truncate">{(doc.document_type as string)?.replace(/_/g, ' ')}</p>
-                                                <p className="text-[8px] sm:text-[10px] text-zinc-400 capitalize">{doc.status?.toLowerCase()}</p>
-                                            </div>
-                                        </div>
-                                        <a href={doc.document_url} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-zinc-100 rounded-lg transition-colors text-zinc-500 flex-shrink-0">
-                                            <Icon icon="solar:eye-bold-duotone" className="text-sm sm:text-base" />
-                                        </a>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Upload New Document */}
-                        <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-zinc-100">
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Document Type</label>
-                                <CustomDropdown
-                                    selected={selectedDocType}
-                                    options={Object.values(DocumentType)}
-                                    handleSelection={(val) => setSelectedDocType(val as DocumentType)}
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1 mb-1.5 block">Select File</label>
-                                <input
-                                    type="file"
-                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            const formData = new FormData();
-                                            formData.append('document_file', file);
-                                            formData.append('document_type', selectedDocType);
-                                            uploadDoc({
-                                                propertyId: propertyData.id,
-                                                payload: formData
-                                            }, {
-                                                onSuccess: () => {
-                                                    toast.success(MESSAGES.MSG_DOCUMENT_UPLOADED_SUCCESSFULLY);
-                                                    refetchDocs();
-                                                },
-                                                onError: (err: any) => {
-                                                    toast.error(err?.response?.data?.detail || MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED);
-                                                }
-                                            });
-                                            e.target.value = '';
-                                        }
-                                    }}
-                                    disabled={docUploadPending}
-                                    className="w-full text-xs sm:text-sm file:mr-3 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-3 sm:file:px-4 file:rounded-lg sm:file:rounded-xl file:border-0 file:text-xs sm:file:text-sm file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer disabled:opacity-50"
-                                />
-                                {docUploadPending && (
-                                    <div className="flex items-center gap-2 mt-2 text-xs text-zinc-500">
-                                        <Spinner /> Uploading document...
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+            {/* Existing Documents */}
+            {documents.length > 0 && (
+              <div className="space-y-2">
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between p-2.5 sm:p-3 bg-zinc-50 rounded-lg sm:rounded-xl border border-zinc-100 group"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <Icon
+                        icon="solar:file-text-bold-duotone"
+                        className="text-base sm:text-lg text-primary flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-bold text-zinc-800 truncate">
+                          {(doc.document_type as string)?.replace(/_/g, " ")}
+                        </p>
+                        <p className="text-[8px] sm:text-[10px] text-zinc-400 capitalize">
+                          {doc.status?.toLowerCase()}
+                        </p>
+                      </div>
                     </div>
+                    <a
+                      href={doc.document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 hover:bg-zinc-100 rounded-lg transition-colors text-zinc-500 flex-shrink-0"
+                    >
+                      <Icon
+                        icon="solar:eye-bold-duotone"
+                        className="text-sm sm:text-base"
+                      />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload New Document */}
+            <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-zinc-100">
+              <div className="space-y-1.5">
+                <label className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                  Document Type
+                </label>
+                <CustomDropdown
+                  selected={selectedDocType}
+                  options={Object.values(DocumentType)}
+                  handleSelection={(val) =>
+                    setSelectedDocType(val as DocumentType)
+                  }
+                />
+              </div>
+              <div>
+                <label className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1 mb-1.5 block">
+                  Select File
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const formData = new FormData();
+                      formData.append("document_file", file);
+                      formData.append("document_type", selectedDocType);
+                      uploadDoc(
+                        {
+                          propertyId: propertyData.id,
+                          payload: formData,
+                        },
+                        {
+                          onSuccess: () => {
+                            toast.success(
+                              MESSAGES.MSG_DOCUMENT_UPLOADED_SUCCESSFULLY,
+                            );
+                            refetchDocs();
+                          },
+                          onError: (err: any) => {
+                            toast.error(
+                              err?.response?.data?.detail ||
+                                MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED,
+                            );
+                          },
+                        },
+                      );
+                      e.target.value = "";
+                    }
+                  }}
+                  disabled={docUploadPending}
+                  className="w-full text-xs sm:text-sm file:mr-3 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-3 sm:file:px-4 file:rounded-lg sm:file:rounded-xl file:border-0 file:text-xs sm:file:text-sm file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer disabled:opacity-50"
+                />
+                {docUploadPending && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-zinc-500">
+                    <Spinner /> Uploading document...
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           {/* Discounts Management Section */}
           <div className="bg-white border border-zinc-100 rounded-2xl p-0 shadow-sm mt-4">
             <StepDiscounts formik={formik} />
@@ -1288,8 +1408,13 @@ export default function EditPropertyView({
                 </div>
               ) : (
                 <div className="border-2 border-dashed border-zinc-200 rounded-xl py-8 flex flex-col items-center text-center">
-                  <Icon icon="solar:box-minimalistic-bold-duotone" className="text-3xl text-zinc-300 mb-2" />
-                  <p className="text-xs text-zinc-400">No units yet. Add units to make this property bookable.</p>
+                  <Icon
+                    icon="solar:box-minimalistic-bold-duotone"
+                    className="text-3xl text-zinc-300 mb-2"
+                  />
+                  <p className="text-xs text-zinc-400">
+                    No units yet. Add units to make this property bookable.
+                  </p>
                 </div>
               )}
             </div>
