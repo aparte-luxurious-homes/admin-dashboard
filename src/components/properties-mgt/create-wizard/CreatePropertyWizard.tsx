@@ -392,6 +392,20 @@ export default function CreatePropertyWizard() {
           toast.error(MESSAGES.MSG_CITY_IS_REQUIRED);
           return false;
         }
+
+        // A new owner needs a phone: the backend's UserCreate validator
+        // requires one for role=OWNER. That rejection used to surface only
+        // at final submit, four steps later, as "Cannot create owner: Phone
+        // number is required when registering as an owner" — by which point
+        // the field that caused it was long off screen. Validate it where it
+        // is typed.
+        const { owner_email, owner_phoneNumber, ownerId } = formik.values;
+        if (!ownerId && owner_email.trim() && !owner_phoneNumber.trim()) {
+          toast.error(
+            "Add the new owner's phone number — it's required to create their account.",
+          );
+          return false;
+        }
         return true;
       }
       case WizardStep.UNITS:
