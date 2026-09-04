@@ -94,7 +94,7 @@ const TIER_COLORS: Record<string, string> = {
 
 const DashboardHome = () => {
     const { user } = useAuth();
-    const { isAdmin, isAgent, isOwner } = usePermissions();
+    const { isAdmin, isAgent, isOwner, canViewGatewayBalances } = usePermissions();
     const { networkEnabled } = useNetworkEnabled();
 
     const [stats, setStats] = useState<Partial<StatsData>>({});
@@ -105,7 +105,10 @@ const DashboardHome = () => {
     const [mentorshipData, setMentorshipData] = useState<MentorshipRecord[]>([]);
     const [mentorshipLoading, setMentorshipLoading] = useState(false);
 
-    const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances();
+    // Fetch only for roles that render the card - anyone else got a 403
+    // (and, for roles the API since revoked, interceptor noise) for a
+    // number they were never supposed to see.
+    const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances(canViewGatewayBalances);
     const balances = gatewayData?.data?.data || {};
 
     const fetchStatistics = useCallback(async () => {
@@ -229,11 +232,17 @@ const DashboardHome = () => {
                         {isAdmin && (
                             <>
                                 <AdminQueuesCard />
-                                <GatewayBalancesCard
-                                    paystack={balances.paystack || { isAvailable: false, error: "No data" }}
-                                    monnify={balances.monnify || { isAvailable: false, error: "No data" }}
-                                    isLoading={gatewayLoading}
-                                />
+                                {/* Treasury numbers: SUPER_ADMIN + ADMIN only.
+                                    OPS and SUPPORT keep the rest of the admin
+                                    dashboard; the merchant balances are not an
+                                    operations signal. */}
+                                {canViewGatewayBalances && (
+                                    <GatewayBalancesCard
+                                        paystack={balances.paystack || { isAvailable: false, error: "No data" }}
+                                        monnify={balances.monnify || { isAvailable: false, error: "No data" }}
+                                        isLoading={gatewayLoading}
+                                    />
+                                )}
                                 <Grid container spacing={2}>
                                     <Grid size={{ xs: 12, md: 6 }}>
                                         <div className="p-5 h-[270px] border border-gray-200 rounded-2xl bg-white shadow-sm">

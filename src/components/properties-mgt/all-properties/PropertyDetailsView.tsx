@@ -70,6 +70,7 @@ export default function PropertyDetailsView({
   const { canDeleteProperty } = usePermissions();
 
   const { data, isLoading } = GetSingleProperty(propertyId);
+  console.log("Property detail",data);
   const { data: fetchedAmenites } = GetAmenities();
   const { mutate: deleteMutation, isPending: deleteIsPending } =
     DeleteProperty();
@@ -108,7 +109,7 @@ export default function PropertyDetailsView({
   const [owners, setOwners] = useState<IUser[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<IUser | null>(null);
   const [editMode, setEditMode] = useState<boolean>(
-    Boolean(searchParams.get("edit")),
+    Boolean(searchParams.get("edit"))
   );
   const [property, setProperty] = useState<IProperty>(data?.data?.data);
   const [availableUnits, setAvailableUnits] = useState<number>(0);
@@ -521,7 +522,7 @@ export default function PropertyDetailsView({
                                     </a>
                                     {user?.role === UserRole.ADMIN &&
                                       doc?.status ===
-                                        PropertyVerificationStatus.PENDING && (
+                                      PropertyVerificationStatus.PENDING && (
                                         <button
                                           onClick={() => {
                                             setSelectedDoc(doc);
@@ -635,8 +636,8 @@ export default function PropertyDetailsView({
                                     ₦
                                     {Number(
                                       el.price_per_night ??
-                                        el.pricePerNight ??
-                                        0,
+                                      el.pricePerNight ??
+                                      0,
                                     ).toLocaleString()}
                                     <span className="text-[9px] font-normal text-zinc-400 ml-0.5">
                                       /night
@@ -789,9 +790,9 @@ export default function PropertyDetailsView({
                           {property?.isVerified || property?.is_verified
                             ? property?.verifications?.[0]?.verificationDate
                               ? formatDate(
-                                  property?.verifications?.[0]
-                                    ?.verificationDate,
-                                )
+                                property?.verifications?.[0]
+                                  ?.verificationDate,
+                              )
                               : "Recently"
                             : "Not Listed"}
                         </span>
@@ -993,7 +994,7 @@ export default function PropertyDetailsView({
                                   onError: (err: any) =>
                                     toast.error(
                                       err?.response?.data?.detail ||
-                                        "Update failed",
+                                      "Update failed",
                                     ),
                                 },
                               );
@@ -1009,7 +1010,7 @@ export default function PropertyDetailsView({
                           iconBg={
                             (property?.bookingMode ??
                               property?.booking_mode) === BookingMode.INSTANT ||
-                            !(property?.bookingMode ?? property?.booking_mode)
+                              !(property?.bookingMode ?? property?.booking_mode)
                               ? "bg-primary/10"
                               : "bg-zinc-100"
                           }
@@ -1017,7 +1018,7 @@ export default function PropertyDetailsView({
                           titleClass={
                             (property?.bookingMode ??
                               property?.booking_mode) === BookingMode.INSTANT ||
-                            !(property?.bookingMode ?? property?.booking_mode)
+                              !(property?.bookingMode ?? property?.booking_mode)
                               ? "text-primary"
                               : "text-zinc-700"
                           }
@@ -1060,7 +1061,7 @@ export default function PropertyDetailsView({
                                   onError: (err: any) =>
                                     toast.error(
                                       err?.response?.data?.detail ||
-                                        "Update failed",
+                                      "Update failed",
                                     ),
                                 },
                               );
@@ -1076,7 +1077,7 @@ export default function PropertyDetailsView({
                           iconBg={
                             (property?.bookingMode ??
                               property?.booking_mode) ===
-                            BookingMode.REQUEST_TO_BOOK
+                              BookingMode.REQUEST_TO_BOOK
                               ? "bg-violet-100"
                               : "bg-zinc-100"
                           }
@@ -1084,7 +1085,7 @@ export default function PropertyDetailsView({
                           titleClass={
                             (property?.bookingMode ??
                               property?.booking_mode) ===
-                            BookingMode.REQUEST_TO_BOOK
+                              BookingMode.REQUEST_TO_BOOK
                               ? "text-violet-700"
                               : "text-zinc-700"
                           }

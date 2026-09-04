@@ -17,6 +17,9 @@ const axiosRequest = axios.create({
 // 🔹 Forceful normalization and token attachment
 axiosRequest.interceptors.request.use((config) => {
   // 1. Ensure baseURL always has the correct prefix
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
   if (config.baseURL && !config.baseURL.includes("/api/v")) {
     const base = config.baseURL.replace(/\/+$/, "");
     config.baseURL = base.endsWith("/api") ? `${base}/v1` : `${base}/api/v1`;
