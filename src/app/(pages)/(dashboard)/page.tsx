@@ -23,6 +23,7 @@ import AgentVerificationQueueCard from "@/src/components/dashboard/AgentVerifica
 import TopAgentsCard from "@/src/components/dashboard/TopAgentsCard";
 import AgentNetworkDashboardCard from "@/src/components/dashboard/AgentNetworkDashboardCard";
 import ShareMyLinkCard from "@/src/components/links/ShareMyLinkCard";
+import KycPromptCard from "@/src/components/dashboard/KycPromptCard";
 import { useNetworkEnabled } from "@/src/lib/request-handlers/platformMgt";
 
 interface Wallet {
@@ -220,6 +221,14 @@ const DashboardHome = () => {
                 {/* Main column */}
                 <Grid size={{ xs: 12, lg: showSidebar ? 9 : 12 }}>
                     <div className="space-y-4">
+
+                        {/* KYC sits above everything else for owners and agents,
+                            because until it clears their listings cannot be
+                            approved and their earnings cannot be withdrawn —
+                            and nothing else in the product asks for it. The
+                            card self-hides once verified, and for every role
+                            that has no listings or payouts of its own. */}
+                        {(isOwner || isAgent) && <KycPromptCard />}
 
                         {/* OWNER/AGENT: their shareable public catalog link.
                             First card, because sending it is the single highest-
