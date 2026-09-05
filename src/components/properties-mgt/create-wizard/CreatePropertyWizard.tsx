@@ -191,6 +191,20 @@ export default function CreatePropertyWizard() {
             typeof draft.values.ownerId === "number"
               ? ""
               : (draft.values.ownerId ?? ""),
+          // A draft saved BEFORE the discounts step existed carries no policy
+          // objects, and spreading it leaves them undefined — the defaults
+          // below only apply when there is no draft at all. Ticking "Enable
+          // Policy" on one of those then crashed the step.
+          long_stay_discount_policy: draft.values.long_stay_discount_policy ?? {
+            is_active: false,
+            discount_type: DiscountType.PERCENTAGE,
+            tiers: [],
+          },
+          extension_discount_policy: draft.values.extension_discount_policy ?? {
+            is_active: false,
+            discount_type: DiscountType.PERCENTAGE,
+            tiers: [],
+          },
         }
       : undefined) ?? {
       name: "",
