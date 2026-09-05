@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import { useAuth } from "@/src/hooks/useAuth";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { KycStatus } from "@/src/lib/enums";
+import { GetMyKycDocuments } from "@/src/lib/request-handlers/kycMgt";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
 /**
@@ -22,22 +22,40 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
  * mandatory, and a dismissed prompt would just recreate the silence.
  */
 
-type Kyc = KycStatus | string | null | undefined;
-
 export default function KycPromptCard() {
-    const { user } = useAuth();
     const { isOwner, isAgent } = usePermissions();
 
-    const status: Kyc = user?.profile?.kycStatus ?? user?.profile?.kyc_status;
-    const hasBvn = Boolean(user?.profile?.bvn);
+    // Read the LIVE status, not the persisted one.
+    //
+    // This first read `useAuth().user.profile.kycStatus`, which comes from
+    // Redux — persisted to localStorage and only refreshed at login. So the
+    // card kept telling people to verify long after they had: the snapshot it
+    // was reading was taken before they did it. Reported 2026-09-05.
+    //
+    // GetMyKycDocuments returns the profile's current kyc_status straight from
+    // the server, and its `items` are a far better "already submitted" signal
+    // than the BVN flag this used before — kyc_status defaults to PENDING, so
+    // "PENDING" alone cannot distinguish a fresh account from one awaiting
+    // review.
+    const { data, isLoading } = GetMyKycDocuments();
 
     // Staff have no listings or payouts of their own, so this is not their task.
     if (!isOwner && !isAgent) return null;
+
+    // Render nothing until the real status arrives. Guessing from the cached
+    // value would flash "verify your identity" at somebody already verified,
+    // which is the very complaint this fixes.
+    if (isLoading) return null;
+
+    const status = data?.profile_kyc_status as KycStatus | string | null | undefined;
+    const submittedCount = data?.items?.length ?? 0;
+
     // Nothing to prompt once they're through.
     if (status === KycStatus.VERIFIED) return null;
 
     const rejected = status === KycStatus.REJECTED;
-    const pending = status === KycStatus.PENDING && hasBvn;
+    // Something is genuinely with a reviewer — not merely a default status.
+    const pending = status === KycStatus.PENDING && submittedCount > 0;
 
     // A submission already under review is a different message: waiting is the
     // correct action, and repeating "you must verify" reads as it not working.

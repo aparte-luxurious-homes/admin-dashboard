@@ -35,13 +35,13 @@ function DiscountPolicyDiff({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-xs font-bold text-zinc-500 mb-2 uppercase tracking-wider">Current</p>
-          {!currentPolicy?.is_active || currentPolicy?.tiers?.length === 0 ? (
+          {!currentPolicy?.is_active || !currentPolicy?.tiers?.length ? (
             <p className="text-sm text-zinc-400">No active policy</p>
           ) : (
             <div className="space-y-2">
               <p className="text-xs text-zinc-600">Type: {currentPolicy.discount_type}</p>
               <div className="space-y-1">
-                {currentPolicy.tiers.map((tier, idx) => (
+                {currentPolicy!.tiers!.map((tier, idx) => (
                   <div key={idx} className="text-xs text-zinc-600 bg-white p-2 rounded border border-zinc-100">
                     {tier.min_nights}+ nights: {tier.value}{currentPolicy.discount_type === DiscountType.PERCENTAGE ? '%' : ' flat'}
                   </div>
@@ -55,13 +55,13 @@ function DiscountPolicyDiff({
           <p className="text-xs font-bold text-primary mb-2 uppercase tracking-wider flex items-center gap-1">
             <Icon icon="solar:star-bold" className="text-amber-500" /> Proposed
           </p>
-          {!proposedPolicy.is_active || proposedPolicy.tiers?.length === 0 ? (
+          {!proposedPolicy?.is_active || !proposedPolicy?.tiers?.length ? (
             <p className="text-sm text-red-500 font-semibold">Disable policy</p>
           ) : (
             <div className="space-y-2">
               <p className="text-xs text-zinc-800 font-medium">Type: {proposedPolicy.discount_type}</p>
               <div className="space-y-1">
-                {proposedPolicy.tiers.map((tier, idx) => (
+                {proposedPolicy!.tiers!.map((tier, idx) => (
                   <div key={idx} className="text-xs text-zinc-800 font-medium bg-primary/5 p-2 rounded border border-primary/20">
                     {tier.min_nights}+ nights: {tier.value}{proposedPolicy.discount_type === DiscountType.PERCENTAGE ? '%' : ' flat'}
                   </div>
