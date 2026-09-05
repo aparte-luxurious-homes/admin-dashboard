@@ -253,9 +253,30 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                               </span>
                             </div>
                           )}
+                          {/* Was: "Agent commission reduced to 3%; referrer
+                              credited 2%". Wrong three ways.
+
+                              The rates are not fixed — they come from the
+                              booking's agent_commission_pct /
+                              referral_commission_pct snapshot, i.e. the agent's
+                              tier rate at the time of booking. 3% and 2% are
+                              only the LEGACY fallback for rows with no
+                              snapshot.
+
+                              And the agent's commission is not reduced at all.
+                              Compare the branches in
+                              services/bookings/router.py: with a referrer and
+                              without one, agent_pct is identical. The
+                              referrer's slice comes out of platform_pct.
+
+                              The real figures render immediately below in
+                              BookingRevenueSplit, so this line now says the one
+                              thing those numbers cannot: whose share it was. */}
                           {booking.referralCodeUsed && (
                             <div className="mt-3 p-2 bg-violet-50 rounded-lg border border-violet-100 text-[10px] sm:text-xs text-violet-700 italic">
-                              Agent commission reduced to 3%; referrer credited 2%
+                              The referrer&apos;s share comes out of the platform&apos;s
+                              cut — the agent&apos;s commission is unchanged. Exact
+                              figures below.
                             </div>
                           )}
                         </div>
