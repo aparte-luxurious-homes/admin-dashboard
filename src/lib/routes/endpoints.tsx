@@ -305,6 +305,11 @@ export const API_ROUTES = {
     // Aparte Link — the owner/agent's public catalog page at aparte.ng/@handle
     links: {
         myCatalog: '/links/catalogs/me',
+        // Per-property publication. A property needs BOTH is_verified AND
+        // is_link_published to appear on a catalog, and the latter defaults to
+        // false — so without this call a verified listing is invisible there.
+        propertyLink: (propertyId: string) => `/links/properties/${propertyId}`,
+        propertyShareKit: (propertyId: string) => `/links/properties/${propertyId}/share-kit`,
         myCatalogAnalytics: (window: string) => `/links/catalogs/me/analytics?window=${window}`,
         // Returns PNG bytes, not JSON — fetch it as a blob.
         catalogQr: (userId: string, size = 512) =>

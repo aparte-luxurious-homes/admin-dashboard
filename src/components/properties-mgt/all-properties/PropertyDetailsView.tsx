@@ -59,6 +59,7 @@ import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
 import Spinner from "../../ui/Spinner";
 import { formatDate } from "@/src/lib/utils";
 import DiscountProposalModal from "./DiscountProposalModal";
+import PublishToLinkCard from "@/src/components/links/PublishToLinkCard";
 
 export default function PropertyDetailsView({
   propertyId,
@@ -691,6 +692,20 @@ export default function PropertyDetailsView({
               </div>
 
               <div className="lg:col-span-4 p-4 sm:p-6 md:p-8 space-y-4 md:space-y-5 bg-zinc-50/50">
+                {/* ── Publish to the public Aparte Link page ──
+                    Only the people whose page it is: an owner or agent. A
+                    property needs to be verified AND published to appear
+                    there, and publishing defaults to off — so without this
+                    control a verified listing stayed invisible on its own
+                    catalog with nothing to explain why. */}
+                {(user?.role === UserRole.OWNER || user?.role === UserRole.AGENT) &&
+                  propertyId && (
+                    <PublishToLinkCard
+                      propertyId={propertyId}
+                      isVerified={Boolean(property?.isVerified || property?.is_verified)}
+                    />
+                  )}
+
                 {/* ── Verification Alert (Admin) ── */}
                 {user?.role === UserRole.ADMIN &&
                   ((!property?.isVerified && !property?.is_verified) ||

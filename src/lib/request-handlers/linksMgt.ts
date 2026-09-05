@@ -78,3 +78,52 @@ export async function downloadCatalogQr(userId: string, handle: string, size = 1
     // in some browsers before it has read the blob.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+// ---------------------------------------------------------------------------
+// Per-property publication
+//
+// A property appears on a catalog only when it is BOTH verified AND
+// link-published, and `is_link_published` defaults to false. The endpoint to
+// flip it has existed since the links service shipped; nothing in this
+// dashboard called it, so every verified listing stayed invisible on its
+// owner's public page. Reported 2026-09-05 as an agent catalog rendering with
+// zero properties despite having verified ones.
+// ---------------------------------------------------------------------------
+
+export interface PropertyShareKit {
+    property_id: string;
+    slug: string | null;
+    is_link_published: boolean;
+    is_verified: boolean;
+    /** The public booking page. Null until a slug exists. */
+    direct_url: string | null;
+    qr_url: string | null;
+}
+
+export function GetPropertyShareKit(propertyId?: string, enabled = true) {
+    return useQuery({
+        queryKey: ["propertyShareKit", propertyId],
+        queryFn: () =>
+            axiosRequest.get(API_ROUTES.links.propertyShareKit(propertyId!)),
+        enabled: Boolean(propertyId) && enabled,
+        staleTime: 1000 * 60,
+        retry: 1,
+    });
+}
+
+export function UpdatePropertyLink(propertyId?: string) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload: {
+            is_link_published?: boolean;
+            slug?: string;
+            link_config?: Record<string, unknown>;
+        }) => axiosRequest.patch(API_ROUTES.links.propertyLink(propertyId!), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["propertyShareKit", propertyId] });
+            // The catalog's property_count is derived from published properties,
+            // so the share card on the dashboard is now stale too.
+            queryClient.invalidateQueries({ queryKey: ["myCatalog"] });
+        },
+    });
+}
