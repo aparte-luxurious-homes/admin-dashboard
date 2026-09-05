@@ -125,9 +125,8 @@ export function UploadPropertyUnitMedia() {
                 API_ROUTES.propertyManagement.properties.units.media(propertyId, unitId),
                 payload,
                 {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    }
+                    // Let the interceptor strip Content-Type so the browser sets the multipart boundary.
+                    timeout: 120_000,
                 },
 
             ),

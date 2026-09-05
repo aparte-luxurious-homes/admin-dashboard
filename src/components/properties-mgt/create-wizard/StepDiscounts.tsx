@@ -32,21 +32,49 @@ function DiscountPolicyEditor({
   formik,
   allowedTypes = DISCOUNT_TYPES,
 }: DiscountPolicyEditorProps) {
+  // `policy` can arrive undefined — a wizard draft restored from localStorage
+  // that was saved before this step existed, or a property the API returns
+  // with no policy set. Ticking "Enable Policy" then made formik create
+  // `{ is_active: true }` with NO tiers array, and every read below was
+  // written `policy?.tiers.length`, which guards `policy` but NOT `tiers`.
+  // The next render hit `undefined.length` and took the screen down.
+  //
+  // Normalised once here rather than by scattering more `?.`: optional
+  // chaining one level too shallow is exactly what caused this, and adding
+  // more of it invites the same mistake at the next field.
+  const tiers: IDiscountTier[] = policy?.tiers ?? [];
+  const isActive = Boolean(policy?.is_active);
+  const discountType = policy?.discount_type ?? DiscountType.PERCENTAGE;
+
   const addTier = () => {
-    if (policy.tiers.length >= 4) return;
-    const newTiers = [...policy.tiers, { min_nights: 1, value: 0 }];
-    formik.setFieldValue(`${fieldPrefix}.tiers`, newTiers);
+    if (tiers.length >= 4) return;
+    formik.setFieldValue(`${fieldPrefix}.tiers`, [...tiers, { min_nights: 1, value: 0 }]);
   };
 
   const removeTier = (index: number) => {
-    const newTiers = policy.tiers.filter((_, i) => i !== index);
-    formik.setFieldValue(`${fieldPrefix}.tiers`, newTiers);
+    formik.setFieldValue(
+      `${fieldPrefix}.tiers`,
+      tiers.filter((_, i) => i !== index),
+    );
   };
 
   const updateTier = (index: number, field: keyof IDiscountTier, value: any) => {
-    const newTiers = [...policy.tiers];
+    const newTiers = [...tiers];
     newTiers[index] = { ...newTiers[index], [field]: value };
     formik.setFieldValue(`${fieldPrefix}.tiers`, newTiers);
+  };
+
+  /** Enabling a policy must also give it the shape the editor expects. */
+  const setActive = (checked: boolean) => {
+    if (checked && !policy?.tiers) {
+      formik.setFieldValue(fieldPrefix, {
+        is_active: true,
+        discount_type: discountType,
+        tiers: [],
+      });
+      return;
+    }
+    formik.setFieldValue(`${fieldPrefix}.is_active`, checked);
   };
 
   return (
@@ -62,13 +90,13 @@ function DiscountPolicyEditor({
         {/* CustomCheckbox hands back the new boolean, not a change event —
             reading e.target.checked off it yielded undefined. */}
         <CustomCheckbox
-          checked={policy.is_active}
-          onChange={(checked) => formik.setFieldValue(`${fieldPrefix}.is_active`, checked)}
+          checked={isActive}
+          onChange={setActive}
           label="Enable Policy"
         />
       </div>
 
-      {policy.is_active && (
+      {isActive && (
         <div className="space-y-6 pt-4 border-t border-zinc-100">
           <div className="w-full sm:w-1/2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1.5 ml-0.5">
@@ -81,7 +109,7 @@ function DiscountPolicyEditor({
             <CustomDropdown
               options={allowedTypes.map((t) => t.label)}
               selected={
-                allowedTypes.find((t) => t.value === policy.discount_type)?.label ??
+                allowedTypes.find((t) => t.value === discountType)?.label ??
                 "Select Type"
               }
               handleSelection={(label: string) => {
@@ -97,20 +125,20 @@ function DiscountPolicyEditor({
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block ml-0.5">
               Discount Tiers (Max 4)
             </label>
-            {policy.tiers.length === 0 ? (
+            {tiers.length === 0 ? (
               <div className="text-sm text-zinc-500 py-4 text-center bg-zinc-50 rounded-xl border border-zinc-200 border-dashed">
                 No discount tiers added yet.
               </div>
             ) : (
               <div className="space-y-3">
-                {policy.tiers.map((tier, index) => (
+                {tiers.map((tier, index) => (
                   <div key={index} className="flex items-center gap-3 bg-zinc-50 p-3 rounded-xl border border-zinc-200">
                     <div className="flex-1">
                       <label className="text-xs text-zinc-500 mb-1 block">Min Nights</label>
                       <input
                         type="number"
                         min="1"
-                        value={tier.min_nights === ("" as any) ? "" : tier.min_nights.toString()}
+                        value={tier.min_nights === ("" as any) ? "" : String(tier.min_nights ?? "")}
                         onChange={(e) => {
                           const val = e.target.value;
                           updateTier(index, "min_nights", val === "" ? ("" as any) : Number(val));
@@ -120,13 +148,13 @@ function DiscountPolicyEditor({
                     </div>
                     <div className="flex-1">
                       <label className="text-xs text-zinc-500 mb-1 block">
-                        Discount Value {policy.discount_type === DiscountType.PERCENTAGE ? "(%)" : "(Amount)"}
+                        Discount Value {discountType === DiscountType.PERCENTAGE ? "(%)" : "(Amount)"}
                       </label>
                       <input
                         type="number"
                         min="0"
-                        step={policy.discount_type === DiscountType.PERCENTAGE ? "0.01" : "1"}
-                        value={tier.value === ("" as any) ? "" : tier.value.toString()}
+                        step={discountType === DiscountType.PERCENTAGE ? "0.01" : "1"}
+                        value={tier.value === ("" as any) ? "" : String(tier.value ?? "")}
                         onChange={(e) => {
                           const val = e.target.value;
                           updateTier(index, "value", val === "" ? ("" as any) : Number(val));
@@ -148,7 +176,7 @@ function DiscountPolicyEditor({
               </div>
             )}
             
-            {policy.tiers.length < 4 && (
+            {tiers.length < 4 && (
               <button
                 type="button"
                 onClick={addTier}

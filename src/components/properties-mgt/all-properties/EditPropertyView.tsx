@@ -34,7 +34,7 @@ import {
   GetEventTypes,
 } from "@/src/lib/request-handlers/propertyMgt";
 import { CreatePropertyUnit, UpdatePropertyUnit, DeletePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
-import { BookingMode } from "../types";
+import { BookingMode, DiscountType } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../../ui/Spinner";
@@ -426,6 +426,23 @@ export default function EditPropertyView({
       amenities: propertyData?.amenities.map((el) => el.id),
       amenityNames: propertyData?.amenities.map((el) => el.name),
       event_types: (propertyData?.eventTypes ?? propertyData?.event_types ?? []).map((el: any) => el.name ?? el),
+      // Seeded from the property so an existing policy is visible and editable.
+      // These were absent entirely, so <StepDiscounts> always received
+      // `undefined` here: a host editing a property with discounts already set
+      // saw an empty, disabled editor — and ticking "Enable Policy" on that
+      // undefined object is what took the screen down.
+      long_stay_discount_policy:
+        (propertyData as any)?.long_stay_discount_policy ?? {
+          is_active: false,
+          discount_type: DiscountType.PERCENTAGE,
+          tiers: [],
+        },
+      extension_discount_policy:
+        (propertyData as any)?.extension_discount_policy ?? {
+          is_active: false,
+          discount_type: DiscountType.PERCENTAGE,
+          tiers: [],
+        },
     },
     onSubmit: (values: any) => {
       const sortedAmenities = sortAmenities(

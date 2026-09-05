@@ -22,6 +22,7 @@ import {
   RejectBookingRequest,
 } from "@/src/lib/request-handlers/bookingMgt";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import { UserRole } from "@/src/lib/enums";
 
 interface BookingActionBarProps {
   booking: NormalizedBooking;
@@ -41,7 +42,16 @@ export default function BookingActionBar({
     isStaff,
     canManageFinances,
     canCancelBooking,
+    role,
   } = usePermissions();
+
+  // Mirrors CHECKIN_ROLES in services/bookings/router.py exactly. NOT `isAdmin`
+  // — that includes SUPPORT_ADMIN, whom the API refuses with a 403, so the
+  // button would appear and then fail.
+  const canForceCheckIn =
+    role === UserRole.ADMIN ||
+    role === UserRole.SUPER_ADMIN ||
+    role === UserRole.OPERATIONS_ADMIN;
 
   // Mutations
   const { mutate: checkIn, isPending: isCheckingIn } = CheckInBooking();
@@ -59,6 +69,9 @@ export default function BookingActionBar({
 
   // Modal state
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
+  // Only ever set by a 409 GUEST_UNVERIFIED from the server, so the override is
+  // offered exactly when it applies rather than sitting on screen permanently.
+  const [showForceCheckIn, setShowForceCheckIn] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
@@ -66,16 +79,31 @@ export default function BookingActionBar({
   const [rejectReason, setRejectReason] = useState("");
 
   // Handlers
-  const handleCheckIn = () => {
+  const handleCheckIn = (force = false) => {
     checkIn(
-      { bookingId: booking.id },
+      { bookingId: booking.id, force },
       {
         onSuccess: () => {
+          setShowForceCheckIn(false);
           toast.success(MESSAGES.MSG_BOOKING_MARKED_AS_CHECKED_IN);
           onStatusChange(BookingStatus.CHECKED_IN);
         },
-        onError: (err: any) =>
-          toast.error(err?.response?.data?.detail?.message || "Failed to check in" || "Guest has not claimed their account yet."),
+        onError: (err: any) => {
+          const detail = err?.response?.data?.detail;
+          // The guest never claimed their account. That is a real safeguard,
+          // not a failure — but it is recoverable in person, and until now the
+          // dashboard offered no way to do it, so a guest standing at the door
+          // could not be checked in at all.
+          if (detail?.code === "GUEST_UNVERIFIED" && canForceCheckIn && !force) {
+            setShowForceCheckIn(true);
+            return;
+          }
+          toast.error(
+            detail?.message ||
+              detail ||
+              "Failed to check in",
+          );
+        },
       },
     );
   };
@@ -169,7 +197,7 @@ export default function BookingActionBar({
         if (!isStaff) return null;
         return (
           <button
-            onClick={handleCheckIn}
+            onClick={() => handleCheckIn()}
             disabled={isCheckingIn}
             className="px-5 py-2.5 bg-teal-600 text-white rounded-lg text-xs sm:text-sm hover:bg-teal-700 transition-colors font-semibold disabled:opacity-50 shadow-sm"
           >
@@ -330,6 +358,51 @@ export default function BookingActionBar({
       </div>
 
       {/* ---- Modals ---- */}
+
+      {/* Unclaimed-guest check-in override.
+          Shown only after the server returns 409 GUEST_UNVERIFIED, and only to
+          the roles the API accepts for `force` (CHECKIN_ROLES). The wording is
+          deliberate: this records that a real person checked ID, because that
+          is exactly what the audit log will say happened. */}
+      <Modal
+        isOpen={showForceCheckIn}
+        onClose={() => setShowForceCheckIn(false)}
+        title="This guest hasn't claimed their account"
+        content={
+          <div className="text-xs sm:text-sm text-zinc-600">
+            <p>
+              They were added when the booking was made and haven&apos;t verified
+              their email yet, so we can&apos;t confirm the person arriving is
+              them.
+            </p>
+            <p className="mt-2">
+              You can check them in anyway if you&apos;ve seen their ID in
+              person. This is recorded against your name.
+            </p>
+            <p className="mt-2 text-zinc-500">
+              Otherwise, ask them to open the link in their email and set a
+              password first — then check in normally.
+            </p>
+          </div>
+        }
+        footer={
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => setShowForceCheckIn(false)}
+              className="px-4 py-1.5 border border-zinc-300 rounded-lg text-xs hover:bg-zinc-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleCheckIn(true)}
+              disabled={isCheckingIn}
+              className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg text-xs transition-colors"
+            >
+              {isCheckingIn ? "Checking in…" : "I've verified their ID — check in"}
+            </button>
+          </div>
+        }
+      />
 
       {/* Early checkout confirmation */}
       <Modal

@@ -253,9 +253,46 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                               </span>
                             </div>
                           )}
+                          {/* Was: "Agent commission reduced to 3%; referrer
+                              credited 2%". Wrong three ways.
+
+                              The rates are not fixed — they come from the
+                              booking's agent_commission_pct /
+                              referral_commission_pct snapshot, i.e. the agent's
+                              tier rate at the time of booking. 3% and 2% are
+                              only the LEGACY fallback for rows with no
+                              snapshot.
+
+                              And the agent's commission is not reduced at all.
+                              Compare the branches in
+                              services/bookings/router.py: with a referrer and
+                              without one, agent_pct is identical. The
+                              referrer's slice comes out of platform_pct.
+
+                              The real figures render immediately below in
+                              BookingRevenueSplit, so this line says only what
+                              those numbers cannot: that the rates are per-tier,
+                              and whose share funded the referrer.
+
+                              Note it does NOT say the agent's commission is
+                              "unchanged", which an earlier draft did. True, but
+                              it invites "unchanged from what?" — and the answer
+                              a Bronze agent would assume is 3%, the old flat
+                              rate, which is now the GOLD row:
+
+                                Bronze  listing 2.00%  referral 1.50%
+                                Silver  listing 2.60%  referral 1.80%
+                                Gold    listing 3.00%  referral 2.00%
+
+                              That is precisely how the original copy misled:
+                              it published Gold's rates to everyone. Naming the
+                              tier as the source removes the implied baseline
+                              entirely. */}
                           {booking.referralCodeUsed && (
                             <div className="mt-3 p-2 bg-violet-50 rounded-lg border border-violet-100 text-[10px] sm:text-xs text-violet-700 italic">
-                              Agent commission reduced to 3%; referrer credited 2%
+                              Agent and referrer are each paid at their own tier
+                              rate. The referrer&apos;s share comes out of the
+                              platform&apos;s cut, not the agent&apos;s.
                             </div>
                           )}
                         </div>

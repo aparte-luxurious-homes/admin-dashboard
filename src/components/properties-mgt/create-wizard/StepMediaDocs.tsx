@@ -1,10 +1,16 @@
 "use client";
 
-import { Dispatch, SetStateAction, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import CustomDropzone from "@/components/ui/CustomDropzone";
 import CustomDropdown from "@/components/ui/customDropdown";
 import { DocumentType } from "../types";
+import {
+  IMAGE_ACCEPT,
+  VIDEO_ACCEPT,
+  cloneFilesFromList,
+  isHeicFile,
+} from "@/src/lib/mediaFiles";
+import toast from "react-hot-toast";
 import {
   CATEGORY_LABELS,
   CategorizedMedia,
@@ -47,6 +53,7 @@ function CategorySlot({
   isVideo?: boolean;
   required?: boolean;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const covered = files.length > 0;
   return (
     <div
@@ -77,24 +84,44 @@ function CategorySlot({
           </span>
         )}
       </div>
+      {/* Hidden input + button: native file: styled inputs are unreliable on
+          iOS. Clone File objects before clearing value — Safari can invalidate
+          the originals once the input is reset. */}
       <input
+        ref={inputRef}
         type="file"
         multiple
-        accept={accept || "image/*"}
-        onChange={(e) => {
-          const picked = Array.from(e.target.files || []);
-          if (picked.length === 0) return;
-          onChange([...files, ...picked]);
-          e.target.value = "";
-        }}
-        className="w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+        accept={accept || IMAGE_ACCEPT}
+        className="sr-only"
         aria-label={`Upload ${label}`}
+        onChange={(e) => {
+          const picked = cloneFilesFromList(e.target.files);
+          e.target.value = "";
+          if (picked.length === 0) return;
+          const heic = picked.filter(isHeicFile);
+          if (heic.length > 0) {
+            toast.error(
+              "HEIC photos aren't supported. On iPhone: Settings → Camera → Formats → Most Compatible, then re-add the photos.",
+              { duration: 7000 },
+            );
+          }
+          const usable = picked.filter((f) => !isHeicFile(f));
+          if (usable.length === 0) return;
+          onChange([...files, ...usable]);
+        }}
       />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="w-full py-2.5 px-3 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 active:bg-primary/25 transition-colors"
+      >
+        {covered ? "Add more" : isVideo ? "Choose video" : "Choose photos"}
+      </button>
       {files.length > 0 && (
         <ul className="space-y-1">
           {files.map((f, i) => (
             <li
-              key={`${f.name}-${i}`}
+              key={`${f.name}-${i}-${f.size}`}
               className="flex items-center justify-between bg-white border border-zinc-100 rounded-lg px-2 py-1"
             >
               <span
@@ -200,7 +227,7 @@ function CategoryGrid({
             onChange={(files) =>
               setCategory(PropertyMediaCategory.WALKTHROUGH_VIDEO, files)
             }
-            accept="video/*"
+            accept={VIDEO_ACCEPT}
             isVideo
           />
         </div>
@@ -435,15 +462,23 @@ export default function StepMediaDocs({
             </label>
             <input
               type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              accept={`.pdf,${IMAGE_ACCEPT}`}
               onChange={(e) => {
-                const file = e.target.files?.[0];
+                const cloned = cloneFilesFromList(e.target.files);
+                e.target.value = "";
+                const file = cloned[0];
                 if (file) {
+                  if (isHeicFile(file)) {
+                    toast.error(
+                      "HEIC photos aren't supported. Export as JPG or switch iPhone Camera to Most Compatible.",
+                      { duration: 7000 },
+                    );
+                    return;
+                  }
                   setDocFiles((prev) => [
                     ...prev,
                     { file, type: selectedDocType },
                   ]);
-                  e.target.value = "";
                 }
               }}
               className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"

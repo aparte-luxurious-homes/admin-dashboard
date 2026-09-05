@@ -2,6 +2,7 @@
 
 import { MESSAGES } from '@/src/lib/messages';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTableState } from "@/src/hooks/useTableState";
 import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon, TrashIcon } from "../../icons";
 import { useRouter } from "next/navigation";
 import { IProperty, PropertyType } from "../types";
@@ -29,11 +30,20 @@ type StatusFilter = 'all' | 'verified' | 'unverified';
 
 export default function PropertiesTable() {
     const { user } = useAuth();
-    const [page, setPage] = useState<number>(1);
-    const [searchTerm, setSearchTerm] = useState<string>("");
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    // URL-backed state: filters survive navigating into a property and back,
+    // the search box is debounced (it used to fire a request per keystroke)
+    // and every change but the page resets to page 1.
+    const table = useTableState({
+        filterKeys: ["status"],
+        defaultSort: "recent",
+    });
+    const { page, setPage, search: searchTerm, debouncedSearch, sort, setSort } = table;
+    const statusFilter = (table.filters.status || 'all') as StatusFilter;
     const isVerifiedParam = statusFilter === 'all' ? null : statusFilter === 'verified';
-    const { data: properties, isLoading, refetch: refetchProperties } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id, isVerifiedParam);
+    const { data: properties, isLoading, refetch: refetchProperties } = GetAllProperties(
+        page, 10, debouncedSearch, user?.role || UserRole.GUEST, user?.id,
+        isVerifiedParam, false, sort || 'recent',
+    );
     const [propertyList, setPropertyList] = useState<IProperty[]>([]);
     const router = useRouter();
 
@@ -135,9 +145,8 @@ export default function PropertiesTable() {
         setPropertyList(properties?.data?.data?.data?.data ?? []);
     }, [properties])
 
-    useEffect(() => {
-        setPage(1)
-    }, [searchTerm, statusFilter])
+    // The page reset that used to live here is now central to useTableState,
+    // so it cannot be forgotten when a new filter is added.
 
     return (
         <div className="p-3 sm:p-6">
@@ -161,16 +170,16 @@ export default function PropertiesTable() {
                             <input
                                 type="text"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => table.setSearch(e.target.value)}
                                 className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                placeholder="Search properties..."
+                                placeholder="Search by name, city, state or address…"
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                         </div>
                         <div className="relative">
                             <select
                                 value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                                onChange={(e) => table.setFilter("status", e.target.value === 'all' ? '' : e.target.value)}
                                 className="w-full sm:w-auto px-4 py-2 pr-8 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-700 appearance-none cursor-pointer bg-white"
                             >
                                 <option value="all">All Status</option>
@@ -179,6 +188,32 @@ export default function PropertiesTable() {
                             </select>
                             <FilterIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" color="#6B7280" />
                         </div>
+
+                        {/* Sort — server-side, so it orders the whole
+                            portfolio rather than the ten rows on this page. */}
+                        <div className="relative">
+                            <select
+                                value={sort}
+                                onChange={(e) => setSort(e.target.value)}
+                                className="w-full sm:w-auto px-4 py-2 pr-8 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-700 appearance-none cursor-pointer bg-white"
+                                aria-label="Sort properties"
+                            >
+                                <option value="recent">Newest listed</option>
+                                <option value="recently_verified">Recently verified</option>
+                                <option value="price_asc">Price: low to high</option>
+                                <option value="price_desc">Price: high to low</option>
+                            </select>
+                            <FilterIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" color="#6B7280" />
+                        </div>
+
+                        {table.hasActiveFilters && (
+                            <button
+                                onClick={table.clearFilters}
+                                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors whitespace-nowrap"
+                            >
+                                Clear filters
+                            </button>
+                        )}
                     </div>
                 </div>
 
