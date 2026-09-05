@@ -270,13 +270,29 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                               referrer's slice comes out of platform_pct.
 
                               The real figures render immediately below in
-                              BookingRevenueSplit, so this line now says the one
-                              thing those numbers cannot: whose share it was. */}
+                              BookingRevenueSplit, so this line says only what
+                              those numbers cannot: that the rates are per-tier,
+                              and whose share funded the referrer.
+
+                              Note it does NOT say the agent's commission is
+                              "unchanged", which an earlier draft did. True, but
+                              it invites "unchanged from what?" — and the answer
+                              a Bronze agent would assume is 3%, the old flat
+                              rate, which is now the GOLD row:
+
+                                Bronze  listing 2.00%  referral 1.50%
+                                Silver  listing 2.60%  referral 1.80%
+                                Gold    listing 3.00%  referral 2.00%
+
+                              That is precisely how the original copy misled:
+                              it published Gold's rates to everyone. Naming the
+                              tier as the source removes the implied baseline
+                              entirely. */}
                           {booking.referralCodeUsed && (
                             <div className="mt-3 p-2 bg-violet-50 rounded-lg border border-violet-100 text-[10px] sm:text-xs text-violet-700 italic">
-                              The referrer&apos;s share comes out of the platform&apos;s
-                              cut — the agent&apos;s commission is unchanged. Exact
-                              figures below.
+                              Agent and referrer are each paid at their own tier
+                              rate. The referrer&apos;s share comes out of the
+                              platform&apos;s cut, not the agent&apos;s.
                             </div>
                           )}
                         </div>
