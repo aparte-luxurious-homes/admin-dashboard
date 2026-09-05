@@ -416,7 +416,7 @@ export default function StepPropertyDetails({
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
-                  Owner Email
+                  Owner Email <span className="text-primary">*</span>
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
@@ -434,21 +434,36 @@ export default function StepPropertyDetails({
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
-                  Owner Phone Number
+                  Owner Phone Number <span className="text-primary">*</span>
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
                     <Icon icon="mdi:phone-outline" />
                   </div>
+                  {/* type="tel", not "email" — this was a copy-paste from the
+                      field above and gave mobile users an email keyboard for a
+                      phone number. */}
                   <input
                     id="owner_phoneNumber"
-                    type="email"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     placeholder="e.g. 090 0000 0000"
                     value={formik.values.owner_phoneNumber}
                     onChange={formik.handleChange}
                     className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
                   />
                 </div>
+                {/* Shown as soon as an email is typed, so the requirement is
+                    visible while the owner block is being filled in rather
+                    than four steps later at submit. */}
+                {formik.values.owner_email.trim() &&
+                  !formik.values.owner_phoneNumber.trim() && (
+                    <p className="text-[11px] text-amber-600 ml-1 flex items-center gap-1">
+                      <Icon icon="mdi:information-outline" className="shrink-0" />
+                      Required — we create the owner&apos;s account with this number.
+                    </p>
+                  )}
               </div>
             </div>
           )}

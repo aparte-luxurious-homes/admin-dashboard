@@ -90,12 +90,17 @@ export function GetAllBookings(
   status?: string,
   startDateFrom?: string,
   startDateTo?: string,
+  sortBy?: string,
 ) {
   const queryParams = new URLSearchParams({
     page: String(page),
     size: String(limit),
     search: searchQuery,
   });
+
+  if (sortBy) {
+    queryParams.append("sort_by", sortBy);
+  }
 
   if (unitId !== undefined) {
     queryParams.append("unit_id", String(unitId));
@@ -128,6 +133,9 @@ export function GetAllBookings(
       status,
       startDateFrom,
       startDateTo,
+      // Part of the key: without it, changing the sort shows the previous
+      // ordering from cache until the refetch lands.
+      sortBy,
     ],
     queryFn: () =>
       axiosRequest.get(`${API_ROUTES.bookings.base}?${queryParams.toString()}`),

@@ -22,6 +22,8 @@ import AgentReferralCard from "@/src/components/dashboard/AgentReferralCard";
 import AgentVerificationQueueCard from "@/src/components/dashboard/AgentVerificationQueueCard";
 import TopAgentsCard from "@/src/components/dashboard/TopAgentsCard";
 import AgentNetworkDashboardCard from "@/src/components/dashboard/AgentNetworkDashboardCard";
+import ShareMyLinkCard from "@/src/components/links/ShareMyLinkCard";
+import KycPromptCard from "@/src/components/dashboard/KycPromptCard";
 import { useNetworkEnabled } from "@/src/lib/request-handlers/platformMgt";
 
 interface Wallet {
@@ -93,7 +95,7 @@ const TIER_COLORS: Record<string, string> = {
 
 const DashboardHome = () => {
     const { user } = useAuth();
-    const { isAdmin, isAgent, isOwner } = usePermissions();
+    const { isAdmin, isAgent, isOwner, canViewGatewayBalances } = usePermissions();
     const { networkEnabled } = useNetworkEnabled();
 
     const [stats, setStats] = useState<Partial<StatsData>>({});
@@ -104,7 +106,10 @@ const DashboardHome = () => {
     const [mentorshipData, setMentorshipData] = useState<MentorshipRecord[]>([]);
     const [mentorshipLoading, setMentorshipLoading] = useState(false);
 
-    const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances();
+    // Fetch only for roles that render the card - anyone else got a 403
+    // (and, for roles the API since revoked, interceptor noise) for a
+    // number they were never supposed to see.
+    const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances(canViewGatewayBalances);
     const balances = gatewayData?.data?.data || {};
 
     const fetchStatistics = useCallback(async () => {
@@ -217,15 +222,36 @@ const DashboardHome = () => {
                 <Grid size={{ xs: 12, lg: showSidebar ? 9 : 12 }}>
                     <div className="space-y-4">
 
+                        {/* KYC sits above everything else for owners and agents,
+                            because until it clears their listings cannot be
+                            approved and their earnings cannot be withdrawn —
+                            and nothing else in the product asks for it. The
+                            card self-hides once verified, and for every role
+                            that has no listings or payouts of its own. */}
+                        {(isOwner || isAgent) && <KycPromptCard />}
+
+                        {/* OWNER/AGENT: their shareable public catalog link.
+                            First card, because sending it is the single highest-
+                            leverage thing an owner or agent does here, and the
+                            feature was invisible until now. The component
+                            self-hides for every other role. */}
+                        {(isOwner || isAgent) && <ShareMyLinkCard />}
+
                         {/* ADMIN: queues → gateway → charts */}
                         {isAdmin && (
                             <>
                                 <AdminQueuesCard />
-                                <GatewayBalancesCard
-                                    paystack={balances.paystack || { isAvailable: false, error: "No data" }}
-                                    monnify={balances.monnify || { isAvailable: false, error: "No data" }}
-                                    isLoading={gatewayLoading}
-                                />
+                                {/* Treasury numbers: SUPER_ADMIN + ADMIN only.
+                                    OPS and SUPPORT keep the rest of the admin
+                                    dashboard; the merchant balances are not an
+                                    operations signal. */}
+                                {canViewGatewayBalances && (
+                                    <GatewayBalancesCard
+                                        paystack={balances.paystack || { isAvailable: false, error: "No data" }}
+                                        monnify={balances.monnify || { isAvailable: false, error: "No data" }}
+                                        isLoading={gatewayLoading}
+                                    />
+                                )}
                                 <Grid container spacing={2}>
                                     <Grid size={{ xs: 12, md: 6 }}>
                                         <div className="p-5 h-[270px] border border-gray-200 rounded-2xl bg-white shadow-sm">
