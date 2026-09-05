@@ -217,10 +217,15 @@ export default function ShareMyLinkCard() {
                                 width="16" height="16"
                                 className="text-blue-600 mt-0.5 shrink-0"
                             />
+                            {/* This used to say approved listings "show up
+                                automatically". They do not: a property needs to
+                                be verified AND published, and publishing is off
+                                by default. That copy sent agents looking for a
+                                bug instead of a button. */}
                             <p className="text-xs text-blue-800">
-                                Your page is live but empty. Only <strong>verified</strong>{" "}
-                                listings appear here — once a listing is approved it shows up
-                                automatically.
+                                Your page is live but empty. A listing shows here once it&apos;s
+                                verified <strong>and</strong> you&apos;ve published it — open any
+                                verified property and use <strong>Publish to my page</strong>.
                             </p>
                         </div>
                     )}
