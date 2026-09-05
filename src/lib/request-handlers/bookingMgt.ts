@@ -290,9 +290,19 @@ export function ResendPaymentLink() {
 export function CheckInBooking() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+    // `force` skips the unverified-guest safeguard. The API restricts it to
+    // ADMIN / SUPER_ADMIN / OPERATIONS_ADMIN and audit-logs every use against
+    // the caller, so the UI must only offer it to those roles — see
+    // BookingActionBar, which surfaces it solely after a 409 GUEST_UNVERIFIED.
+    mutationFn: ({
+      bookingId,
+      force,
+    }: {
+      bookingId: string | number;
+      force?: boolean;
+    }) =>
       axiosRequest.post(
-        `${API_ROUTES.bookings.details(String(bookingId))}/check-in`,
+        `${API_ROUTES.bookings.details(String(bookingId))}/check-in${force ? "?force=true" : ""}`,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
