@@ -97,7 +97,11 @@ export const API_ROUTES = {
             documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
             verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
             bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
-            reviewDiscountProposal: (propertyId: string | number) => `/properties/${propertyId}/discounts/review-proposal`,
+            // The API exposes approve and reject as separate operations. There
+            // has never been a combined "review-proposal" address, so the
+            // previous single entry here 404'd on every use.
+            approveDiscounts: (propertyId: string | number) => `/properties/${propertyId}/approve-discounts`,
+            rejectDiscounts: (propertyId: string | number) => `/properties/${propertyId}/reject-discounts`,
         },
         amenities: {
             base: '/amenities',

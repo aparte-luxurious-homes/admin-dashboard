@@ -43,6 +43,7 @@ import CustomModal from "../../ui/CustomModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
+import { getApiErrorMessage, isConflict } from "@/src/lib/apiError";
 import { usePathname } from "next/navigation";
 import { Icon } from "@iconify/react";
 import UnitDrawer from "../create-wizard/UnitDrawer";
@@ -274,6 +275,11 @@ export default function EditPropertyView({
     }))
   );
 
+  // Mirrors StepUnits in the create wizard: once a unit represents the whole
+  // property, the listing is that one bookable entity and a second unit makes
+  // no sense. Declared after `existingUnits` because it reads it.
+  const hasWholePropertyUnit = existingUnits.some((u) => u.is_whole_property);
+
   useEffect(() => {
     setExistingUnits(
       (propertyData?.units ?? []).map((u) => ({
@@ -323,7 +329,15 @@ export default function EditPropertyView({
               setExistingUnits(prev => prev.map((u, i) => i === editingUnitIndex ? { ...unit, _key: existingId } : u));
               toast.success(MESSAGES.MSG_UNIT_UPDATED);
             },
-            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_UPDATE_UNIT),
+            // Surfaces the server's reason — e.g. "Cannot reduce this unit to
+            // 1: 3 are already booked for 2027-10-01. The lowest you can set
+            // is 3." A generic failure hides exactly the part that tells the
+            // host what to do next.
+            onError: (error: unknown) =>
+              toast.error(getApiErrorMessage(error, MESSAGES.MSG_FAILED_TO_UPDATE_UNIT), {
+                duration: 8000,
+                style: { maxWidth: "520px" },
+              }),
           },
         );
       } else {
@@ -340,7 +354,11 @@ export default function EditPropertyView({
             }
             toast.success(MESSAGES.MSG_UNIT_ADDED);
           },
-          onError: () => toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNIT),
+          onError: (error: unknown) =>
+            toast.error(getApiErrorMessage(error, MESSAGES.MSG_FAILED_TO_CREATE_UNIT), {
+              duration: 8000,
+              style: { maxWidth: "520px" },
+            }),
         },
       );
     }
@@ -358,16 +376,40 @@ export default function EditPropertyView({
           title: 'Delete Unit',
           description: `Are you sure you want to delete "${unit.name || 'this unit'}"? This action cannot be undone.`,
           onConfirm: () => {
-            deleteUnit(
-              { propertyId: propertyData.id, unitId: unit._key },
-              {
-                onSuccess: () => {
-                  setExistingUnits(prev => prev.filter((_, i) => i !== index));
-                  toast.success(MESSAGES.MSG_UNIT_DELETED);
+            const runDelete = (force?: boolean) =>
+              deleteUnit(
+                { propertyId: propertyData.id, unitId: unit._key, force },
+                {
+                  onSuccess: () => {
+                    setExistingUnits(prev => prev.filter((_, i) => i !== index));
+                    toast.success(MESSAGES.MSG_UNIT_DELETED);
+                  },
+                  onError: (error: unknown) => {
+                    const detail = getApiErrorMessage(error, MESSAGES.MSG_FAILED_TO_DELETE_UNIT);
+                    // A 409 means the unit still has live bookings. The server
+                    // names them, so show that rather than a generic failure,
+                    // and offer the override behind a second confirmation that
+                    // states plainly what it does not do.
+                    if (!force && isConflict(error)) {
+                      dispatch(
+                        showAlert({
+                          title: "This unit still has bookings",
+                          description:
+                            `${detail}
+
+Deleting anyway removes the unit but does NOT ` +
+                            `cancel or refund those bookings. The guests keep them, and ` +
+                            `you will need to resolve each one separately.`,
+                          onConfirm: () => runDelete(true),
+                        }),
+                      );
+                      return;
+                    }
+                    toast.error(detail, { duration: 8000, style: { maxWidth: "520px" } });
+                  },
                 },
-                onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_UNIT),
-              },
-            );
+              );
+            runDelete();
           },
         }),
       );
@@ -1284,13 +1326,23 @@ export default function EditPropertyView({
                 <p className="text-xs text-zinc-500">
                   Manage the rentable units for this property.
                 </p>
+                {/* A whole-property unit IS the property, so a second unit
+                    alongside it would double-book the same rooms. The create
+                    wizard has always blocked this; the server enforces it too
+                    now, so without the same guard here the button just fails. */}
                 <button
                   type="button"
+                  disabled={hasWholePropertyUnit}
+                  title={
+                    hasWholePropertyUnit
+                      ? "This listing has a whole-property unit; remove or untoggle it to add another unit."
+                      : undefined
+                  }
                   onClick={() => {
                     setEditingUnitIndex(null);
                     setUnitDrawerOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-xl hover:bg-primary hover:text-white transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-xl hover:bg-primary hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
                 >
                   <FaPlus className="text-[9px]" />
                   Add Unit
