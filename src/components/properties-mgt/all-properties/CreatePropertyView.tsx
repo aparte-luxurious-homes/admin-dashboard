@@ -165,7 +165,15 @@ function AddressAutocomplete({
         findByType("sublocality") ||
         findByType("postal_town");
       const state = findByType("administrative_area_level_1");
+      // The LGA is captured SEPARATELY as well as feeding the city chain.
+      // In Nigeria `administrative_area_level_2` is the Local Government Area,
+      // and it was only ever read as a city fallback - so "Eti-Osa" and
+      // "Alimosho" were being stored as cities and the tier was lost. It stays in
+      // the chain because `city` is NOT NULL and Google omits `locality` for many
+      // Nigerian addresses; it is simply also recorded for what it is.
+      const lga = findByType("administrative_area_level_2");
       if (city) formik.setFieldValue("city", city);
+      if (lga) formik.setFieldValue("lga", lga);
       if (state) formik.setFieldValue("state", state);
       formik.setFieldValue("google_place_id", results[0].place_id || "");
     } catch (error) {
@@ -289,6 +297,7 @@ export default function CreatePropertyView({}) {
       country: "Nigeria",
       state: "",
       city: "",
+      lga: "",
       description: "",
       latitude: 0,
       longitude: 0,

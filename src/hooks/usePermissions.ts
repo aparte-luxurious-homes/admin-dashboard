@@ -26,6 +26,15 @@ export const usePermissions = () => {
         UserRole.ADMIN,
         UserRole.OPERATIONS_ADMIN,
     ].includes(role as UserRole);
+    // Merchant (Paystack/Monnify) balances are company treasury. Reported
+    // 2026-09-04: the card rendered for the whole isAdminRole set, putting
+    // the available balance in front of operations and support/sales staff.
+    // Mirrors the API grant (statistics.gateway_balances: ADMIN + SUPER_ADMIN
+    // + ANALYST) minus ANALYST, who has no dashboard card by design.
+    const canViewGatewayBalances = [
+        UserRole.SUPER_ADMIN,
+        UserRole.ADMIN,
+    ].includes(role as UserRole);
     const isAgent = role === UserRole.AGENT;
     const isOwner = role === UserRole.OWNER;
     const isStaff = isAdmin || isAgent || isOwner;
@@ -88,6 +97,7 @@ export const usePermissions = () => {
         role,
         isSuperAdmin,
         isAdmin,
+        canViewGatewayBalances,
         isAgent,
         isOwner,
         isStaff,

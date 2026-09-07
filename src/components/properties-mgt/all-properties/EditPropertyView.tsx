@@ -37,13 +37,8 @@ import {
   GetPropertyDocuments,
   GetEventTypes,
 } from "@/src/lib/request-handlers/propertyMgt";
-import {
-  CreatePropertyUnit,
-  UpdatePropertyUnit,
-  DeletePropertyUnit,
-  UploadPropertyUnitMedia,
-} from "@/src/lib/request-handlers/unitMgt";
-import { BookingMode } from "../types";
+import { CreatePropertyUnit, UpdatePropertyUnit, DeletePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import { BookingMode, DiscountType } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../../ui/Spinner";
@@ -116,10 +111,18 @@ function AddressAutocomplete({
         findByType("sublocality") ||
         findByType("postal_town");
       const state = findByType("administrative_area_level_1");
+      // The LGA is captured SEPARATELY as well as feeding the city chain.
+      // In Nigeria `administrative_area_level_2` is the Local Government Area,
+      // and it was only ever read as a city fallback - so "Eti-Osa" and
+      // "Alimosho" were being stored as cities and the tier was lost. It stays in
+      // the chain because `city` is NOT NULL and Google omits `locality` for many
+      // Nigerian addresses; it is simply also recorded for what it is.
+      const lga = findByType("administrative_area_level_2");
       const street_number = findByType("street_number");
       const street_name = findByType("route");
       const postal_code = findByType("postal_code");
       if (city) formik.setFieldValue("city", city);
+      if (lga) formik.setFieldValue("lga", lga);
       if (state) formik.setFieldValue("state", state);
       formik.setFieldValue("street_number", street_number);
       formik.setFieldValue("street_name", street_name);
@@ -440,6 +443,7 @@ export default function EditPropertyView({
       country: "Nigeria",
       state: propertyData?.state ?? "",
       city: propertyData?.city ?? "",
+      lga: propertyData?.lga ?? "",
       street_number: (propertyData as any)?.street_number ?? "",
       street_name: (propertyData as any)?.street_name ?? "",
       postal_code: (propertyData as any)?.postal_code ?? "",
@@ -475,7 +479,6 @@ export default function EditPropertyView({
       if (values.isFeatured !== propertyData.isFeatured)
         featureProperty({ propertyId: propertyData.id });
       const currentBookingMode =
-        propertyData.bookingMode ??
         propertyData.booking_mode ??
         BookingMode.INSTANT;
       if (values.bookingMode !== currentBookingMode)

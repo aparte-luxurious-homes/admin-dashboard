@@ -191,6 +191,20 @@ export default function CreatePropertyWizard() {
             typeof draft.values.ownerId === "number"
               ? ""
               : (draft.values.ownerId ?? ""),
+          // A draft saved BEFORE the discounts step existed carries no policy
+          // objects, and spreading it leaves them undefined — the defaults
+          // below only apply when there is no draft at all. Ticking "Enable
+          // Policy" on one of those then crashed the step.
+          long_stay_discount_policy: draft.values.long_stay_discount_policy ?? {
+            is_active: false,
+            discount_type: DiscountType.PERCENTAGE,
+            tiers: [],
+          },
+          extension_discount_policy: draft.values.extension_discount_policy ?? {
+            is_active: false,
+            discount_type: DiscountType.PERCENTAGE,
+            tiers: [],
+          },
         }
       : undefined) ?? {
       name: "",
@@ -206,6 +220,7 @@ export default function CreatePropertyWizard() {
       country: "Nigeria",
       state: "Lagos",
       city: "Ikeja",
+      lga: "",
       description: "",
       latitude: null,
       longitude: null,
@@ -393,6 +408,20 @@ export default function CreatePropertyWizard() {
           toast.error(MESSAGES.MSG_CITY_IS_REQUIRED);
           return false;
         }
+
+        // A new owner needs a phone: the backend's UserCreate validator
+        // requires one for role=OWNER. That rejection used to surface only
+        // at final submit, four steps later, as "Cannot create owner: Phone
+        // number is required when registering as an owner" — by which point
+        // the field that caused it was long off screen. Validate it where it
+        // is typed.
+        const { owner_email, owner_phoneNumber, ownerId } = formik.values;
+        if (!ownerId && owner_email.trim() && !owner_phoneNumber.trim()) {
+          toast.error(
+            "Add the new owner's phone number — it's required to create their account.",
+          );
+          return false;
+        }
         return true;
       }
       case WizardStep.UNITS:
@@ -518,6 +547,10 @@ export default function CreatePropertyWizard() {
       landmark: values.landmark || undefined,
       google_place_id: values.google_place_id || "",
       city: values.city,
+      // Omitted rather than sent empty: the API resolves the LGA from
+      // coordinates when it is absent, but an empty string would overwrite
+      // a good value on the update path.
+      ...(values.lga ? { lga: values.lga } : {}),
       state: values.state,
       country: values.country,
       latitude: values.latitude || 0,
