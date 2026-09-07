@@ -4,7 +4,6 @@ import { API_ROUTES } from "../routes/endpoints";
 import { IAssignAmenity, ICreatePropertyUnit, IUpdatePropertyUnit, ICreateAvailabilityPayload } from "@/src/components/properties-mgt/types";
 
 enum PropertyUnitRequestKeys {
-    allUnits = "getAllUnitsView",
     singleUnit = "getSingleUnitsView",
     unitMedia = "uploadUnitMedia",
     assignAmenities = "assigneAmenities",
@@ -13,17 +12,20 @@ enum PropertyUnitRequestKeys {
     availability = "unitAvailability",
 }
 
-export function GetAllPropertyUnits(page = 1, limit = 10) {
-    return useQuery({
-        queryKey: [PropertyUnitRequestKeys.allUnits, page, limit],
-        queryFn: () => axiosRequest.get(
-            `${API_ROUTES.propertyManagement.properties.units.base}?page=${page}&limit=${limit}`
-        ),
-        refetchOnWindowFocus: true,
-        staleTime: Infinity,
-        refetchInterval: 1000 * 60 * 1,
-    });
-}
+// GetAllPropertyUnits was removed. It could never have worked, in two
+// independent ways, and nothing called it:
+//
+//   * `units.base` is `(propertyId) => \`/properties/${propertyId}/units\``.
+//     Interpolating it into a template literal without calling it stringifies
+//     the function's SOURCE, so the request URL began
+//     "(propertyId) => `/properties/${propertyId}/units`?page=1&limit=10".
+//   * There is no "list every unit" endpoint to call anyway — the API serves
+//     only POST on that path.
+//
+// Units are read from the property: GetSinglePropertyUnit below pulls
+// GET /properties/{id} and picks the unit out of its `units` array. Left as a
+// note rather than deleted silently, because a hook that looks finished is
+// exactly what invites someone to wire it to a screen.
 
 
 export function GetSinglePropertyUnit(propertyId: string | number, unitId: string | number) {

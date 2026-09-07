@@ -21,6 +21,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { getApiErrorMessage, isConflict } from "@/src/lib/apiError";
 import { toast } from "react-hot-toast";
 import { useIsMobile } from "@/src/hooks/useIsMobile";
 import PropertyCard from "../PropertyCard";
@@ -54,6 +55,61 @@ export default function PropertiesTable() {
     const { mutate: deleteProperty } = DeleteProperty();
     const isMobile = useIsMobile();
 
+    /**
+     * Delete a property, handling the API's refusal to remove one that still
+     * has live bookings.
+     *
+     * That refusal is a 409 naming the bookings in the way. Both delete
+     * entry points on this screen used to answer it with a flat "Failed to
+     * delete property" — the one piece of information the admin needed was
+     * in the response and got dropped, and the `force` override the handler
+     * already supports was unreachable from the UI. This mirrors the unit
+     * delete flow in EditPropertyView so the two behave the same way.
+     *
+     * Declared above the menu that uses it: referencing it from a later
+     * closure would work, but keeping definition before use avoids the
+     * temporal-dead-zone trap entirely.
+     */
+    const handleDeleteProperty = (property: IProperty) => {
+        const runDelete = (force?: boolean) =>
+            deleteProperty(
+                { propertyId: property.id, force },
+                {
+                    onSuccess: () => toast.success(MESSAGES.MSG_PROPERTY_DELETED_SUCCESSFULLY),
+                    onError: (error: unknown) => {
+                        const detail = getApiErrorMessage(error, MESSAGES.MSG_FAILED_TO_DELETE_PROPERTY);
+                        if (!force && isConflict(error)) {
+                            dispatch(
+                                showAlert({
+                                    title: "This property still has bookings",
+                                    description:
+                                        `${detail}\n\n` +
+                                        `Deleting anyway removes the property but does NOT ` +
+                                        `cancel or refund those bookings. The guests keep them, ` +
+                                        `and you will need to resolve each one separately.`,
+                                    confirmText: "Delete anyway",
+                                    cancelText: "Cancel",
+                                    onConfirm: () => runDelete(true),
+                                }),
+                            );
+                            return;
+                        }
+                        toast.error(detail, { duration: 8000, style: { maxWidth: "520px" } });
+                    },
+                },
+            );
+
+        dispatch(
+            showAlert({
+                title: "Delete Property?",
+                description: `Are you sure you want to delete ${property?.name || 'this property'}? This action cannot be undone.`,
+                confirmText: "Delete",
+                cancelText: "Cancel",
+                onConfirm: () => runDelete(),
+            })
+        );
+    };
+
     const detailButtons = [
         {
             label: "View",
@@ -79,48 +135,11 @@ export default function PropertiesTable() {
             label: "Delete",
             Icon: <LuTrash2 className="text-red-500" />,
             onClick: () => {
-                const property = propertyList[selectedRow!];
-                dispatch(
-                    showAlert({
-                        title: "Delete Property?",
-                        description: `Are you sure you want to delete ${property?.name || 'this property'}? This action cannot be undone.`,
-                        confirmText: "Delete",
-                        cancelText: "Cancel",
-                        onConfirm: () => {
-                            deleteProperty(
-                                { propertyId: property.id },
-                                {
-                                    onSuccess: () => toast.success(MESSAGES.MSG_PROPERTY_DELETED_SUCCESSFULLY),
-                                    onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_PROPERTY)
-                                }
-                            );
-                        },
-                    })
-                );
+                handleDeleteProperty(propertyList[selectedRow!]);
                 setSelectedRow(null);
             },
         }
     ]
-
-    const handleDeleteProperty = (property: IProperty) => {
-        dispatch(
-            showAlert({
-                title: "Delete Property?",
-                description: `Are you sure you want to delete ${property?.name || 'this property'}? This action cannot be undone.`,
-                confirmText: "Delete",
-                cancelText: "Cancel",
-                onConfirm: () => {
-                    deleteProperty(
-                        { propertyId: property.id },
-                        {
-                            onSuccess: () => toast.success(MESSAGES.MSG_PROPERTY_DELETED_SUCCESSFULLY),
-                            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_PROPERTY)
-                        }
-                    );
-                },
-            })
-        );
-    };
 
     // Handle click outside modal
     useEffect(() => {
