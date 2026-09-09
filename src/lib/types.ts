@@ -252,6 +252,9 @@ export interface IUser {
   // type works for either shape.
   kycStatus?: KycStatus;
   kyc_status?: KycStatus;
+  /** Explicit agent onboarding status when provided by the API. */
+  agentApprovalStatus?: string;
+  agent_approval_status?: string;
   profile: IUserProfile;
   kyc?: [],
   kycDocuments?: any[],
