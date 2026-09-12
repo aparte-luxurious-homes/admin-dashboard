@@ -285,6 +285,14 @@ export interface IStayExtension {
   owner_decision_by?: string;
   owner_decision_at?: string;
   rejection_reason?: string;
+  /**
+   * True when this extension was recorded through the older
+   * `/bookings/{id}/extend` path, which stores a child Booking rather than a
+   * BookingExtension. The API lists these alongside real extensions so they
+   * stay visible, but the approve / reject / cancel endpoints do not operate
+   * on them — never offer those actions for a legacy row.
+   */
+  is_legacy?: boolean;
 }
 
 export interface ILoginResponse {
