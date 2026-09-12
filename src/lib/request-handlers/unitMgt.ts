@@ -89,8 +89,14 @@ export function UpdatePropertyUnit() {
 export function DeletePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ propertyId, unitId }: { propertyId: string | number, unitId: string | number }) =>
-            axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId)),
+        // `force` overrides the server's refusal to remove a unit that still
+        // has live bookings. It does NOT cancel or refund them — the caller
+        // must have said so in a confirmation before passing it.
+        mutationFn: ({ propertyId, unitId, force }: { propertyId: string | number, unitId: string | number, force?: boolean }) =>
+            axiosRequest.delete(
+                API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId),
+                force ? { params: { force: true } } : undefined,
+            ),
 
         onSuccess: (_, { propertyId, unitId }) => {
             // Invalidate the specific property query so it refetches

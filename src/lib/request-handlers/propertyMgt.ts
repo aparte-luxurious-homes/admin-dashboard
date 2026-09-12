@@ -382,9 +382,19 @@ export function UpdateProperty() {
 export function DeleteProperty() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ propertyId }: { propertyId: string | number }) =>
+    // `force` overrides the server's refusal to remove a property that still
+    // has live bookings. It does NOT cancel or refund them — the caller must
+    // have said so in a confirmation before passing it.
+    mutationFn: ({
+      propertyId,
+      force,
+    }: {
+      propertyId: string | number;
+      force?: boolean;
+    }) =>
       axiosRequest.delete(
         API_ROUTES.propertyManagement.properties.details(propertyId),
+        force ? { params: { force: true } } : undefined,
       ),
 
     onSuccess: (_, { propertyId }) => {
@@ -708,6 +718,19 @@ export function ResubmitOwnerVerification() {
   });
 }
 
+/**
+ * Approve or reject an agent's proposed discount policy.
+ *
+ * Two distinct API operations behind one call, because that is what the
+ * backend exposes — there is no combined review endpoint, and the address this
+ * previously posted to has never existed.
+ *
+ * Both are the OWNER's decision. The agent who proposed the policy is
+ * deliberately refused by the server: if the proposer could also approve, the
+ * second signature would mean nothing and one agent could reprice a listing
+ * alone. Callers should hide the controls from the assigned agent rather than
+ * let them click into a 403.
+ */
 export function ReviewDiscountProposal() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -719,10 +742,9 @@ export function ReviewDiscountProposal() {
       payload: { action: "approve" | "reject" };
     }) =>
       axiosRequest.post(
-        API_ROUTES.propertyManagement.properties.reviewDiscountProposal(
-          propertyId,
-        ),
-        payload,
+        payload.action === "approve"
+          ? API_ROUTES.propertyManagement.properties.approveDiscounts(propertyId)
+          : API_ROUTES.propertyManagement.properties.rejectDiscounts(propertyId),
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
