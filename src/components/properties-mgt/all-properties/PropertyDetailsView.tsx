@@ -389,7 +389,13 @@ export default function PropertyDetailsView({
                         <Icon icon="solar:info-circle-bold-duotone" className="text-amber-500 text-xl mt-0.5" />
                         <div>
                           <h4 className="text-sm font-bold text-amber-800">Pending Discount Proposal</h4>
-                          <p className="text-xs text-amber-700 mt-1">An admin has proposed changes to your discount policies. Please review them.</p>
+                          {/* "An admin" was wrong about who proposes: a
+                              discount recommendation comes from the agent
+                              managing the listing, and the owner is the one
+                              who decides. Naming the wrong party made the
+                              request look like a notification rather than a
+                              decision the owner has to make. */}
+                          <p className="text-xs text-amber-700 mt-1">A discount policy has been recommended for this property. It does not apply to bookings until you approve it.</p>
                           <button
                             onClick={() => setShowDiscountModal(true)}
                             className="mt-3 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors"

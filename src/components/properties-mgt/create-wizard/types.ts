@@ -147,6 +147,14 @@ export type UnitFormValues = {
     event_price_per_half_day: string;
     // Not venue-only: a shortlet can charge for cleaning too.
     additional_fees: Array<{ fee_name: string; fee_amount: number; is_mandatory: boolean }>;
+    /**
+     * Per-unit overrides. `null`/absent means this unit inherits the
+     * property's policy — which is why the editor clears to null instead of
+     * leaving an inactive policy object behind. An object here pins the unit
+     * to its own terms.
+     */
+    long_stay_discount_policy?: IDiscountPolicy | null;
+    extension_discount_policy?: IDiscountPolicy | null;
 };
 
 export type PropertyFormValues = {
@@ -179,8 +187,10 @@ export type PropertyFormValues = {
     is_pet_allowed: boolean;
     is_party_allowed: boolean;
     rules: string;
-    long_stay_discount_policy: IDiscountPolicy;
-    extension_discount_policy: IDiscountPolicy;
+    // Nullable: null means "no policy", which is what the API stores and what
+    // DiscountPolicyEditor writes when a policy is switched off.
+    long_stay_discount_policy: IDiscountPolicy | null;
+    extension_discount_policy: IDiscountPolicy | null;
     amenities: string[];
     amenityIds: string[];
     event_types: string[];
@@ -208,5 +218,7 @@ export function createEmptyUnit(): UnitFormValues {
         event_price_per_hour: '',
         event_price_per_half_day: '',
         additional_fees: [],
+        long_stay_discount_policy: null,
+        extension_discount_policy: null,
     };
 }
