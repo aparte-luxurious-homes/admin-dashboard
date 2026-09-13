@@ -5,6 +5,7 @@ import CustomModal from "../../ui/CustomModal";
 import { IDiscountPolicy, IProperty, DiscountType } from "../types";
 import { ReviewDiscountProposal } from "@/src/lib/request-handlers/propertyMgt";
 import toast from "react-hot-toast";
+import { getApiErrorMessage } from "@/src/lib/apiError";
 import Spinner from "../../ui/Spinner";
 import { Icon } from "@iconify/react";
 
@@ -95,8 +96,11 @@ export default function DiscountProposalModal({
           toast.success(`Discount proposal ${action}d successfully`);
           onClose();
         },
-        onError: (err: any) => {
-          toast.error(err?.response?.data?.detail || `Failed to ${action} proposal`);
+        onError: (err: unknown) => {
+          toast.error(getApiErrorMessage(err, `Failed to ${action} proposal`), {
+            duration: 8000,
+            style: { maxWidth: "520px" },
+          });
         },
       }
     );

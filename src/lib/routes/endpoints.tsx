@@ -97,7 +97,11 @@ export const API_ROUTES = {
             documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
             verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
             bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
-            reviewDiscountProposal: (propertyId: string | number) => `/properties/${propertyId}/discounts/review-proposal`,
+            // The API exposes approve and reject as separate operations. There
+            // has never been a combined "review-proposal" address, so the
+            // previous single entry here 404'd on every use.
+            approveDiscounts: (propertyId: string | number) => `/properties/${propertyId}/approve-discounts`,
+            rejectDiscounts: (propertyId: string | number) => `/properties/${propertyId}/reject-discounts`,
         },
         amenities: {
             base: '/amenities',
@@ -126,7 +130,13 @@ export const API_ROUTES = {
         reconcilePayment: (id: string | number) => `/bookings/${id}/reconcile-payment`,
         extensions: {
             base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
-            quote: (bookingId: string | number) => `/bookings/${bookingId}/extensions/quote`,
+            // The backend route is `/bookings/{id}/extension-quote`, NOT a
+            // sub-path of /extensions. Written as the latter, this matched
+            // `/bookings/{id}/extensions/{extension_id}` with the literal
+            // "quote" as the id, so the price preview never loaded — the
+            // landing page has always used the correct path, which is why
+            // the typo survived here.
+            quote: (bookingId: string | number) => `/bookings/${bookingId}/extension-quote`,
             listAll: '/bookings/extensions/all',
             details: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}`,
             approve: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/approve`,

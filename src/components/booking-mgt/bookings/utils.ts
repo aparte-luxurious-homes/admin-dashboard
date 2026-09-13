@@ -60,7 +60,12 @@ export interface NormalizedBooking {
   booker: BookingPerson | null;
   user: IBooking["user"];
   unit: IBooking["unit"];
-  revenueSplit: IBooking["revenueSplit"] | null;
+  // Absent is `undefined`, matching IBooking. It used to widen to `| null`
+  // here while IBooking allows only `undefined`, so passing a
+  // NormalizedBooking anywhere an IBooking was expected failed to typecheck.
+  // Every consumer tests truthiness, so the two are interchangeable at
+  // runtime; only the declared type disagreed.
+  revenueSplit: IBooking["revenueSplit"];
   // Fee breakdown — gateway_fee is added on top of total_price; total_payable
   // is what the guest actually pays at checkout.
   gatewayFee: number;
@@ -118,7 +123,7 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     booker: r.booker ?? null,
     user: raw.user,
     unit: raw.unit,
-    revenueSplit: raw.revenueSplit || raw.revenue_split || null,
+    revenueSplit: raw.revenueSplit || raw.revenue_split || undefined,
     // Computed
     nights,
     pricePerNight,
