@@ -78,7 +78,7 @@ function isPdf(url: string): boolean {
   return /\.pdf(\?|$)/i.test(url);
 }
 
-const DocumentCard: React.FC<{ doc: KycDocument }> = ({ doc }) => {
+export const DocumentCard: React.FC<{ doc: KycDocument }> = ({ doc }) => {
   const url = doc.documentUrl;
   const friendlyType = doc.documentType.replace(/_/g, " ");
   return (

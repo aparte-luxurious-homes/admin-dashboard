@@ -50,6 +50,10 @@ export interface UserDetail {
   wallets: Wallet[];
   /** Documents the user has uploaded for KYC review. Newest first. */
   kycDocuments: KycDocument[];
+  /** Agent approval gate. null for non-agents. */
+  agentApprovalStatus: string | null;
+  agentApprovalRejectionReason: string | null;
+  agentKycSubmittedAt: string | null;
 }
 
 export interface RoleConfig {
@@ -85,6 +89,9 @@ export function normalizeUser(raw: any): UserDetail {
     isVerified: raw.isVerified ?? raw.is_verified ?? false,
     allowMagicOtp: raw.allowMagicOtp ?? raw.allow_magic_otp ?? false,
     createdAt: str(raw.createdAt ?? raw.created_at),
+    agentApprovalStatus: str(raw.agentApprovalStatus ?? raw.agent_approval_status),
+    agentApprovalRejectionReason: str(raw.agentApprovalRejectionReason ?? raw.agent_approval_rejection_reason),
+    agentKycSubmittedAt: str(raw.agentKycSubmittedAt ?? raw.agent_kyc_submitted_at),
     profile: {
       firstName: str(p.firstName ?? p.first_name ?? raw.firstName ?? raw.first_name),
       lastName: str(p.lastName ?? p.last_name ?? raw.lastName ?? raw.last_name),
