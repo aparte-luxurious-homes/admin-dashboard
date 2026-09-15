@@ -134,6 +134,19 @@ export type UnitFormValues = {
     kitchen_count: number;
     bathroom_count: number;
     amenityNames: string[];
+    // Event centre (PRD 4.2 "Facilities Unit"). The standalone Add Unit screen
+    // has captured these since the feature shipped; the listing wizard — the
+    // flow the PRD actually puts the agent through — did not, so a venue
+    // listed here reached the API with no capacity, no rate card and no fees,
+    // and the guest's details page had nothing to show.
+    seating_capacity: number;
+    standing_capacity: number;
+    car_park_spaces: number;
+    power_supply_provision: string;
+    event_price_per_hour: string;
+    event_price_per_half_day: string;
+    // Not venue-only: a shortlet can charge for cleaning too.
+    additional_fees: Array<{ fee_name: string; fee_amount: number; is_mandatory: boolean }>;
 };
 
 export type PropertyFormValues = {
@@ -188,5 +201,12 @@ export function createEmptyUnit(): UnitFormValues {
         kitchen_count: 0,
         bathroom_count: 1,
         amenityNames: [],
+        seating_capacity: 0,
+        standing_capacity: 0,
+        car_park_spaces: 0,
+        power_supply_provision: '',
+        event_price_per_hour: '',
+        event_price_per_half_day: '',
+        additional_fees: [],
     };
 }
