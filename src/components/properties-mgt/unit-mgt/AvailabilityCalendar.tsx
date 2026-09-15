@@ -93,7 +93,11 @@ export default function AvailabilityCalendar({
             const existing = getAvailabilityForDate(date);
             newSelected.set(dateStr, {
                 date: dateStr,
-                count: existing?.count ?? defaultCount,
+                // Seeded from `capacity` — what the date holds — never from
+                // `count`, which is how many are still free right now. Seeding
+                // from `count` is what used to turn "1 left of 3" into a
+                // permanent limit of 1 the moment the host edited the price.
+                capacity: existing?.capacity ?? defaultCount,
                 is_blackout: existing?.is_blackout ?? false,
                 pricing: existing?.pricing ?? undefined
             });
@@ -142,15 +146,23 @@ export default function AvailabilityCalendar({
         const pending = getPendingChange(date);
         
         if (pending) {
-            return pending.is_blackout ? 'Marked as blackout (pending)' : `${pending.count} units available (pending)`;
+            if (pending.is_blackout) return 'Marked as blackout (pending)';
+            // `capacity` is what this edit will put ON SALE, which is not the
+            // same as how many end up free once existing bookings are counted.
+            return pending.capacity != null
+                ? `${pending.capacity} on sale (pending)`
+                : 'Pending change';
         }
-        
+
         if (avail) {
             if (avail.is_blackout) {
                 return 'Blackout date - Not available for booking';
             }
-            return avail.count > 0 
-                ? `${avail.count} unit${avail.count > 1 ? 's' : ''} available` 
+            const limited = avail.has_capacity_override
+                ? ` — limited to ${avail.capacity} of ${defaultCount}`
+                : '';
+            return avail.count > 0
+                ? `${avail.count} unit${avail.count > 1 ? 's' : ''} free${limited}`
                 : 'Fully booked - Cannot be selected';
         }
         
@@ -322,15 +334,32 @@ export default function AvailabilityCalendar({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                         <div>
                             <label className="block text-xs sm:text-sm font-medium text-zinc-700 mb-1 sm:mb-2">
-                                Available Count
+                                Units on sale
                             </label>
+                            {/* Sends `capacity` — how many the date holds — not
+                                `count`, which is how many are still unbooked.
+                                Labelled "on sale" rather than "available" for the
+                                same reason: the two numbers differ as soon as
+                                anything is booked, and conflating them is what
+                                let an ordinary price edit shrink the date. */}
                             <input
                                 type="number"
                                 min="0"
+                                max={defaultCount}
                                 defaultValue={defaultCount}
-                                onChange={(e) => updateSelectedDates('count', parseInt(e.target.value))}
+                                onChange={(e) => {
+                                    const raw = parseInt(e.target.value);
+                                    updateSelectedDates(
+                                        'capacity',
+                                        Number.isNaN(raw) ? undefined : Math.max(0, Math.min(raw, defaultCount)),
+                                    );
+                                }}
                                 className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                             />
+                            <p className="mt-1 text-[10px] sm:text-xs text-zinc-500">
+                                Of {defaultCount} total. Lower this to hold some back;
+                                existing bookings are unaffected.
+                            </p>
                         </div>
 
                         <div>

@@ -59,6 +59,7 @@ import {
   CategorizedMedia,
   PropertyMediaCategory,
 } from "./types";
+import { getApiErrorMessage } from "@/src/lib/apiError";
 import { validatePropertyName } from "./nameValidator";
 import Modal from "../../modal/Modal";
 import StepDiscounts from "./StepDiscounts";
@@ -633,11 +634,9 @@ export default function CreatePropertyWizard() {
             formData.append("category", category);
             try {
               await uploadMedia({ propertyId, payload: formData });
-            } catch (error: any) {
+            } catch (error) {
               mediaErrors.push(
-                error?.response?.data?.detail ||
-                  error?.response?.data?.message ||
-                  `Media upload failed for ${category}`,
+                getApiErrorMessage(error, `Media upload failed for ${category}`),
               );
             }
           };
@@ -656,8 +655,19 @@ export default function CreatePropertyWizard() {
           docFormData.append("document_type", type);
           try {
             await uploadDoc({ propertyId, payload: docFormData });
-          } catch {
-            mediaErrors.push(MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED);
+          } catch (error) {
+            // The API refuses a document whose bytes do not match its declared
+            // type, and one over the size cap, and it names which file and
+            // why. A bare "Document upload failed" leaves the owner with no
+            // idea whether to re-export the file, shrink it, or pick another —
+            // and this is the ownership-papers step, where getting stuck is
+            // expensive. The media branch above already keeps its reason.
+            mediaErrors.push(
+              getApiErrorMessage(
+                error,
+                `${MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED} (${file.name})`,
+              ),
+            );
           }
         }),
       );

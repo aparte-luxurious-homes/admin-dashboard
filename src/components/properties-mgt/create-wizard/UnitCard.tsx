@@ -12,9 +12,28 @@ interface UnitCardProps {
     index: number;
     onEdit: () => void;
     onDelete: () => void;
+    /**
+     * Whether this viewer may actually remove a saved unit.
+     *
+     * Defaults to true because the create wizard's cards are local-only —
+     * "remove" there just drops an unsaved row and needs no permission. The
+     * edit screen passes the real answer, since deleting a persisted unit
+     * needs `units.delete`, which the API currently grants to nobody but
+     * SUPER_ADMIN. Showing the control to everyone else meant an admin
+     * clicking it got a 403 they could do nothing about.
+     */
+    canDelete?: boolean;
+    deleteDisabledReason?: string;
 }
 
-export default function UnitCard({ unit, index, onEdit, onDelete }: UnitCardProps) {
+export default function UnitCard({
+    unit,
+    index,
+    onEdit,
+    onDelete,
+    canDelete = true,
+    deleteDisabledReason,
+}: UnitCardProps) {
     return (
         <div className="bg-white border border-zinc-200 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all group">
             <div className="flex items-start justify-between gap-3">
@@ -41,14 +60,24 @@ export default function UnitCard({ unit, index, onEdit, onDelete }: UnitCardProp
                     >
                         <Icon icon="solar:pen-bold" className="text-sm" />
                     </button>
-                    <button
-                        type="button"
-                        onClick={onDelete}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-zinc-400 hover:text-red-500 transition-colors"
-                        title="Remove unit"
-                    >
-                        <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
-                    </button>
+                    {canDelete && (
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-zinc-400 hover:text-red-500 transition-colors"
+                            title="Remove unit"
+                        >
+                            <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
+                        </button>
+                    )}
+                    {!canDelete && deleteDisabledReason && (
+                        <span
+                            className="p-1.5 rounded-lg text-zinc-300 cursor-not-allowed"
+                            title={deleteDisabledReason}
+                        >
+                            <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
+                        </span>
+                    )}
                 </div>
             </div>
 

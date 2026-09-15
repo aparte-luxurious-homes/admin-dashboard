@@ -417,7 +417,16 @@ export interface IAvailability {
     id: string
     unit_id: string
     date: string
+    /**
+     * How many units are still FREE on this date — capacity minus live
+     * bookings. Read-only: sending it back does nothing. Use `capacity` to
+     * change what the date holds.
+     */
     count: number
+    /** How many units the date holds in total. This is what a host edits. */
+    capacity?: number
+    /** True when the host has deliberately limited this date below the unit's size. */
+    has_capacity_override?: boolean
     is_blackout: boolean
     pricing?: number | null
     created_at?: string
@@ -426,7 +435,17 @@ export interface IAvailability {
 
 export interface ICreateAvailability {
     date: string
-    count: number
+    /**
+     * The date's total capacity. Omit to leave whatever is already set; send
+     * null to clear the limit and fall back to the unit's own count.
+     *
+     * Note there is no `count` here on purpose. The API returns the remaining
+     * figure under that name, and this screen used to read it and post it
+     * straight back — writing "1 still free" as "only 1 exists" and capping the
+     * date permanently. The API now ignores `count` on write; this type stops
+     * us sending it at all.
+     */
+    capacity?: number | null
     is_blackout: boolean
     pricing?: number
 }

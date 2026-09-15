@@ -193,7 +193,15 @@ export default function CreateBookingView() {
         end_date: formatDateToYYYYMMDD(values.end_date!),
         // Ensure user_id is null if we are creating a new guest
         user_id: isNewGuest ? null : values.user_id,
-        total_price: values.total_price + values.agent_custom_fee,
+        // Number(), not `+`. `agent_custom_fee` comes off a text input and is
+        // seeded with (0).toFixed(2), so it is a STRING: `280000 + "0.00"`
+        // concatenates to "2800000.00" rather than adding. The server
+        // recomputes the total and treats this field as telemetry, so it no
+        // longer decides what the guest is charged — but sending a fabricated
+        // number is still wrong, and it read as a real overcharge before that.
+        total_price: Number(values.total_price) + Number(values.agent_custom_fee || 0),
+        // Send it as a number too, for the same reason.
+        agent_custom_fee: Number(values.agent_custom_fee || 0),
       };
 
       // Don't send empty referral_code — omit the key entirely
