@@ -47,13 +47,21 @@ export const useAuth = () => {
     refetchInterval: 1000 * 60 * 5, // 5 minutes
     retry: 1, // Retry once on failure
     retryDelay: 1000, // Wait 1 second before retry
-    enabled: !!token && !user, // Only fetch if token exists and we don't have user data yet
+    // Fetch when we have no user yet — and keep fetching for agents, whose
+    // approval status an admin can change at any moment. The persisted Redux
+    // copy would otherwise hold an approved agent on the restricted screen
+    // until they logged out.
+    enabled: !!token && (!user || user.role === UserRole.AGENT),
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 
-  // Sync Redux only if data exists and is different from the current user
+  // Sync Redux when the user changed, or when an agent's approval status did.
   useEffect(() => {
-    if (data && data.id && data.id !== user?.id) {
+    if (
+      data && data.id &&
+      (data.id !== user?.id || data.agentApprovalStatus !== user?.agentApprovalStatus
+        || data.agentApprovalRejectionReason !== user?.agentApprovalRejectionReason)
+    ) {
       // console.log('[useAuth] Setting user in Redux:', data.email);
       dispatch(setUser(data));
     }

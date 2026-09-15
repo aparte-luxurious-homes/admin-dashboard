@@ -13,6 +13,45 @@ enum UsersRequestKeys {
   kycQueue = "kycQueue",
   updateKyc = "updateKyc",
   uploadKycOnBehalf = "uploadKycOnBehalf",
+  agentApprovals = "agentApprovals",
+}
+
+export interface AgentApprovalDocument {
+  id: string;
+  user_id: string;
+  document_type: string;
+  document_url: string;
+  status: string;
+  rejection_reason: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+/** One row of GET /admin/agent-approvals (services/users/agent_approval_router.py). */
+export interface AgentApprovalRow {
+  user_id: string;
+  email: string | null;
+  phone: string | null;
+  is_verified: boolean;
+  signup_source: string | null;
+  created_at: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  profile_image: string | null;
+  gender: string | null;
+  dob: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  kyc_status: string | null;
+  approval_status: string;
+  kyc_submitted_at: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  decided_by_label: string | null;
+  rejection_reason: string | null;
+  documents: AgentApprovalDocument[];
 }
 
 export function GetAllUsers(
@@ -163,6 +202,65 @@ export function UpdateUserKyc() {
       });
     },
   });
+}
+
+// ----------------------------------------------------------------------------
+// Agent approval gate
+// ----------------------------------------------------------------------------
+
+export function GetAgentApprovals(params: {
+  page?: number;
+  size?: number;
+  status?: string;
+  search?: string;
+  sort_by?: string;
+}) {
+  const { page = 1, size = 20, status = "PENDING_APPROVAL", search = "", sort_by = "submitted_asc" } = params;
+  return useQuery({
+    queryKey: [UsersRequestKeys.agentApprovals, page, size, status, search, sort_by],
+    queryFn: () =>
+      axiosRequest.get(API_ROUTES.admin.agentApprovals.base, {
+        params: { page, size, status, search, sort_by },
+      }),
+    refetchOnWindowFocus: true,
+  });
+}
+
+function useInvalidateAgentApproval() {
+  const queryClient = useQueryClient();
+  return (userId: string | number) => {
+    queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.agentApprovals] });
+    queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.kycQueue] });
+    queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.kycHistory, userId] });
+    queryClient.invalidateQueries({ queryKey: [UsersRequestKeys.getAllUsers] });
+  };
+}
+
+export function ApproveAgent() {
+  const invalidate = useInvalidateAgentApproval();
+  return useMutation({
+    mutationFn: ({ userId, note }: { userId: string | number; note?: string }) =>
+      axiosRequest.post(API_ROUTES.admin.agentApprovals.approve(userId), note ? { note } : {}),
+    onSuccess: (_data, vars) => invalidate(vars.userId),
+  });
+}
+
+export function RejectAgent() {
+  const invalidate = useInvalidateAgentApproval();
+  return useMutation({
+    mutationFn: ({ userId, reason }: { userId: string | number; reason: string }) =>
+      axiosRequest.post(API_ROUTES.admin.agentApprovals.reject(userId), { reason }),
+    onSuccess: (_data, vars) => invalidate(vars.userId),
+  });
+}
+
+/** Human message from an API error: a string detail, a structured detail, or a 422 list. */
+export function apiErrorMessage(err: any, fallback: string): string {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object" && !Array.isArray(detail) && detail.message) return detail.message;
+  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
+  return fallback;
 }
 
 // Admin-on-behalf KYC document upload. Mirrors the self-serve upload contract

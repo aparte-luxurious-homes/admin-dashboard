@@ -42,6 +42,12 @@ export const API_ROUTES = {
             roles: '/admin/users/roles',
         },
         kycQueue: '/admin/kyc/queue',
+        agentApprovals: {
+            base: '/admin/agent-approvals',
+            details: (userId: string | number) => `/admin/agent-approvals/${userId}`,
+            approve: (userId: string | number) => `/admin/agent-approvals/${userId}/approve`,
+            reject: (userId: string | number) => `/admin/agent-approvals/${userId}/reject`,
+        },
         integrations: {
             configs: '/admin/integrations/configs',
             configByKey: (key: string) => `/admin/integrations/configs/${key}`,
@@ -72,6 +78,7 @@ export const API_ROUTES = {
         kycStatus: '/profile/kyc-status',
         verifyGovId: '/profile/verify-gov-id',
         kycDocuments: '/profile/kyc/documents',
+        agentKyc: '/profile/agent-kyc',
         kyc: {
             upload: '/kyc/upload',
             details: (docId: string | number) => `/kyc/${docId}/details`,

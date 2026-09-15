@@ -72,6 +72,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.userManagement.kycQueue.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
+            {
+                name: 'Agent Approvals',
+                pathName: 'agent-approvals',
+                link: PAGE_ROUTES.dashboard.userManagement.agentApprovals.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
         ]
     },
     {

@@ -27,6 +27,10 @@ import { useNetworkEnabled } from "../lib/request-handlers/platformMgt";
 import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
 import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
+import AgentAccessRestricted from "../components/agent/AgentAccessRestricted";
+import { AGENT_NOT_APPROVED_EVENT, isAgentRestricted } from "../lib/agentApproval";
+import { setUser } from "../lib/slices/authSlice";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 
 const TIER_CONFIG = {
   BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300", icon: "solar:medal-ribbons-star-bold-duotone" },
@@ -50,9 +54,31 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   // Platform kill switch. Off means the whole feature is inert: no nav, no tier
   // badge, and no probes to /network/* (which answer 503 anyway).
   const { networkEnabled } = useNetworkEnabled();
+  const queryClient = useQueryClient();
+  const refreshingAuthUser = useIsFetching({ queryKey: ["authUser"] }) > 0;
+  const agentRestricted = isAgentRestricted(user);
+
+  // Any request answering 403 AGENT_NOT_APPROVED means the server knows
+  // something the persisted user does not (e.g. a pre-gate cached profile).
+  // Adopt its answer so the restricted screen replaces a page of failures.
+  useEffect(() => {
+    const onNotApproved = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      if (!user || user.role !== UserRole.AGENT || !detail.status) return;
+      if (user.agentApprovalStatus === detail.status) return;
+      dispatch(setUser({
+        ...user,
+        agentApprovalStatus: detail.status,
+        agentApprovalRejectionReason: detail.rejection_reason ?? null,
+      }));
+    };
+    window.addEventListener(AGENT_NOT_APPROVED_EVENT, onNotApproved);
+    return () => window.removeEventListener(AGENT_NOT_APPROVED_EVENT, onNotApproved);
+  }, [user, dispatch]);
 
   useEffect(() => {
-    if (user?.role !== UserRole.AGENT) return;
+    // An unapproved agent's network calls would only 403.
+    if (user?.role !== UserRole.AGENT || agentRestricted) return;
     if (!networkEnabled) {
       // Clear anything a previous session cached, so the badge and the
       // zone-manager nav widening cannot survive the switch being turned off.
@@ -104,7 +130,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         Cookies.remove("networkRole");
       }
     }).catch(() => {});
-  }, [user?.role, dispatch, networkEnabled]);
+  }, [user?.role, dispatch, networkEnabled, agentRestricted]);
 
   const isZoneManager = networkEnabled
     && (agentNetworkRole === AgentNetworkRole.AREA_MANAGER || agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD);
@@ -317,6 +343,19 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     clearConsent();
     window.location.reload();
   };
+
+  // Agent approval gate: nothing of the dashboard mounts — no pages, so no
+  // requests that would only 403 — until an admin approves this agent.
+  if (agentRestricted) {
+    return (
+      <AgentAccessRestricted
+        user={user}
+        onLogout={handleLogOut}
+        onRefresh={() => queryClient.refetchQueries({ queryKey: ["authUser"] })}
+        isRefreshing={refreshingAuthUser}
+      />
+    );
+  }
 
   return (
     <MobileMenuContext.Provider value={mobileMenuCtx}>
