@@ -8,7 +8,8 @@ import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
 import { PiBathtub } from "react-icons/pi";
 import { LuSofa, LuUsers } from "react-icons/lu";
 import MultipleChoice from "@/components/ui/MultipleChoice";
-import { IAmenity } from "../types";
+import { DiscountType, IAmenity, IDiscountPolicy, PropertyType } from "../types";
+import DiscountPolicyEditor from "../DiscountPolicyEditor";
 import { UnitFormValues, createEmptyUnit } from "./types";
 import { formatMoney } from "@/src/lib/utils";
 import { UserRole } from "@/src/lib/enums";
@@ -195,6 +196,12 @@ interface UnitDrawerProps {
   userRole?: string;
   /** Property name — used to auto-fill the unit name when "Whole property" is toggled on. */
   propertyName?: string;
+  /**
+   * The listing's property type. An event centre is described by what it
+   * seats, parks and powers rather than by bedrooms and kitchens, and it
+   * carries its own rate card.
+   */
+  propertyType?: string;
 }
 
 export default function UnitDrawer({
@@ -206,10 +213,34 @@ export default function UnitDrawer({
   showAmenityForm,
   userRole,
   propertyName,
+  propertyType,
 }: UnitDrawerProps) {
   const [unit, setUnit] = useState<UnitFormValues>(
     editingUnit ?? createEmptyUnit(),
   );
+
+  const isEventCentre = propertyType === PropertyType.EVENT_CENTRE;
+  // A hall has no bedrooms, kitchens or living rooms to count, and its
+  // "bathrooms" are the guest toilets the PRD asks for by name.
+  const configFields = (
+    isEventCentre
+      ? CONFIG_FIELDS.filter(
+          (f) => f.id === "bathroom_count" || f.id === "max_guests",
+        )
+      : CONFIG_FIELDS
+  ).map((f) =>
+    isEventCentre && f.id === "bathroom_count"
+      ? { ...f, label: "Toilets / Baths" }
+      : f,
+  );
+
+  const updateFee = (index: number, field: string, value: string | number | boolean) =>
+    setUnit((prev) => ({
+      ...prev,
+      additional_fees: (prev.additional_fees ?? []).map((fee, i) =>
+        i === index ? { ...fee, [field]: value } : fee,
+      ),
+    }));
 
   useEffect(() => {
     if (isOpen) setUnit(editingUnit ?? createEmptyUnit());
@@ -349,7 +380,8 @@ export default function UnitDrawer({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
-                  Price Per Night <span className="text-primary">*</span>
+                  {isEventCentre ? "Price Per Day / Event" : "Price Per Night"}{" "}
+                  <span className="text-primary">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -406,7 +438,7 @@ export default function UnitDrawer({
               Configuration
             </h4>
             <div className="grid grid-cols-2 gap-3">
-              {CONFIG_FIELDS.map((field) => (
+              {configFields.map((field) => (
                 <div key={field.id} className="space-y-1">
                   <label className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
                     {field.label}
@@ -435,6 +467,218 @@ export default function UnitDrawer({
                 />
               </div>
             </div>
+          </div>
+
+          {/* Event centre: capacity, facilities and the rest of the rate card */}
+          {isEventCentre && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                Capacity &amp; Facilities
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                {(
+                  [
+                    ["seating_capacity", "Seated"],
+                    ["standing_capacity", "Standing"],
+                    ["car_park_spaces", "Car Park"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <div key={id}>
+                    <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
+                      {label}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={unit[id] ?? 0}
+                      onChange={(e) =>
+                        updateField(id, Math.max(0, Number(e.target.value) || 0))
+                      }
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all font-semibold text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
+                  Power Supply Provision
+                </label>
+                <select
+                  value={unit.power_supply_provision || ""}
+                  onChange={(e) =>
+                    updateField("power_supply_provision", e.target.value)
+                  }
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all text-sm"
+                >
+                  <option value="">Select provision...</option>
+                  <option value="Grid only">Grid only</option>
+                  <option value="Generator backup">Generator backup</option>
+                  <option value="Grid and Generator">Grid and Generator</option>
+                  <option value="Inverter/solar">Inverter/solar</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              {/* The day rate is the "Price Per Day / Event" field above. These
+                  two are what make an hourly or half-day hire bookable at all:
+                  the API refuses a billing unit the venue has no rate for. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
+                    Price Per Hour
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Optional"
+                    value={unit.event_price_per_hour}
+                    onChange={(e) =>
+                      updateField("event_price_per_hour", e.target.value)
+                    }
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all font-semibold text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
+                    Price Per Half-Day
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Optional"
+                    value={unit.event_price_per_half_day}
+                    onChange={(e) =>
+                      updateField("event_price_per_half_day", e.target.value)
+                    }
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all font-semibold text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Additional fees — cleaning, security, and anything else the guest
+              is charged on top. Mandatory ones land in every quote; the rest
+              are offered as add-ons at checkout. */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                Additional Fees
+              </h4>
+              <button
+                type="button"
+                onClick={() =>
+                  setUnit((prev) => ({
+                    ...prev,
+                    additional_fees: [
+                      ...(prev.additional_fees ?? []),
+                      { fee_name: "", fee_amount: 0, is_mandatory: false },
+                    ],
+                  }))
+                }
+                disabled={(unit.additional_fees ?? []).length >= 20}
+                className="px-2 py-1 bg-primary/10 text-primary text-[10px] font-medium rounded-lg hover:bg-primary/20 transition-all flex items-center gap-1 disabled:opacity-40"
+              >
+                <FaPlus className="text-[7px]" /> ADD
+              </button>
+            </div>
+            {(unit.additional_fees ?? []).map((fee, index) => (
+              <div key={index} className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="text-[9px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Cleaning"
+                    maxLength={100}
+                    value={fee.fee_name}
+                    onChange={(e) => updateFee(index, "fee_name", e.target.value)}
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none text-sm"
+                  />
+                </div>
+                <div className="w-28">
+                  <label className="text-[9px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
+                    Amount (₦)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={fee.fee_amount || ""}
+                    onChange={(e) =>
+                      updateFee(index, "fee_amount", parseFloat(e.target.value) || 0)
+                    }
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none text-sm"
+                  />
+                </div>
+                <label className="flex items-center gap-1 pb-2.5 text-[10px] text-zinc-600 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={fee.is_mandatory}
+                    onChange={(e) =>
+                      updateFee(index, "is_mandatory", e.target.checked)
+                    }
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  Required
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setUnit((prev) => ({
+                      ...prev,
+                      additional_fees: (prev.additional_fees ?? []).filter(
+                        (_, i) => i !== index,
+                      ),
+                    }))
+                  }
+                  className="p-2 mb-1 text-red-500 bg-red-50 rounded-lg hover:bg-red-100"
+                >
+                  <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
+                </button>
+              </div>
+            ))}
+            {(unit.additional_fees ?? []).length === 0 && (
+              <p className="text-[11px] text-zinc-500 bg-zinc-50 border border-dashed border-zinc-200 rounded-lg py-3 text-center">
+                No additional fees.
+              </p>
+            )}
+          </div>
+
+          {/* Discounts — per-unit overrides of the property's policies.
+              Off means "use the property's", not "no discount": the API reads
+              a null column as inherit, which is why the editor clears to null
+              rather than storing {is_active:false}. */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+              Discounts (this unit)
+            </h4>
+            <DiscountPolicyEditor
+              compact
+              title="Long-Stay Discount"
+              description="Overrides the property's long-stay policy for this unit only."
+              inheritNote="Using the property's long-stay policy."
+              allowedTypes={[{ label: "Fixed Amount", value: DiscountType.FIXED }]}
+              value={unit.long_stay_discount_policy}
+              onChange={(next: IDiscountPolicy | null) =>
+                updateField("long_stay_discount_policy", next)
+              }
+            />
+            <DiscountPolicyEditor
+              compact
+              title="Extension Discount"
+              description="Overrides the property's extension policy for this unit only."
+              inheritNote="Using the property's extension policy."
+              allowedTypes={[
+                { label: "Percentage (%)", value: DiscountType.PERCENTAGE },
+              ]}
+              value={unit.extension_discount_policy}
+              onChange={(next: IDiscountPolicy | null) =>
+                updateField("extension_discount_policy", next)
+              }
+            />
           </div>
 
           {/* Amenities */}

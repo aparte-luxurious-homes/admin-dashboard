@@ -34,7 +34,7 @@ import {
   GetEventTypes,
 } from "@/src/lib/request-handlers/propertyMgt";
 import { CreatePropertyUnit, UpdatePropertyUnit, DeletePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
-import { BookingMode, DiscountType } from "../types";
+import { BookingMode } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../../ui/Spinner";
@@ -273,6 +273,26 @@ export default function EditPropertyView({
       kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
       bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
       amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
+      // Event-centre facilities and rate card. The API serializes these now,
+      // so an edit that reloads a venue keeps its capacity and prices instead
+      // of silently blanking them on the next save.
+      seating_capacity: u.seating_capacity ?? u.seatingCapacity ?? 0,
+      standing_capacity: u.standing_capacity ?? u.standingCapacity ?? 0,
+      car_park_spaces: u.car_park_spaces ?? u.carParkSpaces ?? 0,
+      power_supply_provision: u.power_supply_provision ?? u.powerSupplyProvision ?? '',
+      event_price_per_hour: String(u.event_price_per_hour ?? u.eventPricePerHour ?? ''),
+      event_price_per_half_day: String(u.event_price_per_half_day ?? u.eventPricePerHalfDay ?? ''),
+      additional_fees: (u.additional_fees ?? u.additionalFees ?? []).map((f: any) => ({
+        fee_name: f.fee_name ?? f.feeName ?? '',
+        fee_amount: Number(f.fee_amount ?? f.feeAmount ?? 0),
+        is_mandatory: Boolean(f.is_mandatory ?? f.isMandatory ?? false),
+      })),
+      // The unit's OWN override, not the resolved policy the API also returns
+      // as `effective_*`. Prefilling the resolved one would turn every unit
+      // that merely inherits into one that overrides with a copy, and the
+      // listing-level policy would then stop reaching any of them.
+      long_stay_discount_policy: u.long_stay_discount_policy ?? null,
+      extension_discount_policy: u.extension_discount_policy ?? null,
     }))
   );
 
@@ -298,6 +318,19 @@ export default function EditPropertyView({
         kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
         bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
         amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
+        seating_capacity: u.seating_capacity ?? u.seatingCapacity ?? 0,
+        standing_capacity: u.standing_capacity ?? u.standingCapacity ?? 0,
+        car_park_spaces: u.car_park_spaces ?? u.carParkSpaces ?? 0,
+        power_supply_provision: u.power_supply_provision ?? u.powerSupplyProvision ?? '',
+        event_price_per_hour: String(u.event_price_per_hour ?? u.eventPricePerHour ?? ''),
+        event_price_per_half_day: String(u.event_price_per_half_day ?? u.eventPricePerHalfDay ?? ''),
+        additional_fees: (u.additional_fees ?? u.additionalFees ?? []).map((f: any) => ({
+          fee_name: f.fee_name ?? f.feeName ?? '',
+          fee_amount: Number(f.fee_amount ?? f.feeAmount ?? 0),
+          is_mandatory: Boolean(f.is_mandatory ?? f.isMandatory ?? false),
+        })),
+        long_stay_discount_policy: u.long_stay_discount_policy ?? null,
+        extension_discount_policy: u.extension_discount_policy ?? null,
       }))
     );
   }, [propertyData]);
@@ -317,6 +350,31 @@ export default function EditPropertyView({
       kitchen_count: unit.kitchen_count,
       bathroom_count: unit.bathroom_count,
       amenities: unitAmenityIds,
+      // A half-filled fee row is a mistake, not a charge, and the API refuses
+      // a blank name — which would fail the whole unit save.
+      additional_fees: (unit.additional_fees ?? []).filter((f) =>
+        f.fee_name.trim(),
+      ),
+      // Venue-only. Without these an edit saved a hall back with no capacity,
+      // no parking, no power and no hourly rate — the drawer collected them
+      // and the payload dropped them on the floor.
+      ...(formik.values.type === PropertyType.EVENT_CENTRE
+        ? {
+            seating_capacity: unit.seating_capacity,
+            standing_capacity: unit.standing_capacity,
+            car_park_spaces: unit.car_park_spaces,
+            power_supply_provision: unit.power_supply_provision || undefined,
+            event_price_per_day: String(unit.price_per_night),
+            event_price_per_hour: unit.event_price_per_hour || undefined,
+            event_price_per_half_day: unit.event_price_per_half_day || undefined,
+          }
+        : {}),
+      // Always sent, including as null: this is an update, and null is how a
+      // unit gives up an override it previously had and goes back to
+      // inheriting the property's policy. Omitting it would make that
+      // un-settable.
+      long_stay_discount_policy: unit.long_stay_discount_policy ?? null,
+      extension_discount_policy: unit.extension_discount_policy ?? null,
     };
 
     if (editingUnitIndex !== null) {
@@ -474,19 +532,16 @@ Deleting anyway removes the unit but does NOT ` +
       // These were absent entirely, so <StepDiscounts> always received
       // `undefined` here: a host editing a property with discounts already set
       // saw an empty, disabled editor — and ticking "Enable Policy" on that
-      // undefined object is what took the screen down.
+      // undefined object is what took the screen down. The API also had to
+      // start RETURNING these columns before the seed could find anything;
+      // until then the fallback below was all this ever saw.
+      //
+      // `null` rather than an inactive stub: null is what "no policy" means to
+      // the API, and the editor normalises it for display.
       long_stay_discount_policy:
-        (propertyData as any)?.long_stay_discount_policy ?? {
-          is_active: false,
-          discount_type: DiscountType.PERCENTAGE,
-          tiers: [],
-        },
+        (propertyData as any)?.long_stay_discount_policy ?? null,
       extension_discount_policy:
-        (propertyData as any)?.extension_discount_policy ?? {
-          is_active: false,
-          discount_type: DiscountType.PERCENTAGE,
-          tiers: [],
-        },
+        (propertyData as any)?.extension_discount_policy ?? null,
     },
     onSubmit: (values: any) => {
       const sortedAmenities = sortAmenities(
@@ -720,6 +775,7 @@ Deleting anyway removes the unit but does NOT ` +
         availableAmenities={availableAmenities ?? []}
         showAmenityForm={() => setShowAmenityForm(true)}
         userRole={user?.role}
+        propertyType={formik.values.type}
       />
 
       {/* ── Page Header ── */}

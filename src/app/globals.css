@@ -22,6 +22,35 @@ body {
   font-family: 'TT Firs Neue Trl', sans-serif;
 }
 
+/*
+ * iOS only — `-webkit-touch-callout` exists nowhere else, not in desktop
+ * Safari and not on Android.
+ *
+ * iOS zooms the whole page in when a focused field's text is smaller than
+ * 16px, and does not zoom back out afterwards, leaving the dashboard wider than
+ * the screen until the user pinches. Almost every Tailwind field here is
+ * `text-sm`. Raising the size on iOS alone prevents the zoom without
+ * `maximum-scale=1` in the viewport, which would also disable pinch-zoom on
+ * Android.
+ */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/*
+ * iOS Safari gives an EMPTY date input no text line, so the field collapses to
+ * its padding and the date filters read as slivers. WebKit-only pseudo-element;
+ * every other engine drops the rule.
+ */
+input::-webkit-date-and-time-value {
+  min-height: 1.5em;
+  text-align: left;
+}
+
 .rewind .swiper-button-next::after,
 .rewind .swiper-button-prev::after {
   content: '';

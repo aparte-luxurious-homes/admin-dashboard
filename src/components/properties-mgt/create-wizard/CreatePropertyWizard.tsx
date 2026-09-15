@@ -50,7 +50,6 @@ import {
   DocumentType,
   MediaType,
   PropertyType,
-  DiscountType,
 } from "../types";
 import {
   WizardStep,
@@ -196,16 +195,8 @@ export default function CreatePropertyWizard() {
           // objects, and spreading it leaves them undefined — the defaults
           // below only apply when there is no draft at all. Ticking "Enable
           // Policy" on one of those then crashed the step.
-          long_stay_discount_policy: draft.values.long_stay_discount_policy ?? {
-            is_active: false,
-            discount_type: DiscountType.PERCENTAGE,
-            tiers: [],
-          },
-          extension_discount_policy: draft.values.extension_discount_policy ?? {
-            is_active: false,
-            discount_type: DiscountType.PERCENTAGE,
-            tiers: [],
-          },
+          long_stay_discount_policy: draft.values.long_stay_discount_policy ?? null,
+          extension_discount_policy: draft.values.extension_discount_policy ?? null,
         }
       : undefined) ?? {
       name: "",
@@ -232,16 +223,10 @@ export default function CreatePropertyWizard() {
       is_pet_allowed: false,
       is_party_allowed: false,
       rules: "",
-      long_stay_discount_policy: {
-        is_active: false,
-        discount_type: DiscountType.PERCENTAGE,
-        tiers: [],
-      },
-      extension_discount_policy: {
-        is_active: false,
-        discount_type: DiscountType.PERCENTAGE,
-        tiers: [],
-      },
+      // null, not an inactive stub: null is what "no policy" means to the API,
+      // and DiscountPolicyEditor normalises it for display.
+      long_stay_discount_policy: null,
+      extension_discount_policy: null,
       amenities: [],
       amenityIds: [],
       event_types: [],
@@ -674,6 +659,7 @@ export default function CreatePropertyWizard() {
 
       // Units + per-unit media (awaited so mobile tabs don't suspend mid-upload)
       if (unitsSnapshot.length > 0) {
+        const isVenue = values.property_type === PropertyType.EVENT_CENTRE;
         const unitPayloads = unitsSnapshot.map((u) => ({
           name: u.name,
           description: u.description,
@@ -687,6 +673,36 @@ export default function CreatePropertyWizard() {
           kitchen_count: u.kitchen_count,
           bathroom_count: u.bathroom_count,
           amenities: sortAmenities(availableAmenities, u.amenityNames),
+          // A half-filled fee row is a mistake, not a charge — and the API
+          // rejects a blank name outright, which would fail the whole unit.
+          additional_fees: (u.additional_fees ?? []).filter((f) =>
+            f.fee_name.trim(),
+          ),
+          // Venue-only. The day rate IS the price field above: sending it as
+          // event_price_per_day is what makes a PER_DAY hire priceable at all,
+          // since the API refuses a billing unit the venue has no rate for.
+          ...(isVenue
+            ? {
+                seating_capacity: u.seating_capacity,
+                standing_capacity: u.standing_capacity,
+                car_park_spaces: u.car_park_spaces,
+                power_supply_provision: u.power_supply_provision || undefined,
+                event_price_per_day: String(u.price_per_night),
+                event_price_per_hour: u.event_price_per_hour || undefined,
+                event_price_per_half_day:
+                  u.event_price_per_half_day || undefined,
+              }
+            : {}),
+          // Spread rather than always sent: a unit with no override must omit
+          // these so the API leaves the column NULL and the unit inherits the
+          // property's policy. Sending an explicit null would work too, but
+          // omitting keeps create and PATCH-style updates reading the same.
+          ...(u.long_stay_discount_policy
+            ? { long_stay_discount_policy: u.long_stay_discount_policy }
+            : {}),
+          ...(u.extension_discount_policy
+            ? { extension_discount_policy: u.extension_discount_policy }
+            : {}),
         }));
 
         try {
@@ -869,6 +885,7 @@ export default function CreatePropertyWizard() {
         showAmenityForm={() => setShowAmenityForm(true)}
         userRole={user?.role}
         propertyName={formik.values.name}
+        propertyType={formik.values.property_type}
       />
 
       {/* Step Content */}
