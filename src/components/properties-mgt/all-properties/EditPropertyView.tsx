@@ -34,7 +34,7 @@ import {
   GetEventTypes,
 } from "@/src/lib/request-handlers/propertyMgt";
 import { CreatePropertyUnit, UpdatePropertyUnit, DeletePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
-import { BookingMode, DiscountType } from "../types";
+import { BookingMode } from "../types";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../../ui/Spinner";
@@ -287,6 +287,12 @@ export default function EditPropertyView({
         fee_amount: Number(f.fee_amount ?? f.feeAmount ?? 0),
         is_mandatory: Boolean(f.is_mandatory ?? f.isMandatory ?? false),
       })),
+      // The unit's OWN override, not the resolved policy the API also returns
+      // as `effective_*`. Prefilling the resolved one would turn every unit
+      // that merely inherits into one that overrides with a copy, and the
+      // listing-level policy would then stop reaching any of them.
+      long_stay_discount_policy: u.long_stay_discount_policy ?? null,
+      extension_discount_policy: u.extension_discount_policy ?? null,
     }))
   );
 
@@ -323,6 +329,8 @@ export default function EditPropertyView({
           fee_amount: Number(f.fee_amount ?? f.feeAmount ?? 0),
           is_mandatory: Boolean(f.is_mandatory ?? f.isMandatory ?? false),
         })),
+        long_stay_discount_policy: u.long_stay_discount_policy ?? null,
+        extension_discount_policy: u.extension_discount_policy ?? null,
       }))
     );
   }, [propertyData]);
@@ -361,6 +369,12 @@ export default function EditPropertyView({
             event_price_per_half_day: unit.event_price_per_half_day || undefined,
           }
         : {}),
+      // Always sent, including as null: this is an update, and null is how a
+      // unit gives up an override it previously had and goes back to
+      // inheriting the property's policy. Omitting it would make that
+      // un-settable.
+      long_stay_discount_policy: unit.long_stay_discount_policy ?? null,
+      extension_discount_policy: unit.extension_discount_policy ?? null,
     };
 
     if (editingUnitIndex !== null) {
@@ -518,19 +532,16 @@ Deleting anyway removes the unit but does NOT ` +
       // These were absent entirely, so <StepDiscounts> always received
       // `undefined` here: a host editing a property with discounts already set
       // saw an empty, disabled editor — and ticking "Enable Policy" on that
-      // undefined object is what took the screen down.
+      // undefined object is what took the screen down. The API also had to
+      // start RETURNING these columns before the seed could find anything;
+      // until then the fallback below was all this ever saw.
+      //
+      // `null` rather than an inactive stub: null is what "no policy" means to
+      // the API, and the editor normalises it for display.
       long_stay_discount_policy:
-        (propertyData as any)?.long_stay_discount_policy ?? {
-          is_active: false,
-          discount_type: DiscountType.PERCENTAGE,
-          tiers: [],
-        },
+        (propertyData as any)?.long_stay_discount_policy ?? null,
       extension_discount_policy:
-        (propertyData as any)?.extension_discount_policy ?? {
-          is_active: false,
-          discount_type: DiscountType.PERCENTAGE,
-          tiers: [],
-        },
+        (propertyData as any)?.extension_discount_policy ?? null,
     },
     onSubmit: (values: any) => {
       const sortedAmenities = sortAmenities(

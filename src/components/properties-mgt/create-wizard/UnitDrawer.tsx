@@ -8,7 +8,8 @@ import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
 import { PiBathtub } from "react-icons/pi";
 import { LuSofa, LuUsers } from "react-icons/lu";
 import MultipleChoice from "@/components/ui/MultipleChoice";
-import { IAmenity, PropertyType } from "../types";
+import { DiscountType, IAmenity, IDiscountPolicy, PropertyType } from "../types";
+import DiscountPolicyEditor from "../DiscountPolicyEditor";
 import { UnitFormValues, createEmptyUnit } from "./types";
 import { formatMoney } from "@/src/lib/utils";
 import { UserRole } from "@/src/lib/enums";
@@ -644,6 +645,40 @@ export default function UnitDrawer({
                 No additional fees.
               </p>
             )}
+          </div>
+
+          {/* Discounts — per-unit overrides of the property's policies.
+              Off means "use the property's", not "no discount": the API reads
+              a null column as inherit, which is why the editor clears to null
+              rather than storing {is_active:false}. */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+              Discounts (this unit)
+            </h4>
+            <DiscountPolicyEditor
+              compact
+              title="Long-Stay Discount"
+              description="Overrides the property's long-stay policy for this unit only."
+              inheritNote="Using the property's long-stay policy."
+              allowedTypes={[{ label: "Fixed Amount", value: DiscountType.FIXED }]}
+              value={unit.long_stay_discount_policy}
+              onChange={(next: IDiscountPolicy | null) =>
+                updateField("long_stay_discount_policy", next)
+              }
+            />
+            <DiscountPolicyEditor
+              compact
+              title="Extension Discount"
+              description="Overrides the property's extension policy for this unit only."
+              inheritNote="Using the property's extension policy."
+              allowedTypes={[
+                { label: "Percentage (%)", value: DiscountType.PERCENTAGE },
+              ]}
+              value={unit.extension_discount_policy}
+              onChange={(next: IDiscountPolicy | null) =>
+                updateField("extension_discount_policy", next)
+              }
+            />
           </div>
 
           {/* Amenities */}

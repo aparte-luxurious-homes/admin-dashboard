@@ -50,7 +50,6 @@ import {
   DocumentType,
   MediaType,
   PropertyType,
-  DiscountType,
 } from "../types";
 import {
   WizardStep,
@@ -196,16 +195,8 @@ export default function CreatePropertyWizard() {
           // objects, and spreading it leaves them undefined — the defaults
           // below only apply when there is no draft at all. Ticking "Enable
           // Policy" on one of those then crashed the step.
-          long_stay_discount_policy: draft.values.long_stay_discount_policy ?? {
-            is_active: false,
-            discount_type: DiscountType.PERCENTAGE,
-            tiers: [],
-          },
-          extension_discount_policy: draft.values.extension_discount_policy ?? {
-            is_active: false,
-            discount_type: DiscountType.PERCENTAGE,
-            tiers: [],
-          },
+          long_stay_discount_policy: draft.values.long_stay_discount_policy ?? null,
+          extension_discount_policy: draft.values.extension_discount_policy ?? null,
         }
       : undefined) ?? {
       name: "",
@@ -232,16 +223,10 @@ export default function CreatePropertyWizard() {
       is_pet_allowed: false,
       is_party_allowed: false,
       rules: "",
-      long_stay_discount_policy: {
-        is_active: false,
-        discount_type: DiscountType.PERCENTAGE,
-        tiers: [],
-      },
-      extension_discount_policy: {
-        is_active: false,
-        discount_type: DiscountType.PERCENTAGE,
-        tiers: [],
-      },
+      // null, not an inactive stub: null is what "no policy" means to the API,
+      // and DiscountPolicyEditor normalises it for display.
+      long_stay_discount_policy: null,
+      extension_discount_policy: null,
       amenities: [],
       amenityIds: [],
       event_types: [],
@@ -707,6 +692,16 @@ export default function CreatePropertyWizard() {
                 event_price_per_half_day:
                   u.event_price_per_half_day || undefined,
               }
+            : {}),
+          // Spread rather than always sent: a unit with no override must omit
+          // these so the API leaves the column NULL and the unit inherits the
+          // property's policy. Sending an explicit null would work too, but
+          // omitting keeps create and PATCH-style updates reading the same.
+          ...(u.long_stay_discount_policy
+            ? { long_stay_discount_policy: u.long_stay_discount_policy }
+            : {}),
+          ...(u.extension_discount_policy
+            ? { extension_discount_policy: u.extension_discount_policy }
             : {}),
         }));
 
