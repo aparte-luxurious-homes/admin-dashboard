@@ -13,13 +13,19 @@ import axiosRequest from "@/lib/api";
 // import { BASE_API_URL } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
-import { setUser } from "@/src/lib/slices/authSlice";
+import { setUser, clearUser } from "@/src/lib/slices/authSlice";
 import { useQueryClient } from "@tanstack/react-query";
 import Loader from "@/src/components/loader";
 import { UserRole } from "@/src/lib/enums";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import useValidator from "@/src/hooks/useValidator";
 import PhoneOtpModal from "@/src/components/auth/PhoneOtpModal";
+import {
+  AGENT_KYC_REQUIRED_MESSAGE,
+  assertAgentMayAccessDashboard,
+  clearAdminSessionCookies,
+  redirectUnapprovedAgentToLanding,
+} from "@/src/lib/agentAccessGuard";
 
 export default function Login() {
   const { mutate: loginMutation, isPending } = useLogin();
@@ -76,6 +82,16 @@ export default function Login() {
             throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
           }
 
+          try {
+            assertAgentMayAccessDashboard(user);
+          } catch {
+            dispatch(clearUser());
+            clearAdminSessionCookies();
+            toast.error(AGENT_KYC_REQUIRED_MESSAGE, { duration: 7000 });
+            redirectUnapprovedAgentToLanding();
+            return;
+          }
+
           // Update Redux store
           dispatch(setUser(user));
           // Update React Query cache
@@ -124,6 +140,17 @@ export default function Login() {
                 duration: 4000,
               });
               setPhoneOtpPhone(detail.phone as string);
+              return;
+            }
+
+            if (
+              error?.code === "AGENT_KYC_REQUIRED" ||
+              error?.message?.includes("approved KYC")
+            ) {
+              dispatch(clearUser());
+              clearAdminSessionCookies();
+              toast.error(AGENT_KYC_REQUIRED_MESSAGE, { duration: 7000 });
+              redirectUnapprovedAgentToLanding();
               return;
             }
 

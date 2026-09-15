@@ -27,7 +27,7 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 
 export default function EditUnitView({
     handleEditMode,
-    unitData,
+    unitData, 
     propertyId,
     unitId,
 }: {

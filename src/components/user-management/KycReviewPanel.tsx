@@ -199,7 +199,14 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
       },
       {
         onSuccess: () => {
-          toast.success(MESSAGES.MSG_KYC_STATUS_UPDATED);
+          const isAgent = user.role === UserRole.AGENT;
+          if (isAgent && selectedStatus === KycStatus.VERIFIED) {
+            toast.success("Agent approved. Dashboard access is now unlocked.");
+          } else if (isAgent && selectedStatus === KycStatus.REJECTED) {
+            toast.success("Agent rejected. They can resubmit KYC on the landing site.");
+          } else {
+            toast.success(MESSAGES.MSG_KYC_STATUS_UPDATED);
+          }
           setIsEditing(false);
           setReason("");
           onUpdate?.();
@@ -279,8 +286,19 @@ const KycReviewPanel: React.FC<Props> = ({ user, onUpdate }) => {
         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
           <Icon icon="solar:shield-check-bold-duotone" width="20" />
         </div>
-        <h4 className="text-lg font-bold text-gray-800">KYC Review</h4>
+        <h4 className="text-lg font-bold text-gray-800">
+          {user.role === UserRole.AGENT ? "Agent KYC / Approval" : "KYC Review"}
+        </h4>
       </div>
+
+      {user.role === UserRole.AGENT && (
+        <p className="text-sm text-gray-600 -mt-2">
+          Setting status to <span className="font-semibold">Verified</span> approves
+          the agent and unlocks admin dashboard access.{" "}
+          <span className="font-semibold">Rejected</span> requires a reason and keeps
+          them on the landing KYC page.
+        </p>
+      )}
 
       {/* Profile + status header */}
       <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-5">

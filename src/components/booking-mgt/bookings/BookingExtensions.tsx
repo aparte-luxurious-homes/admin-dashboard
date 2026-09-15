@@ -147,7 +147,14 @@ export default function BookingExtensions({ bookingId, currentEndDate, bookingSt
                             <tbody className="divide-y divide-zinc-100">
                                 {extensions.map((ext) => (
                                     <tr key={ext.id} className="hover:bg-zinc-50 transition-colors">
-                                        <td className="px-4 py-3 font-medium text-zinc-900">{ext.extension_id}</td>
+                                        <td className="px-4 py-3 font-medium text-zinc-900">
+                                            {ext.extension_id}
+                                            {ext.is_legacy && (
+                                                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-zinc-100 text-zinc-500 border border-zinc-200" title="Recorded through the older extension path; managed as a booking, not an extension">
+                                                    legacy
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-zinc-600">{formatDate(ext.new_end_date)}</td>
                                         <td className="px-4 py-3 font-semibold text-zinc-800">{formatMoney(ext.extension_amount)}</td>
                                         <td className="px-4 py-3 text-center">
@@ -157,7 +164,12 @@ export default function BookingExtensions({ bookingId, currentEndDate, bookingSt
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end items-center gap-1.5">
-                                                {(isAdmin || isOwner) && (ext.status === ExtensionStatus.AWAITING_OWNER_APPROVAL || ext.status === ExtensionStatus.PENDING_PAYMENT) && (
+                                                {/* `is_legacy` marks an extension recorded through the older
+                                                    /bookings/{id}/extend path, which stores a child BOOKING
+                                                    rather than a BookingExtension. The API lists those here so
+                                                    they are visible, but approve/reject/cancel do not operate
+                                                    on them and would 404. Show the row, offer no actions. */}
+                                                {!ext.is_legacy && (isAdmin || isOwner) && (ext.status === ExtensionStatus.AWAITING_OWNER_APPROVAL || ext.status === ExtensionStatus.PENDING_PAYMENT) && (
                                                     <>
                                                         <button 
                                                             onClick={() => approveExtension.mutate({ bookingId, extensionId: ext.id })}
@@ -182,7 +194,7 @@ export default function BookingExtensions({ bookingId, currentEndDate, bookingSt
                                                         </button>
                                                     </>
                                                 )}
-                                                {(isAdmin || isOwner) && (ext.status === ExtensionStatus.PENDING_PAYMENT || ext.status === ExtensionStatus.AWAITING_OWNER_APPROVAL || ext.status === ExtensionStatus.APPROVED) && (
+                                                {!ext.is_legacy && (isAdmin || isOwner) && (ext.status === ExtensionStatus.PENDING_PAYMENT || ext.status === ExtensionStatus.AWAITING_OWNER_APPROVAL || ext.status === ExtensionStatus.APPROVED) && (
                                                     <button 
                                                         onClick={() => {
                                                             setCancellingExtensionId(ext.id);
@@ -252,13 +264,19 @@ export default function BookingExtensions({ bookingId, currentEndDate, bookingSt
                                     <div className="space-y-2">
                                         <div className="flex justify-between text-xs">
                                             <span className="text-zinc-600">Base Price ({quoteData.nights} extra night{quoteData.nights !== 1 ? 's' : ''})</span>
-                                            <span className="text-zinc-800 font-medium">₦{Number(quoteData.base_amount).toLocaleString()}</span>
+                                            {/* `base_price` / `total_price` are what the API returns.
+                                                This read `base_amount` / `total_amount`, which do not
+                                                exist on the response, so both figures rendered as
+                                                ₦NaN once the endpoint was reachable at all. */}
+                                            <span className="text-zinc-800 font-medium">₦{Number(quoteData.base_price).toLocaleString()}</span>
                                         </div>
                                         {quoteData.discount_amount > 0 && (
                                             <div className="flex justify-between text-xs">
                                                 <span className="text-green-600 flex items-center gap-1">
                                                     <Icon icon="solar:tag-price-bold-duotone" className="text-sm" />
-                                                    Extension discount ({quoteData.discount_label})
+                                                    {/* The API sends `discount_policy` (an object describing
+                                                        the applied policy), not a `discount_label` string. */}
+                                                    Extension discount{quoteData.discount_policy?.policy ? ` (${quoteData.discount_policy.policy})` : ""}
                                                 </span>
                                                 <span className="text-green-600 font-medium">−₦{Number(quoteData.discount_amount).toLocaleString()}</span>
                                             </div>
@@ -271,7 +289,7 @@ export default function BookingExtensions({ bookingId, currentEndDate, bookingSt
                                         )}
                                         <div className="pt-2 border-t border-zinc-200 flex justify-between text-sm font-bold">
                                             <span className="text-zinc-800">Total</span>
-                                            <span className="text-primary">₦{Number(quoteData.total_amount).toLocaleString()}</span>
+                                            <span className="text-primary">₦{Number(quoteData.total_price).toLocaleString()}</span>
                                         </div>
                                         {quoteData.upsell_message && (
                                             <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded-lg flex gap-2 items-center">
