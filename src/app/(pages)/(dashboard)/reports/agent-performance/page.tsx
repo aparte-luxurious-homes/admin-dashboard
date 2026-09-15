@@ -132,7 +132,9 @@ const downloadCsv = (filename: string, rows: AgentPerformanceRow[]) => {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Deferred, as in linksMgt.downloadCatalogQr: revoking synchronously can
+  // cancel the download before the browser has read the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 const AgentPerformanceReportPage = () => {

@@ -154,28 +154,49 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
   // guest, then open it in a new tab so the agent can complete payment
   // themselves (e.g., when the guest is in front of them with cash to swipe
   // on a card or do a transfer through the agent's account).
+  //
+  // The tab is opened inside the click and pointed at checkout when the link
+  // arrives. Opening it in onSuccess, as this used to, was blocked by Safari —
+  // the click is long spent by the time the gateway returns a link — and the
+  // clipboard fallback was refused for the same reason, so nothing happened
+  // while the toast said the link had been copied. It misfired everywhere else
+  // too: `window.open` with "noopener" returns null even when the tab DOES
+  // open, so Chrome reported a blocked popup over a checkout that had opened.
   const handlePayOnBehalf = () => {
+    const tab = window.open("", "_blank");
     resendLink(
       { bookingId: booking.id, notify: false },
       {
         onSuccess: (response) => {
           const url = response?.data?.data?.payment_link;
-          if (url) {
-            const win = window.open(url, "_blank", "noopener,noreferrer");
-            if (!win) {
-              // Popup blocked — fall back to toast + copy
-              navigator.clipboard?.writeText(url).catch(() => {});
-              toast.error(
-                MESSAGES.MSG_BROWSER_BLOCKED_THE_POPUP_LINK_COPIED_TO,
-              );
-            } else {
-              toast.success(MESSAGES.MSG_OPENING_CHECKOUT_IN_A_NEW_TAB);
-            }
-          } else {
+          if (!url) {
+            tab?.close();
             toast.error(MESSAGES.MSG_COULD_NOT_GENERATE_PAYMENT_LINK);
+            return;
           }
+          if (tab && !tab.closed) {
+            // What "noopener" used to guarantee: the gateway's checkout page
+            // gets no handle back to the dashboard.
+            tab.opener = null;
+            tab.location.href = url;
+            toast.success(MESSAGES.MSG_OPENING_CHECKOUT_IN_A_NEW_TAB);
+            return;
+          }
+          // Popups refused outright. Only claim the link was copied if it was;
+          // otherwise take the agent to checkout in this tab.
+          const copied = navigator.clipboard
+            ? navigator.clipboard.writeText(url).then(() => true, () => false)
+            : Promise.resolve(false);
+          copied.then((ok) => {
+            if (ok) {
+              toast.error(MESSAGES.MSG_BROWSER_BLOCKED_THE_POPUP_LINK_COPIED_TO);
+            } else {
+              window.location.assign(url);
+            }
+          });
         },
         onError: (error: any) => {
+          tab?.close();
           toast.error(error?.response?.data?.detail || "Failed to open payment link");
         },
       },
