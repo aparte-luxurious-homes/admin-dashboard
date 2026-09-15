@@ -36,7 +36,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
-import { getApiErrorMessage, isConflict } from "@/src/lib/apiError";
 import { IoIosStarOutline } from "react-icons/io";
 import CustomModal from "../../ui/CustomModal";
 import CustomDropdown from "../../ui/customDropdown";
@@ -72,6 +71,7 @@ export default function PropertyDetailsView({
   const { canDeleteProperty } = usePermissions();
 
   const { data, isLoading } = GetSingleProperty(propertyId);
+  console.log("Property detail",data);
   const { data: fetchedAmenites } = GetAmenities();
   const { mutate: deleteMutation, isPending: deleteIsPending } =
     DeleteProperty();
@@ -151,56 +151,6 @@ export default function PropertyDetailsView({
   };
 
   const handleDelete = () => {
-    if (!propertyId) return;
-
-    // This delete had no onError at all, so every refusal was silent: the
-    // admin pressed Delete, the API answered 409 because the property still
-    // has live bookings, and the screen showed nothing whatsoever. A delete
-    // that appears to do nothing is worse than one that fails loudly — it
-    // reads as a broken button. The 409 carries the bookings in the way, and
-    // `force` is the documented override, so both are surfaced here the same
-    // way the unit delete does it in EditPropertyView.
-    const runDelete = (force?: boolean) =>
-      deleteMutation(
-        { propertyId, force },
-        {
-          onSuccess: (response) => {
-            // A 204 carries no body, so there is no message to read off it.
-            toast.success(
-              response?.data?.message || MESSAGES.MSG_PROPERTY_DELETED_SUCCESSFULLY,
-              { duration: 6000, style: { maxWidth: "500px", width: "max-content" } },
-            );
-            if (response.status === 204 || response.status === 200)
-              router.push(
-                PAGE_ROUTES.dashboard.propertyManagement.allProperties.base,
-              );
-          },
-          onError: (error: unknown) => {
-            const detail = getApiErrorMessage(
-              error,
-              MESSAGES.MSG_FAILED_TO_DELETE_PROPERTY,
-            );
-            if (!force && isConflict(error)) {
-              dispatch(
-                showAlert({
-                  title: "This property still has bookings",
-                  description:
-                    `${detail}\n\n` +
-                    `Deleting anyway removes the property but does NOT cancel ` +
-                    `or refund those bookings. The guests keep them, and you ` +
-                    `will need to resolve each one separately.`,
-                  confirmText: "Delete anyway",
-                  cancelText: "Cancel",
-                  onConfirm: () => runDelete(true),
-                }),
-              );
-              return;
-            }
-            toast.error(detail, { duration: 8000, style: { maxWidth: "520px" } });
-          },
-        },
-      );
-
     dispatch(
       showAlert({
         title: "Are you sure?",
@@ -208,7 +158,25 @@ export default function PropertyDetailsView({
           "This action cannot be undone. This will permanently delete this property.",
         confirmText: "Delete",
         cancelText: "Cancel",
-        onConfirm: () => runDelete(),
+        onConfirm: () => {
+          if (propertyId)
+            deleteMutation(
+              { propertyId },
+              {
+                onSuccess: (response) => {
+                  toast.success(response?.data?.message, {
+                    duration: 6000,
+                    style: { maxWidth: "500px", width: "max-content" },
+                  });
+                  if (response.status === 204)
+                    router.push(
+                      PAGE_ROUTES.dashboard.propertyManagement.allProperties
+                        .base,
+                    );
+                },
+              },
+            );
+        },
       }),
     );
   };

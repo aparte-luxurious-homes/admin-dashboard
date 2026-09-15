@@ -1,14 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import {
-  IAssignAmenity,
-  ICreatePropertyUnit,
-  IUpdatePropertyUnit,
-  ICreateAvailabilityPayload,
-} from "@/src/components/properties-mgt/types";
+import { IAssignAmenity, ICreatePropertyUnit, IUpdatePropertyUnit, ICreateAvailabilityPayload } from "@/src/components/properties-mgt/types";
 
 enum PropertyUnitRequestKeys {
+    allUnits = "getAllUnitsView",
     singleUnit = "getSingleUnitsView",
     unitMedia = "uploadUnitMedia",
     assignAmenities = "assigneAmenities",
@@ -17,308 +13,175 @@ enum PropertyUnitRequestKeys {
     availability = "unitAvailability",
 }
 
-// GetAllPropertyUnits was removed. It could never have worked, in two
-// independent ways, and nothing called it:
-//
-//   * `units.base` is `(propertyId) => \`/properties/${propertyId}/units\``.
-//     Interpolating it into a template literal without calling it stringifies
-//     the function's SOURCE, so the request URL began
-//     "(propertyId) => `/properties/${propertyId}/units`?page=1&limit=10".
-//   * There is no "list every unit" endpoint to call anyway — the API serves
-//     only POST on that path.
-//
-// Units are read from the property: GetSinglePropertyUnit below pulls
-// GET /properties/{id} and picks the unit out of its `units` array. Left as a
-// note rather than deleted silently, because a hook that looks finished is
-// exactly what invites someone to wire it to a screen.
+export function GetAllPropertyUnits(page = 1, limit = 10) {
+    return useQuery({
+        queryKey: [PropertyUnitRequestKeys.allUnits, page, limit],
+        queryFn: () => axiosRequest.get(
+            `${API_ROUTES.propertyManagement.properties.units.base}?page=${page}&limit=${limit}`
+        ),
+        refetchOnWindowFocus: true,
+        staleTime: Infinity,
+        refetchInterval: 1000 * 60 * 1,
+    });
+}
 
-export function GetSinglePropertyUnit(
-  propertyId: string | number,
-  unitId: string | number,
-) {
-  return useQuery({
-    queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId],
-    queryFn: async () => {
-      // Fetch the property details which includes all units
-      const response = await axiosRequest.get(
-        API_ROUTES.propertyManagement.properties.details(propertyId),
-      );
 
-      // Extract the specific unit from the units array
-      const property = response.data?.data;
-      const unit = property?.units?.find(
-        (u: any) => String(u.id) === String(unitId),
-      );
+export function GetSinglePropertyUnit(propertyId: string | number, unitId: string | number) {
+    return useQuery({
+        queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId],
+        queryFn: async () => {
+            // Fetch the property details which includes all units
+            const response = await axiosRequest.get(API_ROUTES.propertyManagement.properties.details(propertyId));
 
-      if (!unit) {
-        throw new Error(
-          `Unit with ID ${unitId} not found in property ${propertyId}`,
-        );
-      }
+            // Extract the specific unit from the units array
+            const property = response.data?.data;
+            const unit = property?.units?.find((u: any) => String(u.id) === String(unitId));
 
-      // Return in the same format as the original endpoint would
-      return {
-        ...response,
-        data: {
-          ...response.data,
-          data: unit,
+            if (!unit) {
+                throw new Error(`Unit with ID ${unitId} not found in property ${propertyId}`);
+            }
+
+            // Return in the same format as the original endpoint would
+            return {
+                ...response,
+                data: {
+                    ...response.data,
+                    data: unit
+                }
+            };
         },
-      };
-    },
-    refetchOnWindowFocus: true,
-    staleTime: Infinity,
-    refetchInterval: 1000 * 60 * 1,
-  });
+        refetchOnWindowFocus: true,
+        staleTime: Infinity,
+        refetchInterval: 1000 * 60 * 1,
+    });
 }
 
 export function CreatePropertyUnit() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      propertyId,
-      payload,
-    }: {
-      propertyId: string;
-      payload: ICreatePropertyUnit[];
-    }) =>
-      axiosRequest.post(
-        API_ROUTES.propertyManagement.properties.units.base(propertyId),
-        { units: payload },
-      ),
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, payload }: { propertyId: string, payload: ICreatePropertyUnit[] }) =>
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.units.base(propertyId), { units: payload }),
 
-    onSuccess: (_, { propertyId }) => {
-      // Invalidate the specific property query so it refetches
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.createUnit, propertyId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["getSinglePropertyView", propertyId],
-      });
-    },
-  });
+        onSuccess: (_, { propertyId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.createUnit, propertyId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
+        },
+    });
 }
+
 
 export function UpdatePropertyUnit() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      propertyId,
-      unitId,
-      payload,
-    }: {
-      propertyId: string | number;
-      unitId: string | number;
-      payload: IUpdatePropertyUnit;
-    }) =>
-      axiosRequest.patch(
-        API_ROUTES.propertyManagement.properties.units.details(
-          propertyId,
-          unitId,
-        ),
-        payload,
-      ),
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string | number, unitId: string | number, payload: IUpdatePropertyUnit }) =>
+            axiosRequest.patch(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId), payload),
 
-    onSuccess: (_, { propertyId, unitId }) => {
-      // Invalidate the specific property query so it refetches
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["getSinglePropertyView", propertyId],
-      });
-    },
-  });
+        onSuccess: (_, { propertyId, unitId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
+        },
+    });
 }
+
 
 export function DeletePropertyUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        // `force` overrides the server's refusal to remove a unit that still
-        // has live bookings. It does NOT cancel or refund them — the caller
-        // must have said so in a confirmation before passing it.
-        mutationFn: ({ propertyId, unitId, force }: { propertyId: string | number, unitId: string | number, force?: boolean }) =>
-            axiosRequest.delete(
-                API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId),
-                force ? { params: { force: true } } : undefined,
-            ),
+        mutationFn: ({ propertyId, unitId }: { propertyId: string | number, unitId: string | number }) =>
+            axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.details(propertyId, unitId)),
 
-    onSuccess: (_, { propertyId, unitId }) => {
-      // Invalidate the specific property query so it refetches
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.deleteUnit, propertyId, unitId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["getSinglePropertyView", propertyId],
-      });
-    },
-  });
+        onSuccess: (_, { propertyId, unitId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.deleteUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
+        },
+    });
 }
+
 
 export function AssignUnitAmenities() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      propertyId,
-      unitId,
-      payload,
-    }: {
-      propertyId: string | number;
-      unitId: string | number;
-      payload: IAssignAmenity;
-    }) =>
-      axiosRequest.post(
-        API_ROUTES.propertyManagement.properties.units.amenities(
-          propertyId,
-          unitId,
-        ),
-        payload,
-      ),
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string | number, unitId: string | number, payload: IAssignAmenity }) =>
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.units.amenities(propertyId, unitId), payload),
 
-    onSuccess: (_, { propertyId, unitId }) => {
-      // Invalidate the specific property query so it refetches
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.assignAmenities, propertyId, unitId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["getSinglePropertyView", propertyId],
-      });
-    },
-  });
+        onSuccess: (_, { propertyId, unitId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.assignAmenities, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
+        },
+    });
 }
 
-export function UploadPropertyUnitMedia() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      propertyId,
-      unitId,
-      payload,
-    }: {
-      propertyId: string | number;
-      unitId: string | number;
-      payload: FormData;
-    }) =>
-      axiosRequest.post(
-        API_ROUTES.propertyManagement.properties.units.media(
-          propertyId,
-          unitId,
-        ),
-        payload,
-        {
-          // Let the interceptor strip Content-Type so the browser sets the multipart boundary.
-          timeout: 120_000,
-        },
-      ),
 
-    onSuccess: (_, { propertyId, unitId }) => {
-      // Invalidate the specific property query so it refetches
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.unitMedia, propertyId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["getSinglePropertyView", propertyId],
-      });
-    },
-  });
+export function UploadPropertyUnitMedia() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string | number, unitId: string | number, payload: FormData }) =>
+            axiosRequest.post(
+                API_ROUTES.propertyManagement.properties.units.media(propertyId, unitId),
+                payload,
+                {
+                    // Let the interceptor strip Content-Type so the browser sets the multipart boundary.
+                    timeout: 120_000,
+                },
+
+            ),
+
+        onSuccess: (_, { propertyId, unitId }) => {
+            // Invalidate the specific property query so it refetches
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.unitMedia, propertyId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
+        },
+    });
 }
 
 export function DeleteUnitMedia() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      propertyId,
-      unitId,
-      mediaId,
-    }: {
-      propertyId: string | number;
-      unitId: string | number;
-      mediaId: string | number;
-    }) =>
-      axiosRequest.delete(
-        API_ROUTES.propertyManagement.properties.units.deleteMedia(
-          propertyId,
-          unitId,
-          mediaId,
-        ),
-      ),
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId, mediaId }: { propertyId: string | number, unitId: string | number, mediaId: string | number }) =>
+            axiosRequest.delete(API_ROUTES.propertyManagement.properties.units.deleteMedia(propertyId, unitId, mediaId)),
 
-    onSuccess: (_, { propertyId, unitId }) => {
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["getSinglePropertyView", propertyId],
-      });
-    },
-  });
+        onSuccess: (_, { propertyId, unitId }) => {
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: ['getSinglePropertyView', propertyId] });
+        },
+    });
 }
 
-export function GetUnitAvailability(
-  propertyId: string | number,
-  unitId: string | number,
-  startDate?: string,
-  endDate?: string,
-  enabled = true,
-) {
-  return useQuery({
-    queryKey: [
-      PropertyUnitRequestKeys.availability,
-      propertyId,
-      unitId,
-      startDate,
-      endDate,
-    ],
-    queryFn: () => {
-      let url = API_ROUTES.propertyManagement.properties.units.availability(
-        propertyId,
-        unitId,
-      );
-      const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      if (params.toString()) url += `?${params.toString()}`;
-      return axiosRequest.get(url);
-    },
-    enabled: enabled && !!propertyId && !!unitId,
-    refetchOnWindowFocus: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+
+export function GetUnitAvailability(propertyId: string | number, unitId: string | number, startDate?: string, endDate?: string, enabled = true) {
+    return useQuery({
+        queryKey: [PropertyUnitRequestKeys.availability, propertyId, unitId, startDate, endDate],
+        queryFn: () => {
+            let url = API_ROUTES.propertyManagement.properties.units.availability(propertyId, unitId);
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            if (params.toString()) url += `?${params.toString()}`;
+            return axiosRequest.get(url);
+        },
+        enabled: enabled && !!propertyId && !!unitId,
+        refetchOnWindowFocus: true,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    });
 }
+
 
 export function CreateUnitAvailability() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      propertyId,
-      unitId,
-      payload,
-    }: {
-      propertyId: string;
-      unitId: string | number;
-      payload: ICreateAvailabilityPayload;
-    }) =>
-      axiosRequest.post(
-        API_ROUTES.propertyManagement.properties.units.availability(
-          propertyId,
-          unitId,
-        ),
-        payload,
-      ),
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ propertyId, unitId, payload }: { propertyId: string, unitId: string | number, payload: ICreateAvailabilityPayload }) =>
+            axiosRequest.post(API_ROUTES.propertyManagement.properties.units.availability(propertyId, unitId), payload),
 
-    onSuccess: (_, { propertyId, unitId }) => {
-      // Invalidate availability queries
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.availability, propertyId, unitId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId],
-      });
-    },
-  });
+        onSuccess: (_, { propertyId, unitId }) => {
+            // Invalidate availability queries
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.availability, propertyId, unitId] });
+            queryClient.invalidateQueries({ queryKey: [PropertyUnitRequestKeys.singleUnit, propertyId, unitId] });
+        },
+    });
 }

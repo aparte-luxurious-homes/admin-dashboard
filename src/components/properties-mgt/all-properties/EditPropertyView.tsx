@@ -43,8 +43,6 @@ import CustomModal from "../../ui/CustomModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import toast from "react-hot-toast";
-import { getApiErrorMessage, isConflict } from "@/src/lib/apiError";
-import { usePermissions } from "@/src/hooks/usePermissions";
 import { usePathname } from "next/navigation";
 import { Icon } from "@iconify/react";
 import UnitDrawer from "../create-wizard/UnitDrawer";
@@ -276,12 +274,6 @@ export default function EditPropertyView({
     }))
   );
 
-  // Mirrors StepUnits in the create wizard: once a unit represents the whole
-  // property, the listing is that one bookable entity and a second unit makes
-  // no sense. Declared after `existingUnits` because it reads it.
-  const { canDeleteUnit } = usePermissions();
-  const hasWholePropertyUnit = existingUnits.some((u) => u.is_whole_property);
-
   useEffect(() => {
     setExistingUnits(
       (propertyData?.units ?? []).map((u) => ({
@@ -331,15 +323,7 @@ export default function EditPropertyView({
               setExistingUnits(prev => prev.map((u, i) => i === editingUnitIndex ? { ...unit, _key: existingId } : u));
               toast.success(MESSAGES.MSG_UNIT_UPDATED);
             },
-            // Surfaces the server's reason — e.g. "Cannot reduce this unit to
-            // 1: 3 are already booked for 2027-10-01. The lowest you can set
-            // is 3." A generic failure hides exactly the part that tells the
-            // host what to do next.
-            onError: (error: unknown) =>
-              toast.error(getApiErrorMessage(error, MESSAGES.MSG_FAILED_TO_UPDATE_UNIT), {
-                duration: 8000,
-                style: { maxWidth: "520px" },
-              }),
+            onError: () => toast.error(MESSAGES.MSG_FAILED_TO_UPDATE_UNIT),
           },
         );
       } else {
@@ -356,11 +340,7 @@ export default function EditPropertyView({
             }
             toast.success(MESSAGES.MSG_UNIT_ADDED);
           },
-          onError: (error: unknown) =>
-            toast.error(getApiErrorMessage(error, MESSAGES.MSG_FAILED_TO_CREATE_UNIT), {
-              duration: 8000,
-              style: { maxWidth: "520px" },
-            }),
+          onError: () => toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNIT),
         },
       );
     }
@@ -378,40 +358,16 @@ export default function EditPropertyView({
           title: 'Delete Unit',
           description: `Are you sure you want to delete "${unit.name || 'this unit'}"? This action cannot be undone.`,
           onConfirm: () => {
-            const runDelete = (force?: boolean) =>
-              deleteUnit(
-                { propertyId: propertyData.id, unitId: unit._key, force },
-                {
-                  onSuccess: () => {
-                    setExistingUnits(prev => prev.filter((_, i) => i !== index));
-                    toast.success(MESSAGES.MSG_UNIT_DELETED);
-                  },
-                  onError: (error: unknown) => {
-                    const detail = getApiErrorMessage(error, MESSAGES.MSG_FAILED_TO_DELETE_UNIT);
-                    // A 409 means the unit still has live bookings. The server
-                    // names them, so show that rather than a generic failure,
-                    // and offer the override behind a second confirmation that
-                    // states plainly what it does not do.
-                    if (!force && isConflict(error)) {
-                      dispatch(
-                        showAlert({
-                          title: "This unit still has bookings",
-                          description:
-                            `${detail}
-
-Deleting anyway removes the unit but does NOT ` +
-                            `cancel or refund those bookings. The guests keep them, and ` +
-                            `you will need to resolve each one separately.`,
-                          onConfirm: () => runDelete(true),
-                        }),
-                      );
-                      return;
-                    }
-                    toast.error(detail, { duration: 8000, style: { maxWidth: "520px" } });
-                  },
+            deleteUnit(
+              { propertyId: propertyData.id, unitId: unit._key },
+              {
+                onSuccess: () => {
+                  setExistingUnits(prev => prev.filter((_, i) => i !== index));
+                  toast.success(MESSAGES.MSG_UNIT_DELETED);
                 },
-              );
-            runDelete();
+                onError: () => toast.error(MESSAGES.MSG_FAILED_TO_DELETE_UNIT),
+              },
+            );
           },
         }),
       );
@@ -550,18 +506,11 @@ Deleting anyway removes the unit but does NOT ` +
                     removeParam("edit");
                     handleEditMode(false);
                   },
-                  onError: (error: unknown) => {
-                    // The media endpoint rejects a file whose bytes do not
-                    // match its declared type, and one over the size cap. Both
-                    // messages name the offending file, which is the whole
-                    // value of them.
-                    toast.error(
-                      getApiErrorMessage(
-                        error,
-                        "Property updated but media upload failed",
-                      ),
-                      { duration: 8000, style: { maxWidth: "520px" } },
-                    );
+                  onError: (error: any) => {
+                    toast.error(error?.response?.data?.detail || "Property updated but media upload failed", {
+                      duration: 6000,
+                      style: { maxWidth: "500px", width: "max-content" },
+                    });
                     removeParam("edit");
                     handleEditMode(false);
                   },
@@ -576,21 +525,11 @@ Deleting anyway removes the unit but does NOT ` +
               handleEditMode(false);
             }
           },
-          // The API refuses this save for reasons the user can act on: a 409
-          // when another live listing already holds the same Google place,
-          // a 422 naming the field that failed validation, a 403 when the
-          // caller has no claim on the property. Discarding all of that and
-          // saying "something went wrong" left the only actionable part of
-          // the response on the floor — the same mistake the unit handlers
-          // in this file already avoid via getApiErrorMessage.
-          onError: (error: unknown) =>
-            toast.error(
-              getApiErrorMessage(
-                error,
-                MESSAGES.MSG_SOMETHING_WENT_WRONG_PLEASE_TRY_AGAIN,
-              ),
-              { duration: 8000, style: { maxWidth: "520px" } },
-            ),
+          onError: () =>
+            toast.error(MESSAGES.MSG_SOMETHING_WENT_WRONG_PLEASE_TRY_AGAIN, {
+              duration: 6000,
+              style: { maxWidth: "500px", width: "max-content" },
+            }),
         },
       );
     },
@@ -838,33 +777,6 @@ Deleting anyway removes the unit but does NOT ` +
             title="Location & Address"
           >
             <div className="space-y-5 mb-4 mt-4">
-              {/* A verified listing is a statement about a building someone
-                  stood in, so moving it sends the property back for
-                  re-inspection: the badge drops and the public link stops
-                  taking bookings until it passes again. The API has always
-                  done this; nothing here said so, and an owner correcting a
-                  typo in their address had no way to know it would take the
-                  listing offline. Shown only when there is a badge to lose. */}
-              {propertyData?.is_verified && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
-                  <Icon
-                    icon="solar:danger-triangle-bold-duotone"
-                    className="text-lg text-amber-600 shrink-0 mt-0.5"
-                  />
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-amber-800">
-                      This listing is verified
-                    </p>
-                    <p className="text-[11px] leading-relaxed text-amber-700">
-                      Changing the address, city, state or map pin sends it back
-                      for re-inspection. The verified badge is removed and the
-                      public booking link is unpublished until it passes again.
-                      Editing anything else — name, description, photos, price —
-                      leaves the badge untouched.
-                    </p>
-                  </div>
-                </div>
-              )}
               <Field label="Physical Address">
                 <AddressAutocomplete formik={formik} isLoaded={isLoaded} />
               </Field>
@@ -1342,11 +1254,8 @@ Deleting anyway removes the unit but does NOT ` +
                                                     toast.success(MESSAGES.MSG_DOCUMENT_UPLOADED_SUCCESSFULLY);
                                                     refetchDocs();
                                                 },
-                                                onError: (err: unknown) => {
-                                                    toast.error(
-                                                        getApiErrorMessage(err, MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED),
-                                                        { duration: 8000, style: { maxWidth: "520px" } },
-                                                    );
+                                                onError: (err: any) => {
+                                                    toast.error(err?.response?.data?.detail || MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED);
                                                 }
                                             });
                                             e.target.value = '';
@@ -1375,23 +1284,13 @@ Deleting anyway removes the unit but does NOT ` +
                 <p className="text-xs text-zinc-500">
                   Manage the rentable units for this property.
                 </p>
-                {/* A whole-property unit IS the property, so a second unit
-                    alongside it would double-book the same rooms. The create
-                    wizard has always blocked this; the server enforces it too
-                    now, so without the same guard here the button just fails. */}
                 <button
                   type="button"
-                  disabled={hasWholePropertyUnit}
-                  title={
-                    hasWholePropertyUnit
-                      ? "This listing has a whole-property unit; remove or untoggle it to add another unit."
-                      : undefined
-                  }
                   onClick={() => {
                     setEditingUnitIndex(null);
                     setUnitDrawerOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-xl hover:bg-primary hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-xl hover:bg-primary hover:text-white transition-all"
                 >
                   <FaPlus className="text-[9px]" />
                   Add Unit
@@ -1410,16 +1309,6 @@ Deleting anyway removes the unit but does NOT ` +
                         setUnitDrawerOpen(true);
                       }}
                       onDelete={() => handleDeleteUnit(index)}
-                      // An unsaved row is local state and anyone editing the
-                      // property may drop it. A saved one needs units.delete,
-                      // which only SUPER_ADMIN currently holds — so for
-                      // everyone else the control is hidden rather than
-                      // offered and then refused with a 403.
-                      canDelete={
-                        canDeleteUnit ||
-                        !propertyData?.units?.some((u) => String(u.id) === unit._key)
-                      }
-                      deleteDisabledReason="Only a super admin can remove a saved unit."
                     />
                   ))}
                 </div>

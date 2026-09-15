@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { RootState } from "../lib/store";
 import { UserRole } from "../lib/enums";
-import { assertAgentMayAccessDashboard } from "../lib/agentAccessGuard";
 
 
 // 🔹 Fetch User & Sync with Redux
@@ -28,8 +27,6 @@ export const fetchUser = async (): Promise<IUser> => {
     window.location.href = PAGE_ROUTES.auth.login;
     throw Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
   }
-
-  assertAgentMayAccessDashboard(user);
 
   return user;
 };
@@ -101,8 +98,6 @@ export const useLogin = () => {
       if (payload.user.role === UserRole.GUEST) {
         throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
       }
-
-      assertAgentMayAccessDashboard(payload.user);
 
       // Only set token if user is not a guest
       // Use secure cookies only in production (HTTPS)
@@ -233,8 +228,6 @@ export const useVerifyPhoneOtp = () => {
           "Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support."
         );
       }
-
-      assertAgentMayAccessDashboard(payload.user);
 
       const isProduction = window.location.protocol === "https:";
       const hostname = window.location.hostname;
