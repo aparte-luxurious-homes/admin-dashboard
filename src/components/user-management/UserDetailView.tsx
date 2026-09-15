@@ -14,7 +14,6 @@ import UserEditDrawer from "./UserEditDrawer";
 import { useUserDetail } from "./useUserDetail";
 import { RoleConfig } from "./user-detail.types";
 import AgentNetworkCard from "./AgentNetworkCard";
-import AgentApprovalCard from "./AgentApprovalCard";
 import { useNetworkEnabled } from "@/src/lib/request-handlers/platformMgt";
 
 interface UserDetailViewProps {
@@ -98,9 +97,6 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
               onCreateWallet={createWallet}
               isCreatingWallet={isCreatingWallet}
             />
-            {roleConfig.role === "AGENT" && (
-              <AgentApprovalCard user={user} onUpdate={refetch} />
-            )}
             {networkEnabled && roleConfig.role === "AGENT" && id && (
               <AgentNetworkCard userId={String(id)} />
             )}

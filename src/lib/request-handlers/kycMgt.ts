@@ -48,53 +48,6 @@ export function GetMyKycDocuments() {
   });
 }
 
-export interface AgentKycSubmission {
-  firstName: string;
-  lastName: string;
-  dob: string; // YYYY-MM-DD
-  documentType: KycDocumentType;
-  file: File;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-}
-
-/**
- * Submit the full agent KYC form (POST /profile/agent-kyc) — the one call an
- * agent behind the approval gate makes to reach admin review. Refetches the
- * auth user afterwards so the dashboard picks up PENDING_APPROVAL.
- */
-export function SubmitAgentKyc() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (s: AgentKycSubmission) => {
-      const form = new FormData();
-      form.append("first_name", s.firstName);
-      form.append("last_name", s.lastName);
-      form.append("dob", s.dob);
-      form.append("document_type", s.documentType);
-      form.append("file", s.file);
-      form.append("address", s.address);
-      form.append("city", s.city);
-      form.append("state", s.state);
-      form.append("country", s.country);
-      const resp = await axiosRequest.post(API_ROUTES.profile.agentKyc, form, {
-        headers: { "Content-Type": "multipart/form-data" },
-        transformRequest: (data, headers) => {
-          if (headers) delete headers["Content-Type"];
-          return data;
-        },
-      });
-      return resp.data?.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [KYC_LIST_KEY] });
-      queryClient.refetchQueries({ queryKey: ["authUser"] });
-    },
-  });
-}
-
 /** Upload a single KYC document. Multipart form data. */
 export function UploadMyKycDocument() {
   const queryClient = useQueryClient();

@@ -4,14 +4,6 @@ export enum KycStatus {
     REJECTED = "REJECTED"
 }
 
-/** Agent approval gate. null on a non-agent; ACTIVE for approved and pre-gate agents. */
-export enum AgentApprovalStatus {
-    KYC_PENDING = 'KYC_PENDING',
-    PENDING_APPROVAL = 'PENDING_APPROVAL',
-    ACTIVE = 'ACTIVE',
-    REJECTED = 'REJECTED',
-}
-
 export enum UserRole {
     SUPER_ADMIN = 'SUPER_ADMIN',
     ADMIN = 'ADMIN',

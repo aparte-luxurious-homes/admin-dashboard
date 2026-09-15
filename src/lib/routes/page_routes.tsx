@@ -26,9 +26,6 @@ export const PAGE_ROUTES = {
             kycQueue: {
                 base: '/user-management/kyc-queue',
             },
-            agentApprovals: {
-                base: '/user-management/agent-approvals',
-            },
         },
         bookingManagement: {
             bookingDisputes: {

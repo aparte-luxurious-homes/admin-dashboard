@@ -4,7 +4,6 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { BASE_API_URL } from "./routes/endpoints";
 import { PAGE_ROUTES } from "./routes/page_routes";
-import { AGENT_NOT_APPROVED_EVENT } from "./agentApproval";
 
 const axiosRequest = axios.create({
   baseURL: BASE_API_URL,
@@ -103,13 +102,6 @@ axiosRequest.interceptors.response.use(
             }, 600);
           }
         }
-        return Promise.reject(error);
-      }
-      // The agent is behind the approval gate. The dashboard layout listens
-      // for this and swaps to the restricted screen, so a status change made
-      // by an admin mid-session is picked up by the very next request.
-      if (code === "AGENT_NOT_APPROVED" && typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent(AGENT_NOT_APPROVED_EVENT, { detail }));
         return Promise.reject(error);
       }
     }

@@ -579,27 +579,12 @@ const UserManagementView = ({
                               : kyc === "REJECTED"
                                 ? "bg-red-100 text-red-700"
                                 : "bg-yellow-100 text-yellow-700";
-                          // Agent approval gate: an agent's KYC badge alone does not say
-                          // whether they can work, so flag anyone still behind the gate.
-                          const approval = (user as any).agentApprovalStatus as string | null | undefined;
-                          const gateLabel: Record<string, string> = {
-                            KYC_PENDING: "KYC not submitted",
-                            PENDING_APPROVAL: "Awaiting approval",
-                            REJECTED: "Agent rejected",
-                          };
                           return (
-                            <div className="flex flex-col items-center gap-1">
-                              <span
-                                className={`px-2 py-1 rounded-full text-[10px] font-semibold uppercase ${cls}`}
-                              >
-                                {kyc}
-                              </span>
-                              {approval && gateLabel[approval] && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap">
-                                  {gateLabel[approval]}
-                                </span>
-                              )}
-                            </div>
+                            <span
+                              className={`px-2 py-1 rounded-full text-[10px] font-semibold uppercase ${cls}`}
+                            >
+                              {kyc}
+                            </span>
                           );
                         })()}
                       </td>

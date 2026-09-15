@@ -260,10 +260,6 @@ export interface IUser {
   is_profile_complete?: boolean;
   missingProfileFields?: string[];
   missing_profile_fields?: string[];
-  /** Agent approval gate (GET /profile). Absent on a pre-gate persisted user — treat as ACTIVE. */
-  agentApprovalStatus?: "KYC_PENDING" | "PENDING_APPROVAL" | "ACTIVE" | "REJECTED" | null;
-  agentApprovalRejectionReason?: string | null;
-  agentKycSubmittedAt?: string | null;
 }
 
 export interface IAuthorization {
