@@ -25,7 +25,7 @@ export default function AgentAccessGate({
 }) {
   const { user, isFetching } = useAuth();
   const dispatch = useDispatch();
-
+ 
   const blocked =
     !!user &&
     user.role === UserRole.AGENT &&

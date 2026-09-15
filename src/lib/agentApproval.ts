@@ -17,7 +17,10 @@ export type AgentApprovalUserLike = {
   agent_approval_status?: string | null;
   kycStatus?: string | null;
   kyc_status?: string | null;
-  profile?: Record<string, unknown> | null;
+  profile?: {
+    kycStatus?: string | null;
+    kyc_status?: string | null;
+  } | null;
   kycDocuments?: unknown[] | null;
   kyc_documents?: unknown[] | null;
   kyc?: unknown[] | null;
@@ -38,10 +41,9 @@ export function getAgentApprovalStatus(
     return explicit as AgentApprovalStatus;
   }
 
-  const profile = user.profile || {};
   const kyc =
-    (typeof profile.kycStatus === "string" ? profile.kycStatus : undefined) ||
-    (typeof profile.kyc_status === "string" ? profile.kyc_status : undefined) ||
+    (typeof user.profile?.kycStatus === "string" ? user.profile?.kycStatus : undefined) ||
+    (typeof user.profile?.kyc_status === "string" ? user.profile?.kyc_status : undefined) ||
     user.kycStatus ||
     user.kyc_status ||
     "PENDING";

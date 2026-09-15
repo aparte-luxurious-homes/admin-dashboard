@@ -71,7 +71,6 @@ export default function PropertyDetailsView({
   const { canDeleteProperty } = usePermissions();
 
   const { data, isLoading } = GetSingleProperty(propertyId);
-  console.log("Property detail",data);
   const { data: fetchedAmenites } = GetAmenities();
   const { mutate: deleteMutation, isPending: deleteIsPending } =
     DeleteProperty();
