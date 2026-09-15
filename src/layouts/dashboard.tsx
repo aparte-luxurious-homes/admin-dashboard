@@ -1,6 +1,6 @@
 "use client";
 
-import { MESSAGES } from '@/src/lib/messages';
+import { MESSAGES } from "@/src/lib/messages";
 import Image from "next/image";
 import { BellIcon, SettingsIcon } from "@/components/icons";
 import { NAV_LINKS } from "../lib/routes/nav_links";
@@ -29,9 +29,27 @@ import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
 
 const TIER_CONFIG = {
-  BRONZE: { label: "Bronze", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300", icon: "solar:medal-ribbons-star-bold-duotone" },
-  SILVER: { label: "Silver", color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-300", icon: "solar:medal-ribbons-star-bold-duotone" },
-  GOLD:   { label: "Gold",   color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-300", icon: "solar:medal-ribbons-star-bold-duotone" },
+  BRONZE: {
+    label: "Bronze",
+    color: "text-amber-700",
+    bg: "bg-amber-50",
+    border: "border-amber-300",
+    icon: "solar:medal-ribbons-star-bold-duotone",
+  },
+  SILVER: {
+    label: "Silver",
+    color: "text-slate-600",
+    bg: "bg-slate-100",
+    border: "border-slate-300",
+    icon: "solar:medal-ribbons-star-bold-duotone",
+  },
+  GOLD: {
+    label: "Gold",
+    color: "text-yellow-600",
+    bg: "bg-yellow-50",
+    border: "border-yellow-300",
+    icon: "solar:medal-ribbons-star-bold-duotone",
+  },
 } as const;
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
@@ -41,12 +59,20 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   const currentRoute = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "?";
-  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN
-    || user?.role === UserRole.OPERATIONS_ADMIN || user?.role === UserRole.ANALYST;
-  const { data: gatewayData, isLoading: gatewayLoading } = GetGatewayBalances(isAdmin);
+  const isAdmin =
+    user?.role === UserRole.ADMIN ||
+    user?.role === UserRole.SUPER_ADMIN ||
+    user?.role === UserRole.OPERATIONS_ADMIN ||
+    user?.role === UserRole.ANALYST;
+  const { data: gatewayData, isLoading: gatewayLoading } =
+    GetGatewayBalances(isAdmin);
 
-  const [agentTier, setAgentTier] = useState<"BRONZE" | "SILVER" | "GOLD" | null>(null);
-  const agentNetworkRole = useSelector((state: RootState) => state.auth.agentNetworkRole);
+  const [agentTier, setAgentTier] = useState<
+    "BRONZE" | "SILVER" | "GOLD" | null
+  >(null);
+  const agentNetworkRole = useSelector(
+    (state: RootState) => state.auth.agentNetworkRole,
+  );
   // Platform kill switch. Off means the whole feature is inert: no nav, no tier
   // badge, and no probes to /network/* (which answer 503 anyway).
   const { networkEnabled } = useNetworkEnabled();
@@ -64,50 +90,60 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
 
     // Restore from cookie immediately so nav doesn't flicker
     const cookieRole = Cookies.get("networkRole");
-    if (cookieRole === AgentNetworkRole.AREA_MANAGER || cookieRole === AgentNetworkRole.REGIONAL_LEAD) {
+    if (
+      cookieRole === AgentNetworkRole.AREA_MANAGER ||
+      cookieRole === AgentNetworkRole.REGIONAL_LEAD
+    ) {
       dispatch(setAgentNetworkRole(cookieRole as AgentNetworkRole));
     }
 
     Promise.allSettled([
       axiosRequest.get(API_ROUTES.network.me),
       axiosRequest.get(API_ROUTES.network.zoneMe),
-    ]).then(([tierRes, zoneRes]) => {
-      if (tierRes.status === "fulfilled") {
-        const tier = tierRes.value?.data?.data?.current_tier;
-        if (tier) setAgentTier(tier);
-      }
-      if (zoneRes.status === "fulfilled") {
-        const assignment = zoneRes.value?.data?.data?.assignment;
-        const role = assignment?.role as AgentNetworkRole | undefined;
-        // Status matters as much as role: an ENDED assignment still carries
-        // `role: AREA_MANAGER`, and reading the role alone is what kept the
-        // zone navigation alive for former managers. Checked here as well as
-        // server-side so a stale deployment of either half cannot resurrect it.
-        const isActive = !assignment?.status || assignment.status === "ACTIVE";
-        const resolved = isActive
-          && (role === AgentNetworkRole.AREA_MANAGER || role === AgentNetworkRole.REGIONAL_LEAD)
-          ? role
-          : null;
-        dispatch(setAgentNetworkRole(resolved));
-        if (resolved) {
-          Cookies.set("networkRole", resolved, { expires: 1 });
+    ])
+      .then(([tierRes, zoneRes]) => {
+        if (tierRes.status === "fulfilled") {
+          const tier = tierRes.value?.data?.data?.current_tier;
+          if (tier) setAgentTier(tier);
+        }
+        if (zoneRes.status === "fulfilled") {
+          const assignment = zoneRes.value?.data?.data?.assignment;
+          const role = assignment?.role as AgentNetworkRole | undefined;
+          // Status matters as much as role: an ENDED assignment still carries
+          // `role: AREA_MANAGER`, and reading the role alone is what kept the
+          // zone navigation alive for former managers. Checked here as well as
+          // server-side so a stale deployment of either half cannot resurrect it.
+          const isActive =
+            !assignment?.status || assignment.status === "ACTIVE";
+          const resolved =
+            isActive &&
+            (role === AgentNetworkRole.AREA_MANAGER ||
+              role === AgentNetworkRole.REGIONAL_LEAD)
+              ? role
+              : null;
+          dispatch(setAgentNetworkRole(resolved));
+          if (resolved) {
+            Cookies.set("networkRole", resolved, { expires: 1 });
+          } else {
+            Cookies.remove("networkRole");
+          }
         } else {
+          // Fail closed. Without this the optimistic cookie restore above stands
+          // unchallenged whenever the zone call errors, so a stale or foreign
+          // cookie keeps granting zone navigation for its full day of life. A
+          // real lead loses the links until the next successful call, which is
+          // the safer way to be wrong.
+          dispatch(setAgentNetworkRole(null));
           Cookies.remove("networkRole");
         }
-      } else {
-        // Fail closed. Without this the optimistic cookie restore above stands
-        // unchallenged whenever the zone call errors, so a stale or foreign
-        // cookie keeps granting zone navigation for its full day of life. A
-        // real lead loses the links until the next successful call, which is
-        // the safer way to be wrong.
-        dispatch(setAgentNetworkRole(null));
-        Cookies.remove("networkRole");
-      }
-    }).catch(() => {});
+      })
+      .catch(() => {});
   }, [user?.role, dispatch, networkEnabled]);
 
-  const isZoneManager = networkEnabled
-    && (agentNetworkRole === AgentNetworkRole.AREA_MANAGER || agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD);
+  const isZoneManager =
+    networkEnabled &&
+    (agentNetworkRole === AgentNetworkRole.AREA_MANAGER ||
+      agentNetworkRole === AgentNetworkRole.REGIONAL_LEAD);
 
   // Agent nav children that only make sense with an ACTIVE zone assignment.
   // A plain agent has no zone, so these would render as links to an empty
@@ -134,7 +170,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         return {
           ...link,
           children: link.children.filter(
-            (child) => !ZONE_LEAD_ONLY_SEGMENTS.includes(child.pathName)
+            (child) => !ZONE_LEAD_ONLY_SEGMENTS.includes(child.pathName),
           ),
         };
       });
@@ -147,7 +183,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         children: link.children?.map((child) =>
           child.pathName === "booking-disputes"
             ? { ...child, allow: [...child.allow, UserRole.AGENT] }
-            : child
+            : child,
         ),
       };
     });
@@ -217,7 +253,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       open: () => setIsMobileMenuOpen(true),
       close: () => setIsMobileMenuOpen(false),
     }),
-    [isMobileMenuOpen]
+    [isMobileMenuOpen],
   );
 
   // Route-level RBAC: if the current path matches a NAV_LINK entry whose `allow`
@@ -257,7 +293,11 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
             matchingAllowLists.push(child.allow);
           }
         }
-      } else if (link.link !== "#" && currentRoute.startsWith(link.link) && link.link !== PAGE_ROUTES.dashboard.base) {
+      } else if (
+        link.link !== "#" &&
+        currentRoute.startsWith(link.link) &&
+        link.link !== PAGE_ROUTES.dashboard.base
+      ) {
         matchingAllowLists.push(link.allow);
       }
     }
@@ -265,7 +305,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     if (matchingAllowLists.length === 0) return;
 
     const isAllowed = matchingAllowLists.some(
-      (allow) => allow.length === 0 || allow.includes(role)
+      (allow) => allow.length === 0 || allow.includes(role),
     );
     if (!isAllowed) {
       toast.error(MESSAGES.MSG_YOU_DON_T_HAVE_ACCESS_TO_THAT_PAGE);
@@ -320,195 +360,233 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
 
   return (
     <MobileMenuContext.Provider value={mobileMenuCtx}>
-    <div className="h-screen size-full relative">
-      {/* Mobile Menu Toggle — hidden on small screens where bottom nav is shown */}
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="hidden md:flex lg:hidden fixed top-4 left-4 z-50 p-3 rounded-lg bg-primary text-white hover:bg-primary/90
+      <div className="h-screen size-full relative">
+        {/* Mobile Menu Toggle — hidden on small screens where bottom nav is shown */}
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="hidden md:flex lg:hidden fixed top-4 left-4 z-50 p-3 rounded-lg bg-primary text-white hover:bg-primary/90
                    shadow-lg active:scale-95 transition-transform min-w-[48px] min-h-[48px] items-center justify-center"
-        aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-      >
-        {isMobileMenuOpen ? <IoClose size={28} /> : <IoMenu size={28} />}
-      </button>
+          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+        >
+          {isMobileMenuOpen ? <IoClose size={28} /> : <IoMenu size={28} />}
+        </button>
 
-      {/* Sidemenu */}
-      <div
-        className={`
+        {/* Sidemenu */}
+        <div
+          className={`
                 fixed lg:absolute w-[85%] sm:w-[75%] lg:w-[26%] xl:w-[20%] 2xl:w-[18%] 
                 bg-primary text-background h-full 
                 transition-transform duration-300 ease-in-out z-40
-                ${isMobileMenuOpen
-            ? "translate-x-0"
-            : "-translate-x-full lg:translate-x-0"
-          }
+                ${
+                  isMobileMenuOpen
+                    ? "translate-x-0"
+                    : "-translate-x-full lg:translate-x-0"
+                }
             `}
-      >
-        <div className="size-full">
-          <div className="w-full flex justify-center items-center ">
-            <div className="relative mt-8 mb-14">
-              <Image
-                src="/svg/logo_text_white.svg"
-                alt="logo"
-                height={170}
-                width={170}
-              />
-              {user?.role === "ADMIN" ? (
-              <Image
-                src="/svg/admin_text.svg"
-                alt="admin"
-                className="absolute -bottom-1 right-0.5"
-                height={30}
-                width={30}
-              />
-              ) : user?.role === "AGENT" ? (
-                <h3 className="absolute right-0.5 font-tt-firs-neue-trl">
-                  AGENT
-                </h3>
-              ) : null}
+        >
+          <div className="size-full">
+            <div className="w-full flex justify-center items-center ">
+              <div className="relative mt-8 mb-14">
+                <Image
+                  src="/svg/logo_text_white.svg"
+                  alt="logo"
+                  height={170}
+                  width={170}
+                />
+                {user?.role === "ADMIN" ? (
+                  <Image
+                    src="/svg/admin_text.svg"
+                    alt="admin"
+                    className="absolute -bottom-1 right-0.5"
+                    height={30}
+                    width={30}
+                  />
+                ) : user?.role === "AGENT" ? (
+                  <h3 className="absolute right-0.5 font-tt-firs-neue-trl">
+                    AGENT
+                  </h3>
+                ) : null}
+              </div>
             </div>
-          </div>
-          <div
-            className={`
+            <div
+              className={`
                             w-full h-[82%] overflow-y-auto
                             [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-teal-800
                         `}
-          >
-            {effectiveNavLinks.map((el, index) =>
-              el.allow.includes(user?.role) ? (
-                <SideNav
-                  key={index}
-                  index={index}
-                  link={el}
-                  role={user?.role}
-                  route={currentRoute}
-                  onNavigate={() => setIsMobileMenuOpen(false)}
-                />
-              ) : null
-            )}
-          </div>
-          {/* Footer: Cookie settings (production only) + Logout — extra bottom
-              padding on mobile to clear the bottom nav */}
-          <div className="absolute bottom-0 w-full flex flex-col items-center border-t-2 border-teal-700/70 bg-primary pb-16 md:pb-0">
-            {ANALYTICS_CONFIGURED && (
-              <button
-                onClick={openCookieSettings}
-                className="text-left flex gap-4 pl-7 py-3 hover:bg-teal-600/60 w-full text-white/70 hover:text-white items-center"
-              >
-                <Icon icon="mdi:cookie-outline" width="18" height="18" />
-                <span className="text-sm">Cookie settings</span>
-              </button>
-            )}
-            <button
-              onClick={handleLogOut}
-              className="text-left flex gap-4 pl-7 py-4 hover:bg-teal-600/60 w-full text-white min-h-[56px] items-center"
             >
-              <Icon icon="ic:baseline-logout" width="20" height="20" style={{ color: "white" }} />
-              <span className="text-base">Logout</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div
-        className={`
-                lg:ml-[26%] xl:ml-[20%] 2xl:ml-[18%] w-full lg:w-[74%] xl:w-[80%] 2xl:w-[82%] 
-                transition-all duration-300 ease-in-out flex flex-col h-screen overflow-hidden
-            `}
-      >
-        <div className="w-full h-14 md:h-20 flex-shrink-0 flex justify-between items-center px-4 sm:px-6 lg:px-10 bg-white border-b border-b-zinc-200/80">
-          {/* Spacer for tablet menu button (hidden on mobile where bottom nav is used) */}
-          <div className="hidden md:block lg:hidden w-12"></div>
-
-          <div className="w-1/2 hidden md:block">
-            <AutoBreadcrumb />
-          </div>
-          <div className="w-full md:w-1/2 xl:w-2/3 flex justify-end gap-2 sm:gap-3 items-center">
-            {/* Gateway Balances — admin only.
-                data-clarity-mask: keep merchant balances out of Clarity session
-                recordings (defense in depth on top of project-level mask mode). */}
-            {isAdmin && (
-              <div data-clarity-mask="true" className="hidden lg:flex items-center gap-3 mr-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-                {gatewayLoading ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
-                    <div className="w-px h-4 bg-gray-200" />
-                    <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
-                  </div>
-                ) : (() => {
-                  const balances = gatewayData?.data?.data ?? {};
-                  const fmt = (n: number) => new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
-                  return (
-                    <>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${balances.paystack?.isAvailable ? "bg-green-500" : "bg-red-400"}`} />
-                        <span className="text-[10px] font-medium text-gray-500">PS</span>
-                        <span className="text-xs font-bold text-gray-800">
-                          {balances.paystack?.isAvailable ? fmt(balances.paystack.available) : "N/A"}
-                        </span>
-                      </div>
-                      <div className="w-px h-4 bg-gray-200" />
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${balances.monnify?.isAvailable ? "bg-green-500" : "bg-red-400"}`} />
-                        <span className="text-[10px] font-medium text-gray-500">MN</span>
-                        <span className="text-xs font-bold text-gray-800">
-                          {balances.monnify?.isAvailable ? fmt(balances.monnify.available) : "N/A"}
-                        </span>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-
-            {networkEnabled && agentTier && (() => {
-              const cfg = TIER_CONFIG[agentTier];
-              return (
-                <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-                  <Icon icon={cfg.icon} width="14" />
-                  {cfg.label}
-                </span>
-              );
-            })()}
-            <div
-              className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
-              onClick={handleClick}
-            >
-              {user?.profile?.profileImage ? (
-                <Image
-                  src={user?.profile?.profileImage}
-                  alt="profile"
-                  width={40}
-                  height={40}
-                  className="rounded-full"
-                />
-              ) : (
-                <div className="w-10 h-10 flex items-center justify-center bg-[#124452] text-white text-lg font-bold rounded-full">
-                  {firstLetter}
-                </div>
+              {effectiveNavLinks.map((el, index) =>
+                el.allow.includes(user?.role) ? (
+                  <SideNav
+                    key={index}
+                    index={index}
+                    link={el}
+                    role={user?.role}
+                    route={currentRoute}
+                    onNavigate={() => setIsMobileMenuOpen(false)}
+                  />
+                ) : null,
               )}
-
-              <div className="ml-2 text-[12px] hidden sm:block">
-                <p className="">{user?.profile?.firstName || "Welcome Back"}</p>
-                <p className="-mt-1 text-zinc-400 truncate max-w-[120px]">{user?.email}</p>
-              </div>
+            </div>
+            {/* Footer: Cookie settings (production only) + Logout — extra bottom
+              padding on mobile to clear the bottom nav */}
+            <div className="absolute bottom-0 w-full flex flex-col items-center border-t-2 border-teal-700/70 bg-primary pb-16 md:pb-0">
+              {ANALYTICS_CONFIGURED && (
+                <button
+                  onClick={openCookieSettings}
+                  className="text-left flex gap-4 pl-7 py-3 hover:bg-teal-600/60 w-full text-white/70 hover:text-white items-center"
+                >
+                  <Icon icon="mdi:cookie-outline" width="18" height="18" />
+                  <span className="text-sm">Cookie settings</span>
+                </button>
+              )}
+              <button
+                onClick={handleLogOut}
+                className="text-left flex gap-4 pl-7 py-4 hover:bg-teal-600/60 w-full text-white min-h-[56px] items-center"
+              >
+                <Icon
+                  icon="ic:baseline-logout"
+                  width="20"
+                  height="20"
+                  style={{ color: "white" }}
+                />
+                <span className="text-base">Logout</span>
+              </button>
             </div>
           </div>
         </div>
-        <div className="px-2 sm:px-1 md:px-1 py-2 sm:py-1 pb-20 md:pb-2 w-full flex-1 overflow-y-auto">{children}</div>
-      </div>
 
-      {/* Bottom Navigation — mobile only */}
-      <BottomNav />
-
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
+        {/* Main Content */}
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-    </div>
+          className={`
+                lg:ml-[26%] xl:ml-[20%] 2xl:ml-[18%] w-full lg:w-[74%] xl:w-[80%] 2xl:w-[82%] 
+                transition-all duration-300 ease-in-out flex flex-col h-screen overflow-hidden
+            `}
+        >
+          <div className="w-full h-14 md:h-20 flex-shrink-0 flex justify-between items-center px-4 sm:px-6 lg:px-10 bg-white border-b border-b-zinc-200/80">
+            {/* Spacer for tablet menu button (hidden on mobile where bottom nav is used) */}
+            <div className="hidden md:block lg:hidden w-12"></div>
+
+            <div className="w-1/2 hidden md:block">
+              <AutoBreadcrumb />
+            </div>
+            <div className="w-full md:w-1/2 xl:w-2/3 flex justify-end gap-2 sm:gap-3 items-center">
+              {/* Gateway Balances — admin only.
+                data-clarity-mask: keep merchant balances out of Clarity session
+                recordings (defense in depth on top of project-level mask mode). */}
+              {isAdmin && (
+                <div
+                  data-clarity-mask="true"
+                  className="hidden lg:flex items-center gap-3 mr-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100"
+                >
+                  {gatewayLoading ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
+                      <div className="w-px h-4 bg-gray-200" />
+                      <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
+                    </div>
+                  ) : (
+                    (() => {
+                      const balances = gatewayData?.data?.data ?? {};
+                      const fmt = (n: number) =>
+                        new Intl.NumberFormat("en-NG", {
+                          style: "currency",
+                          currency: "NGN",
+                          maximumFractionDigits: 0,
+                        }).format(n);
+                      return (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${balances.paystack?.isAvailable ? "bg-green-500" : "bg-red-400"}`}
+                            />
+                            <span className="text-[10px] font-medium text-gray-500">
+                              PS
+                            </span>
+                            <span className="text-xs font-bold text-gray-800">
+                              {balances.paystack?.isAvailable
+                                ? fmt(balances.paystack.available)
+                                : "N/A"}
+                            </span>
+                          </div>
+                          <div className="w-px h-4 bg-gray-200" />
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${balances.monnify?.isAvailable ? "bg-green-500" : "bg-red-400"}`}
+                            />
+                            <span className="text-[10px] font-medium text-gray-500">
+                              MN
+                            </span>
+                            <span className="text-xs font-bold text-gray-800">
+                              {balances.monnify?.isAvailable
+                                ? fmt(balances.monnify.available)
+                                : "N/A"}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()
+                  )}
+                </div>
+              )}
+
+              {networkEnabled &&
+                agentTier &&
+                (() => {
+                  const cfg = TIER_CONFIG[agentTier];
+                  return (
+                    <span
+                      className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}
+                    >
+                      <Icon icon={cfg.icon} width="14" />
+                      {cfg.label}
+                    </span>
+                  );
+                })()}
+              <div
+                className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
+                onClick={handleClick}
+              >
+                {user?.profile?.profileImage ? (
+                  <Image
+                    src={user?.profile?.profileImage}
+                    alt="profile"
+                    width={40}
+                    height={40}
+                    className="rounded-full"
+                  />
+                ) : (
+                  <div className="w-10 h-10 flex items-center justify-center bg-[#124452] text-white text-lg font-bold rounded-full">
+                    {firstLetter}
+                  </div>
+                )}
+
+                <div className="ml-2 text-[12px] hidden sm:block">
+                  <p className="">
+                    {user?.profile?.firstName || "Welcome Back"}
+                  </p>
+                  <p className="-mt-1 text-zinc-400 truncate max-w-[120px]">
+                    {user?.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="px-2 sm:px-1 md:px-1 py-2 sm:py-1 pb-20 md:pb-2 w-full flex-1 overflow-y-auto">
+            {children}
+          </div>
+        </div>
+
+        {/* Bottom Navigation — mobile only */}
+        <BottomNav />
+
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </div>
     </MobileMenuContext.Provider>
   );
 }
