@@ -261,7 +261,7 @@ export default function StepMediaDocs({
   docFiles,
   setDocFiles,
   units,
-  unitMediaByCategory,
+  unitMediaByCategory, 
   setUnitMediaByCategory,
   onDiscontinueListing,
 }: StepMediaDocsProps) {

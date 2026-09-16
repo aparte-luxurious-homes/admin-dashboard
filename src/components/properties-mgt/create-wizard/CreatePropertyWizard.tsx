@@ -347,14 +347,6 @@ export default function CreatePropertyWizard() {
   const handleCloseShowDiscontinueModal = () => setShowDiscontinueModal(false);
   const handleOpenShowDiscontinueModal = () => setShowDiscontinueModal(true);
 
-  const [firstTimeUploadingMedia, setFirstTimeUploadingMedia] = useState(true);
-
-  useEffect(() => {
-    if (WizardStep.MEDIA_DOCS) {
-      setFirstTimeUploadingMedia(true);
-    }
-  }, []);
-
   // Step validation
   const validateStep = (step: WizardStep): boolean => {
     switch (step) {
@@ -428,10 +420,9 @@ export default function CreatePropertyWizard() {
       case WizardStep.UNITS:
         return true; // Units are optional
       case WizardStep.MEDIA_DOCS: {
-        if (WizardStep.MEDIA_DOCS && !firstTimeUploadingMedia) {
-          toast.error(MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR);
-          return false;
-        }
+        // Only enforced when the user explicitly tries to create (see
+        // handleCreateProperty). Returning true here keeps step navigation
+        // from toasting about empty media the moment this step is entered.
         return true;
       }
       case WizardStep.DISCOUNTS:
@@ -499,18 +490,16 @@ export default function CreatePropertyWizard() {
 
   // Submit
   const handleCreateProperty = async (values: PropertyFormValues) => {
-    if (!validateStep(WizardStep.MEDIA_DOCS)) return;
-
-    const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
-
     const anyPropertyMedia = Object.values(propertyMedia).some(
       (files) => (files?.length ?? 0) > 0,
     );
 
-    if (WizardStep.MEDIA_DOCS && !anyPropertyMedia) {
+    if (!anyPropertyMedia) {
       toast.error(MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR);
-      return false;
+      return;
     }
+
+    const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
 
     if (
       values.latitude == null ||
@@ -871,11 +860,12 @@ export default function CreatePropertyWizard() {
         propertyName={formik.values.name}
       />
 
-      {/* Step Content */}
+      {/* Step Content — onSubmit is intentional no-op. Create is type="button"
+          so Enter / browser autofill cannot submit while media is empty and
+          toast on mount or mid-wizard. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          formik.handleSubmit();
         }}
       >
         {currentStep === WizardStep.PROPERTY_DETAILS && (
@@ -929,8 +919,9 @@ export default function CreatePropertyWizard() {
 
           {currentStep === WizardStep.MEDIA_DOCS ? (
             <button
-              type="submit"
+              type="button"
               disabled={isCreating}
+              onClick={() => formik.handleSubmit()}
               className="h-11 px-8 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isCreating ? (
