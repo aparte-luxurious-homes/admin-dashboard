@@ -15,8 +15,12 @@ import {
 import Loader from "@/components/loader";
 
 /**
- * Hard-blocks unapproved agents from any dashboard shell. Primary gates live
- * in login/useAuth; this catches persisted sessions and deep links.
+ * Hard-blocks unapproved agents from any dashboard shell, and is the ONLY place
+ * the "requires approved KYC" toast is raised.
+ *
+ * Login deliberately does not check: an agent who is refused at the login form
+ * reads it as "I can't log in", which is exactly what verified agents reported.
+ * The check waits until the agent is signed in and the dashboard loads.
  */
 export default function AgentAccessGate({
   children,
