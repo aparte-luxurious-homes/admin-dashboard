@@ -1,6 +1,5 @@
 "use client";
 
-import { MESSAGES } from '@/src/lib/messages';
 import Image from "next/image";
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Accept, useDropzone } from "react-dropzone";
@@ -13,6 +12,29 @@ const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 function formatFileSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+// Name alone is not identity: phones hand out "image.jpg" to every photo, so
+// matching on it rejected a different picture as "already added".
+function fileKey(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+// "image" / "video" when every file is one kind, "file" when they are mixed,
+// so the toast reads "This image…" or "These files…" and never "These files"
+// about one photo.
+function describeFiles(files: File[]) {
+  const kinds = new Set(
+    files.map((f) => (f.type.startsWith("video/") ? "video" : f.type.startsWith("image/") ? "image" : "file")),
+  );
+  const noun = kinds.size === 1 ? Array.from(kinds)[0] : "file";
+  const plural = files.length > 1;
+  return { noun: plural ? `${noun}s` : noun, plural };
+}
+
+function alreadyAddedMessage(files: File[]) {
+  const { noun, plural } = describeFiles(files);
+  return `${plural ? "These" : "This"} ${noun} ${plural ? "have" : "has"} already been added`;
 }
 
 type DropzoneProps = {
@@ -70,11 +92,11 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
 
       // Ensure only new files are added (prevent duplicates)
       const newFiles = validFiles.filter(
-        (file) => !previewsRef.current?.some((prev) => prev.file.name === file.name)
+        (file) => !previewsRef.current?.some((prev) => fileKey(prev.file) === fileKey(file))
       );
 
       if (newFiles.length === 0) {
-        if (oversized.length === 0) toast.error(MESSAGES.MSG_THESE_FILES_HAVE_ALREADY_BEEN_ADDED);
+        if (oversized.length === 0) toast.error(alreadyAddedMessage(validFiles));
         return;
       }
   
@@ -92,16 +114,16 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
       // Pass updated file list to parent
       onDrop(previewsRef.current?.map((prev) => prev.file) || []);
       
-      toast.success(`${newFiles.length} file${newFiles.length > 1 ? 's' : ''} added successfully`);
+      toast.success(`${newFiles.length} ${describeFiles(newFiles).noun} added successfully`);
     },
     [onDrop, previewsRef]
   );
   
   // Function to remove images
   const handleRemove = useCallback(
-    (fileName: string) => {
+    (key: string) => {
       // Filter out the removed file
-      previewsRef.current = previewsRef.current?.filter((prev) => prev.file.name !== fileName) || [];
+      previewsRef.current = previewsRef.current?.filter((prev) => fileKey(prev.file) !== key) || [];
   
       // Force re-render
       forceUpdate((prev) => prev + 1);
@@ -182,7 +204,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {previewsRef.current.map((preview, index) => (
-              <div key={preview.file.name} className="relative group aspect-square">
+              <div key={fileKey(preview.file)} className="relative group aspect-square">
                 {preview.file.type.startsWith("video/") ? (
                   <video
                     src={preview.url}
@@ -216,7 +238,7 @@ const CustomDropzone: React.FC<DropzoneProps> = ({
                 <div
                   onClick={(event) => {
                     event.stopPropagation();
-                    handleRemove(preview.file.name);
+                    handleRemove(fileKey(preview.file));
                   }}
                   className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center cursor-pointer"
                 >
