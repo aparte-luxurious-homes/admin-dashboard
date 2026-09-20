@@ -89,8 +89,12 @@ export default function OwnerHome() {
         []
     );
 
+    // Full width on desktop, with Next and the agents in a right rail so the
+    // calendar keeps the room it wants. On a phone the rail's contents follow
+    // the calendar in the flow, in the order they always did. (Spec D3 said
+    // no rail; the spec owner asked for this one.)
     return (
-        <div className="mx-auto w-full max-w-[1080px] space-y-4 p-4 sm:p-6">
+        <div className="w-full space-y-4 p-4 sm:p-6">
             <div className="flex flex-wrap items-center gap-3">
                 <div>
                     <h1 className="text-xl font-semibold text-gray-900">
@@ -102,6 +106,8 @@ export default function OwnerHome() {
                 <SharePill ref={shareRef} className="ml-auto max-[660px]:ml-0 max-[660px]:w-full" />
             </div>
 
+            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-4">
+            <div className="min-w-0 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
                 {summaryFailed || (!summaryLoading && !summary) ? (
                     // Never leave the skeletons up on a failure: they read as
@@ -148,10 +154,13 @@ export default function OwnerHome() {
                 onSelect={setSelection}
                 onShare={() => shareRef.current?.copy("calendar_prompt")}
             />
+            </div>
 
-            <NextActions items={actions?.items ?? []} />
-
-            {agents && <AgentsPanel agents={agents.agents} windowDays={agents.window_days} />}
+            <aside className="mt-4 space-y-4 lg:mt-0">
+                <NextActions items={actions?.items ?? []} />
+                {agents && <AgentsPanel agents={agents.agents} windowDays={agents.window_days} />}
+            </aside>
+            </div>
 
             <NightSheet selection={selection} onClose={() => setSelection(null)} />
         </div>
