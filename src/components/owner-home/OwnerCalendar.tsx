@@ -16,11 +16,22 @@ const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** Above this share of open nights, the calendar asks the owner to share their page. */
 export const SHARE_PROMPT_THRESHOLD = 0.6;
 
-export interface CalendarSelection {
+/** One night of one listing: what a tap on a single-listing tab opens. */
+export interface NightSelection {
+    kind: "night";
     night: CalendarNight;
     unit: CalendarUnit;
     booking?: CalendarBooking;
 }
+
+/** One night across every listing: what a tap on the all-listings tab opens. */
+export interface DaySelection {
+    kind: "day";
+    date: string;
+    rows: { unit: CalendarUnit; night: CalendarNight; booking?: CalendarBooking }[];
+}
+
+export type CalendarSelection = NightSelection | DaySelection;
 
 /**
  * The calendar is the main object on the page (spec D4): it answers "what is
@@ -418,16 +429,13 @@ function DayCell({
     // The all-listings view is read only: it answers "is anything happening
     // anywhere", and changing a night needs a listing picked first.
     if (showAll) {
-        return (
-            <div
-                role="img"
-                aria-label={`${label}: ${nights.filter((n) => n.state !== "OPEN").length} of ${
-                    nights.length
-                } listings taken`}
-                className={`flex min-h-[56px] flex-col gap-1 rounded-lg border border-gray-100 p-1.5 sm:min-h-[68px] ${
-                    isPast ? "bg-gray-50 opacity-60" : ""
-                } ${isToday ? "ring-2 ring-[#028090] ring-inset" : ""}`}
-            >
+        const taken = nights.filter((n) => n.state !== "OPEN").length;
+        const allLabel = `${label}: ${taken} of ${nights.length} listings taken`;
+        const allClass = `flex min-h-[56px] flex-col gap-1 rounded-lg border border-gray-100 p-1.5 text-left sm:min-h-[68px] ${
+            isPast ? "bg-gray-50 opacity-60" : "hover:border-[#028090] hover:bg-[#028090]/5"
+        } ${isToday ? "ring-2 ring-[#028090] ring-inset" : ""}`;
+        const segments = (
+            <>
                 <span className="text-[11px] font-semibold tabular-nums text-gray-600">
                     {format(day, "d")}
                 </span>
@@ -450,7 +458,46 @@ function DayCell({
                         />
                     ))}
                 </span>
-            </div>
+            </>
+        );
+
+        if (isPast) {
+            return (
+                <div role="img" aria-label={allLabel} className={allClass}>
+                    {segments}
+                </div>
+            );
+        }
+        // Read only, but not inert: the tap opens the night across every
+        // listing (spec section 8). It used to open nothing, which read as
+        // "the calendar is broken" rather than "pick a listing to close one".
+        return (
+            <button
+                type="button"
+                data-day={format(day, "yyyy-MM-dd")}
+                aria-label={allLabel}
+                onClick={() =>
+                    onSelect({
+                        kind: "day",
+                        date: format(day, "yyyy-MM-dd"),
+                        rows: nights.flatMap((night) => {
+                            const unit = units.find((u) => u.unit_id === night.unit_id);
+                            return unit
+                                ? [{
+                                    unit,
+                                    night,
+                                    booking: night.booking_id
+                                        ? bookingsById.get(night.booking_id)
+                                        : undefined,
+                                }]
+                                : [];
+                        }),
+                    })
+                }
+                className={`${allClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#028090]`}
+            >
+                {segments}
+            </button>
         );
     }
 
@@ -473,7 +520,11 @@ function DayCell({
 
     const booking = night.booking_id ? bookingsById.get(night.booking_id) : undefined;
     const unit = units.find((u) => u.unit_id === night.unit_id)!;
-    const interactive = !isPast && (night.writable || night.state !== "OPEN");
+    // Every night that is not in the past answers a tap. An open night on a
+    // listing that cannot be closed from here (several rooms, not yet
+    // verified) opens a sheet that says so; leaving it inert read as a bug —
+    // "I can't select dates on Unit B" — when it was a rule with no words.
+    const interactive = !isPast;
     const styles = STATE_STYLES[night.state] ?? STATE_STYLES.OPEN;
 
     const content = (
@@ -529,7 +580,7 @@ function DayCell({
             aria-label={`${label}: ${STATE_WORDS[night.state]}${
                 booking ? `, ${booking.guest_name}` : ""
             }`}
-            onClick={() => onSelect({ night, unit, booking })}
+            onClick={() => onSelect({ kind: "night", night, unit, booking })}
             className={`${className} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#028090]`}
         >
             {content}

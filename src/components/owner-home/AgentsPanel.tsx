@@ -48,20 +48,12 @@ export default function AgentsPanel({
                 <span className="ml-auto text-xs text-gray-500">Last {windowDays} days</span>
             </header>
 
-            <div className="hidden md:grid grid-cols-[minmax(150px,1.5fr)_92px_1fr_120px_auto] gap-3 px-5 pb-2 text-[11.5px] font-semibold text-gray-500">
-                <span>Agent</span>
-                <span>Bookings</span>
-                <span>You earned</span>
-                <span>Last booking</span>
-                <span />
-            </div>
-
             {agents.map((agent) => (
                 <div
                     key={agent.agent_id}
-                    className="grid grid-cols-2 md:grid-cols-[minmax(150px,1.5fr)_92px_1fr_120px_auto] items-center gap-3 border-t border-gray-100 px-5 py-3.5 text-sm"
+                    className="grid grid-cols-2 items-center gap-3 border-t border-gray-100 px-5 py-3.5 text-sm"
                 >
-                    <div className="col-span-2 md:col-span-1 flex min-w-0 items-center gap-3">
+                    <div className="col-span-2 flex min-w-0 items-center gap-3">
                         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#028090]/10 text-xs font-bold text-[#028090]">
                             {initials(agent.name)}
                         </span>
@@ -75,7 +67,7 @@ export default function AgentsPanel({
 
                     <span className="font-semibold tabular-nums text-gray-900">
                         {agent.bookings}
-                        <span className="ml-1 text-xs font-medium text-gray-500 md:hidden">bookings</span>
+                        <span className="ml-1 text-xs font-medium text-gray-500">bookings</span>
                     </span>
 
                     <span className="font-semibold tabular-nums text-gray-900">
@@ -93,14 +85,19 @@ export default function AgentsPanel({
                         {agent.last_booking_at
                             ? format(parseISO(agent.last_booking_at), "d MMM yyyy")
                             : "No bookings yet"}
+                        {agent.last_booking_at && (
+                            <em className="block text-[11.5px] font-medium not-italic text-gray-500">
+                                last booking
+                            </em>
+                        )}
                     </span>
 
-                    <span className="col-span-2 flex gap-2 md:col-span-1">
+                    <span className="col-span-2 flex gap-2">
                         {agent.phone && (
                             <>
                                 <a
                                     href={`tel:${agent.phone}`}
-                                    className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-center text-[13px] font-semibold text-[#028090] hover:bg-[#028090]/5 md:flex-none"
+                                    className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-center text-[13px] font-semibold text-[#028090] hover:bg-[#028090]/5"
                                 >
                                     Call
                                 </a>
@@ -108,7 +105,7 @@ export default function AgentsPanel({
                                     href={whatsappHref(agent.phone)}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-center text-[13px] font-semibold text-[#028090] hover:bg-[#028090]/5 md:flex-none"
+                                    className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-center text-[13px] font-semibold text-[#028090] hover:bg-[#028090]/5"
                                 >
                                     WhatsApp
                                 </a>

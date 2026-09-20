@@ -20,7 +20,7 @@ import {
     ReopenNights,
     type BlockReason,
 } from "@/src/lib/request-handlers/ownerHomeMgt";
-import type { CalendarSelection } from "./OwnerCalendar";
+import type { CalendarSelection, DaySelection, NightSelection } from "./OwnerCalendar";
 
 const MAX_NIGHTS = 30;
 
@@ -80,7 +80,27 @@ function SheetBody({
     selection: CalendarSelection;
     onClose: () => void;
 }) {
+    if (selection.kind === "day") return <DayBreakdown selection={selection} />;
+
     const { night, unit, booking } = selection;
+
+    if (!unit.is_verified) {
+        return (
+            <>
+                <DialogHeader>
+                    <DialogTitle className="text-left">Yet to be verified</DialogTitle>
+                    <DialogDescription className="text-left">
+                        {format(parseISO(night.date), "EEEE, d MMMM")}, {unit.unit_name}
+                    </DialogDescription>
+                </DialogHeader>
+                <p className="text-sm text-gray-600">
+                    {unit.property_name} has not passed review yet, so it is not on sale
+                    anywhere and there is nothing to close. Its calendar goes live when it
+                    is verified.
+                </p>
+            </>
+        );
+    }
 
     if (booking) return <StayDetail selection={selection} onClose={onClose} />;
     if (night.state === "OWNER_HOLD" || night.state === "OFFLINE") {
@@ -137,7 +157,64 @@ function SheetBody({
     return <RoomsDetail selection={selection} />;
 }
 
-function UnitCalendarLink({ unit }: { unit: CalendarSelection["unit"] }) {
+const STATE_LINE: Record<string, string> = {
+    OPEN: "Open",
+    BOOKED: "Booked on Aparte",
+    OFFLINE: "Booked elsewhere",
+    OWNER_HOLD: "Closed by you",
+    EXTERNAL: "Blocked by a connected calendar",
+    CLOSED: "Closed",
+    UNAVAILABLE: "Not available",
+    PARTIAL: "Partly booked",
+};
+
+/**
+ * One night across every listing, read only: the all-listings tab answers
+ * "is anything happening anywhere", and changing a night means picking a
+ * listing first.
+ */
+function DayBreakdown({ selection }: { selection: DaySelection }) {
+    return (
+        <>
+            <DialogHeader>
+                <DialogTitle className="text-left">
+                    {format(parseISO(selection.date), "EEEE, d MMMM")}
+                </DialogTitle>
+                <DialogDescription className="text-left">
+                    Every listing on this night. Pick a listing tab to close a night.
+                </DialogDescription>
+            </DialogHeader>
+
+            <div>
+                {selection.rows.map(({ unit, night, booking }) => (
+                    <div
+                        key={unit.unit_id}
+                        className="flex items-center gap-3 border-t border-gray-100 py-2.5 text-sm"
+                    >
+                        <span className="min-w-0">
+                            <b className="block truncate font-semibold text-gray-900">
+                                {unit.unit_name}
+                            </b>
+                            <span className="block truncate text-xs text-gray-500">
+                                {unit.property_name}
+                                {!unit.is_verified && " · not yet verified"}
+                            </span>
+                        </span>
+                        <span className="ml-auto shrink-0 text-right text-[13px] text-gray-700">
+                            {booking
+                                ? booking.guest_name
+                                : night.state === "PARTIAL"
+                                  ? `${night.rooms_booked} of ${night.rooms_total} rooms`
+                                  : STATE_LINE[night.state] ?? night.state}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </>
+    );
+}
+
+function UnitCalendarLink({ unit }: { unit: NightSelection["unit"] }) {
     return (
         <Link
             href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.units.details(
@@ -155,7 +232,7 @@ function UnitCalendarLink({ unit }: { unit: CalendarSelection["unit"] }) {
  * A night on a multi-room unit, or one carrying more than one booking: how
  * many rooms are taken, and where to go to change it. Read only (spec D15).
  */
-function RoomsDetail({ selection }: { selection: CalendarSelection }) {
+function RoomsDetail({ selection }: { selection: NightSelection }) {
     const { night, unit } = selection;
     const free = Math.max(0, night.rooms_total - night.rooms_booked);
     return (
@@ -194,7 +271,7 @@ function StayDetail({
     selection,
     onClose,
 }: {
-    selection: CalendarSelection;
+    selection: NightSelection;
     onClose: () => void;
 }) {
     const { booking, unit } = selection;
@@ -247,7 +324,7 @@ function ClosedDetail({
     selection,
     onClose,
 }: {
-    selection: CalendarSelection;
+    selection: NightSelection;
     onClose: () => void;
 }) {
     const { night, unit } = selection;
@@ -321,7 +398,7 @@ function CloseForm({
     selection,
     onClose,
 }: {
-    selection: CalendarSelection;
+    selection: NightSelection;
     onClose: () => void;
 }) {
     const { night, unit } = selection;
