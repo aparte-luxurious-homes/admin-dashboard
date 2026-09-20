@@ -15,6 +15,23 @@ export const formatMoney = (amount: string | number, currency: string = "NGN"): 
   return `${symbol}${numeral(amount).format("0,0.00")}`;
 };
 
+/**
+ * Money with the currency written out: "NGN 1,530,000".
+ *
+ * The naira symbol is not used on owner-facing surfaces (owner home spec D12):
+ * it renders as a box in several of the fonts and PDF viewers owners use, and
+ * owners screenshot these figures and send them on.
+ *
+ * `whole` trims a zero kobo rather than rounding to it. Rounding would round
+ * UP: a balance of 1,530,000.55 displayed as "NGN 1,530,001" is money the
+ * owner does not have, it disagrees with the wallet page, and a withdrawal of
+ * the figure on screen would be refused (spec D14).
+ */
+export const formatNgn = (
+  amount: string | number,
+  { whole = false, currency = "NGN" }: { whole?: boolean; currency?: string } = {}
+): string => `${currency} ${numeral(amount).format(whole ? "0,0.[00]" : "0,0.00")}`;
+
 export function areArraysEqual(arr1: any[], arr2: any[]): boolean {
   if (arr1.length !== arr2.length) return false; // Different lengths → not equal
   return arr1.sort().toString() === arr2.sort().toString();

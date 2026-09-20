@@ -342,7 +342,19 @@ export const API_ROUTES = {
             conflicts: '/ical/admin/conflicts',
             resolveConflict: '/ical/admin/conflicts/resolve',
         }
-    }
+    },
+    // Owner home (docs/owner-home-spec.md). Owner-scoped: the API always
+    // answers for the caller and never takes an owner id.
+    ownerHome: {
+        summary: '/owner/home/summary',
+        calendar: (from: string, to: string, propertyId?: string) =>
+            `/owner/calendar?from=${from}&to=${to}` +
+            (propertyId ? `&property_id=${propertyId}` : ''),
+        blocks: '/owner/calendar/blocks',
+        block: (blockGroupId: string) => `/owner/calendar/blocks/${blockGroupId}`,
+        actions: '/owner/actions',
+        agents: (windowDays = 90) => `/owner/agents/performance?window_days=${windowDays}`,
+    },
 };
 
 

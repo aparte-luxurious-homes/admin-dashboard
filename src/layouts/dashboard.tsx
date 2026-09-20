@@ -580,7 +580,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-          <div className="px-2 sm:px-1 md:px-1 py-2 sm:py-1 pb-20 md:pb-2 w-full flex-1 overflow-y-auto">
+          <div className="px-2 sm:px-1 md:px-1 py-2 sm:py-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-2 w-full flex-1 overflow-y-auto">
             {children}
           </div>
         </div>
