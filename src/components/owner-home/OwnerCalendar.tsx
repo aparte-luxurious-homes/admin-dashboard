@@ -113,6 +113,10 @@ export default function OwnerCalendar({
 
     const openShare = totalNights > 0 ? openNights / totalNights : 0;
     const activeUnit = units.find((u) => u.unit_id === selectedUnitId);
+    // Unit names repeat across an owner's properties ("Unit A", "King Size"),
+    // so once there is more than one property each tab also names its own.
+    const severalProperties = new Set(units.map((u) => u.property_id)).size > 1;
+    const unverifiedSelected = Boolean(activeUnit && !activeUnit.is_verified);
 
     /**
      * Arrow keys walk the grid (spec section 10). Without this a keyboard user
@@ -150,14 +154,33 @@ export default function OwnerCalendar({
             </header>
 
             {/* One unit needs no tab bar; six or more would scroll one off the
-                edge, so they get a select instead. */}
+                edge, so they get a select instead.
+
+                overflow-y-hidden on the strip is load-bearing: overflow-x:auto
+                makes overflow-y compute to auto as well, and the tabs' 1px
+                -mb-px underline then overflows by exactly one pixel and
+                summons a vertical scrollbar. */}
             {multi && units.length <= 5 && (
                 <div
                     role="tablist"
                     aria-label="Your listings"
-                    className="flex gap-1 overflow-x-auto border-b border-gray-100 px-5"
+                    className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-gray-100 px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
-                    {[{ unit_id: "all", unit_name: "All listings" }, ...units].map((unit) => (
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-controls="owner-calendar-grid"
+                        aria-selected={activeUnitId === "all"}
+                        onClick={() => onUnitChange("all")}
+                        className={`-mb-px whitespace-nowrap border-b-2 px-3 pb-2.5 pt-2 text-[13.5px] font-semibold ${
+                            activeUnitId === "all"
+                                ? "border-[#028090] text-gray-900"
+                                : "border-transparent text-gray-500 hover:text-gray-900"
+                        }`}
+                    >
+                        All listings
+                    </button>
+                    {units.map((unit) => (
                         <button
                             key={unit.unit_id}
                             type="button"
@@ -165,13 +188,25 @@ export default function OwnerCalendar({
                             aria-controls="owner-calendar-grid"
                             aria-selected={activeUnitId === unit.unit_id}
                             onClick={() => onUnitChange(unit.unit_id)}
-                            className={`-mb-px whitespace-nowrap border-b-2 px-3 pb-2.5 pt-2 text-[13.5px] font-semibold ${
+                            className={`-mb-px whitespace-nowrap border-b-2 px-3 pb-2 pt-2 text-left text-[13.5px] font-semibold leading-tight ${
                                 activeUnitId === unit.unit_id
                                     ? "border-[#028090] text-gray-900"
                                     : "border-transparent text-gray-500 hover:text-gray-900"
-                            }`}
+                            } ${unit.is_verified ? "" : "opacity-60"}`}
                         >
-                            {unit.unit_name}
+                            <span className="block">
+                                {unit.unit_name}
+                                {!unit.is_verified && (
+                                    <span className="ml-1.5 rounded bg-amber-100 px-1 py-px text-[10px] font-semibold text-amber-800 align-middle">
+                                        Unverified
+                                    </span>
+                                )}
+                            </span>
+                            {severalProperties && (
+                                <span className="block text-[11px] font-medium text-gray-400">
+                                    {unit.property_name}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -188,9 +223,18 @@ export default function OwnerCalendar({
                         {units.map((unit) => (
                             <option key={unit.unit_id} value={unit.unit_id}>
                                 {unit.property_name}, {unit.unit_name}
+                                {unit.is_verified ? "" : " (unverified)"}
                             </option>
                         ))}
                     </select>
+                </div>
+            )}
+
+            {unverifiedSelected && activeUnit && (
+                <div className="mx-5 mt-3.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-900">
+                    <b className="font-semibold">{activeUnit.property_name}</b> is yet to be
+                    verified. It is not on sale anywhere until it is, so its calendar is
+                    shown for reference only.
                 </div>
             )}
 
@@ -257,7 +301,9 @@ export default function OwnerCalendar({
                     id="owner-calendar-grid"
                     role="tabpanel"
                     onKeyDown={onGridKeyDown}
-                    className="grid grid-cols-7 gap-px px-0.5 pb-3 sm:gap-1 sm:px-5"
+                    className={`grid grid-cols-7 gap-px px-0.5 pb-3 sm:gap-1 sm:px-5 ${
+                        unverifiedSelected ? "opacity-50 grayscale" : ""
+                    }`}
                 >
                     {days.map((day, index) => {
                         if (!day) return <div key={`pad-${index}`} aria-hidden />;
@@ -288,9 +334,11 @@ export default function OwnerCalendar({
                 <span className="ml-auto text-gray-500">
                     {showAll
                         ? "Pick a listing to close a night"
-                        : activeUnit && !activeUnit.writable
-                          ? `${activeUnit.unit_name} has ${activeUnit.rooms} rooms. Close rooms from the unit's own calendar.`
-                          : "Tap any open day to close it"}
+                        : unverifiedSelected
+                          ? "This listing is yet to be verified"
+                          : activeUnit && !activeUnit.writable
+                            ? `${activeUnit.unit_name} has ${activeUnit.rooms} rooms. Close rooms from the unit's own calendar.`
+                            : "Tap any open day to close it"}
                 </span>
             </div>
 
