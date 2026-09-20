@@ -1538,7 +1538,7 @@ Deleting anyway removes the unit but does NOT ` +
       </form>
 
       {/* ── Mobile sticky bottom action bar (hidden on lg+) ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-100 px-4 py-3 flex items-center gap-3 shadow-xl">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-zinc-100 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-3 shadow-xl">
         <button
           type="button"
           onClick={() => {

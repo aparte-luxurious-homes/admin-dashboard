@@ -15,7 +15,7 @@ export default function ConsentBanner({ onAccept, onDecline }: Props) {
       role="dialog"
       aria-live="polite"
       aria-label="Cookie consent"
-      className="fixed inset-x-0 bottom-0 z-[9999] px-4 pb-4 sm:px-6 sm:pb-6"
+      className="fixed inset-x-0 bottom-0 z-[9999] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-4 rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/5 sm:flex-row sm:items-center sm:p-6">
         <p className="flex-1 text-sm leading-relaxed text-gray-600">

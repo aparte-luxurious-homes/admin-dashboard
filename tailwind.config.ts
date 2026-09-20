@@ -1,6 +1,9 @@
 import type { Config } from "tailwindcss";
 
 export default {
+  // Hover styles apply only where hovering is real. Without this, tapping an
+  // element on a phone leaves its hover state stuck on.
+  future: { hoverOnlyWhenSupported: true },
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
