@@ -39,11 +39,34 @@ export default function NightSheet({
     onClose: () => void;
 }) {
     const open = selection !== null;
+
+    // A modal Radix dialog puts `pointer-events: none` on <body> while open
+    // and removes it when its layer unmounts after the exit animation. On
+    // touch devices that removal has been reported not to happen (the dialog
+    // closing during a scroll-cancelled tap, a reduced-motion setting cutting
+    // the animation to nothing), and the page is then dead to every tap until
+    // a reload. Reported here on mobile: "clicking dates breaks until a
+    // refresh". This could not be reproduced on a desktop browser, so this is
+    // the belt to the dialog's braces: once the sheet is closed, whatever
+    // Radix left on <body> is cleared a tick later, after its own cleanup has
+    // had its chance.
+    useEffect(() => {
+        if (open) return;
+        const id = window.setTimeout(() => {
+            if (document.body.style.pointerEvents === "none") {
+                document.body.style.pointerEvents = "";
+            }
+        }, 50);
+        return () => window.clearTimeout(id);
+    }, [open]);
+
     return (
         <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
             {/* max-h in dvh where supported: with iOS Safari's URL bar shown,
-                92vh on a bottom-anchored sheet pushes its title off screen. */}
-            <DialogContent className="max-h-[92vh] supports-[height:100dvh]:max-h-[92dvh] overflow-auto max-[520px]:bottom-0 max-[520px]:top-auto max-[520px]:max-w-none max-[520px]:translate-y-0 max-[520px]:rounded-b-none max-[520px]:rounded-t-2xl max-[520px]:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+                92vh on a bottom-anchored sheet pushes its title off screen.
+                text-gray-900 on the whole sheet: the card is light whatever the
+                device theme, so no text in it may inherit the body colour. */}
+            <DialogContent className="text-gray-900 max-h-[92vh] supports-[height:100dvh]:max-h-[92dvh] overflow-auto max-[520px]:bottom-0 max-[520px]:top-auto max-[520px]:max-w-none max-[520px]:translate-y-0 max-[520px]:rounded-b-none max-[520px]:rounded-t-2xl max-[520px]:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
                 {selection && <SheetBody selection={selection} onClose={onClose} />}
             </DialogContent>
         </Dialog>

@@ -77,8 +77,10 @@ export interface CalendarUnit {
     property_name: string;
     unit_name: string;
     rooms: number;
-    /** False for multi-room units: their nights are read only here. */
+    /** False for multi-room units and unverified listings: read only here. */
     writable: boolean;
+    /** The property's verification. An unverified listing is not on sale anywhere. */
+    is_verified: boolean;
     source: string;
 }
 
