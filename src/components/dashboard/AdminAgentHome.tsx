@@ -31,6 +31,7 @@ import TopAgentsCard from "@/src/components/dashboard/TopAgentsCard";
 import AgentNetworkDashboardCard from "@/src/components/dashboard/AgentNetworkDashboardCard";
 import ShareMyLinkCard from "@/src/components/links/ShareMyLinkCard";
 import KycPromptCard from "@/src/components/dashboard/KycPromptCard";
+import OfflineFundingCard from "@/src/components/finance-mgt/OfflineFundingCard";
 import { useNetworkEnabled } from "@/src/lib/request-handlers/platformMgt";
 
 interface Wallet {
@@ -255,6 +256,11 @@ const AdminAgentHome = () => {
                             feature was invisible until now. The component
                             self-hides for every other role. */}
             {isAgent && <ShareMyLinkCard />}
+
+            {/* AGENT: how to fund the wallet by bank transfer. Same card, and
+                the same API-served account details, as the wallet page. Hides
+                itself for every other role. */}
+            {isAgent && <OfflineFundingCard />}
 
             {/* ADMIN: queues → gateway → charts */}
             {isAdmin && (
