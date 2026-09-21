@@ -146,6 +146,9 @@ export const API_ROUTES = {
     },
     wallet: {
         base: '/wallets',
+        // The bank account an agent transfers to, to fund their wallet. One
+        // source for the wallet page and the dashboard card.
+        offlineFunding: '/wallets/offline-funding',
         details: (id: string) => `/wallets/${id}`,
         update: (id: string) => `/wallets/${id}`,
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
