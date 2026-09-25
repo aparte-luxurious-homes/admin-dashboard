@@ -1,5 +1,6 @@
 import { JSX } from "react";
 import { IoIosGitNetwork } from "react-icons/io";
+import { Icon } from "@iconify/react";
 import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon, RateIcon, PriceTagIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
@@ -31,6 +32,17 @@ export const NAV_LINKS: ILink[] = [
         link: PAGE_ROUTES.dashboard.base,
         icon: <TilesIcon className={"w-5"} color={"white"} />,
         allow: Object.values(UserRole),
+        secondary: false,
+        children: undefined,
+    },
+    {
+        // The host's public page. Second in the list on purpose: for an
+        // owner or agent it is the thing they send to every prospect.
+        name: 'My Aparte Link',
+        pathName: 'my-link',
+        link: PAGE_ROUTES.dashboard.myLink.base,
+        icon: <Icon icon="lucide:link" width={20} color="white" />,
+        allow: [UserRole.OWNER, UserRole.AGENT],
         secondary: false,
         children: undefined,
     },

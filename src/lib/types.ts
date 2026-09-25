@@ -403,4 +403,58 @@ export interface MonthlyStatementData {
   per_property_breakdown: PropertyBreakdown[];
   bookings: BookingReportItem[];
 }
-
+
+
+// ---------------------------------------------------------------------------
+// Aparte Link — the host's public page (aparte.ng/@handle)
+// ---------------------------------------------------------------------------
+
+/** The host-editable part of catalog_config. PATCH merges: send only what
+ * changed; null clears a key. `cover_image` is server-owned (upload endpoint). */
+export interface CatalogConfig {
+  headline?: string | null;
+  bio?: string | null;
+  whatsapp_number?: string | null;
+  show_whatsapp_button?: boolean | null;
+  featured_property_ids?: string[] | null;
+  welcome_message?: string | null;
+  og_description_override?: string | null;
+}
+
+export interface CatalogShareKit {
+  handle: string | null;
+  is_catalog_published: boolean;
+  /** The handle may be changed exactly once. False means it is now fixed. */
+  can_change_handle: boolean;
+  handle_changed_at: string | null;
+  catalog_url: string | null;
+  referral_code: string | null;
+  catalog_config: CatalogConfig & { cover_image?: string | null };
+  cover_image: string | null;
+  featured_property_ids: string[];
+  property_count: number;
+  share_templates?: Record<string, string>;
+  qr_url: string | null;
+}
+
+export interface CatalogAnalytics {
+  window: string;
+  views: { catalog_page: number; unique: number; by_source: Record<string, number> };
+  bookings: { total_attributed: number; confirmed: number; gross_value: string };
+  earnings: { as_listing_agent: string; as_referrer: string; total: string; note?: string };
+  signups_attributed: number;
+}
+
+/** One row of GET /links/catalogs/me/properties. */
+export interface HostLinkProperty {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  hero_image: string | null;
+  is_verified: boolean;
+  is_link_published: boolean;
+  slug: string | null;
+  /** verified AND published — the one boolean a status chip keys on. */
+  on_page: boolean;
+}

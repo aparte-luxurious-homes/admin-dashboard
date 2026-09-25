@@ -324,6 +324,11 @@ export const API_ROUTES = {
         propertyLink: (propertyId: string) => `/links/properties/${propertyId}`,
         propertyShareKit: (propertyId: string) => `/links/properties/${propertyId}/share-kit`,
         myCatalogAnalytics: (window: string) => `/links/catalogs/me/analytics?window=${window}`,
+        // Banner image for the page: POST multipart `file`, DELETE to remove.
+        myCatalogCover: '/links/catalogs/me/cover',
+        // Every listing the caller owns/manages with its link state — the
+        // page editor's table and featured picker.
+        myProperties: '/links/catalogs/me/properties',
         // Returns PNG bytes, not JSON — fetch it as a blob.
         catalogQr: (userId: string, size = 512) =>
             `/links/qr?target=catalog&id=${userId}&size=${size}`,

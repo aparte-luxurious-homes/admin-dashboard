@@ -59,8 +59,11 @@ const SharePill = forwardRef<SharePillHandle, { className?: string }>(function S
 
     if (!kit?.handle) {
         return (
+            // The claim form lives on the My Aparte Link page. This used to
+            // point at personal-info settings, which has no handle field — an
+            // owner who clicked it had nowhere to go.
             <Link
-                href={PAGE_ROUTES.dashboard.settings.personalInfo}
+                href={PAGE_ROUTES.dashboard.myLink.base}
                 className={`inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-[#028090] ${className}`}
             >
                 <Icon icon="mdi:link-variant" width={16} />
@@ -130,6 +133,12 @@ const SharePill = forwardRef<SharePillHandle, { className?: string }>(function S
             >
                 {qrBusy ? "..." : "QR"}
             </button>
+            <Link
+                href={PAGE_ROUTES.dashboard.myLink.base}
+                className="rounded-md border border-gray-200 px-2.5 py-1 text-xs font-semibold text-[#028090] hover:bg-[#028090]/5"
+            >
+                Manage
+            </Link>
         </div>
     );
 });
