@@ -158,7 +158,7 @@ export default function OwnerHome() {
 
             <aside className="mt-4 space-y-4 lg:mt-0">
                 <NextActions items={actions?.items ?? []} />
-                {agents && <AgentsPanel agents={agents.agents} windowDays={agents.window_days} />}
+                {agents && <AgentsPanel agents={agents.agents} />}
             </aside>
             </div>
 
