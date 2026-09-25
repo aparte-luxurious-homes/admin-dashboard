@@ -48,6 +48,10 @@ export const PAGE_ROUTES = {
             base: '/reviews',
             details: (id: string | number) => `/reviews/${id}`,
         },
+        // The host's own public page (aparte.ng/@handle) — editor, share kit, performance.
+        myLink: {
+            base: '/my-link',
+        },
         referrals: {
             base: '/referrals',
             agentStats: '/referrals/stats',

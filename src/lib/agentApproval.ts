@@ -26,48 +26,42 @@ export type AgentApprovalUserLike = {
   kyc?: unknown[] | null;
 };
 
+/**
+ * The agent's approval status as the API reports it, or null for a non-agent.
+ *
+ * Only the explicit `agentApprovalStatus` counts. A missing value means ACTIVE,
+ * exactly as the API treats a NULL `users.agent_approval_status`: an agent who
+ * was onboarded by an admin or existed before the approval gate.
+ *
+ * This used to guess from profile `kycStatus` when the field was absent. That
+ * guess is wrong for almost every working agent — `kycStatus` defaults to
+ * PENDING, NIN checks rewrite it, and the login response does not carry it at
+ * all — so verified agents were told their KYC was not approved and turned
+ * away at the login form. The API enforces the real gate on every request
+ * (403 AGENT_NOT_APPROVED), so trusting the server's answer loses nothing.
+ */
 export function getAgentApprovalStatus(
   user: AgentApprovalUserLike | null | undefined,
-  opts?: { hasKycDocuments?: boolean },
 ): AgentApprovalStatus | null {
   if (!user || user.role !== "AGENT") return null;
 
-  const explicit =
-    user.agentApprovalStatus || user.agent_approval_status || undefined;
+  const explicit = user.agentApprovalStatus || user.agent_approval_status || undefined;
   if (
     explicit &&
     Object.values(AgentApprovalStatus).includes(explicit as AgentApprovalStatus)
   ) {
     return explicit as AgentApprovalStatus;
   }
-
-  const kyc =
-    (typeof user.profile?.kycStatus === "string" ? user.profile?.kycStatus : undefined) ||
-    (typeof user.profile?.kyc_status === "string" ? user.profile?.kyc_status : undefined) ||
-    user.kycStatus ||
-    user.kyc_status ||
-    "PENDING";
-
-  if (kyc === "VERIFIED") return AgentApprovalStatus.ACTIVE;
-  if (kyc === "REJECTED") return AgentApprovalStatus.REJECTED;
-
-  const docs =
-    user.kycDocuments || user.kyc_documents || user.kyc || undefined;
-  const hasDocs =
-    opts?.hasKycDocuments ?? (Array.isArray(docs) && docs.length > 0);
-
-  if (hasDocs) return AgentApprovalStatus.PENDING_APPROVAL;
-  return AgentApprovalStatus.KYC_PENDING;
+  return AgentApprovalStatus.ACTIVE;
 }
 
 /** Agents may use the admin dashboard only after KYC approval. */
 export function isAgentDashboardAllowed(
   user: AgentApprovalUserLike | null | undefined,
-  opts?: { hasKycDocuments?: boolean },
 ): boolean {
   if (!user) return false;
   if (user.role !== "AGENT") return true;
-  return getAgentApprovalStatus(user, opts) === AgentApprovalStatus.ACTIVE;
+  return getAgentApprovalStatus(user) === AgentApprovalStatus.ACTIVE;
 }
 
 export function getLandingAgentKycUrl(): string {

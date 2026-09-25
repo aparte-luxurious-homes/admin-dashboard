@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "../components/providers";
 import { Suspense } from "react";
@@ -11,6 +11,16 @@ export const metadata: Metadata = {
   title: "Aparte Admin",
   description: "The official admin console of Aparte NG",
   icons: ["/svg/logo.svg"],
+};
+
+// Without viewport-fit=cover every `env(safe-area-inset-*)` in the app
+// resolves to zero on iOS, so the mobile bottom navigation and the bottom
+// sheets sit under the home indicator. They already ask for the inset; this
+// is what makes iOS report it.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

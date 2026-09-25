@@ -64,16 +64,18 @@ export default function CreateBookingView() {
   );
   const [duplicateDismissed, setDuplicateDismissed] = useState<boolean>(false);
 
-  // Queries — booking-on-behalf needs the full public catalog, not the
-  // OWNER/AGENT scope-to-self view, so opt out of server-side auto-scoping.
+  // Queries — agents and staff book on behalf of guests anywhere, so they need
+  // the full public catalog. Owners only ever book their own properties (the
+  // API refuses anything else), so they keep the scope-to-self view.
+  const isOwner = user?.role === UserRole.OWNER;
   const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(
     propPage,
     propSize,
     propertySearchTerm,
-    undefined,
-    undefined,
+    isOwner ? UserRole.OWNER : undefined,
+    isOwner ? user?.id : undefined,
     null,
-    true,
+    !isOwner,
   );
   const { data: guestLookupResult, isLoading: guestLookupLoading } =
     GuestLookup(guestSearchTerm);

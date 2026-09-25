@@ -33,6 +33,7 @@ import {
 import axiosRequest from "@/src/lib/api";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import { useAuth } from "@/src/hooks/useAuth";
+import OfflineFundingCard from "@/src/components/finance-mgt/OfflineFundingCard";
 import toast from "react-hot-toast";
 
 interface Wallet {
@@ -496,6 +497,12 @@ const WalletPage = () => {
               )}
             </List>
           </Card>
+        </Grid>
+
+        {/* Fund by bank transfer. Agents only; the card hides itself for
+            everyone else, and when offline funding is switched off. */}
+        <Grid item xs={12}>
+          <OfflineFundingCard />
         </Grid>
       </Grid>
 

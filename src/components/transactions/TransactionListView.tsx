@@ -141,7 +141,9 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
         a.href = url;
         a.download = `${title.toLowerCase().replace(/\s+/g, '_')}_export.csv`;
         a.click();
-        URL.revokeObjectURL(url);
+        // Deferred, as in linksMgt.downloadCatalogQr: revoking synchronously
+        // can cancel the download before the browser has read the blob.
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
 
     const downloadPDF = (data: Transaction[]) => {

@@ -174,6 +174,13 @@ export interface IPropertyUnit {
     event_price_per_hour?: string
     eventPricePerHalfDay?: string
     event_price_per_half_day?: string
+    /** This unit's OWN override. null/absent = inherits the property's. */
+    long_stay_discount_policy?: IDiscountPolicy | null
+    extension_discount_policy?: IDiscountPolicy | null
+    /** What will actually price this unit — override, else the property's.
+        Read-only; send the raw fields above when writing. */
+    effective_long_stay_discount_policy?: IDiscountPolicy | null
+    effective_extension_discount_policy?: IDiscountPolicy | null
     isVerified: boolean
     is_verified?: boolean
     createdAt: string
@@ -311,8 +318,8 @@ export interface ICreateProperty {
     zone_id?: string
     booking_mode?: BookingMode
     event_types?: string[]
-    long_stay_discount_policy?: IDiscountPolicy
-    extension_discount_policy?: IDiscountPolicy
+    long_stay_discount_policy?: IDiscountPolicy | null
+    extension_discount_policy?: IDiscountPolicy | null
 }
 
 export interface IAssignProperty {
@@ -349,8 +356,8 @@ export interface IUpdateProperty {
     zone_id?: string,
     booking_mode?: BookingMode,
     event_types?: string[],
-    long_stay_discount_policy?: IDiscountPolicy,
-    extension_discount_policy?: IDiscountPolicy
+    long_stay_discount_policy?: IDiscountPolicy | null,
+    extension_discount_policy?: IDiscountPolicy | null
 }
 
 export interface IUpdatePropertyUnit {
@@ -378,6 +385,9 @@ export interface IUpdatePropertyUnit {
         fee_amount: number,
         is_mandatory: boolean
     }>,
+    /** null clears the override so the unit inherits the property's policy. */
+    long_stay_discount_policy?: IDiscountPolicy | null,
+    extension_discount_policy?: IDiscountPolicy | null,
 }
 
 export interface ICreatePropertyUnit {
@@ -405,6 +415,9 @@ export interface ICreatePropertyUnit {
         fee_amount: number,
         is_mandatory: boolean
     }>,
+    /** Omit to inherit the property's policy. */
+    long_stay_discount_policy?: IDiscountPolicy | null,
+    extension_discount_policy?: IDiscountPolicy | null,
 }
 
 export interface IUploadPropertyMedia {

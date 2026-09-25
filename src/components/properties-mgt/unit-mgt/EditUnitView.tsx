@@ -632,7 +632,7 @@ export default function EditUnitView({
                                             formData.append("is_featured", "true");
                                             uploadMedia({ propertyId: String(propertyId), unitId: String(unitId), payload: formData }, {
                                                 onSuccess: () => toast.success(MESSAGES.MSG_MEDIA_UPLOADED_SUCCESSFULLY),
-                                                onError: () => toast.error(MESSAGES.MSG_UPLOAD_FAILED)
+                                                onError: (error: any) => toast.error(error?.response?.data?.detail || MESSAGES.MSG_UPLOAD_FAILED)
                                             });
                                         }}
                                         disabled={uploadedMediaPending}

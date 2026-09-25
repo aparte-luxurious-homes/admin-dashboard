@@ -20,7 +20,8 @@ interface TotalPropertiesStats {
 }
 
 interface DashboardKpiRowProps {
-  isOwner: boolean;
+  /** Owners have their own home now and never render this row. */
+  isOwner?: boolean;
   isAgent: boolean;
   wallet: Wallet | null;
   totalRevenue?: TotalStats;
@@ -31,7 +32,7 @@ interface DashboardKpiRowProps {
 const pct = (s?: string) => parseFloat(s ?? "0") || 0;
 
 const DashboardKpiRow = ({
-  isOwner,
+  isOwner = false,
   isAgent,
   wallet,
   totalRevenue,

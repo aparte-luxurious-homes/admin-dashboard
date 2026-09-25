@@ -10,7 +10,6 @@ export const MESSAGES = {
   MSG_OPENING_CHECKOUT_IN_A_NEW_TAB: "Opening checkout in a new tab",
   MSG_PLEASE_SELECT_DATES_FIRST: "Please select dates first",
   MSG_COORDINATES_NOT_FOUND_FOR_THIS_ADDRESS_P: "We couldn't find the exact location on the map. Please type it in.",
-  MSG_THESE_FILES_HAVE_ALREADY_BEEN_ADDED: "These files have already been added",
   MSG_PLEASE_SELECT_A_CHECK_OUT_DATE: "Please select a check-out date",
   MSG_MAXIMUM_10_EVIDENCE_FILES_PER_VERIFICATI: "You can upload a maximum of 10 files.",
   MSG_INVALID_FILE_TYPE_PLEASE_UPLOAD_AN_IMAGE: "Invalid file type. Please upload an image or PDF.",

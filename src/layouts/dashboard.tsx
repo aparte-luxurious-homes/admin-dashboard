@@ -360,7 +360,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
 
   return (
     <MobileMenuContext.Provider value={mobileMenuCtx}>
-      <div className="h-screen size-full relative">
+      <div className="h-screen supports-[height:100dvh]:h-dvh size-full relative">
         {/* Mobile Menu Toggle — hidden on small screens where bottom nav is shown */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -455,11 +455,20 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Main Content.
+            Sized to the VISIBLE viewport (dvh), not 100vh. On iOS, 100vh is the
+            height with Safari's toolbars retracted — but they only retract when
+            the document scrolls, and this column scrolls internally, so the
+            bottom of the column can sit under Safari's bottom toolbar.
+
+            Written as a `supports-[...]` variant, not as `h-screen h-dvh`:
+            Tailwind emits `.h-dvh` BEFORE `.h-screen`, so listing both plainly
+            lets the fallback win and silently undoes the fix. A variant rule
+            always lands after the base utilities. */}
         <div
           className={`
-                lg:ml-[26%] xl:ml-[20%] 2xl:ml-[18%] w-full lg:w-[74%] xl:w-[80%] 2xl:w-[82%] 
-                transition-all duration-300 ease-in-out flex flex-col h-screen overflow-hidden
+                lg:ml-[26%] xl:ml-[20%] 2xl:ml-[18%] w-full lg:w-[74%] xl:w-[80%] 2xl:w-[82%]
+                transition-all duration-300 ease-in-out flex flex-col h-screen supports-[height:100dvh]:h-dvh overflow-hidden
             `}
         >
           <div className="w-full h-14 md:h-20 flex-shrink-0 flex justify-between items-center px-4 sm:px-6 lg:px-10 bg-white border-b border-b-zinc-200/80">
@@ -571,7 +580,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-          <div className="px-2 sm:px-1 md:px-1 py-2 sm:py-1 pb-20 md:pb-2 w-full flex-1 overflow-y-auto">
+          <div className="px-2 sm:px-1 md:px-1 py-2 sm:py-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-2 w-full flex-1 overflow-y-auto">
             {children}
           </div>
         </div>

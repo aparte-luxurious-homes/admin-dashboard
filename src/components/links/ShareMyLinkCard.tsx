@@ -9,8 +9,10 @@ import {
     UpdateMyCatalog,
     downloadCatalogQr,
 } from "@/src/lib/request-handlers/linksMgt";
+import Link from "next/link";
 import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 
 /**
  * "Share my Aparte link" — the owner/agent's public catalog at
@@ -116,11 +118,19 @@ export default function ShareMyLinkCard() {
                         put it in your Instagram bio, print the QR.
                     </p>
                 </div>
-                {kit?.property_count !== undefined && (
-                    <span className="shrink-0 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                        {kit.property_count} listing{kit.property_count === 1 ? "" : "s"}
-                    </span>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                    {kit?.property_count !== undefined && (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                            {kit.property_count} listing{kit.property_count === 1 ? "" : "s"}
+                        </span>
+                    )}
+                    <Link
+                        href={PAGE_ROUTES.dashboard.myLink.base}
+                        className="text-xs font-medium text-primary hover:underline whitespace-nowrap"
+                    >
+                        Manage my page
+                    </Link>
+                </div>
             </div>
 
             {isLoading ? (

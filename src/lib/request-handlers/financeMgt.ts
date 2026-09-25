@@ -11,6 +11,37 @@ export enum FinanceRequestKeys {
     updateWallet = "updateWallet",
 }
 
+/** Where an agent sends money to fund their wallet by bank transfer. */
+export interface OfflineFundingDetails {
+    enabled: boolean;
+    currency?: string;
+    account_name?: string;
+    account_number?: string;
+    bank_name?: string;
+    /** The agent's own email: what staff match the transfer to. */
+    identifier?: string | null;
+    /** Digits only, or null when no business line is configured. */
+    whatsapp_number?: string | null;
+}
+
+/**
+ * Served by the API rather than written into the page, so the wallet page and
+ * the dashboard can never show two different account numbers.
+ */
+export function GetOfflineFunding(enabled: boolean = true) {
+    const query = useQuery({
+        queryKey: ["offlineFunding"],
+        queryFn: () => axiosRequest.get(API_ROUTES.wallet.offlineFunding),
+        // Bank details do not change during a session.
+        staleTime: 1000 * 60 * 30,
+        enabled,
+        retry: 1,
+    });
+    const body = query.data?.data;
+    const details: OfflineFundingDetails | undefined = body?.data ?? undefined;
+    return { ...query, details };
+}
+
 export interface UpdateWalletPayload {
     action: "CREDIT" | "DEBIT";
     amount: string;
