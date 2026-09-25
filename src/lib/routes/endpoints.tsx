@@ -146,6 +146,9 @@ export const API_ROUTES = {
     },
     wallet: {
         base: '/wallets',
+        // The bank account an agent transfers to, to fund their wallet. One
+        // source for the wallet page and the dashboard card.
+        offlineFunding: '/wallets/offline-funding',
         details: (id: string) => `/wallets/${id}`,
         update: (id: string) => `/wallets/${id}`,
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
@@ -321,6 +324,11 @@ export const API_ROUTES = {
         propertyLink: (propertyId: string) => `/links/properties/${propertyId}`,
         propertyShareKit: (propertyId: string) => `/links/properties/${propertyId}/share-kit`,
         myCatalogAnalytics: (window: string) => `/links/catalogs/me/analytics?window=${window}`,
+        // Banner image for the page: POST multipart `file`, DELETE to remove.
+        myCatalogCover: '/links/catalogs/me/cover',
+        // Every listing the caller owns/manages with its link state — the
+        // page editor's table and featured picker.
+        myProperties: '/links/catalogs/me/properties',
         // Returns PNG bytes, not JSON — fetch it as a blob.
         catalogQr: (userId: string, size = 512) =>
             `/links/qr?target=catalog&id=${userId}&size=${size}`,
@@ -342,7 +350,19 @@ export const API_ROUTES = {
             conflicts: '/ical/admin/conflicts',
             resolveConflict: '/ical/admin/conflicts/resolve',
         }
-    }
+    },
+    // Owner home (docs/owner-home-spec.md). Owner-scoped: the API always
+    // answers for the caller and never takes an owner id.
+    ownerHome: {
+        summary: '/owner/home/summary',
+        calendar: (from: string, to: string, propertyId?: string) =>
+            `/owner/calendar?from=${from}&to=${to}` +
+            (propertyId ? `&property_id=${propertyId}` : ''),
+        blocks: '/owner/calendar/blocks',
+        block: (blockGroupId: string) => `/owner/calendar/blocks/${blockGroupId}`,
+        actions: '/owner/actions',
+        agents: (windowDays = 90) => `/owner/agents/performance?window_days=${windowDays}`,
+    },
 };
 
 

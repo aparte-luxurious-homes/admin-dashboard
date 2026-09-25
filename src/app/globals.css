@@ -9,12 +9,14 @@
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #124452;
-    --foreground: #ededed;
-  }
-}
+/*
+ * No dark theme. The dashboard's surfaces are light regardless of the
+ * device setting, so the text colour must not follow it: a phone in dark
+ * mode used to get --foreground: #ededed, and every piece of text that set
+ * no colour of its own (dialog titles, the nights stepper, inputs) came out
+ * near-white on a light card. When a dark theme exists it goes under an
+ * explicit data-theme, not this media query.
+ */
 
 body {
   color: var(--foreground);
@@ -114,5 +116,17 @@ input::-webkit-date-and-time-value {
   .rewind .swiper-button-next {
     width: 3rem;
     height: 3rem;
+  }
+}
+
+/* Respect the system setting: no skeleton pulse, no sheet slide, no zoom. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
