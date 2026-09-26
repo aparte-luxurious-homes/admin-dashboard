@@ -6,6 +6,7 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { LuEye, LuTrash2, LuBed, LuBath, LuUsers } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import PropertySourceBadge from "./PropertySourceBadge";
 
 interface PropertyCardProps {
   property: IProperty;
@@ -71,6 +72,12 @@ export default function PropertyCard({ property, onDelete }: PropertyCardProps) 
           {property?.is_verified ? "Verified" : "Unverified"}
         </span>
       </div>
+
+      {property?.source && (
+        <div className="mb-2">
+          <PropertySourceBadge source={property.source} />
+        </div>
+      )}
 
       {(property?.proposed_long_stay_discount_policy || property?.proposed_extension_discount_policy) && (
         <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-medium">
