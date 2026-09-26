@@ -72,6 +72,8 @@ export const API_ROUTES = {
         kycStatus: '/profile/kyc-status',
         verifyGovId: '/profile/verify-gov-id',
         kycDocuments: '/profile/kyc/documents',
+        // A GUEST account switching itself to OWNER or AGENT (login screen).
+        accountType: '/profile/account-type',
         kyc: {
             upload: '/kyc/upload',
             details: (docId: string | number) => `/kyc/${docId}/details`,
