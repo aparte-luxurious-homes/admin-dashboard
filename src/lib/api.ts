@@ -37,8 +37,12 @@ axiosRequest.interceptors.request.use((config) => {
     console.log(`[Axios] Final Request URL: ${config.baseURL}${config.url}`);
   }
 
+  // A request that names its own token keeps it. The guest-account switch at
+  // login calls the API with the token it was just handed, before any cookie
+  // is set; overwriting it with a leftover cookie would act on whichever
+  // account last signed in on this browser.
   const token = Cookies.get("token");
-  if (token) {
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   // Strip empty query params like role=& is_verified=
