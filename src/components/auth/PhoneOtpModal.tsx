@@ -6,15 +6,20 @@ import { Icon } from "@iconify/react";
 import { toast } from "react-hot-toast";
 import CustomModal from "@/src/components/ui/CustomModal";
 import {
+    GuestAccountError,
     useRequestPhoneOtp,
     useRequestPhoneOtpViaEmail,
     useVerifyPhoneOtp,
 } from "@/src/hooks/useAuth";
+import type { IUser } from "@/src/lib/types";
 
 interface PhoneOtpModalProps {
     isOpen: boolean;
     phone: string;
     onClose: () => void;
+    /** The verified account is a GUEST: hand its session to the page, which
+     *  offers the account-type switch instead of refusing. */
+    onGuestAccount?: (session: { token: string; user: IUser }) => void;
 }
 
 const OTP_LENGTH = 6;
@@ -40,7 +45,7 @@ const extractApiMessage = (err: any, fallback: string): string => {
     return typeof candidate === "string" && candidate ? candidate : fallback;
 };
 
-const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
+const PhoneOtpModal = ({ isOpen, phone, onClose, onGuestAccount }: PhoneOtpModalProps) => {
     const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
     const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -72,6 +77,11 @@ const PhoneOtpModal = ({ isOpen, phone, onClose }: PhoneOtpModalProps) => {
             toast.success(MESSAGES.MSG_PHONE_VERIFIED_WELCOME_BACK);
             // useVerifyPhoneOtp's onSuccess handles the redirect.
         } catch (err: any) {
+            if (err instanceof GuestAccountError && onGuestAccount) {
+                onGuestAccount({ token: err.token, user: err.user });
+                onClose();
+                return;
+            }
             toast.error(extractApiMessage(err, "Invalid OTP. Please try again."));
             setDigits(Array(OTP_LENGTH).fill(""));
             inputRefs.current[0]?.focus();
