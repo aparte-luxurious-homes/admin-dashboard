@@ -1,14 +1,16 @@
 "use client";
 
 import { MESSAGES } from '@/src/lib/messages';
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { FaMapLocationDot, FaPlus, FaArrowLeftLong } from "react-icons/fa6";
 import { TrashIcon } from "../../icons";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
 import {
-  DocumentType, IAmenity,
+  DocumentType,
+  getDocumentTypesForProperty,
+  IAmenity,
   IProperty,
   IPropertyDocument, IPropertyMedia,
   IUpdateProperty,
@@ -238,6 +240,16 @@ export default function EditPropertyView({
     const { data: docsData, refetch: refetchDocs } = GetPropertyDocuments(propertyData.id);
     const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
     const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
+    const availableDocTypes = useMemo(
+        () => getDocumentTypesForProperty(propertyData?.propertyType ?? propertyData?.property_type ?? propertyData?.type),
+        [propertyData?.propertyType, propertyData?.property_type, propertyData?.type],
+    );
+
+    useEffect(() => {
+        if (!availableDocTypes.includes(selectedDocType)) {
+            setSelectedDocType(availableDocTypes[0] || DocumentType.UTILITY_BILL);
+        }
+    }, [availableDocTypes, selectedDocType]);
 
   // Event types
   const { data: fetchedEventTypes } = GetEventTypes();
@@ -1375,8 +1387,14 @@ Deleting anyway removes the unit but does NOT ` +
                                 <label className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Document Type</label>
                                 <CustomDropdown
                                     selected={selectedDocType}
-                                    options={Object.values(DocumentType)}
+                                    options={availableDocTypes}
                                     handleSelection={(val) => setSelectedDocType(val as DocumentType)}
+                                    formatLabel={(val: string) =>
+                                        val
+                                            .replace(/_/g, " ")
+                                            .toLowerCase()
+                                            .replace(/\b\w/g, (char: string) => char.toUpperCase())
+                                    }
                                 />
                             </div>
                             <div>
