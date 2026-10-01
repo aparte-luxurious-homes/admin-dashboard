@@ -23,6 +23,8 @@ import {
   getCategoryCountSuffix,
 } from "./types";
 
+const MAX_MEDIA_FILES = 4;
+
 interface StepMediaDocsProps {
   propertyMedia: CategorizedMedia;
   setPropertyMedia: Dispatch<SetStateAction<CategorizedMedia>>;
@@ -55,6 +57,7 @@ function CategorySlot({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const covered = files.length > 0;
+  const maximumUploadedReached = files.length >= MAX_MEDIA_FILES;
   return (
     <div
       className={`border rounded-xl p-3 space-y-2 transition-colors ${covered ? "border-emerald-300 bg-emerald-50/40" : required ? "border-zinc-200 bg-white" : "border-dashed border-zinc-200 bg-zinc-50/50"}`}
@@ -80,7 +83,8 @@ function CategorySlot({
         )}
         {covered && (
           <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600">
-            {files.length} file{files.length > 1 ? "s" : ""}
+            {files.length} of {MAX_MEDIA_FILES} file
+            {files.length > 1 ? "s" : ""}
           </span>
         )}
       </div>
@@ -95,29 +99,49 @@ function CategorySlot({
         className="sr-only"
         aria-label={`Upload ${label}`}
         onChange={(e) => {
-          const picked = cloneFilesFromList(e.target.files);
+          const selected = cloneFilesFromList(e.target.files);
           e.target.value = "";
-          if (picked.length === 0) return;
+      
+          if (selected.length === 0) return;
+      
+          const remainingSlots = MAX_MEDIA_FILES - files.length;
+      
+          if (remainingSlots <= 0) {
+            toast.error("You have reached the maximum number of files allowed.", {
+              duration: 7000,
+            });
+            return;
+          }
+      
+          // Only take as many files as we have remaining slots
+          const picked = selected.slice(0, remainingSlots);
+      
           const heic = picked.filter(isHeicFile);
+      
           if (heic.length > 0) {
             toast.error(
               "HEIC photos aren't supported. On iPhone: Settings → Camera → Formats → Most Compatible, then re-add the photos.",
               { duration: 7000 },
             );
           }
+
           const usable = picked.filter((f) => !isHeicFile(f));
+
           if (usable.length === 0) return;
+
           onChange([...files, ...usable]);
         }}
+        disabled={maximumUploadedReached || files.length >= MAX_MEDIA_FILES}
       />
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="w-full py-2.5 px-3 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 active:bg-primary/25 transition-colors"
+        disabled={maximumUploadedReached}
+        className={`w-full py-2.5 px-3 rounded-lg text-primary text-xs font-bold transition-colors ${maximumUploadedReached ? "opacity-50 cursor-not-allowed" : "bg-primary/10 hover:bg-primary/20 active:bg-primary/25 "}`}
       >
         {covered ? "Add more" : isVideo ? "Choose video" : "Choose photos"}
       </button>
-      {files.length > 0 && (
+      {files.length <= MAX_MEDIA_FILES && (
         <ul className="space-y-1">
           {files.map((f, i) => (
             <li
@@ -261,7 +285,7 @@ export default function StepMediaDocs({
   docFiles,
   setDocFiles,
   units,
-  unitMediaByCategory, 
+  unitMediaByCategory,
   setUnitMediaByCategory,
   onDiscontinueListing,
 }: StepMediaDocsProps) {
@@ -400,8 +424,8 @@ export default function StepMediaDocs({
                 <span className="font-bold text-zinc-700">
                   {unit.name || "Unnamed unit"}
                 </span>{" "}
-                is the whole property upload its bedroom, living room,
-                kitchen, and bathroom photos in the{" "}
+                is the whole property upload its bedroom, living room, kitchen,
+                and bathroom photos in the{" "}
                 <span className="font-bold text-zinc-700">
                   Property gallery
                 </span>{" "}
