@@ -19,6 +19,7 @@ import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveR
 import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
 import { ReverseWithdrawalModal } from "@/src/components/finance-mgt/modals/ReverseWithdrawalModal";
+import { RetryWithdrawalModal, isRetryableWithdrawal } from "@/src/components/finance-mgt/modals/RetryWithdrawalModal";
 import { usePermissions } from "@/src/hooks/usePermissions";
 
 interface Transaction {
@@ -111,6 +112,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
     const [withdrawalModalInitialStep, setWithdrawalModalInitialStep] = useState<"confirm" | "otp">("confirm");
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
     const [isWithdrawalReverseOpen, setIsWithdrawalReverseOpen] = useState(false);
+    const [isWithdrawalRetryOpen, setIsWithdrawalRetryOpen] = useState(false);
 
     const handleDownload = (type: "CSV" | "PDF") => {
         if (type === "CSV") {
@@ -329,6 +331,21 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
             onClick: () => {
                 setSelectedTxForApproval(tx);
                 setIsWithdrawalReverseOpen(true);
+                setSelectedRow(null);
+            },
+        });
+    }
+
+    // Retry a reversed payout that failed on our side (refunded), so the customer
+    // never has to withdraw again. The backend enforces every eligibility rule.
+    if (canManageFinances && selectedRow !== null && isRetryableWithdrawal(data[selectedRow])) {
+        const tx = data[selectedRow];
+        detailButtons.push({
+            label: "Retry Payout",
+            Icon: <Icon icon="mdi:send-clock" />,
+            onClick: () => {
+                setSelectedTxForApproval(tx);
+                setIsWithdrawalRetryOpen(true);
                 setSelectedRow(null);
             },
         });
@@ -697,6 +714,22 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
                     currency={selectedTxForApproval.currency}
                     walletId={String(selectedTxForApproval.wallet_id || "")}
                     status={selectedTxForApproval.status}
+                />
+            )}
+
+            {selectedTxForApproval && selectedTxForApproval.transaction_type === "WITHDRAWAL" && (
+                <RetryWithdrawalModal
+                    isOpen={isWithdrawalRetryOpen}
+                    onClose={() => {
+                        setIsWithdrawalRetryOpen(false);
+                        setSelectedTxForApproval(null);
+                        fetchTransactions();
+                    }}
+                    transactionId={selectedTxForApproval.id}
+                    email={selectedTxForApproval.user?.email || selectedTxForApproval.customer_email || selectedTxForApproval.customerEmail || ""}
+                    amount={selectedTxForApproval.amount}
+                    currency={selectedTxForApproval.currency}
+                    walletId={String(selectedTxForApproval.wallet_id || "")}
                 />
             )}
         </div>
