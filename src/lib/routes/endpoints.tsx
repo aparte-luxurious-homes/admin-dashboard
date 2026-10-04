@@ -155,6 +155,9 @@ export const API_ROUTES = {
         approveWithdrawal: (id: string | number) => `/wallets/${id}/approve-withdrawal`,
         rejectWithdrawal: (id: string | number) => `/wallets/${id}/reject-withdrawal`,
         reverseWithdrawal: (id: string | number) => `/wallets/${id}/reverse-withdrawal`,
+        // Re-send a payout that failed on OUR side (expired gateway key, provider
+        // outage) and was already refunded — so the customer never re-withdraws.
+        retryWithdrawal: (id: string | number) => `/wallets/${id}/retry-withdrawal`,
         authorizeDisbursement: (id: string | number) => `/wallets/${id}/authorize-disbursement`,
         resendDisbursementOtp: (id: string | number) => `/wallets/${id}/resend-disbursement-otp`,
         // Per-row manual override. Since withdrawals became PENDING-until-settled,
