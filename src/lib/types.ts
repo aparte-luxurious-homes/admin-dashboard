@@ -267,7 +267,10 @@ export interface IUser {
 
 export interface IAuthorization {
   expiresAt: string;
-  token: string;
+  /** Absent in cookie mode, which is the only mode the dashboard uses: the
+   *  session arrives as an HttpOnly cookie instead. */
+  token?: string;
+  /** "cookie" for the dashboard, "bearer" for header-mode clients. */
   type: string;
 }
 

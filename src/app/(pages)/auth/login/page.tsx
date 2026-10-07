@@ -1,15 +1,15 @@
 'use client'
 
 import { useLogin } from "@/src/hooks/useAuth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Button from "@/src/components/button";
 import InputGroup from "../../../../components/formcomponent/InputGroup";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from "react-hot-toast";
-import Cookies from "js-cookie";
 import axiosRequest from "@/lib/api";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
 // import { BASE_API_URL } from "@/src/lib/routes/endpoints";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useDispatch } from "react-redux";
@@ -31,6 +31,9 @@ export default function Login() {
   const [phoneOtpPhone, setPhoneOtpPhone] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
+  // A handoff code is single-use. Strict mode runs effects twice in dev, and a
+  // second redeem would 401 and toast an error over a sign-in that worked.
+  const handoffStarted = useRef(false);
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const togglePassword = () => {
@@ -42,32 +45,32 @@ export default function Login() {
   };
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
+    // The landing page signs OWNER/AGENT users in here with a one-time `code`.
+    // `token` is the old hand-over (the raw JWT in the URL), still accepted
+    // until every landing deploy sends `code`: it is traded for a code at once,
+    // so the dashboard still ends up holding only the HttpOnly cookie.
+    const code = searchParams.get('code');
+    const legacyToken = searchParams.get('token');
+    if ((code || legacyToken) && !handoffStarted.current) {
+      handoffStarted.current = true;
       setIsTokenAuthenticating(true);
 
-      // Set the token in cookies first
-      const isProduction = window.location.protocol === 'https:';
-      const hostname = window.location.hostname;
-      const domain = hostname.includes('aparte.ng') ? '.aparte.ng' : undefined;
+      // Get the credential out of the address bar and history right away.
+      window.history.replaceState(null, '', window.location.pathname);
 
-      const cookieOptions: any = {
-        expires: 7,
-        secure: isProduction,
-        sameSite: "Lax" as const,
-        path: '/'
+      const obtainCode = async (): Promise<string> => {
+        if (code) return code;
+        const res = await axiosRequest.post(API_ROUTES.auth.handoff, undefined, {
+          headers: { Authorization: `Bearer ${legacyToken}` },
+        });
+        return res.data.data.code;
       };
 
-      if (domain) {
-        cookieOptions.domain = domain;
-      }
-
-      Cookies.set("token", token, cookieOptions);
-      console.log('[Login] Token from URL set in cookie with options:', cookieOptions);
-      console.log('[Login] document.cookie:', document.cookie);
-
-      // Try to fetch profile with the token
-      axiosRequest.get("/profile")
+      obtainCode()
+        .then((handoffCode) =>
+          axiosRequest.post(API_ROUTES.auth.redeemHandoff, { code: handoffCode })
+        )
+        .then(() => axiosRequest.get("/profile"))
         .then(async (response) => {
           const user = response.data.data;
 
@@ -89,9 +92,7 @@ export default function Login() {
           router.replace(PAGE_ROUTES.dashboard.base);
         })
         .catch((error) => {
-          // Token is invalid, remove it and show error
-          Cookies.remove("token");
-          console.error('Token validation failed:', error);
+          console.error('Dashboard sign-in hand-over failed:', error);
 
           const errorMessage = error?.response?.data?.message ||
             (error.message?.includes('Access Denied') ? error.message : 'Authentication failed. Please login with your credentials.');

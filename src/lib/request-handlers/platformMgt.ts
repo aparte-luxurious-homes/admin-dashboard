@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Cookies from "js-cookie";
+import { useSelector } from "react-redux";
+import { RootState } from "@/src/lib/store";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
 
@@ -31,10 +32,12 @@ export interface NetworkFeatureState {
  * cost of guessing wrong for a moment is a request that fails cleanly.
  */
 export function GetPlatformFeatures() {
-    // Gated on the token, not just on mount. The dashboard layout calls this
-    // before its own auth check has run, and an unauthenticated request would
-    // 401 — which the axios interceptor turns into a full logout and redirect.
-    const hasToken = Boolean(Cookies.get("token"));
+    // Gated on a signed-in user, not just on mount. The dashboard layout calls
+    // this before its own auth check has run, and an unauthenticated request
+    // would 401 — which the axios interceptor turns into a full logout and
+    // redirect. The session cookie is HttpOnly, so the Redux user is the
+    // client's only signal that a session exists.
+    const hasToken = Boolean(useSelector((state: RootState) => state.auth.user?.id));
     return useQuery({
         queryKey: [PlatformRequestKeys.features],
         queryFn: () => axiosRequest.get(API_ROUTES.platform.features),

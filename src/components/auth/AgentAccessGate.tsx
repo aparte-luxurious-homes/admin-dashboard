@@ -9,7 +9,6 @@ import { UserRole } from "@/src/lib/enums";
 import { isAgentDashboardAllowed } from "@/src/lib/agentApproval";
 import {
   AGENT_KYC_REQUIRED_MESSAGE,
-  clearAdminSessionCookies,
   redirectUnapprovedAgentToLanding,
 } from "@/src/lib/agentAccessGuard";
 import Loader from "@/components/loader";
@@ -39,8 +38,7 @@ export default function AgentAccessGate({
     if (!blocked) return;
     toast.error(AGENT_KYC_REQUIRED_MESSAGE, { duration: 7000 });
     dispatch(clearUser());
-    clearAdminSessionCookies();
-    redirectUnapprovedAgentToLanding();
+    void redirectUnapprovedAgentToLanding();
   }, [blocked, dispatch]);
 
   if (isFetching && !user) {

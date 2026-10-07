@@ -18,7 +18,8 @@ import { setAgentNetworkRole } from "../lib/slices/authSlice";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Loader from "../components/loader";
 import AutoBreadcrumb from "../components/breadcrumb/AutoBreadcrumb";
-import axiosRequest from "../lib/api";
+import axiosRequest, { endServerSession } from "../lib/api";
+import { clearAdminSessionCookies } from "../lib/agentAccessGuard";
 import { API_ROUTES } from "../lib/routes/endpoints";
 import { AgentNetworkRole, UserRole } from "../lib/enums";
 import { RootState } from "../lib/store";
@@ -53,7 +54,7 @@ const TIER_CONFIG = {
 } as const;
 
 export default function Dashboard({ children }: { children: React.ReactNode }) {
-  const { user, isFetching } = useAuth();
+  const { user, isFetching, error: authError } = useAuth();
   const dispatch = useDispatch();
   const router = useRouter();
   const currentRoute = usePathname();
@@ -196,56 +197,21 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check authentication on mount
+  // Check authentication on mount. middleware.ts has already redirected any
+  // browser with no session cookie; what is left is a persisted Redux user, or
+  // the /profile fetch that useAuth runs when there isn't one. A cookie the API
+  // rejects 401s that fetch and the axios interceptor signs the user out, so
+  // the only case handled here is a fetch that failed some other way.
   useEffect(() => {
-    const token = Cookies.get("token");
-
-    // console.log('[Dashboard] Auth check:', {
-    //   hasToken: !!token,
-    //   hasUser: !!user,
-    //   userId: user?.id,
-    //   isFetching
-    // });
-
-    // If no token and no user in Redux, redirect to login
-    if (!token && !user) {
-      // console.log('[Dashboard] No token and no user - redirecting to login');
-      router.replace(PAGE_ROUTES.auth.login);
-      return;
-    }
-
-    // If we have user data (either from Redux persistence or fresh fetch), show dashboard
     if (user && user.id) {
-      // console.log('[Dashboard] User authenticated:', user.email);
       setIsCheckingAuth(false);
       return;
     }
-
-    // If we have a token but no user, wait briefly for fetch to complete
-    if (token && !user) {
-      if (isFetching) {
-        // console.log('[Dashboard] Token exists, fetching user...');
-        setIsCheckingAuth(true);
-      } else {
-        // console.log('[Dashboard] Token exists but no user and not fetching - might be invalid token');
-        // Give it a moment for query to start
-        const timeout = setTimeout(() => {
-          // Re-check token and user after timeout
-          const currentToken = Cookies.get("token");
-          const currentUser = user;
-
-          if (currentToken && !currentUser) {
-            // console.log('[Dashboard] Token appears invalid after waiting, removing and redirecting');
-            Cookies.remove("token");
-            router.replace(PAGE_ROUTES.auth.login);
-          }
-        }, 2000); // Wait 2 seconds for profile fetch
-
-        return () => clearTimeout(timeout);
-      }
+    if (!isFetching && authError) {
+      router.replace(PAGE_ROUTES.auth.login);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isFetching, router]);
+  }, [user?.id, isFetching, authError, router]);
 
   const mobileMenuCtx = useMemo(
     () => ({
@@ -324,14 +290,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
   }
 
   const handleLogOut = async () => {
-    try {
-      await axiosRequest.post("/auth/logout");
-    } catch {
-      // Proceed with client-side logout even if API call fails
-    }
-
-    // Clear cookie first so any in-flight check sees no token
-    Cookies.remove("token", { path: "/" });
+    // Expires the HttpOnly session cookie; never throws, so the client-side
+    // half of signing out always runs.
+    await endServerSession();
+    clearAdminSessionCookies();
 
     // Synchronously clear redux-persist storage. persistor.purge() is async
     // and races the navigation; clearing localStorage directly is reliable.
