@@ -5,9 +5,9 @@ import BreadCrumb from "@/src/components/breadcrumb";
 import { useState, useRef } from "react";
 import Grid from "@mui/material/Grid2";
 import Button from "@/src/components/button";
-import axiosRequest from "@/src/lib/api";
+import axiosRequest, { endServerSession } from "@/src/lib/api";
 import { toast } from "react-hot-toast";
-import Cookies from "js-cookie";
+import { clearAdminSessionCookies } from "@/src/lib/agentAccessGuard";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import InputGroup from "@/src/components/formcomponent/InputGroup";
 import useValidator from "@/src/hooks/useValidator";
@@ -94,7 +94,8 @@ const LoginandSecurity = () => {
           width: "max-content",
         },
       });
-      Cookies.remove("token");
+      await endServerSession();
+      clearAdminSessionCookies();
       window.location.href = "/auth/login";
       setIsOpen(false);
     } catch (error: any) {

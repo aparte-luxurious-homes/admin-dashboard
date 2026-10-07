@@ -1,12 +1,14 @@
 "use client";
 
 import { MESSAGES } from '@/src/lib/messages';
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { getApiErrorMessage } from "@/src/lib/apiError";
+import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { FaRegBuilding } from "react-icons/fa";
 import { SlLocationPin } from "react-icons/sl";
 import CustomDropdown from "../../ui/customDropdown";
 import {
   DocumentType,
+  getDocumentTypesForProperty,
   IAmenity,
   ICreateProperty,
   MediaType,
@@ -387,11 +389,14 @@ export default function CreatePropertyView({}) {
                       payload: docFormData,
                     },
                     {
-                      onError: () =>
-                        toast.error(MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED, {
-                          duration: 6000,
-                          style: { maxWidth: "500px", width: "max-content" },
-                        }),
+                      onError: (err: any) =>
+                        toast.error(
+                          getApiErrorMessage(err, MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED),
+                          {
+                            duration: 6000,
+                            style: { maxWidth: "500px", width: "max-content" },
+                          },
+                        ),
                     },
                   );
                 });
@@ -428,6 +433,17 @@ export default function CreatePropertyView({}) {
       );
     },
   });
+
+  const availableDocTypes = useMemo(
+    () => getDocumentTypesForProperty(formik.values.property_type),
+    [formik.values.property_type],
+  );
+
+  useEffect(() => {
+    if (!availableDocTypes.includes(selectedDocType)) {
+      setSelectedDocType(availableDocTypes[0] || DocumentType.UTILITY_BILL);
+    }
+  }, [availableDocTypes, selectedDocType]);
 
   const handleGeocode = async () => {
     // This is kept for backward compatibility if needed, but the map/autocomplete should handle this now
@@ -933,9 +949,15 @@ export default function CreatePropertyView({}) {
                 </label>
                 <CustomDropdown
                   selected={selectedDocType}
-                  options={Object.values(DocumentType)}
+                  options={availableDocTypes}
                   handleSelection={(val) =>
                     setSelectedDocType(val as DocumentType)
+                  }
+                  formatLabel={(val: string) =>
+                    val
+                      .replace(/_/g, " ")
+                      .toLowerCase()
+                      .replace(/\b\w/g, (char: string) => char.toUpperCase())
                   }
                 />
               </div>

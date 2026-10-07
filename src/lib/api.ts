@@ -1,18 +1,37 @@
 "use client";
 
 import axios from "axios";
-import Cookies from "js-cookie";
-import { BASE_API_URL } from "./routes/endpoints";
+import { clearAdminSessionCookies } from "./agentAccessGuard";
+import { API_ROUTES, BASE_API_URL } from "./routes/endpoints";
 import { PAGE_ROUTES } from "./routes/page_routes";
 
+// The session is an HttpOnly cookie the API sets and clears itself, so no
+// script on this page can read it. `withCredentials` makes the browser attach
+// it; `X-Auth-Mode: cookie` asks the API to answer logins with that cookie
+// instead of a token in the body, and is what the API's CSRF check looks for.
 const axiosRequest = axios.create({
   baseURL: BASE_API_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
+    "X-Auth-Mode": "cookie",
   },
   timeout: 30000, // Increased to 30 seconds
   timeoutErrorMessage: 'Request timed out'
 });
+
+/**
+ * Ask the API to expire the session cookie. JavaScript cannot remove an
+ * HttpOnly cookie, so every sign-out path has to go through here. Never throws:
+ * a failed call must not block the client-side half of signing out.
+ */
+export async function endServerSession(): Promise<void> {
+  try {
+    await axiosRequest.post(API_ROUTES.auth.logout);
+  } catch {
+    // Already expired or unreachable — nothing more the client can do.
+  }
+}
 
 // 🔹 Forceful normalization and token attachment
 axiosRequest.interceptors.request.use((config) => {
@@ -37,10 +56,6 @@ axiosRequest.interceptors.request.use((config) => {
     console.log(`[Axios] Final Request URL: ${config.baseURL}${config.url}`);
   }
 
-  const token = Cookies.get("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
   // Strip empty query params like role=& is_verified=
   if (typeof config.url === 'string') {
     // Remove occurrences of ?role=& or &role=& (same for is_verified)
@@ -142,9 +157,11 @@ axiosRequest.interceptors.response.use(
         // Set flag to prevent multiple redirects
         isRedirecting = true;
 
-        // Clear token cookie
-        Cookies.remove('token');
-        Cookies.remove('networkRole');
+        // Expire the session cookie server-side and drop the JS cookies.
+        // /auth/logout answers 200 even for a dead session, so this cannot
+        // re-enter the interceptor.
+        await endServerSession();
+        clearAdminSessionCookies();
 
         // Clear Redux state and React Query cache
         try {

@@ -196,11 +196,29 @@ export interface IPropertyUnit {
 }
 
 
+/** Why a row is on a network-scoped agent's list (Silver, Gold, Area Manager,
+    Regional Lead). Set by the API only for those agents: null on their own
+    rows, absent for everyone else. See api-v1 services/properties/source.py. */
+export type PropertySourceType =
+    | "REFERRAL"
+    | "VERIFICATION"
+    | "MENTEE"
+    | "ZONE"
+    | "ZONE_AGENT"
+    | "NETWORK"
+
+export interface IPropertySource {
+    type: PropertySourceType
+    /** The person (or, for ZONE, the zone) the row came through. */
+    via: { id: string; name: string | null } | null
+}
+
 export interface IProperty {
     [x: string]: any
     id: string
     ownerId: string
     owner_id?: string
+    source?: IPropertySource | null
     bookingMode?: BookingMode
     booking_mode?: BookingMode
     assignedAgent?: string
@@ -264,6 +282,28 @@ export enum DocumentType {
     EVENT_PERMIT = 'EVENT_PERMIT',
     INSURANCE_CERTIFICATE = 'INSURANCE_CERTIFICATE',
     OTHER_SUPPORTING_DOCUMENT = 'OTHER_SUPPORTING_DOCUMENT',
+}
+
+export const STANDARD_PROPERTY_DOCUMENTS: DocumentType[] = [
+    DocumentType.UTILITY_BILL,
+    DocumentType.POWER_BILL,
+    DocumentType.TENANCY_AGREEMENT,
+    DocumentType.TITLE_DEED,
+    DocumentType.CERTIFICATE_OF_OCCUPANCY,
+];
+
+export const EVENT_CENTRE_DOCUMENTS: DocumentType[] = [
+    ...STANDARD_PROPERTY_DOCUMENTS,
+    DocumentType.EVENT_PERMIT,
+    DocumentType.INSURANCE_CERTIFICATE,
+    DocumentType.OTHER_SUPPORTING_DOCUMENT,
+];
+
+export function getDocumentTypesForProperty(propertyType?: PropertyType | string | null): DocumentType[] {
+    if (propertyType === PropertyType.EVENT_CENTRE || propertyType === 'EVENT_CENTRE') {
+        return EVENT_CENTRE_DOCUMENTS;
+    }
+    return STANDARD_PROPERTY_DOCUMENTS;
 }
 
 export interface IPropertyDocument {
