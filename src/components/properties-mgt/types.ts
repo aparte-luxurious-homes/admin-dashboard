@@ -266,6 +266,28 @@ export enum DocumentType {
     OTHER_SUPPORTING_DOCUMENT = 'OTHER_SUPPORTING_DOCUMENT',
 }
 
+export const STANDARD_PROPERTY_DOCUMENTS: DocumentType[] = [
+    DocumentType.UTILITY_BILL,
+    DocumentType.POWER_BILL,
+    DocumentType.TENANCY_AGREEMENT,
+    DocumentType.TITLE_DEED,
+    DocumentType.CERTIFICATE_OF_OCCUPANCY,
+];
+
+export const EVENT_CENTRE_DOCUMENTS: DocumentType[] = [
+    ...STANDARD_PROPERTY_DOCUMENTS,
+    DocumentType.EVENT_PERMIT,
+    DocumentType.INSURANCE_CERTIFICATE,
+    DocumentType.OTHER_SUPPORTING_DOCUMENT,
+];
+
+export function getDocumentTypesForProperty(propertyType?: PropertyType | string | null): DocumentType[] {
+    if (propertyType === PropertyType.EVENT_CENTRE || propertyType === 'EVENT_CENTRE') {
+        return EVENT_CENTRE_DOCUMENTS;
+    }
+    return STANDARD_PROPERTY_DOCUMENTS;
+}
+
 export interface IPropertyDocument {
     id: string
     property_id: string
