@@ -196,11 +196,29 @@ export interface IPropertyUnit {
 }
 
 
+/** Why a row is on a network-scoped agent's list (Silver, Gold, Area Manager,
+    Regional Lead). Set by the API only for those agents: null on their own
+    rows, absent for everyone else. See api-v1 services/properties/source.py. */
+export type PropertySourceType =
+    | "REFERRAL"
+    | "VERIFICATION"
+    | "MENTEE"
+    | "ZONE"
+    | "ZONE_AGENT"
+    | "NETWORK"
+
+export interface IPropertySource {
+    type: PropertySourceType
+    /** The person (or, for ZONE, the zone) the row came through. */
+    via: { id: string; name: string | null } | null
+}
+
 export interface IProperty {
     [x: string]: any
     id: string
     ownerId: string
     owner_id?: string
+    source?: IPropertySource | null
     bookingMode?: BookingMode
     booking_mode?: BookingMode
     assignedAgent?: string
