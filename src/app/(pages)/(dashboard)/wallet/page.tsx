@@ -1,6 +1,6 @@
 "use client";
 
-import { MESSAGES } from '@/src/lib/messages';
+import { MESSAGES } from "@/src/lib/messages";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
@@ -23,6 +23,7 @@ import {
   Grid,
   IconButton,
   Tooltip,
+  Autocomplete,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -53,9 +54,9 @@ interface PayoutAccount {
 }
 
 interface Bank {
-  id: string;
+  id?: string;
   name: string;
-  code: string;
+  code?: string;
 }
 
 const formatCurrency = (
@@ -113,7 +114,7 @@ const WalletPage = () => {
     } else {
       setWithdrawalLimitStatus(false);
     }
-  }, [withdrawAmount,amount]);
+  }, [withdrawAmount, amount]);
 
   const formatError = (err: any): string => {
     const detail = err?.response?.data?.detail || err?.message || err;
@@ -444,7 +445,7 @@ const WalletPage = () => {
                               Verify
                             </Button>
                           )}
-                          <Tooltip title="Remove bank account">
+                          {/* <Tooltip title="Remove bank account">
                             <IconButton
                               size="small"
                               onClick={() => handleOpenDelete(acc)}
@@ -455,7 +456,7 @@ const WalletPage = () => {
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>
-                          </Tooltip>
+                          </Tooltip> */}
                         </Box>
                       }
                     >
@@ -530,20 +531,24 @@ const WalletPage = () => {
             </Alert>
           )}
 
-          <TextField
-            select
+          <Autocomplete
             fullWidth
-            label="Select Bank"
-            value={bankCode}
-            onChange={(e) => setBankCode(e.target.value)}
-            margin="normal"
-          >
-            {banks.map((b) => (
-              <MenuItem key={b.code} value={b.code}>
-                {b.name}
-              </MenuItem>
-            ))}
-          </TextField>
+            options={banks}
+            getOptionLabel={(bank) => bank.name}
+            value={banks.find((bank) => bank.code === bankCode) ?? null}
+            onChange={(_, bank) => {
+              setBankCode(bank?.code ?? "");
+            }}
+            isOptionEqualToValue={(option, value) => option.code === value.code}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Select Bank"
+                placeholder="Search banks..."
+                margin="normal"
+              />
+            )}
+          />
 
           <TextField
             fullWidth
