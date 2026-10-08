@@ -557,10 +557,6 @@ export default function CreatePropertyWizard() {
         .map((et) => String(et.id));
     }
 
-    console.log("MEDIA", propertyMedia);
-    console.log("DOCFILES", docFiles);
-    console.log("PAYLOAD", propertyPayload);
-
     setIsSubmitting(true);
     try {
       const response = await createProperty({ payload: propertyPayload });

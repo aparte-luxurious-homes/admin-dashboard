@@ -13,7 +13,6 @@ import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { RootState } from "../lib/store";
 import { UserRole } from "../lib/enums";
 
-
 // 🔹 Fetch User & Sync with Redux
 export const fetchUser = async (): Promise<IUser> => {
   const response = await axiosRequest.get("/profile");
@@ -25,7 +24,9 @@ export const fetchUser = async (): Promise<IUser> => {
     // log in on this browser inherit a former lead's zone navigation.
     Cookies.remove("networkRole");
     window.location.href = PAGE_ROUTES.auth.login;
-    throw Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
+    throw Error(
+      "Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.",
+    );
   }
 
   return user;
@@ -33,7 +34,7 @@ export const fetchUser = async (): Promise<IUser> => {
 
 export const useAuth = () => {
   const dispatch = useDispatch();
-  const user = useSelector((state: RootState) => state.auth.user); 
+  const user = useSelector((state: RootState) => state.auth.user);
   const token = Cookies.get("token");
 
   // Debug: Log all cookies
@@ -62,7 +63,7 @@ export const useAuth = () => {
   // Log errors but don't crash - let the persisted Redux user data work
   useEffect(() => {
     if (error && !user) {
-      console.error('[useAuth] Failed to fetch user profile:', error);
+      console.error("[useAuth] Failed to fetch user profile:", error);
     }
   }, [error, user]);
 
@@ -82,10 +83,9 @@ export const useLogin = () => {
 
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
-      const response = await axiosRequest.post<IBaseResponse<ILoginResponse> | ILoginResponse>(
-        "/auth/login",
-        credentials
-      );
+      const response = await axiosRequest.post<
+        IBaseResponse<ILoginResponse> | ILoginResponse
+      >("/auth/login", credentials);
 
       const raw = response.data as any;
       const payload: ILoginResponse = raw?.data?.user ? raw.data : raw;
@@ -96,7 +96,9 @@ export const useLogin = () => {
 
       // Check for guest role before setting any state
       if (payload.user.role === UserRole.GUEST) {
-        throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
+        throw new Error(
+          "Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.",
+        );
       }
 
       // An unapproved agent still logs in. AgentAccessGate tells them about
@@ -104,17 +106,17 @@ export const useLogin = () => {
 
       // Only set token if user is not a guest
       // Use secure cookies only in production (HTTPS)
-      const isProduction = window.location.protocol === 'https:';
+      const isProduction = window.location.protocol === "https:";
 
       // Extract domain for cookie (for production)
       const hostname = window.location.hostname;
-      const domain = hostname.includes('aparte.ng') ? '.aparte.ng' : undefined;
+      const domain = hostname.includes("aparte.ng") ? ".aparte.ng" : undefined;
 
       const cookieOptions: any = {
         expires: 7,
         secure: isProduction,
         sameSite: "Lax" as const, // Changed from Strict to Lax for better compatibility
-        path: '/' // Ensure cookie is available across all paths
+        path: "/", // Ensure cookie is available across all paths
       };
 
       // Only set domain for production (don't set for localhost)
@@ -159,7 +161,7 @@ export const useLogin = () => {
       // console.log('[useLogin] State updated, waiting for persistence...');
 
       // Small delay to ensure state is persisted
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Final token verification before navigation
       const finalTokenCheck = Cookies.get("token");
@@ -175,11 +177,11 @@ export const useLogin = () => {
       // Remove token if there's an error
       // console.log('[useLogin] Login error, removing token');
       Cookies.remove("token");
-    // Zone standing is per-account. Leaving this behind lets the next agent to
-    // log in on this browser inherit a former lead's zone navigation.
-    Cookies.remove("networkRole");
+      // Zone standing is per-account. Leaving this behind lets the next agent to
+      // log in on this browser inherit a former lead's zone navigation.
+      Cookies.remove("networkRole");
       // console.error('[useLogin] Login failed:', error);
-    }
+    },
   });
 };
 
@@ -187,7 +189,10 @@ export const useLogin = () => {
 export const useRequestPhoneOtp = () => {
   return useMutation({
     mutationFn: async ({ phone }: { phone: string }) => {
-      const response = await axiosRequest.post(API_ROUTES.auth.requestPhoneOtp, { phone });
+      const response = await axiosRequest.post(
+        API_ROUTES.auth.requestPhoneOtp,
+        { phone },
+      );
       return response.data;
     },
   });
@@ -199,7 +204,7 @@ export const useRequestPhoneOtpViaEmail = () => {
     mutationFn: async ({ phone }: { phone: string }) => {
       const response = await axiosRequest.post(
         API_ROUTES.auth.requestPhoneOtpViaEmail,
-        { phone }
+        { phone },
       );
       return response.data;
     },
@@ -214,10 +219,9 @@ export const useVerifyPhoneOtp = () => {
 
   return useMutation({
     mutationFn: async ({ phone, otp }: { phone: string; otp: string }) => {
-      const response = await axiosRequest.post<IBaseResponse<ILoginResponse> | ILoginResponse>(
-        API_ROUTES.auth.verifyPhoneOtp,
-        { phone, otp }
-      );
+      const response = await axiosRequest.post<
+        IBaseResponse<ILoginResponse> | ILoginResponse
+      >(API_ROUTES.auth.verifyPhoneOtp, { phone, otp });
 
       const raw = response.data as any;
       const payload: ILoginResponse = raw?.data?.user ? raw.data : raw;
@@ -228,7 +232,7 @@ export const useVerifyPhoneOtp = () => {
 
       if (payload.user.role === UserRole.GUEST) {
         throw new Error(
-          "Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support."
+          "Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.",
         );
       }
 
@@ -278,9 +282,9 @@ export const useLogout = () => {
     mutationFn: async () => {
       await axiosRequest.post("/auth/logout");
       Cookies.remove("token");
-    // Zone standing is per-account. Leaving this behind lets the next agent to
-    // log in on this browser inherit a former lead's zone navigation.
-    Cookies.remove("networkRole");
+      // Zone standing is per-account. Leaving this behind lets the next agent to
+      // log in on this browser inherit a former lead's zone navigation.
+      Cookies.remove("networkRole");
     },
     onSuccess: () => {
       dispatch(clearUser());
