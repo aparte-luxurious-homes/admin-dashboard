@@ -34,10 +34,17 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import toast from "react-hot-toast";
 import { useMediaQuery } from "@mui/material";
-import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
+import {
+  UploadGuestCredential,
+  UploadPaymentProof,
+} from "@/src/lib/request-handlers/bookingMgt";
+import { getApiErrorMessage } from "@/src/lib/apiError";
 import { HiOutlineCloudUpload } from "react-icons/hi";
 import { MdOutlinePayments } from "react-icons/md";
 import { Icon } from "@iconify/react";
+
+// Payment methods the API treats as offline (money collected off-platform).
+const OFFLINE_PAYMENT_METHODS = ["cash", "pos", "bank_transfer"];
 
 export default function CreateBookingView() {
   const router = useRouter();
@@ -83,6 +90,10 @@ export default function CreateBookingView() {
     GuestLookup(newGuestLookupTerm);
   const { mutate, isPending } = CreateBooking();
   const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
+  const { mutate: uploadCredential } = UploadGuestCredential();
+  const [credentialUploading, setCredentialUploading] = useState<
+    "ID_DOCUMENT" | "PHOTO" | null
+  >(null);
 
   // Local Data State
   const [selectionMode, setSelectionMode] = useState<boolean>(true);
@@ -136,6 +147,12 @@ export default function CreateBookingView() {
       guest_last_name: "",
       guest_email: "",
       guest_phone: "",
+      // Front-desk guest verification for offline bookings (URLs staged via
+      // POST /bookings/guest-credentials). The API requires a phone number
+      // plus at least one of these for a cash/POS/transfer booking made on a
+      // guest's behalf.
+      guest_id_document_url: "",
+      guest_photo_url: "",
       agent_custom_fee: (0).toFixed(2),
     },
     onSubmit: async (values) => {
@@ -189,8 +206,30 @@ export default function CreateBookingView() {
         return;
       }
 
+      // Offline (cash/POS/transfer) bookings on a guest's behalf: the desk must
+      // have captured who the guest is first. Mirrors the server rule so the
+      // refusal is explained here rather than as a 400.
+      if (offlineCredentialsMissing) {
+        toast.error(
+          !guestPhoneOnFile?.trim()
+            ? "Enter the guest's phone number before creating an offline booking."
+            : "Capture the guest's ID document or a photo of the guest before creating an offline booking.",
+        );
+        return;
+      }
+
       const payload = {
         ...values,
+        // An unpaid booking with a payment link is paid ONLINE; recording the
+        // form's default "cash" on it misfiled it as an offline booking.
+        payment_method: effectivePaymentMethod,
+        // For an existing guest with no phone on file, send the number the
+        // desk confirmed so the API records it on their account.
+        guest_phone: isNewGuest
+          ? values.guest_phone
+          : selectedUser?.phone
+            ? ""
+            : values.guest_phone,
         start_date: formatDateToYYYYMMDD(values.start_date!),
         end_date: formatDateToYYYYMMDD(values.end_date!),
         // Ensure user_id is null if we are creating a new guest
@@ -208,6 +247,11 @@ export default function CreateBookingView() {
 
       // Don't send empty referral_code — omit the key entirely
       if (!payload.referral_code) delete (payload as any).referral_code;
+      // Empty credential URLs / phone write nothing; omit them rather than
+      // send "" (the API would otherwise treat "" as "not provided" anyway).
+      if (!payload.guest_id_document_url) delete (payload as any).guest_id_document_url;
+      if (!payload.guest_photo_url) delete (payload as any).guest_photo_url;
+      if (!payload.guest_phone) delete (payload as any).guest_phone;
 
       mutate(
         {
@@ -493,6 +537,67 @@ export default function CreateBookingView() {
       })
       .map((el: any) => ({ date: el?.date }));
   }, [liveAvailabilityData, formik.values.unit_count]);
+
+  // ---- Front-desk guest verification (offline bookings) ----
+  // What the server will record as the payment method: an unpaid booking that
+  // sends a payment link is paid online whatever the form's default says.
+  const effectivePaymentMethod =
+    !formik.values.mark_as_paid && formik.values.send_payment_link
+      ? "online"
+      : formik.values.payment_method;
+  const isOfflineBooking =
+    !isAgent && OFFLINE_PAYMENT_METHODS.includes(effectivePaymentMethod);
+  // The phone the booking will carry: typed for a new guest, or on file (or
+  // typed, if missing) for an existing one.
+  const guestPhoneOnFile = isNewGuest
+    ? formik.values.guest_phone
+    : selectedUser?.phone || formik.values.guest_phone;
+  const hasCredentialImage =
+    !!formik.values.guest_id_document_url || !!formik.values.guest_photo_url;
+  const offlineCredentialsMissing =
+    isOfflineBooking && (!guestPhoneOnFile?.trim() || !hasCredentialImage);
+
+  const handleCredentialUpload =
+    (kind: "ID_DOCUMENT" | "PHOTO") =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      // Reset so the same file can be re-picked after a removal.
+      event.target.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image (JPG, PNG or WEBP).");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Image is too large. Maximum size is 10 MB.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("kind", kind);
+      formData.append("file", file);
+      setCredentialUploading(kind);
+      uploadCredential(
+        { payload: formData },
+        {
+          onSuccess: (data: any) => {
+            const url = data?.data?.data?.url;
+            if (url) {
+              formik.setFieldValue(
+                kind === "ID_DOCUMENT" ? "guest_id_document_url" : "guest_photo_url",
+                url,
+              );
+              toast.success(
+                kind === "ID_DOCUMENT" ? "ID document captured" : "Guest photo captured",
+              );
+            }
+          },
+          onError: (error: any) => {
+            toast.error(getApiErrorMessage(error, "Failed to upload the image"));
+          },
+          onSettled: () => setCredentialUploading(null),
+        },
+      );
+    };
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -1240,6 +1345,137 @@ export default function CreateBookingView() {
                 </p>
               </div>
 
+              {/* Front-desk guest verification — offline bookings only */}
+              {isOfflineBooking && (
+                <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon icon="solar:shield-user-bold" className="text-primary text-lg" />
+                    <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">
+                      Guest Verification
+                    </h4>
+                  </div>
+                  <p className="text-xs text-zinc-500 -mt-2">
+                    Required for cash, POS and bank-transfer bookings. Confirm the
+                    guest&apos;s phone number and capture their ID document and/or a
+                    photo of the guest (at least one).
+                  </p>
+
+                  {!isNewGuest && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-zinc-500 uppercase">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      {selectedUser?.phone ? (
+                        <div className="w-full h-11 px-4 border border-zinc-200 bg-zinc-50 rounded-lg flex items-center text-sm text-zinc-700">
+                          {selectedUser.phone}
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">
+                            on file
+                          </span>
+                        </div>
+                      ) : (
+                        <input
+                          type="tel"
+                          className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                          placeholder="+234..."
+                          value={formik.values.guest_phone}
+                          onChange={(e) => formik.setFieldValue("guest_phone", e.target.value)}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {isNewGuest && !formik.values.guest_phone?.trim() && (
+                    <p className="text-xs text-amber-600 font-medium">
+                      Enter the guest&apos;s phone number in the guest details above.
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        {
+                          kind: "ID_DOCUMENT" as const,
+                          field: "guest_id_document_url" as const,
+                          label: "ID document",
+                          hint: "Photo of a passport, driver's licence, NIN slip or voter's card",
+                          capture: undefined,
+                          icon: "solar:card-bold",
+                        },
+                        {
+                          kind: "PHOTO" as const,
+                          field: "guest_photo_url" as const,
+                          label: "Guest photo",
+                          hint: "Take a photo of the guest at the desk",
+                          capture: "user" as const,
+                          icon: "solar:camera-bold",
+                        },
+                      ]
+                    ).map(({ kind, field, label, hint, capture, icon }) => {
+                      const url = formik.values[field];
+                      const busy = credentialUploading === kind;
+                      const inputId = `guest-credential-${kind.toLowerCase()}`;
+                      return (
+                        <div key={kind} className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase">
+                            {label}
+                          </label>
+                          <input
+                            type="file"
+                            id={inputId}
+                            className="hidden"
+                            accept="image/*"
+                            capture={capture}
+                            onChange={handleCredentialUpload(kind)}
+                            disabled={busy}
+                          />
+                          {url ? (
+                            <div className="relative">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={url}
+                                alt={label}
+                                className="w-full h-32 object-cover rounded-lg border border-primary/40"
+                              />
+                              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-2 py-1.5 bg-black/50 rounded-b-lg text-[11px] text-white">
+                                <span>Captured</span>
+                                <div className="flex items-center gap-2">
+                                  <label htmlFor={inputId} className="cursor-pointer underline">
+                                    Retake
+                                  </label>
+                                  <button
+                                    type="button"
+                                    className="underline"
+                                    onClick={() => formik.setFieldValue(field, "")}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <label
+                              htmlFor={inputId}
+                              className="flex flex-col items-center justify-center gap-1.5 w-full h-32 border-2 border-dashed border-zinc-300 text-zinc-500 rounded-lg cursor-pointer hover:border-primary hover:text-primary transition-all text-sm font-medium px-3 text-center"
+                            >
+                              {busy ? (
+                                <Spinner />
+                              ) : (
+                                <>
+                                  <Icon icon={icon} className="text-2xl" />
+                                  <span>{capture ? "Take photo" : "Upload image"}</span>
+                                  <span className="text-[10px] font-normal text-zinc-400">
+                                    {hint}
+                                  </span>
+                                </>
+                              )}
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Payment Handling Section */}
               <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -1442,6 +1678,8 @@ export default function CreateBookingView() {
                   (isNewGuest && !formik.values.guest_email) ||
                   !formik.values.start_date ||
                   isUploading ||
+                  credentialUploading !== null ||
+                  offlineCredentialsMissing ||
                   (isNewGuest && !!duplicateGuestMatch && !duplicateDismissed)
                 }
                 className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all mt-6 flex items-center justify-center gap-2"
@@ -1458,6 +1696,12 @@ export default function CreateBookingView() {
               {isNewGuest && !!duplicateGuestMatch && !duplicateDismissed ? (
                 <p className="text-xs text-center text-amber-600 mt-2 font-medium">
                   Resolve the duplicate guest before proceeding
+                </p>
+              ) : offlineCredentialsMissing ? (
+                <p className="text-xs text-center text-amber-600 mt-2 font-medium">
+                  {!guestPhoneOnFile?.trim()
+                    ? "Offline booking: enter the guest's phone number to proceed"
+                    : "Offline booking: capture the guest's ID document or photo to proceed"}
                 </p>
               ) : !selectedProperty ||
                 !selectedUnit ||
