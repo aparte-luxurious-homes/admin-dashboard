@@ -80,6 +80,54 @@ export default function BookingGuestCard({ booking }: BookingGuestCardProps) {
               </Link>
             </div>
           </div>
+
+          {(booking.guestIdDocumentUrl || booking.guestPhotoUrl) && (
+            <div className="mt-4 pt-4 border-t border-zinc-200">
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                Front-desk verification
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {booking.guestIdDocumentUrl && (
+                  <a
+                    href={booking.guestIdDocumentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group block w-32"
+                    title="Open ID document"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={booking.guestIdDocumentUrl}
+                      alt="Guest ID document"
+                      className="w-32 h-24 object-cover rounded-lg border border-zinc-200 group-hover:border-primary transition-colors"
+                    />
+                    <span className="block mt-1 text-[11px] text-zinc-600 group-hover:text-primary">
+                      ID document
+                    </span>
+                  </a>
+                )}
+                {booking.guestPhotoUrl && (
+                  <a
+                    href={booking.guestPhotoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group block w-32"
+                    title="Open guest photo"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={booking.guestPhotoUrl}
+                      alt="Guest photo taken at the front desk"
+                      className="w-32 h-24 object-cover rounded-lg border border-zinc-200 group-hover:border-primary transition-colors"
+                    />
+                    <span className="block mt-1 text-[11px] text-zinc-600 group-hover:text-primary">
+                      Guest photo
+                    </span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </CollapsibleSection>
