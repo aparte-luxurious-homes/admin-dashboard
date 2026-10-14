@@ -112,6 +112,33 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.propertyManagement.myVerifications.base,
                 allow: [UserRole.AGENT],
             },
+            {
+                // Team leads' edits and booking actions waiting for approval.
+                name: 'Team requests',
+                pathName: 'team-requests',
+                link: PAGE_ROUTES.dashboard.propertyManagement.teamRequests.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+            },
+        ]
+    },
+    {
+        // Team lead workspace. Allowed to every AGENT here; the dashboard
+        // layout removes it for agents who do not currently lead a team
+        // (GET /team/me), and the API refuses them regardless.
+        name: 'Team',
+        pathName: 'team',
+        link: PAGE_ROUTES.dashboard.team.members,
+        icon: <Icon icon="mdi:account-group-outline" width={20} color="white" />,
+        allow: [UserRole.AGENT],
+        secondary: true,
+        children: [
+            { name: 'Members', pathName: 'members', link: PAGE_ROUTES.dashboard.team.members, allow: [UserRole.AGENT] },
+            { name: 'Properties', pathName: 'properties', link: PAGE_ROUTES.dashboard.team.properties, allow: [UserRole.AGENT] },
+            { name: 'Bookings', pathName: 'bookings', link: PAGE_ROUTES.dashboard.team.bookings, allow: [UserRole.AGENT] },
+            { name: 'Transactions', pathName: 'transactions', link: PAGE_ROUTES.dashboard.team.transactions, allow: [UserRole.AGENT] },
+            { name: 'Reviews', pathName: 'reviews', link: PAGE_ROUTES.dashboard.team.reviews, allow: [UserRole.AGENT] },
+            { name: 'Referrals', pathName: 'referrals', link: PAGE_ROUTES.dashboard.team.referrals, allow: [UserRole.AGENT] },
+            { name: 'My requests', pathName: 'requests', link: PAGE_ROUTES.dashboard.team.requests, allow: [UserRole.AGENT] },
         ]
     },
     {
@@ -130,6 +157,14 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Events',
                 pathName: 'history',
                 link: PAGE_ROUTES.dashboard.network.history.base,
+                allow: [UserRole.AGENT],
+            },
+            {
+                // Own mentees in depth, and agents on the same tier by name
+                // and booking counts only.
+                name: 'My team & peers',
+                pathName: 'my-team',
+                link: PAGE_ROUTES.dashboard.network.myTeam,
                 allow: [UserRole.AGENT],
             },
             {
@@ -167,7 +202,7 @@ export const NAV_LINKS: ILink[] = [
         pathName: 'network',
         link: PAGE_ROUTES.dashboard.network.events.base,
         icon: <IoIosGitNetwork size={20} color="white" />,
-        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
         secondary: true,
         children: [
             {
@@ -187,6 +222,13 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'mentorship',
                 link: PAGE_ROUTES.dashboard.network.mentorship.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+            },
+            {
+                // Agents whose mentorship a tier change ended; assign by hand.
+                name: 'Needs a mentor',
+                pathName: 'needs-mentor',
+                link: PAGE_ROUTES.dashboard.network.needsMentor,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
             },
             {
                 name: 'Zones',
@@ -393,6 +435,12 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Agent Performance',
                 pathName: 'agent-performance',
                 link: PAGE_ROUTES.dashboard.reports.agentPerformance,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
+            },
+            {
+                name: 'Network report',
+                pathName: 'network',
+                link: PAGE_ROUTES.dashboard.reports.network,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
             },
             {

@@ -28,6 +28,8 @@ import UpcomingCheckInsCard from "@/src/components/dashboard/UpcomingCheckInsCar
 import AgentReferralCard from "@/src/components/dashboard/AgentReferralCard";
 import AgentVerificationQueueCard from "@/src/components/dashboard/AgentVerificationQueueCard";
 import TopAgentsCard from "@/src/components/dashboard/TopAgentsCard";
+import { TopTeamsCard } from "@/src/components/team/AdminNetworkViews";
+import { UserRole } from "@/src/lib/enums";
 import AgentNetworkDashboardCard from "@/src/components/dashboard/AgentNetworkDashboardCard";
 import ShareMyLinkCard from "@/src/components/links/ShareMyLinkCard";
 import KycPromptCard from "@/src/components/dashboard/KycPromptCard";
@@ -113,6 +115,10 @@ const TIER_COLORS: Record<string, string> = {
 
 const AdminAgentHome = () => {
   const { user } = useAuth();
+  // Same roles as the agent performance report the endpoint shares a gate with.
+  const canSeeTeams = [
+    UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST,
+  ].includes(user?.role as UserRole);
   const { isAdmin, isAgent, canViewGatewayBalances } = usePermissions();
   const { networkEnabled } = useNetworkEnabled();
 
@@ -513,6 +519,11 @@ const AdminAgentHome = () => {
               showWeeklyMetrics={isAdmin}
               showPoints={networkEnabled}
             />
+            {networkEnabled && canSeeTeams && (
+              <div className="mt-4">
+                <TopTeamsCard />
+              </div>
+            )}
           </Grid>
         )}
       </Grid>
