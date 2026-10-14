@@ -915,6 +915,7 @@ export default function CreatePropertyWizard() {
             unitMediaByCategory={unitMediaByCategory}
             setUnitMediaByCategory={setUnitMediaByCategory}
             onDiscontinueListing={handleOpenShowDiscontinueModal}
+            propertyType={formik.values.property_type}
           />
         )}
 

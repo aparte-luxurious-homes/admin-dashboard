@@ -18,7 +18,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Autoplay } from "swiper/modules";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { BookingMode, IProperty, IPropertyUnit } from "../types";
 import {
@@ -46,6 +46,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import {
   DocumentType,
+  getDocumentTypesForProperty,
   IPropertyDocument,
   PropertyVerificationStatus,
 } from "../types";
@@ -132,6 +133,16 @@ export default function PropertyDetailsView({
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>(
     DocumentType.UTILITY_BILL,
   );
+  const availableDocTypes = useMemo(
+    () => getDocumentTypesForProperty(property?.propertyType ?? property?.property_type),
+    [property?.propertyType, property?.property_type],
+  );
+
+  useEffect(() => {
+    if (!availableDocTypes.includes(selectedDocType)) {
+      setSelectedDocType(availableDocTypes[0] || DocumentType.UTILITY_BILL);
+    }
+  }, [availableDocTypes, selectedDocType]);
   const { mutate: uploadDoc } = UploadPropertyDocument();
   const { mutate: verifyDoc, isPending: docVerifyPending } =
     UpdatePropertyDocumentStatus();
@@ -1386,7 +1397,7 @@ export default function PropertyDetailsView({
                   </label>
                   <CustomDropdown
                     selected={selectedDocType}
-                    options={Object.values(DocumentType)}
+                    options={availableDocTypes}
                     handleSelection={(val) =>
                       setSelectedDocType(val as DocumentType)
                     }
@@ -1421,7 +1432,7 @@ export default function PropertyDetailsView({
                             },
                             onError: (err: any) => {
                               toast.error(
-                                err?.response?.data?.detail || MESSAGES.MSG_UPLOAD_FAILED,
+                                getApiErrorMessage(err, MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED),
                               );
                               setDocUploadPending(false);
                             },

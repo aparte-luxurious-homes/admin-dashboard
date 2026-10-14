@@ -1,9 +1,9 @@
 "use client";
 
-import { Dispatch, SetStateAction, useMemo, useRef, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import CustomDropdown from "@/components/ui/customDropdown";
-import { DocumentType } from "../types";
+import { DocumentType, getDocumentTypesForProperty, PropertyType } from "../types";
 import {
   IMAGE_ACCEPT,
   VIDEO_ACCEPT,
@@ -34,6 +34,7 @@ interface StepMediaDocsProps {
     SetStateAction<Record<string, CategorizedMedia>>
   >;
   onDiscontinueListing: () => void;
+  propertyType?: PropertyType | string;
 }
 
 function CategorySlot({
@@ -264,10 +265,22 @@ export default function StepMediaDocs({
   unitMediaByCategory, 
   setUnitMediaByCategory,
   onDiscontinueListing,
+  propertyType,
 }: StepMediaDocsProps) {
+  const availableDocTypes = useMemo(
+    () => getDocumentTypesForProperty(propertyType),
+    [propertyType],
+  );
+
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>(
     DocumentType.UTILITY_BILL,
   );
+
+  useEffect(() => {
+    if (!availableDocTypes.includes(selectedDocType)) {
+      setSelectedDocType(availableDocTypes[0] || DocumentType.UTILITY_BILL);
+    }
+  }, [availableDocTypes, selectedDocType]);
 
   // First whole-property unit (if any) drives the expanded property gallery.
   // Wizard already prevents multiple whole-property units, so taking the first is safe.
@@ -451,8 +464,14 @@ export default function StepMediaDocs({
             </label>
             <CustomDropdown
               selected={selectedDocType}
-              options={Object.values(DocumentType)}
+              options={availableDocTypes}
               handleSelection={(val) => setSelectedDocType(val as DocumentType)}
+              formatLabel={(val: string) =>
+                val
+                  .replace(/_/g, " ")
+                  .toLowerCase()
+                  .replace(/\b\w/g, (char: string) => char.toUpperCase())
+              }
             />
           </div>
 
