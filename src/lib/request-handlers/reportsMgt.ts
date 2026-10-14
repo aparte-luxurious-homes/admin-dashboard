@@ -14,12 +14,34 @@ export function receivesReportsByEmail(role?: string) {
 }
 
 /**
+ * Generating a report (render, upload, then email with retries) can outlast the
+ * client's default 30s, while the server keeps going for up to 300s. Giving up
+ * at 30s showed an error for a report that then arrived anyway.
+ */
+const REPORT_TIMEOUT_MS = 120000;
+
+const REPORT_EMAIL_TIMEOUT_MESSAGE =
+    "This is taking longer than usual. If it completes, the report will arrive in your email, so check your inbox before trying again.";
+
+function isTimeout(error: any) {
+    return error?.code === "ECONNABORTED" || error?.code === "ETIMEDOUT";
+}
+
+/**
  * Ask the API to generate a report and email it. Resolves with the message to
  * show (it names the address the report went to). The API only answers once
  * the email has been accepted, so a resolved promise means it was sent.
  */
 export async function requestReportEmail(url: string, format: string): Promise<string> {
-    const response = await axiosRequest.get(url, { params: { format } });
+    let response;
+    try {
+        response = await axiosRequest.get(url, { params: { format }, timeout: REPORT_TIMEOUT_MS });
+    } catch (error) {
+        // A timeout is not a failure the server reported: the email may still
+        // go out, and retrying straight away would send it twice.
+        if (isTimeout(error)) throw new Error(REPORT_EMAIL_TIMEOUT_MESSAGE);
+        throw error;
+    }
     const sentTo = response.data?.data?.sent_to;
     return response.data?.message
         || (sentTo ? `Your report has been sent to ${sentTo}` : "Your report has been sent to your email");
@@ -79,6 +101,7 @@ export async function requestReportDownload(url: string, format: string) {
     try {
         const response = await axiosRequest.get(url, {
             params: { format },
+            timeout: REPORT_TIMEOUT_MS,
         });
 
         const downloadUrl = response.data?.data?.download_url;
