@@ -284,7 +284,22 @@ const REPORT_COLUMNS = (group: "gold" | "silver" | "bronze") => {
     ];
     if (group === "bronze") cols.push({ header: "Silver mentor", render: (r) => r.silver_mentor ?? "None" });
     if (group !== "gold") cols.push({ header: "Gold mentor", render: (r) => r.gold_mentor ?? "None" });
-    if (group !== "gold") cols.push({ header: "Link", render: (r) => r.mentorship_status ? <Badge value={r.mentorship_status} /> : "—" });
+    if (group !== "gold") cols.push({
+        header: "Link",
+        render: (r) => (
+            <div className="flex flex-col gap-1">
+                {r.mentorship_status ? <Badge value={r.mentorship_status} /> : "—"}
+                {r.link_breaks_rule && (
+                    <span
+                        className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-red-50 text-red-700 border-red-200"
+                        title="Gold mentors Silver and Silver mentors Bronze. This link breaks that rule and earns the mentor nothing; reassign under Needs a mentor."
+                    >
+                        Breaks tier rule
+                    </span>
+                )}
+            </div>
+        ),
+    });
     cols.push(
         { header: "Team (direct / all)", render: (r) => `${r.direct_mentees} / ${r.whole_team}` },
         { header: "Listed", render: (r) => r.properties_listed },
