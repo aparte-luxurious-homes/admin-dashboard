@@ -1,6 +1,41 @@
 import { useQuery } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
+import { UserRole } from "../enums";
+
+/**
+ * Owners and agents receive reports by email, never as a download; staff keep
+ * the download. Mirrors REPORT_EMAIL_ROLES in api-v1 services/reporting/delivery.py.
+ * Decided by role rather than by the response because the download path has to
+ * open its tab synchronously on click (see requestReportDownload).
+ */
+export function receivesReportsByEmail(role?: string) {
+    return role === UserRole.OWNER || role === UserRole.AGENT;
+}
+
+/**
+ * Ask the API to generate a report and email it. Resolves with the message to
+ * show (it names the address the report went to). The API only answers once
+ * the email has been accepted, so a resolved promise means it was sent.
+ */
+export async function requestReportEmail(url: string, format: string): Promise<string> {
+    const response = await axiosRequest.get(url, { params: { format } });
+    const sentTo = response.data?.data?.sent_to;
+    return response.data?.message
+        || (sentTo ? `Your report has been sent to ${sentTo}` : "Your report has been sent to your email");
+}
+
+/**
+ * Email the report (owner/agent) or download it (staff). Returns the toast text.
+ * Must be called without awaiting anything first, for the download path.
+ */
+export async function requestReport(url: string, format: string, role?: string): Promise<string> {
+    if (receivesReportsByEmail(role)) {
+        return requestReportEmail(url, format);
+    }
+    await requestReportDownload(url, format);
+    return `${format.toUpperCase()} downloaded successfully`;
+}
 
 export enum ReportsRequestKeys {
     statements = "getStatements",
