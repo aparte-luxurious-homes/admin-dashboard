@@ -57,14 +57,28 @@ export interface IDiscountPolicy {
     tiers: IDiscountTier[];
 }
 
+export enum AmenityScope {
+    STAY = 'STAY',
+    VENUE = 'VENUE',
+    ALL = 'ALL',
+}
+
 export interface IAmenity {
     id: string
     name: string
+    /** Which listings may offer it: a venue sees VENUE + ALL, a stay STAY + ALL. */
+    applies_to?: AmenityScope | string
     createdAt?: string
     updatedAt?: string
 }
 
 
+
+export interface IHalfDayWindow {
+    name: string
+    start: string
+    end: string
+}
 
 export interface IPropertyVerification {
     id: string
@@ -174,6 +188,19 @@ export interface IPropertyUnit {
     event_price_per_hour?: string
     eventPricePerHalfDay?: string
     event_price_per_half_day?: string
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null
+    closing_time?: string | null
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null
+    /** Read-only: the hire types a guest can actually book, and the one a
+        card quotes ("PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"). */
+    offered_billing_units?: string[]
+    headline_billing_unit?: string | null
     /** This unit's OWN override. null/absent = inherits the property's. */
     long_stay_discount_policy?: IDiscountPolicy | null
     extension_discount_policy?: IDiscountPolicy | null
@@ -417,9 +444,18 @@ export interface IUpdatePropertyUnit {
     standing_capacity?: number,
     car_park_spaces?: number,
     power_supply_provision?: string,
-    event_price_per_day?: string,
-    event_price_per_hour?: string,
-    event_price_per_half_day?: string,
+    event_price_per_day?: string | null,
+    event_price_per_hour?: string | null,
+    event_price_per_half_day?: string | null,
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null,
+    closing_time?: string | null,
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null,
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null,
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null,
     additional_fees?: Array<{
         fee_name: string,
         fee_amount: number,
@@ -447,9 +483,18 @@ export interface ICreatePropertyUnit {
     standing_capacity?: number,
     car_park_spaces?: number,
     power_supply_provision?: string,
-    event_price_per_day?: string,
-    event_price_per_hour?: string,
-    event_price_per_half_day?: string,
+    event_price_per_day?: string | null,
+    event_price_per_hour?: string | null,
+    event_price_per_half_day?: string | null,
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null,
+    closing_time?: string | null,
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null,
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null,
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null,
     additional_fees?: Array<{
         fee_name: string,
         fee_amount: number,

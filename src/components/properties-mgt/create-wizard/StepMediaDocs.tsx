@@ -12,16 +12,21 @@ import {
 } from "@/src/lib/mediaFiles";
 import toast from "react-hot-toast";
 import {
-  CATEGORY_LABELS,
   CategorizedMedia,
+  HALL_OPTIONAL_CATEGORIES,
+  HALL_REQUIRED_CATEGORIES,
   OPTIONAL_PROPERTY_CATEGORIES,
   PropertyMediaCategory,
   REQUIRED_PROPERTY_CATEGORIES,
   UnitFormValues,
+  VENUE_OPTIONAL_PROPERTY_CATEGORIES,
+  VENUE_REQUIRED_PROPERTY_CATEGORIES,
+  categoryLabel,
   getRequiredCategoriesForUnit,
   getOptionalCategoriesForUnit,
   getCategoryCountSuffix,
 } from "./types";
+import { isVenue } from "../venue";
 
 interface StepMediaDocsProps {
   propertyMedia: CategorizedMedia;
@@ -156,6 +161,7 @@ function CategoryGrid({
   optionalCats,
   hasWalkthrough,
   countSuffix,
+  venue = false,
 }: {
   title: string;
   icon: string;
@@ -166,13 +172,15 @@ function CategoryGrid({
   hasWalkthrough?: boolean;
   /** Optional per-category multiplier for the label, e.g. 3 → "Bedroom × 3". */
   countSuffix?: (cat: PropertyMediaCategory) => number;
+  /** Word the slots for an event centre. */
+  venue?: boolean;
 }) {
   const [showOptional, setShowOptional] = useState(false);
   const setCategory = (cat: PropertyMediaCategory, files: File[]) => {
     onChange({ ...values, [cat]: files });
   };
   const labelFor = (cat: PropertyMediaCategory) => {
-    const base = CATEGORY_LABELS[cat];
+    const base = categoryLabel(cat, venue);
     const n = countSuffix?.(cat) ?? 0;
     return n > 1 ? `${base} × ${n}` : base;
   };
@@ -282,6 +290,15 @@ export default function StepMediaDocs({
     }
   }, [availableDocTypes, selectedDocType]);
 
+  const venue = isVenue(propertyType);
+
+  // A hall is photographed by its interior, stage and layout; a stay by its
+  // rooms. These mirror the reviewer's coverage check in the API.
+  const unitRequired = (u: UnitFormValues) =>
+    venue ? HALL_REQUIRED_CATEGORIES : getRequiredCategoriesForUnit(u);
+  const unitOptional = (u: UnitFormValues) =>
+    venue ? HALL_OPTIONAL_CATEGORIES : getOptionalCategoriesForUnit(u);
+
   // First whole-property unit (if any) drives the expanded property gallery.
   // Wizard already prevents multiple whole-property units, so taking the first is safe.
   const wholePropertyUnit = units.find((u) => u.is_whole_property);
@@ -290,24 +307,26 @@ export default function StepMediaDocs({
   // categories fold into the property's gallery (so the user has somewhere to put
   // bedroom/living-room/etc. photos). Deduped against the existing property cats.
   const propertyGalleryRequired = useMemo<PropertyMediaCategory[]>(() => {
-    const base = [...REQUIRED_PROPERTY_CATEGORIES];
+    const base = [...(venue ? VENUE_REQUIRED_PROPERTY_CATEGORIES : REQUIRED_PROPERTY_CATEGORIES)];
     if (wholePropertyUnit) {
-      for (const cat of getRequiredCategoriesForUnit(wholePropertyUnit)) {
+      for (const cat of unitRequired(wholePropertyUnit)) {
         if (!base.includes(cat)) base.push(cat);
       }
     }
     return base;
-  }, [wholePropertyUnit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wholePropertyUnit, venue]);
 
   const propertyGalleryOptional = useMemo<PropertyMediaCategory[]>(() => {
-    const base = [...OPTIONAL_PROPERTY_CATEGORIES];
+    const base = [...(venue ? VENUE_OPTIONAL_PROPERTY_CATEGORIES : OPTIONAL_PROPERTY_CATEGORIES)];
     if (wholePropertyUnit) {
-      for (const cat of getOptionalCategoriesForUnit(wholePropertyUnit)) {
+      for (const cat of unitOptional(wholePropertyUnit)) {
         if (!base.includes(cat)) base.push(cat);
       }
     }
     return base;
-  }, [wholePropertyUnit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wholePropertyUnit, venue]);
 
   // Aggregate coverage across the property + every unit.
   // Per-unit required categories are derived from each unit's room counts.
@@ -315,7 +334,7 @@ export default function StepMediaDocs({
   // (now-expanded) property gallery.
   const coverage = useMemo(() => {
     const unitRequirements = units.map((u) =>
-      u.is_whole_property ? [] : getRequiredCategoriesForUnit(u),
+      u.is_whole_property ? [] : unitRequired(u),
     );
     const total =
       propertyGalleryRequired.length +
@@ -335,7 +354,8 @@ export default function StepMediaDocs({
       total,
       percent: total === 0 ? 0 : Math.round((covered / total) * 100),
     };
-  }, [propertyMedia, units, unitMediaByCategory, propertyGalleryRequired]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyMedia, units, unitMediaByCategory, propertyGalleryRequired, venue]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -373,9 +393,11 @@ export default function StepMediaDocs({
           />
         </div>
         <p className="text-[11px] text-zinc-500">
-          Guests trust listings that show every room. Missing slots are added to
-          the admin review queue-listings can still be created, but coverage
-          gaps slow down verification.
+          {venue
+            ? "Guests book venues they can see: the hall, the parking and the outside."
+            : "Guests trust listings that show every room."}{" "}
+          Missing slots are added to the admin review queue. Listings can still
+          be created, but coverage gaps slow down verification.
         </p>
       </div>
 
@@ -387,14 +409,15 @@ export default function StepMediaDocs({
                 Balcony) into the property optionals. Otherwise the property gallery
                 stays exterior-only. */}
       <CategoryGrid
-        title="Property gallery"
+        title={venue ? "Venue gallery" : "Property gallery"}
         icon="solar:home-2-bold-duotone"
+        venue={venue}
         values={propertyMedia}
         onChange={setPropertyMedia}
         requiredCats={propertyGalleryRequired}
         optionalCats={propertyGalleryOptional}
         countSuffix={(cat) =>
-          wholePropertyUnit ? getCategoryCountSuffix(wholePropertyUnit, cat) : 0
+          wholePropertyUnit && !venue ? getCategoryCountSuffix(wholePropertyUnit, cat) : 0
         }
         hasWalkthrough
       />
@@ -411,21 +434,33 @@ export default function StepMediaDocs({
                 className="bg-zinc-50 border border-dashed border-zinc-300 rounded-2xl p-4 text-xs text-zinc-500 leading-relaxed"
               >
                 <span className="font-bold text-zinc-700">
-                  {unit.name || "Unnamed unit"}
+                  {unit.name || (venue ? "Unnamed hall" : "Unnamed unit")}
                 </span>{" "}
-                is the whole property upload its bedroom, living room,
-                kitchen, and bathroom photos in the{" "}
-                <span className="font-bold text-zinc-700">
-                  Property gallery
-                </span>{" "}
-                above (interior slots have been added based on this unit&apos;s
-                room counts).
+                {venue ? (
+                  <>
+                    is the whole venue. Upload its hall, stage and layout photos
+                    in the{" "}
+                    <span className="font-bold text-zinc-700">Venue gallery</span>{" "}
+                    above.
+                  </>
+                ) : (
+                  <>
+                    is the whole property. Upload its bedroom, living room,
+                    kitchen, and bathroom photos in the{" "}
+                    <span className="font-bold text-zinc-700">
+                      Property gallery
+                    </span>{" "}
+                    above (interior slots have been added based on this unit&apos;s
+                    room counts).
+                  </>
+                )}
               </div>
             ) : (
               <CategoryGrid
                 key={unit._key}
-                title={`${unit.name || "Unnamed unit"} \u2014 photos`}
+                title={`${unit.name || (venue ? "Unnamed hall" : "Unnamed unit")} \u2014 photos`}
                 icon="solar:buildings-bold-duotone"
+                venue={venue}
                 values={unitMediaByCategory[unit._key] ?? {}}
                 onChange={(next) =>
                   setUnitMediaByCategory((prev) => ({
@@ -433,9 +468,9 @@ export default function StepMediaDocs({
                     [unit._key]: next,
                   }))
                 }
-                requiredCats={getRequiredCategoriesForUnit(unit)}
-                optionalCats={getOptionalCategoriesForUnit(unit)}
-                countSuffix={(cat) => getCategoryCountSuffix(unit, cat)}
+                requiredCats={unitRequired(unit)}
+                optionalCats={unitOptional(unit)}
+                countSuffix={(cat) => (venue ? 0 : getCategoryCountSuffix(unit, cat))}
                 hasWalkthrough
               />
             ),

@@ -62,6 +62,7 @@ import Spinner from "../../ui/Spinner";
 import { formatDate } from "@/src/lib/utils";
 import DiscountProposalModal from "./DiscountProposalModal";
 import PublishToLinkCard from "@/src/components/links/PublishToLinkCard";
+import { headlineUnitLabel, hoursLabel, isVenue } from "../venue";
 
 export default function PropertyDetailsView({
   propertyId,
@@ -73,7 +74,12 @@ export default function PropertyDetailsView({
   const { canDeleteProperty } = usePermissions();
 
   const { data, isLoading } = GetSingleProperty(propertyId);
-  const { data: fetchedAmenites } = GetAmenities();
+  // A venue picks from the venue amenity list, a stay from the stay list.
+  const { data: fetchedAmenites } = GetAmenities(
+    isVenue(data?.data?.data?.property_type ?? data?.data?.data?.propertyType)
+      ? "VENUE"
+      : "STAY",
+  );
   const { mutate: deleteMutation, isPending: deleteIsPending } =
     DeleteProperty();
   const { mutate: assignAgent, isPending: assignmentLoading } =
@@ -690,7 +696,9 @@ export default function PropertyDetailsView({
                                       0,
                                     ).toLocaleString()}
                                     <span className="text-[9px] font-normal text-zinc-400 ml-0.5">
-                                      /night
+                                      {isVenue(property?.property_type ?? property?.propertyType)
+                                        ? ` / ${headlineUnitLabel(el)}`
+                                        : "/night"}
                                     </span>
                                   </p>
                                 </div>
@@ -703,6 +711,15 @@ export default function PropertyDetailsView({
                                   {el.description ||
                                     "View this unit for more details."}
                                 </p>
+                                {isVenue(property?.property_type ?? property?.propertyType) ? (
+                                  <div className="flex items-center gap-3 pt-2 mt-1 border-t border-zinc-50 text-zinc-500 text-xs font-semibold flex-wrap">
+                                    <span>
+                                      {el.seating_capacity ?? el.seatingCapacity ?? 0} seated ·{" "}
+                                      {el.standing_capacity ?? el.standingCapacity ?? 0} standing
+                                    </span>
+                                    {hoursLabel(el) && <span>{hoursLabel(el)}</span>}
+                                  </div>
+                                ) : (
                                 <div className="flex items-center gap-4 pt-2 mt-1 border-t border-zinc-50">
                                   <div className="flex items-center gap-1.5 text-zinc-500 text-xs font-semibold">
                                     <IoBedOutline className="text-primary" />
@@ -719,6 +736,7 @@ export default function PropertyDetailsView({
                                     Baths
                                   </div>
                                 </div>
+                                )}
                               </div>
                             </Link>
                           ))}

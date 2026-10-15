@@ -91,6 +91,8 @@ export const API_ROUTES = {
                 amenities: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/amenities`,
                 media: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/media`,
                 availability: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/availability`,
+                // An event-centre hall's free times on one date (?date=YYYY-MM-DD).
+                eventSlots: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/event-slots`,
                 deleteMedia: (propertyId: string | number, unitId: string | number, mediaId: string | number) => `/properties/${propertyId}/units/${unitId}/media/${mediaId}`,
             },
             deleteMedia: (propertyId: string | number, mediaId: string | number) => `/properties/${propertyId}/media/${mediaId}`,
@@ -122,6 +124,8 @@ export const API_ROUTES = {
         // Admin breakdown of who earns what from the listing and referral pools.
         commissionSplit: (id: string) => `/bookings/${id}/commission-split`,
         upcoming: '/bookings/upcoming',
+        // Server price for a prospective booking; venues are priced only here.
+        quote: '/bookings/quote',
         guestLookup: '/bookings/guest-lookup',
         guestsDirectory: '/bookings/guests/directory',
         details: (id: string) => `/bookings/${id}`,

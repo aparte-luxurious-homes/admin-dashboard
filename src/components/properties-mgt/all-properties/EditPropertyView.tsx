@@ -41,6 +41,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import Spinner from "../../ui/Spinner";
 import { CreateAmenityForm } from "./CreatePropertyView";
+import { hallFormFromUnit, hallPayload, isVenue, validateHall } from "../venue";
 import CustomModal from "../../ui/CustomModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
@@ -200,6 +201,43 @@ function Field({
   );
 }
 
+/** A unit from the API as the unit drawer edits it. */
+function toUnitForm(u: any): UnitFormValues {
+  return {
+    _key: String(u.id),
+    name: u.name ?? '',
+    description: u.description ?? '',
+    price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ''),
+    caution_fee: String(u.caution_fee ?? u.cautionFee ?? '0'),
+    max_guests: u.max_guests ?? u.maxGuests ?? 1,
+    count: u.count ?? 1,
+    is_whole_property: u.is_whole_property ?? u.isWholeProperty ?? false,
+    bedroom_count: u.bedroom_count ?? u.bedroomCount ?? 0,
+    living_room_count: u.living_room_count ?? u.livingRoomCount ?? 0,
+    kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
+    bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
+    amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
+    // Event-centre facilities, rate card and hours. Reloading a venue keeps
+    // them, so the next save cannot silently blank them.
+    seating_capacity: u.seating_capacity ?? u.seatingCapacity ?? 0,
+    standing_capacity: u.standing_capacity ?? u.standingCapacity ?? 0,
+    car_park_spaces: u.car_park_spaces ?? u.carParkSpaces ?? 0,
+    power_supply_provision: u.power_supply_provision ?? u.powerSupplyProvision ?? '',
+    ...hallFormFromUnit(u),
+    additional_fees: (u.additional_fees ?? u.additionalFees ?? []).map((f: any) => ({
+      fee_name: f.fee_name ?? f.feeName ?? '',
+      fee_amount: Number(f.fee_amount ?? f.feeAmount ?? 0),
+      is_mandatory: Boolean(f.is_mandatory ?? f.isMandatory ?? false),
+    })),
+    // The unit's OWN override, not the resolved policy the API also returns
+    // as `effective_*`. Prefilling the resolved one would turn every unit
+    // that merely inherits into one that overrides with a copy, and the
+    // listing-level policy would then stop reaching any of them.
+    long_stay_discount_policy: u.long_stay_discount_policy ?? null,
+    extension_discount_policy: u.extension_discount_policy ?? null,
+  };
+}
+
 export default function EditPropertyView({
   handleEditMode,
   propertyData,
@@ -271,41 +309,7 @@ export default function EditPropertyView({
   const [unitDrawerOpen, setUnitDrawerOpen] = useState(false);
   const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
   const [existingUnits, setExistingUnits] = useState<UnitFormValues[]>(
-    (propertyData?.units ?? []).map((u) => ({
-      _key: String(u.id),
-      name: u.name ?? '',
-      description: u.description ?? '',
-      price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ''),
-      caution_fee: String(u.caution_fee ?? u.cautionFee ?? '0'),
-      max_guests: u.max_guests ?? u.maxGuests ?? 1,
-      count: u.count ?? 1,
-      is_whole_property: u.is_whole_property ?? u.isWholeProperty ?? false,
-      bedroom_count: u.bedroom_count ?? u.bedroomCount ?? 0,
-      living_room_count: u.living_room_count ?? u.livingRoomCount ?? 0,
-      kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
-      bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
-      amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
-      // Event-centre facilities and rate card. The API serializes these now,
-      // so an edit that reloads a venue keeps its capacity and prices instead
-      // of silently blanking them on the next save.
-      seating_capacity: u.seating_capacity ?? u.seatingCapacity ?? 0,
-      standing_capacity: u.standing_capacity ?? u.standingCapacity ?? 0,
-      car_park_spaces: u.car_park_spaces ?? u.carParkSpaces ?? 0,
-      power_supply_provision: u.power_supply_provision ?? u.powerSupplyProvision ?? '',
-      event_price_per_hour: String(u.event_price_per_hour ?? u.eventPricePerHour ?? ''),
-      event_price_per_half_day: String(u.event_price_per_half_day ?? u.eventPricePerHalfDay ?? ''),
-      additional_fees: (u.additional_fees ?? u.additionalFees ?? []).map((f: any) => ({
-        fee_name: f.fee_name ?? f.feeName ?? '',
-        fee_amount: Number(f.fee_amount ?? f.feeAmount ?? 0),
-        is_mandatory: Boolean(f.is_mandatory ?? f.isMandatory ?? false),
-      })),
-      // The unit's OWN override, not the resolved policy the API also returns
-      // as `effective_*`. Prefilling the resolved one would turn every unit
-      // that merely inherits into one that overrides with a copy, and the
-      // listing-level policy would then stop reaching any of them.
-      long_stay_discount_policy: u.long_stay_discount_policy ?? null,
-      extension_discount_policy: u.extension_discount_policy ?? null,
-    }))
+    (propertyData?.units ?? []).map(toUnitForm),
   );
 
   // Mirrors StepUnits in the create wizard: once a unit represents the whole
@@ -315,40 +319,19 @@ export default function EditPropertyView({
   const hasWholePropertyUnit = existingUnits.some((u) => u.is_whole_property);
 
   useEffect(() => {
-    setExistingUnits(
-      (propertyData?.units ?? []).map((u) => ({
-        _key: String(u.id),
-        name: u.name ?? '',
-        description: u.description ?? '',
-        price_per_night: String(u.price_per_night ?? u.pricePerNight ?? ''),
-        caution_fee: String(u.caution_fee ?? u.cautionFee ?? '0'),
-        max_guests: u.max_guests ?? u.maxGuests ?? 1,
-        count: u.count ?? 1,
-        is_whole_property: u.is_whole_property ?? u.isWholeProperty ?? false,
-        bedroom_count: u.bedroom_count ?? u.bedroomCount ?? 0,
-        living_room_count: u.living_room_count ?? u.livingRoomCount ?? 0,
-        kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
-        bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
-        amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
-        seating_capacity: u.seating_capacity ?? u.seatingCapacity ?? 0,
-        standing_capacity: u.standing_capacity ?? u.standingCapacity ?? 0,
-        car_park_spaces: u.car_park_spaces ?? u.carParkSpaces ?? 0,
-        power_supply_provision: u.power_supply_provision ?? u.powerSupplyProvision ?? '',
-        event_price_per_hour: String(u.event_price_per_hour ?? u.eventPricePerHour ?? ''),
-        event_price_per_half_day: String(u.event_price_per_half_day ?? u.eventPricePerHalfDay ?? ''),
-        additional_fees: (u.additional_fees ?? u.additionalFees ?? []).map((f: any) => ({
-          fee_name: f.fee_name ?? f.feeName ?? '',
-          fee_amount: Number(f.fee_amount ?? f.feeAmount ?? 0),
-          is_mandatory: Boolean(f.is_mandatory ?? f.isMandatory ?? false),
-        })),
-        long_stay_discount_policy: u.long_stay_discount_policy ?? null,
-        extension_discount_policy: u.extension_discount_policy ?? null,
-      }))
-    );
+    setExistingUnits((propertyData?.units ?? []).map(toUnitForm));
   }, [propertyData]);
 
   const handleSaveUnit = (unit: UnitFormValues) => {
     const unitAmenityIds = sortAmenities(availableAmenities ?? [], unit.amenityNames);
+    const venue = isVenue(formik.values.type);
+    if (venue) {
+      const problem = validateHall(unit);
+      if (problem) {
+        toast.error(`${unit.name || "This hall"}: ${problem}`);
+        return;
+      }
+    }
     const unitPayload = {
       name: unit.name,
       description: unit.description,
@@ -367,18 +350,17 @@ export default function EditPropertyView({
       additional_fees: (unit.additional_fees ?? []).filter((f) =>
         f.fee_name.trim(),
       ),
-      // Venue-only. Without these an edit saved a hall back with no capacity,
-      // no parking, no power and no hourly rate — the drawer collected them
-      // and the payload dropped them on the floor.
-      ...(formik.values.type === PropertyType.EVENT_CENTRE
+      // Venue-only: capacity, facilities, and the rate card and hours the
+      // hall is hired by. An unticked rate is sent as null so the API clears
+      // it; omitting it would leave the old rate bookable.
+      ...(venue
         ? {
             seating_capacity: unit.seating_capacity,
             standing_capacity: unit.standing_capacity,
             car_park_spaces: unit.car_park_spaces,
             power_supply_provision: unit.power_supply_provision || undefined,
-            event_price_per_day: String(unit.price_per_night),
-            event_price_per_hour: unit.event_price_per_hour || undefined,
-            event_price_per_half_day: unit.event_price_per_half_day || undefined,
+            max_guests: Math.max(unit.seating_capacity || 0, unit.standing_capacity || 0, 1),
+            ...hallPayload(unit),
           }
         : {}),
       // Always sent, including as null: this is an update, and null is how a
@@ -386,7 +368,8 @@ export default function EditPropertyView({
       // inheriting the property's policy. Omitting it would make that
       // un-settable.
       long_stay_discount_policy: unit.long_stay_discount_policy ?? null,
-      extension_discount_policy: unit.extension_discount_policy ?? null,
+      // Venue bookings are never extended; a venue keeps no extension override.
+      extension_discount_policy: venue ? null : unit.extension_discount_policy ?? null,
     };
 
     if (editingUnitIndex !== null) {
@@ -835,7 +818,10 @@ Deleting anyway removes the unit but does NOT ` +
           onClose={() => setShowAmenityForm(false)}
           isOpen={showAmenityForm}
         >
-          <CreateAmenityForm show={setShowAmenityForm} />
+          <CreateAmenityForm
+            show={setShowAmenityForm}
+            defaultScope={isVenue(formik.values.type) ? "VENUE" : "STAY"}
+          />
         </CustomModal>
       )}
 
@@ -1110,16 +1096,21 @@ Deleting anyway removes the unit but does NOT ` +
                   Flags
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  <CustomCheckbox
-                    label="Pets allowed"
-                    checked={formik.values.petsAllowed}
-                    onChange={(val) => formik.setFieldValue("petsAllowed", val)}
-                  />
-                  <CustomCheckbox
-                    label="Parties allowed"
-                    checked={formik.values.partyAllowed}
-                    onChange={(val) => formik.setFieldValue("partyAllowed", val)}
-                  />
+                  {/* Not asked of a venue: its rules say what is allowed. */}
+                  {!isVenue(formik.values.type) && (
+                    <>
+                      <CustomCheckbox
+                        label="Pets allowed"
+                        checked={formik.values.petsAllowed}
+                        onChange={(val) => formik.setFieldValue("petsAllowed", val)}
+                      />
+                      <CustomCheckbox
+                        label="Parties allowed"
+                        checked={formik.values.partyAllowed}
+                        onChange={(val) => formik.setFieldValue("partyAllowed", val)}
+                      />
+                    </>
+                  )}
                   {user?.role === UserRole.ADMIN && (
                     <CustomCheckbox
                       label="Featured"
@@ -1147,14 +1138,18 @@ Deleting anyway removes the unit but does NOT ` +
               <div className="pt-4 border-t border-zinc-50">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <Icon icon="solar:document-text-bold-duotone" className="text-sm text-primary" />
-                  Property Rules
+                  {isVenue(formik.values.type) ? "Venue Rules" : "Property Rules"}
                 </p>
                 <div className="relative">
                   <textarea
                     id="rules"
                     maxLength={1000}
                     rows={3}
-                    placeholder="e.g., No loud music after 10pm. No smoking indoors..."
+                    placeholder={
+                      isVenue(formik.values.type)
+                        ? "e.g., Decorations must not be nailed to walls. Setup from 7am; tear-down by midnight..."
+                        : "e.g., No loud music after 10pm. No smoking indoors..."
+                    }
                     value={formik.values.rules}
                     onChange={formik.handleChange}
                     className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none text-sm"
@@ -1443,11 +1438,16 @@ Deleting anyway removes the unit but does NOT ` +
           </div>
 
           {/* Units Management Section */}
-          <FormCard icon="solar:home-2-bold-duotone" title="Units">
+          <FormCard
+            icon="solar:home-2-bold-duotone"
+            title={isVenue(formik.values.type) ? "Halls & Spaces" : "Units"}
+          >
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-zinc-500">
-                  Manage the rentable units for this property.
+                  {isVenue(formik.values.type)
+                    ? "Manage the halls and spaces guests can hire."
+                    : "Manage the rentable units for this property."}
                 </p>
                 {/* A whole-property unit IS the property, so a second unit
                     alongside it would double-book the same rooms. The create
@@ -1468,7 +1468,7 @@ Deleting anyway removes the unit but does NOT ` +
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-xl hover:bg-primary hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
                 >
                   <FaPlus className="text-[9px]" />
-                  Add Unit
+                  {isVenue(formik.values.type) ? "Add Hall" : "Add Unit"}
                 </button>
               </div>
 
@@ -1494,6 +1494,7 @@ Deleting anyway removes the unit but does NOT ` +
                         !propertyData?.units?.some((u) => String(u.id) === unit._key)
                       }
                       deleteDisabledReason="Only a super admin can remove a saved unit."
+                      isVenue={isVenue(formik.values.type)}
                     />
                   ))}
                 </div>

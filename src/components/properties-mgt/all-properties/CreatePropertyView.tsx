@@ -51,10 +51,14 @@ const libraries: any = ["places"];
 
 export function CreateAmenityForm({
   show,
+  defaultScope = "STAY",
 }: {
   show: Dispatch<SetStateAction<boolean>>;
+  /** Preselects who the amenity is for: the listing being edited's kind. */
+  defaultScope?: "STAY" | "VENUE" | "ALL";
 }) {
   const [name, setName] = useState<string>("");
+  const [scope, setScope] = useState<"STAY" | "VENUE" | "ALL">(defaultScope);
   const [error, setError] = useState<string | null>(null);
   const { mutate, isPending } = CreateAmenity();
 
@@ -65,7 +69,7 @@ export function CreateAmenityForm({
     }
     setError(null);
     mutate(
-      { name },
+      { name, applies_to: scope },
       {
         onSuccess: () => {
           (toast.success(MESSAGES.MSG_AMENITY_CREATED_SUCCESSFULLY, {
@@ -103,6 +107,27 @@ export function CreateAmenityForm({
         className="w-full border border-zinc-400 rounded-lg p-3 text-lg"
       />
       {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+      <div className="mt-4">
+        <p className="text-sm font-medium text-zinc-700 mb-2">Used for</p>
+        <div className="flex gap-2">
+          {(
+            [
+              ["STAY", "Stays"],
+              ["VENUE", "Event centres"],
+              ["ALL", "Both"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setScope(value)}
+              className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${scope === value ? "border-primary bg-primary/10 text-primary font-semibold" : "border-zinc-300 text-zinc-600"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex justify-end mt-6">
         <button
           onClick={handleCreate}

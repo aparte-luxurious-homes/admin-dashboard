@@ -62,6 +62,13 @@ import { getApiErrorMessage } from "@/src/lib/apiError";
 import { validatePropertyName } from "./nameValidator";
 import Modal from "../../modal/Modal";
 import StepDiscounts from "./StepDiscounts";
+import {
+  emptyHallForm,
+  hallFormFromUnit,
+  hallPayload,
+  isVenue,
+  validateHall,
+} from "../venue";
 
 const libraries: any = ["places"];
 
@@ -85,8 +92,23 @@ export default function CreatePropertyWizard() {
     draft?.highestStep ?? WizardStep.PROPERTY_DETAILS,
   );
 
-  // Unit state
-  const [units, setUnits] = useState<UnitFormValues[]>(draft?.units ?? []);
+  // Unit state. A draft saved before halls had rates and hours carries none
+  // of those fields; fill them from what the old draft did store (its day,
+  // half-day and hourly prices) rather than leave the drawer half-empty.
+  const [units, setUnits] = useState<UnitFormValues[]>(() =>
+    (draft?.units ?? []).map((u: any): UnitFormValues =>
+      "offers_full_day" in u
+        ? u
+        : {
+            ...u,
+            ...emptyHallForm(),
+            ...hallFormFromUnit({
+              ...u,
+              event_price_per_day: (u as any).event_price_per_day ?? u.price_per_night,
+            }),
+          },
+    ),
+  );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
 
@@ -118,8 +140,13 @@ export default function CreatePropertyWizard() {
   // empty startup state doesn't clobber a previously-saved draft.
   const [mediaHydrated, setMediaHydrated] = useState(false);
 
-  // Amenities and Event Types
-  const { data: fetchedAmenities } = GetAmenities();
+  // Amenities and Event Types. A venue picks from the venue list (stage,
+  // sound system, chairs...), a stay from the stay list.
+  const listingIsVenue = isVenue(draft?.values?.property_type);
+  const [amenityScope, setAmenityScope] = useState<"VENUE" | "STAY">(
+    listingIsVenue ? "VENUE" : "STAY",
+  );
+  const { data: fetchedAmenities } = GetAmenities(amenityScope);
   const { data: fetchedEventTypes } = GetEventTypes();
   const [availableAmenities, setAvailableAmenities] =
     useState<IAmenity[]>(fixedAmenities);
@@ -128,8 +155,10 @@ export default function CreatePropertyWizard() {
   >([]);
 
   useEffect(() => {
-    setAvailableAmenities(fetchedAmenities?.data?.data ?? fixedAmenities);
-  }, [fetchedAmenities]);
+    setAvailableAmenities(
+      fetchedAmenities?.data?.data ?? (amenityScope === "VENUE" ? [] : fixedAmenities),
+    );
+  }, [fetchedAmenities, amenityScope]);
 
   useEffect(() => {
     if (fetchedEventTypes?.data?.data) {
@@ -236,6 +265,35 @@ export default function CreatePropertyWizard() {
       handleCreateProperty(values);
     },
   });
+
+  // Follow the property type: switching between a venue and a stay changes
+  // which amenities may be offered, and a selection from the other list would
+  // be refused by the API.
+  useEffect(() => {
+    const next = isVenue(formik.values.property_type) ? "VENUE" : "STAY";
+    if (next !== amenityScope) setAmenityScope(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formik.values.property_type]);
+
+  useEffect(() => {
+    const allowed = new Set((fetchedAmenities?.data?.data ?? []).map((a: IAmenity) => a.name));
+    if (!allowed.size) return;
+    const kept = (formik.values.amenities ?? []).filter((n) => allowed.has(n));
+    if (kept.length !== (formik.values.amenities ?? []).length) {
+      formik.setFieldValue("amenities", kept);
+    }
+    setUnits((prev) => {
+      let changed = false;
+      const next = prev.map((u) => {
+        const keep = (u.amenityNames ?? []).filter((n) => allowed.has(n));
+        if (keep.length === (u.amenityNames ?? []).length) return u;
+        changed = true;
+        return { ...u, amenityNames: keep };
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedAmenities]);
 
   // Persist the JSON-serialisable parts of wizard state to localStorage
   // on every meaningful change. File state (media/docs) is persisted
@@ -402,8 +460,20 @@ export default function CreatePropertyWizard() {
         }
         return true;
       }
-      case WizardStep.UNITS:
-        return true; // Units are optional
+      case WizardStep.UNITS: {
+        // Halls are optional, but one that can't be booked as set up must be
+        // fixed here, not discovered when the API refuses it at the end.
+        if (isVenue(formik.values.property_type)) {
+          for (const u of units) {
+            const problem = validateHall(u);
+            if (problem) {
+              toast.error(`${u.name || "A hall"}: ${problem}`);
+              return false;
+            }
+          }
+        }
+        return true;
+      }
       case WizardStep.MEDIA_DOCS: {
         // Only enforced when the user explicitly tries to create (see
         // handleCreateProperty). Returning true here keeps step navigation
@@ -485,6 +555,17 @@ export default function CreatePropertyWizard() {
     }
 
     const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
+    const venue = isVenue(values.property_type);
+
+    if (venue) {
+      for (const u of units) {
+        const problem = validateHall(u);
+        if (problem) {
+          toast.error(`${u.name || "A hall"}: ${problem}`);
+          return;
+        }
+      }
+    }
 
     if (
       values.latitude == null ||
@@ -532,8 +613,9 @@ export default function CreatePropertyWizard() {
       longitude: values.longitude || 0,
       property_type: values.property_type as PropertyType,
       amenities: sortedAmenities,
-      is_pet_allowed: values.is_pet_allowed,
-      is_party_allowed: values.is_party_allowed,
+      // Neither question is asked of a venue; its rules say what is allowed.
+      is_pet_allowed: venue ? false : values.is_pet_allowed,
+      is_party_allowed: venue ? false : values.is_party_allowed,
       rules: values.rules || undefined,
       ...(values.ownerId
         ? { owner_id: String(values.ownerId) }
@@ -648,7 +730,7 @@ export default function CreatePropertyWizard() {
 
       // Units + per-unit media (awaited so mobile tabs don't suspend mid-upload)
       if (unitsSnapshot.length > 0) {
-        const isVenue = values.property_type === PropertyType.EVENT_CENTRE;
+        const isVenueListing = venue;
         const unitPayloads = unitsSnapshot.map((u) => ({
           name: u.name,
           description: u.description,
@@ -667,19 +749,17 @@ export default function CreatePropertyWizard() {
           additional_fees: (u.additional_fees ?? []).filter((f) =>
             f.fee_name.trim(),
           ),
-          // Venue-only. The day rate IS the price field above: sending it as
-          // event_price_per_day is what makes a PER_DAY hire priceable at all,
-          // since the API refuses a billing unit the venue has no rate for.
-          ...(isVenue
+          // Venue-only: capacity, facilities, and the rate card and hours the
+          // hall is hired by. hallPayload clears any rate the agent unticked
+          // and sets the headline price the API also derives.
+          ...(isVenueListing
             ? {
                 seating_capacity: u.seating_capacity,
                 standing_capacity: u.standing_capacity,
                 car_park_spaces: u.car_park_spaces,
                 power_supply_provision: u.power_supply_provision || undefined,
-                event_price_per_day: String(u.price_per_night),
-                event_price_per_hour: u.event_price_per_hour || undefined,
-                event_price_per_half_day:
-                  u.event_price_per_half_day || undefined,
+                max_guests: Math.max(u.seating_capacity || 0, u.standing_capacity || 0, 1),
+                ...hallPayload(u),
               }
             : {}),
           // Spread rather than always sent: a unit with no override must omit
@@ -689,7 +769,7 @@ export default function CreatePropertyWizard() {
           ...(u.long_stay_discount_policy
             ? { long_stay_discount_policy: u.long_stay_discount_policy }
             : {}),
-          ...(u.extension_discount_policy
+          ...(u.extension_discount_policy && !isVenueListing
             ? { extension_discount_policy: u.extension_discount_policy }
             : {}),
         }));
@@ -826,7 +906,7 @@ export default function CreatePropertyWizard() {
             </Link>
           </div>
           <h2 className="text-lg sm:text-2xl font-bold text-zinc-900 tracking-tight">
-            List New Property
+            {isVenue(formik.values.property_type) ? "List New Event Centre" : "List New Property"}
           </h2>
           <p className="text-sm font-medium text-zinc-500">
             Step {currentStep + 1} of {Object.keys(WizardStep).length / 2}
@@ -845,6 +925,7 @@ export default function CreatePropertyWizard() {
         <ProgressBar
           currentStep={currentStep}
           highestStep={highestStep}
+          isVenue={isVenue(formik.values.property_type)}
           onStepClick={(step) => {
             if (step <= highestStep) {
               setCurrentStep(step);
@@ -860,7 +941,10 @@ export default function CreatePropertyWizard() {
           onClose={() => setShowAmenityForm(false)}
           isOpen={showAmenityForm}
         >
-          <CreateAmenityForm show={setShowAmenityForm} />
+          <CreateAmenityForm
+            show={setShowAmenityForm}
+            defaultScope={amenityScope}
+          />
         </CustomModal>
       )}
 
@@ -902,6 +986,7 @@ export default function CreatePropertyWizard() {
             onEditUnit={handleEditUnit}
             onDeleteUnit={handleDeleteUnit}
             onDiscontinueListing={handleOpenShowDiscontinueModal}
+            isVenue={isVenue(formik.values.property_type)}
           />
         )}
 

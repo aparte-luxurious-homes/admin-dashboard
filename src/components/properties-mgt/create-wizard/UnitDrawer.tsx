@@ -10,6 +10,8 @@ import { LuSofa, LuUsers } from "react-icons/lu";
 import MultipleChoice from "@/components/ui/MultipleChoice";
 import { DiscountType, IAmenity, IDiscountPolicy, PropertyType } from "../types";
 import DiscountPolicyEditor from "../DiscountPolicyEditor";
+import HallFields from "../HallFields";
+import { headlineRate, validateHall } from "../venue";
 import { UnitFormValues, createEmptyUnit } from "./types";
 import { formatMoney } from "@/src/lib/utils";
 import { UserRole } from "@/src/lib/enums";
@@ -215,24 +217,11 @@ export default function UnitDrawer({
   propertyName,
   propertyType,
 }: UnitDrawerProps) {
-  const [unit, setUnit] = useState<UnitFormValues>(
-    editingUnit ?? createEmptyUnit(),
-  );
-
   const isEventCentre = propertyType === PropertyType.EVENT_CENTRE;
-  // A hall has no bedrooms, kitchens or living rooms to count, and its
-  // "bathrooms" are the guest toilets the PRD asks for by name.
-  const configFields = (
-    isEventCentre
-      ? CONFIG_FIELDS.filter(
-          (f) => f.id === "bathroom_count" || f.id === "max_guests",
-        )
-      : CONFIG_FIELDS
-  ).map((f) =>
-    isEventCentre && f.id === "bathroom_count"
-      ? { ...f, label: "Toilets / Baths" }
-      : f,
+  const [unit, setUnit] = useState<UnitFormValues>(
+    editingUnit ?? createEmptyUnit(isEventCentre),
   );
+  const [hallError, setHallError] = useState<string | null>(null);
 
   const updateFee = (index: number, field: string, value: string | number | boolean) =>
     setUnit((prev) => ({
@@ -243,8 +232,11 @@ export default function UnitDrawer({
     }));
 
   useEffect(() => {
-    if (isOpen) setUnit(editingUnit ?? createEmptyUnit());
-  }, [isOpen, editingUnit]);
+    if (isOpen) {
+      setUnit(editingUnit ?? createEmptyUnit(isEventCentre));
+      setHallError(null);
+    }
+  }, [isOpen, editingUnit, isEventCentre]);
 
   const updateField = (field: string, value: any) => {
     // Toggling "Whole property" ON: lock count to 1 and auto-fill name if blank.
@@ -267,7 +259,25 @@ export default function UnitDrawer({
 
   const handleSave = () => {
     if (!unit.name.trim()) return;
-    onSave(unit);
+    if (!isEventCentre) {
+      onSave(unit);
+      return;
+    }
+    const problem = validateHall(unit);
+    if (problem) {
+      setHallError(problem);
+      return;
+    }
+    // A hall is measured in seats, not bedrooms. The API derives the same
+    // values; setting them here keeps the card on the Halls step honest.
+    onSave({
+      ...unit,
+      price_per_night: String(headlineRate(unit)?.price ?? ""),
+      bedroom_count: 0,
+      living_room_count: 0,
+      kitchen_count: 0,
+      max_guests: Math.max(unit.seating_capacity || 0, unit.standing_capacity || 0, 1),
+    });
   };
 
   return (
@@ -292,10 +302,14 @@ export default function UnitDrawer({
             </div>
             <div>
               <h3 className="text-sm font-bold text-zinc-900">
-                {editingUnit ? "Edit Unit" : "Add New Unit"}
+                {isEventCentre
+                  ? editingUnit ? "Edit Hall" : "Add a Hall or Space"
+                  : editingUnit ? "Edit Unit" : "Add New Unit"}
               </h3>
               <p className="text-[10px] text-zinc-500">
-                Configure unit details
+                {isEventCentre
+                  ? "Rates, hours, capacity and facilities"
+                  : "Configure unit details"}
               </p>
             </div>
           </div>
@@ -331,11 +345,14 @@ export default function UnitDrawer({
             />
             <span className="flex-1">
               <span className="text-xs font-bold text-zinc-900 block">
-                This unit is the whole property
+                {isEventCentre
+                  ? "Guests hire the entire venue"
+                  : "This unit is the whole property"}
               </span>
               <span className="text-[11px] text-zinc-500 block leading-snug">
-                Use this when guests book the entire property exclusively.
-                Photos go in the property gallery and only one unit is allowed.
+                {isEventCentre
+                  ? "Use this for an exclusive hire of every hall and space. Hiring it blocks the other halls at the same time, and its photos go in the venue gallery."
+                  : "Use this when guests book the entire property exclusively. Photos go in the property gallery and only one unit is allowed."}
               </span>
             </span>
           </label>
@@ -347,11 +364,12 @@ export default function UnitDrawer({
             </h4>
             <div>
               <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
-                Unit Name <span className="text-primary">*</span>
+                {isEventCentre ? "Hall Name" : "Unit Name"}{" "}
+                <span className="text-primary">*</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g., Two-Bedroom Suite A"
+                placeholder={isEventCentre ? "e.g., Main Banquet Hall" : "e.g., Two-Bedroom Suite A"}
                 value={unit.name}
                 onChange={(e) => updateField("name", e.target.value)}
                 className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all text-sm"
@@ -372,6 +390,8 @@ export default function UnitDrawer({
             </div>
           </div>
 
+          {!isEventCentre && (
+            <>
           {/* Pricing */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
@@ -380,7 +400,7 @@ export default function UnitDrawer({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
-                  {isEventCentre ? "Price Per Day / Event" : "Price Per Night"}{" "}
+                  Price Per Night{" "}
                   <span className="text-primary">*</span>
                 </label>
                 <div className="relative">
@@ -438,7 +458,7 @@ export default function UnitDrawer({
               Configuration
             </h4>
             <div className="grid grid-cols-2 gap-3">
-              {configFields.map((field) => (
+              {CONFIG_FIELDS.map((field) => (
                 <div key={field.id} className="space-y-1">
                   <label className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
                     {field.label}
@@ -469,93 +489,110 @@ export default function UnitDrawer({
             </div>
           </div>
 
-          {/* Event centre: capacity, facilities and the rest of the rate card */}
+            </>
+          )}
+
           {isEventCentre && (
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Capacity &amp; Facilities
-              </h4>
-              <div className="grid grid-cols-3 gap-3">
-                {(
-                  [
-                    ["seating_capacity", "Seated"],
-                    ["standing_capacity", "Standing"],
-                    ["car_park_spaces", "Car Park"],
-                  ] as const
-                ).map(([id, label]) => (
-                  <div key={id}>
-                    <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
-                      {label}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={unit[id] ?? 0}
-                      onChange={(e) =>
-                        updateField(id, Math.max(0, Number(e.target.value) || 0))
-                      }
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all font-semibold text-sm"
-                    />
-                  </div>
-                ))}
+            <>
+          {/* Event centre: how the hall is hired, then what it holds. */}
+          <HallFields
+            value={unit}
+            onChange={(patch) => {
+              setHallError(null);
+              setUnit((prev) => ({ ...prev, ...patch }));
+            }}
+            error={hallError}
+          />
+
+          <div>
+            <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
+              Caution Fee
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <TbCurrencyNaira className="text-base text-zinc-400" />
               </div>
-              <div>
-                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
-                  Power Supply Provision
-                </label>
-                <select
-                  value={unit.power_supply_provision || ""}
-                  onChange={(e) =>
-                    updateField("power_supply_provision", e.target.value)
-                  }
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all text-sm"
-                >
-                  <option value="">Select provision...</option>
-                  <option value="Grid only">Grid only</option>
-                  <option value="Generator backup">Generator backup</option>
-                  <option value="Grid and Generator">Grid and Generator</option>
-                  <option value="Inverter/solar">Inverter/solar</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              {/* The day rate is the "Price Per Day / Event" field above. These
-                  two are what make an hourly or half-day hire bookable at all:
-                  the API refuses a billing unit the venue has no rate for. */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={unit.caution_fee}
+                onChange={(e) => updateField("caution_fee", e.target.value)}
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-8 pr-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all font-semibold text-sm"
+                placeholder="0.00"
+              />
+            </div>
+            <p className="text-[11px] text-zinc-500 mt-1 ml-1">
+              Refunded after the event, as agreed with the venue.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+              Capacity &amp; Facilities
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  ["seating_capacity", "Seated guests"],
+                  ["standing_capacity", "Standing guests"],
+                  ["car_park_spaces", "Car park spaces"],
+                  ["bathroom_count", "Toilets / bathrooms"],
+                ] as const
+              ).map(([id, label]) => (
+                <div key={id}>
                   <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
-                    Price Per Hour
+                    {label}
                   </label>
                   <input
                     type="number"
                     min="0"
-                    step="0.01"
-                    placeholder="Optional"
-                    value={unit.event_price_per_hour}
+                    value={unit[id] ?? 0}
                     onChange={(e) =>
-                      updateField("event_price_per_hour", e.target.value)
+                      updateField(id, Math.max(0, Number(e.target.value) || 0))
                     }
                     className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all font-semibold text-sm"
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
-                    Price Per Half-Day
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="Optional"
-                    value={unit.event_price_per_half_day}
-                    onChange={(e) =>
-                      updateField("event_price_per_half_day", e.target.value)
-                    }
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all font-semibold text-sm"
-                  />
-                </div>
+              ))}
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1">
+                Power Supply
+              </label>
+              <select
+                value={unit.power_supply_provision || ""}
+                onChange={(e) =>
+                  updateField("power_supply_provision", e.target.value)
+                }
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all text-sm"
+              >
+                <option value="">Select provision...</option>
+                <option value="Grid only">Grid only</option>
+                <option value="Generator backup">Generator backup</option>
+                <option value="Grid and Generator">Grid and Generator</option>
+                <option value="Inverter/solar">Inverter/solar</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
+              <span className="text-[11px] text-zinc-500 pr-3">
+                How many identical halls like this one? Each can be booked
+                separately at the same time.
+              </span>
+              <div className="w-20 flex-shrink-0">
+                <CountInput
+                  value={unit.count}
+                  onChange={(val) => updateField("count", val)}
+                  min={1}
+                  max={unit.is_whole_property ? 1 : MAX_VALUES.count}
+                  disabled={unit.is_whole_property}
+                />
               </div>
             </div>
+          </div>
+
+            </>
           )}
 
           {/* Additional fees — cleaning, security, and anything else the guest
@@ -653,19 +690,29 @@ export default function UnitDrawer({
               rather than storing {is_active:false}. */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-              Discounts (this unit)
+              {isEventCentre ? "Discount (this hall)" : "Discounts (this unit)"}
             </h4>
             <DiscountPolicyEditor
               compact
-              title="Long-Stay Discount"
-              description="Overrides the property's long-stay policy for this unit only."
-              inheritNote="Using the property's long-stay policy."
+              title={isEventCentre ? "Multi-Day Discount" : "Long-Stay Discount"}
+              description={
+                isEventCentre
+                  ? "Overrides the venue's multi-day discount for this hall only. Applies to full-day hires."
+                  : "Overrides the property's long-stay policy for this unit only."
+              }
+              inheritNote={
+                isEventCentre
+                  ? "Using the venue's multi-day discount."
+                  : "Using the property's long-stay policy."
+              }
+              unitWord={isEventCentre ? "day" : "night"}
               allowedTypes={[{ label: "Fixed Amount", value: DiscountType.FIXED }]}
               value={unit.long_stay_discount_policy}
               onChange={(next: IDiscountPolicy | null) =>
                 updateField("long_stay_discount_policy", next)
               }
             />
+            {!isEventCentre && (
             <DiscountPolicyEditor
               compact
               title="Extension Discount"
@@ -679,6 +726,7 @@ export default function UnitDrawer({
                 updateField("extension_discount_policy", next)
               }
             />
+            )}
           </div>
 
           {/* Amenities */}
@@ -719,11 +767,13 @@ export default function UnitDrawer({
           <button
             type="button"
             onClick={handleSave}
-            disabled={!unit.name.trim() || !unit.price_per_night}
+            disabled={!unit.name.trim() || (!isEventCentre && !unit.price_per_night)}
             className="flex-1 h-10 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Icon icon="solar:check-read-bold" className="text-sm" />
-            {editingUnit ? "Update Unit" : "Add Unit"}
+            {isEventCentre
+              ? editingUnit ? "Update Hall" : "Add Hall"
+              : editingUnit ? "Update Unit" : "Add Unit"}
           </button>
         </div>
       </div>

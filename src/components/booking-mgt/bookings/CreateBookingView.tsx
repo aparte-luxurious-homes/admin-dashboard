@@ -23,7 +23,7 @@ import { IoLocationOutline } from "react-icons/io5";
 import { IoMdReturnLeft } from "react-icons/io";
 import BookingAvailabilityCalendar from "./BookingAvailabilityCalendar";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { addYears } from "date-fns";
+import { addDays, addYears } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CreateBooking,
@@ -38,6 +38,28 @@ import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
 import { HiOutlineCloudUpload } from "react-icons/hi";
 import { MdOutlinePayments } from "react-icons/md";
 import { Icon } from "@iconify/react";
+import EventHirePicker, {
+  EventHire,
+  emptyHire,
+  hireIsComplete,
+} from "./EventHirePicker";
+import { GetBookingQuote } from "@/src/lib/request-handlers/bookingMgt";
+import { headlineUnitLabel, isVenue } from "../../properties-mgt/venue";
+
+/** "10:00–13:00 (3 hours)", "Morning session" or "2 days". */
+function describeHire(hire: EventHire, quote: any): string {
+  if (hire.billing_unit === "PER_DAY") {
+    return `${hire.billing_duration} day${hire.billing_duration === 1 ? "" : "s"}`;
+  }
+  const times =
+    quote?.event_start_time && quote?.event_end_time
+      ? `${quote.event_start_time}–${quote.event_end_time}`
+      : "";
+  if (hire.billing_unit === "PER_HALF_DAY") {
+    return `${hire.half_day_window_name ?? "Session"}${times ? ` (${times})` : ""}`;
+  }
+  return `${times ? `${times} ` : ""}(${hire.billing_duration} hour${hire.billing_duration === 1 ? "" : "s"})`;
+}
 
 export default function CreateBookingView() {
   const router = useRouter();
@@ -100,6 +122,15 @@ export default function CreateBookingView() {
   const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } =
     GetSingleProperty(selectedProperty?.id);
   const fullPropertyDetails = singlePropertyData?.data?.data;
+  // An event-centre hall is booked by day, session or hour at a free time,
+  // and priced by the server from its rate card (EventHirePicker).
+  const isVenueBooking = isVenue(
+    fullPropertyDetails?.property_type ??
+      fullPropertyDetails?.propertyType ??
+      selectedProperty?.property_type ??
+      selectedProperty?.propertyType,
+  );
+  const [hire, setHire] = useState<EventHire>(emptyHire(null));
 
   // Fetch live availability for selected unit (accounts for active bookings occupancy)
   const { data: liveAvailabilityData, isLoading: isLoadingAvailability } =
@@ -179,6 +210,11 @@ export default function CreateBookingView() {
         return;
       }
 
+      if (isVenueBooking && !hireIsComplete(hire)) {
+        toast.error("Choose how the hall is hired and a free time.");
+        return;
+      }
+
       // Validation: proof is mandatory for bank transfer if marking as paid
       if (
         values.mark_as_paid &&
@@ -204,6 +240,14 @@ export default function CreateBookingView() {
         total_price: Number(values.total_price) + Number(values.agent_custom_fee || 0),
         // Send it as a number too, for the same reason.
         agent_custom_fee: Number(values.agent_custom_fee || 0),
+        ...(isVenueBooking
+          ? {
+              billing_unit: hire.billing_unit,
+              billing_duration: hire.billing_duration,
+              event_start_time: hire.event_start_time,
+              half_day_window_name: hire.half_day_window_name,
+            }
+          : {}),
       };
 
       // Don't send empty referral_code — omit the key entirely
@@ -304,6 +348,7 @@ export default function CreateBookingView() {
     );
     if (unit) {
       setSeletedUnit(unit);
+      setHire(emptyHire(unit));
       formik.setFieldValue("unit_id", unit.id);
       formik.setFieldValue("unit_count", 1);
     }
@@ -417,8 +462,45 @@ export default function CreateBookingView() {
 
   const { values, setFieldValue } = formik;
 
+  // A venue hire holds the event day (or the days of a full-day hire), so the
+  // end date follows the hire rather than a second calendar click.
+  useEffect(() => {
+    if (!isVenueBooking || !values.start_date) return;
+    const days = hire.billing_unit === "PER_DAY" ? hire.billing_duration : 1;
+    const end = addDays(new Date(values.start_date as any), days);
+    if (!values.end_date || formatDateToYYYYMMDD(values.end_date as any) !== formatDateToYYYYMMDD(end as any)) {
+      setFieldValue("end_date", end);
+    }
+  }, [isVenueBooking, values.start_date, values.end_date, hire, setFieldValue]);
+
+  const venueQuotePayload = useMemo(() => {
+    if (!isVenueBooking || !selectedUnit || !values.start_date || !values.end_date) return null;
+    if (!hireIsComplete(hire)) return null;
+    return {
+      unit_id: selectedUnit.id,
+      start_date: formatDateToYYYYMMDD(values.start_date as any),
+      end_date: formatDateToYYYYMMDD(values.end_date as any),
+      guests_count: Number(values.guests_count) || 1,
+      unit_count: Number(values.unit_count) || 1,
+      billing_unit: hire.billing_unit,
+      billing_duration: hire.billing_duration,
+      event_start_time: hire.event_start_time,
+      half_day_window_name: hire.half_day_window_name,
+    };
+  }, [isVenueBooking, selectedUnit, values.start_date, values.end_date, values.guests_count, values.unit_count, hire]);
+  const { data: venueQuoteData, error: venueQuoteError } = GetBookingQuote(venueQuotePayload);
+  const venueQuote = venueQuotePayload ? venueQuoteData?.data?.data : null;
+
+  useEffect(() => {
+    if (!isVenueBooking) return;
+    const total = venueQuote ? Number(venueQuote.total_price) : 0;
+    if (total !== values.total_price) setFieldValue("total_price", total);
+  }, [isVenueBooking, venueQuote, values.total_price, setFieldValue]);
+
   // Effect to calculate price
   useEffect(() => {
+    // A venue is priced by the server's quote, above.
+    if (isVenueBooking) return;
     // Only calculate if we have both dates and a selected unit
     if (values.start_date && values.end_date && selectedUnit) {
       const days = getDayDifference(
@@ -456,6 +538,7 @@ export default function CreateBookingView() {
     selectedUnit,
     setFieldValue,
     values.total_price, // Add this to compare
+    isVenueBooking,
   ]);
 
   // Auto-populate referral code with agent's own code when a guest is selected
@@ -692,7 +775,7 @@ export default function CreateBookingView() {
                                 selectedUnit.price_per_night ??
                                 0,
                             )}
-                            /night
+                            {isVenueBooking ? ` / ${headlineUnitLabel(selectedUnit)}` : "/night"}
                           </span>
                         </p>
                       </div>
@@ -1047,7 +1130,7 @@ export default function CreateBookingView() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-700">
-                  Stay Duration
+                  {isVenueBooking ? "Event Date" : "Stay Duration"}
                   {isLoadingAvailability && selectedUnit && (
                     <span className="ml-2 text-xs text-zinc-400 font-normal">
                       Loading availability...
@@ -1070,6 +1153,27 @@ export default function CreateBookingView() {
                 <p className="text-xs text-gray-500 mt-2">
                   * Bookings are limited to 1 year in advance.
                 </p>
+                {isVenueBooking && selectedUnit && (
+                  <div className="mt-4 p-4 rounded-xl border border-zinc-200 bg-white">
+                    <EventHirePicker
+                      propertyId={selectedProperty?.id}
+                      unit={selectedUnit}
+                      date={
+                        values.start_date
+                          ? formatDateToYYYYMMDD(values.start_date as any)
+                          : undefined
+                      }
+                      value={hire}
+                      onChange={setHire}
+                    />
+                    {venueQuoteError && (
+                      <p className="text-xs text-red-500 mt-2">
+                        {(venueQuoteError as any)?.response?.data?.detail ??
+                          "That time can't be booked."}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1136,9 +1240,13 @@ export default function CreateBookingView() {
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Duration</span>
                   <span className="text-zinc-900 font-medium">
-                    {formik.values.start_date && formik.values.end_date
-                      ? `${getDayDifference(formik.values.start_date as any, formik.values.end_date as any)} Nights`
-                      : "-"}
+                    {isVenueBooking
+                      ? hireIsComplete(hire)
+                        ? describeHire(hire, venueQuote)
+                        : "-"
+                      : formik.values.start_date && formik.values.end_date
+                        ? `${getDayDifference(formik.values.start_date as any, formik.values.end_date as any)} Nights`
+                        : "-"}
                   </span>
                 </div>
               </div>
@@ -1150,15 +1258,19 @@ export default function CreateBookingView() {
                     Rate (x{formik.values.unit_count || 1} units)
                   </span>
                   <span className="font-medium text-zinc-900">
-                    {selectedUnit
-                      ? formatMoney(
-                          Number(
-                            selectedUnit.pricePerNight ??
-                              selectedUnit.price_per_night ??
-                              0,
-                          ) * Number(formik.values.unit_count || 1),
-                        )
-                      : "-"}
+                    {isVenueBooking
+                      ? venueQuote
+                        ? formatMoney(Number(venueQuote.base_price))
+                        : "-"
+                      : selectedUnit
+                        ? formatMoney(
+                            Number(
+                              selectedUnit.pricePerNight ??
+                                selectedUnit.price_per_night ??
+                                0,
+                            ) * Number(formik.values.unit_count || 1),
+                          )
+                        : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

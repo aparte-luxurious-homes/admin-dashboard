@@ -33,6 +33,21 @@ export function GetApprovalPendingCount() {
   });
 }
 
+/**
+ * The server's price for a prospective booking. Event-centre hires are priced
+ * only here — by the hall's rate card and the slot chosen — so the screen
+ * shows the figure the booking will actually charge.
+ */
+export function GetBookingQuote(payload: Record<string, unknown> | null) {
+  return useQuery({
+    queryKey: ["bookingQuote", payload],
+    queryFn: () => axiosRequest.post(API_ROUTES.bookings.quote, payload),
+    enabled: !!payload,
+    retry: false,
+    staleTime: 15 * 1000,
+  });
+}
+
 export function UploadPaymentProof() {
   return useMutation({
     mutationFn: ({ payload }: { payload: FormData }) =>

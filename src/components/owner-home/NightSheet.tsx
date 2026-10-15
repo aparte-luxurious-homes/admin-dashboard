@@ -235,6 +235,24 @@ function UnitCalendarLink({ unit }: { unit: NightSelection["unit"] }) {
 function RoomsDetail({ selection }: { selection: NightSelection }) {
     const { night, unit } = selection;
     const free = Math.max(0, night.rooms_total - night.rooms_booked);
+    // An event-centre hall shared through the day: some hours are sold and
+    // others are still open. Rooms don't describe that.
+    if (night.state === "PARTIAL" && night.note) {
+        return (
+            <>
+                <DialogHeader>
+                    <DialogTitle className="text-left">Partly booked</DialogTitle>
+                    <DialogDescription className="text-left">
+                        {format(parseISO(night.date), "EEEE, d MMMM")}, {unit.unit_name}
+                    </DialogDescription>
+                </DialogHeader>
+                <p className="text-sm text-gray-600">
+                    {night.note}. Other times on this day can still be booked.
+                </p>
+                <UnitCalendarLink unit={unit} />
+            </>
+        );
+    }
     return (
         <>
             <DialogHeader>
@@ -287,9 +305,20 @@ function StayDetail({
             <DialogHeader>
                 <DialogTitle className="text-left">{booking.guest_name}</DialogTitle>
                 <DialogDescription className="text-left">
-                    {unit.unit_name} &middot; {format(parseISO(booking.check_in), "d MMM")} to{" "}
-                    {format(parseISO(booking.check_out), "d MMM")} &middot; {booking.nights}{" "}
-                    {booking.nights === 1 ? "night" : "nights"}
+                    {booking.event_start_time && booking.event_end_time ? (
+                        <>
+                            {unit.unit_name} &middot; {format(parseISO(booking.check_in), "d MMM")}{" "}
+                            &middot; {booking.event_start_time}–{booking.event_end_time}
+                        </>
+                    ) : (
+                        <>
+                            {unit.unit_name} &middot; {format(parseISO(booking.check_in), "d MMM")} to{" "}
+                            {format(parseISO(booking.check_out), "d MMM")} &middot; {booking.nights}{" "}
+                            {booking.billing_unit === "PER_DAY"
+                                ? booking.nights === 1 ? "day" : "days"
+                                : booking.nights === 1 ? "night" : "nights"}
+                        </>
+                    )}
                 </DialogDescription>
             </DialogHeader>
 
