@@ -156,6 +156,26 @@ export function ReverseWithdrawal() {
     });
 }
 
+export interface RetryWithdrawalPayload {
+    transaction_id: string;
+    note?: string;
+}
+
+// Re-send a reversed (FAILED + refunded) withdrawal to the same payout account.
+// Re-debits amount + current fee and approves it in one step. The backend refuses
+// admin-rejected withdrawals, never-refunded ones, and double retries (409).
+export function RetryWithdrawal() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ walletId, payload }: { walletId: string, payload: RetryWithdrawalPayload }) =>
+            axiosRequest.post(API_ROUTES.wallet.retryWithdrawal(walletId), payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getTransactionDetails] });
+        },
+    });
+}
+
 export function AuthorizeDisbursement() {
     const queryClient = useQueryClient();
     return useMutation({
