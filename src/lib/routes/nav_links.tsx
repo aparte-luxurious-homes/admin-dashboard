@@ -25,6 +25,28 @@ export interface ILink {
     children?: ILinkChild[],
 }
 
+/**
+ * Where a section's parent entry takes `role`.
+ *
+ * A parent's `link` is one static string, but the children it fronts carry
+ * their own `allow` lists, and those can be narrower than the parent's.
+ * "Network Management" admits OPERATIONS_ADMIN, whose only child there is
+ * "Needs a mentor", yet the parent pointed at Events — a page the route guard
+ * in layouts/dashboard.tsx bounces them off with an access error. "Reports"
+ * had the same shape for OWNER and AGENT (parent → Agent Performance, which
+ * only staff may see). So the landing page is computed from the children: the
+ * first one the role may see wins. A section without children keeps its own
+ * link, and a section whose children are all hidden from the role falls back
+ * to the dashboard root — the guard would send them there anyway, this just
+ * skips the error toast on the way. Anything that navigates to a section
+ * (rather than to one of its children) must go through this.
+ */
+export function resolveNavTarget(link: ILink, role: UserRole): string {
+    if (!link.children?.length) return link.link;
+    const first = link.children.find((child) => child.link !== '#' && child.allow.includes(role));
+    return first?.link ?? PAGE_ROUTES.dashboard.base;
+}
+
 export const NAV_LINKS: ILink[] = [
     {
         name: 'Dashboard',
@@ -200,6 +222,9 @@ export const NAV_LINKS: ILink[] = [
     {
         name: 'Network Management',
         pathName: 'network',
+        // The ADMIN landing page. OPERATIONS_ADMIN cannot see Events, so
+        // navigation to this section goes through resolveNavTarget(), which
+        // sends them to the first child they may see (Needs a mentor).
         link: PAGE_ROUTES.dashboard.network.events.base,
         icon: <IoIosGitNetwork size={20} color="white" />,
         allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],

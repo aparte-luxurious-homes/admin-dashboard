@@ -26,6 +26,16 @@ import {
 } from "@/src/lib/request-handlers/teamMgt";
 import { Badge, DataTable, Pager, Panel, SearchBox, Stat, Tabs, ngn, shortDate } from "./ui";
 import { describeRequest, displayValue, fieldLabel } from "./requestText";
+import { defaultReportRange, REPORT_TIME_ZONE_LABEL } from "./dates";
+import { peerRowKey } from "./rowKeys";
+import {
+    CommissionSplitData,
+    CommissionSplitPosition,
+    commissionSplitState,
+    OFFLINE_SPLIT_BODY,
+    OFFLINE_SPLIT_TITLE,
+    positionWasPaid,
+} from "./commissionSplit";
 
 const SIZE = 20;
 
@@ -313,9 +323,10 @@ const REPORT_COLUMNS = (group: "gold" | "silver" | "bronze") => {
 };
 
 export function NetworkReportView() {
-    const today = new Date().toISOString().slice(0, 10);
-    const monthStart = `${today.slice(0, 8)}01`;
-    const [params, setParams] = useState<ReportParams>({ start_date: monthStart, end_date: today });
+    // Month to date in WAT, the clock the API counts "by date made" on. The
+    // defaults used to come from toISOString(), which is UTC — see ./dates.ts.
+    // Lazy, so it is computed once rather than on every render.
+    const [params, setParams] = useState<ReportParams>(() => defaultReportRange());
     const [draft, setDraft] = useState<ReportParams>(params);
     const [downloading, setDownloading] = useState<string | null>(null);
     const { data, isLoading, isFetching, error } = GetNetworkReport(params);
@@ -331,15 +342,15 @@ export function NetworkReportView() {
     return (
         <Panel
             title="Agent network report"
-            subtitle="Gold agents, then Silver agents with their Gold mentor, then Bronze agents with both mentors. Bookings are paid bookings, counted by the date they were made."
+            subtitle="Gold agents, then Silver agents with their Gold mentor, then Bronze agents with both mentors. Bookings are paid bookings, counted by the date they were made (West Africa Time)."
             actions={<>
                 <button className={btn} disabled={!!downloading} onClick={() => download("csv")}>{downloading === "csv" ? "Preparing…" : "Download CSV"}</button>
                 <button className={btn} disabled={!!downloading} onClick={() => download("pdf")}>{downloading === "pdf" ? "Preparing…" : "Download PDF"}</button>
             </>}
         >
             <div className="mb-5 flex flex-wrap gap-3 items-end">
-                <label className="text-xs text-gray-600">From<input type="date" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.start_date ?? ""} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} /></label>
-                <label className="text-xs text-gray-600">To<input type="date" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.end_date ?? ""} onChange={(e) => setDraft({ ...draft, end_date: e.target.value })} /></label>
+                <label className="text-xs text-gray-600">From ({REPORT_TIME_ZONE_LABEL})<input type="date" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.start_date ?? ""} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} /></label>
+                <label className="text-xs text-gray-600">To ({REPORT_TIME_ZONE_LABEL})<input type="date" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.end_date ?? ""} onChange={(e) => setDraft({ ...draft, end_date: e.target.value })} /></label>
                 <label className="text-xs text-gray-600">Tier
                     <select className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.tier ?? ""} onChange={(e) => setDraft({ ...draft, tier: e.target.value || undefined })}>
                         <option value="">All tiers</option><option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="BRONZE">Bronze</option>
@@ -417,9 +428,12 @@ export function MyTeamView() {
                 />
             </Panel>
             <Panel title={`Agents on your tier${peers?.tier ? ` (${peers.tier.toLowerCase()})` : ""}`} subtitle="Bookings this month. Only names and counts are shown.">
+                {/* /network/peers sends names and counts only — no ids, by design —
+                    so two agents with the same name and counts collided under the
+                    old name+counts key and React dropped one. See ./rowKeys.ts. */}
                 <DataTable
                     rows={peers?.items ?? []}
-                    rowKey={(r: any) => `${r.name}-${r.listed_bookings}-${r.referral_bookings}`}
+                    rowKey={peerRowKey}
                     isLoading={peersLoading}
                     empty={{ title: "No other agents on your tier" }}
                     columns={[
@@ -451,30 +465,53 @@ export function CommissionSplitCard({ bookingId, enabled }: { bookingId: string;
     if (!enabled) return null;
     if (isLoading) return null;
     if (!data) return null;
+    const split: CommissionSplitData = data;
+    const state = commissionSplitState(split);
     return (
         <div className="rounded-[15px] border border-[#D9D9D9] bg-white p-4 shadow-sm mt-4">
             <h3 className="text-sm font-semibold text-gray-900">Commission split</h3>
-            {!data.locked ? (
+            {state === "offline" ? (
+                // Paid to the host directly: nothing was split and no fee was
+                // charged, so there are no amounts to show. The API also sends
+                // every position as paid=false here; printing them would read
+                // as money the agents are owed. See ./commissionSplit.ts.
+                <div className="mt-1">
+                    <p className="text-sm font-medium text-gray-800">{OFFLINE_SPLIT_TITLE}</p>
+                    <p className="text-sm text-gray-500">{OFFLINE_SPLIT_BODY}</p>
+                </div>
+            ) : state === "unlocked" ? (
                 <p className="text-sm text-gray-500 mt-1">This booking was made before shares were locked in at booking time. Its split was worked out the older way.</p>
             ) : (
                 <>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 my-3">
-                        <Stat label="Split base" value={ngn(data.splitting_base)} />
-                        <Stat label="Listing pool" value={ngn(data.pools?.listing?.amount)} />
-                        <Stat label="Referral pool" value={ngn(data.pools?.referral?.amount)} />
-                        <Stat label="Unclaimed to Aparte" value={ngn(data.unclaimed_to_platform?.amount)} />
+                        <Stat label="Split base" value={ngn(split.splitting_base)} />
+                        <Stat label="Listing pool" value={ngn(split.pools?.listing?.amount)} />
+                        <Stat label="Referral pool" value={ngn(split.pools?.referral?.amount)} />
+                        <Stat label="Unclaimed to Aparte" value={ngn(split.unclaimed_to_platform?.amount)} />
                     </div>
-                    <DataTable
-                        rows={data.positions ?? []}
-                        rowKey={(p: any) => `${p.pool}-${p.level}`}
+                    <DataTable<CommissionSplitPosition>
+                        rows={split.positions ?? []}
+                        rowKey={(p) => `${p.pool}-${p.level}`}
                         empty={{ title: "" }}
                         columns={[
-                            { header: "Pool", render: (p: any) => p.pool === "LISTING" ? "Listing" : "Referral" },
-                            { header: "Role", render: (p: any) => p.role },
-                            { header: "Agent", render: (p: any) => p.agent?.name ?? "—" },
-                            { header: "Tier", render: (p: any) => <Badge kind="tier" value={p.tier} /> },
-                            { header: "Share", render: (p: any) => `${p.percentage}% · ${ngn(p.amount)}` },
-                            { header: "Goes to", render: (p: any) => p.status === "EARNS" ? "Agent" : `Aparte (${VACANCY[p.reason] ?? p.reason})` },
+                            { header: "Pool", render: (p) => p.pool === "LISTING" ? "Listing" : "Referral" },
+                            { header: "Role", render: (p) => p.role },
+                            { header: "Agent", render: (p) => p.agent?.name ?? "—" },
+                            { header: "Tier", render: (p) => <Badge kind="tier" value={p.tier} /> },
+                            {
+                                header: "Share",
+                                render: (p) => (
+                                    <>
+                                        {`${p.percentage}% · ${ngn(p.amount)}`}
+                                        {/* Only an explicit paid=false is marked: a payload
+                                            without the flag predates it and was paid. */}
+                                        {!positionWasPaid(p) && (
+                                            <span className="ml-1 text-xs text-gray-400" title="This share has not been credited.">· not paid</span>
+                                        )}
+                                    </>
+                                ),
+                            },
+                            { header: "Goes to", render: (p) => p.status === "EARNS" ? "Agent" : `Aparte (${VACANCY[p.reason ?? ""] ?? p.reason ?? "—"})` },
                         ]}
                     />
                 </>

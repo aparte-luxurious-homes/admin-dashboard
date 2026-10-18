@@ -70,7 +70,9 @@ export interface Column<T> {
 export function DataTable<T>({ columns, rows, rowKey, isLoading, isFetching, onRowClick, empty }: {
     columns: Column<T>[];
     rows: T[];
-    rowKey: (row: T) => string;
+    // The index is for tables whose rows carry no identity of their own (the
+    // peers table in MyTeamView — see rowKeys.ts); every other caller ignores it.
+    rowKey: (row: T, index: number) => string;
     isLoading?: boolean;
     isFetching?: boolean;
     onRowClick?: (row: T) => void;
@@ -103,9 +105,9 @@ export function DataTable<T>({ columns, rows, rowKey, isLoading, isFetching, onR
                     </tr>
                 </thead>
                 <tbody className={`divide-y divide-gray-200 ${isFetching ? "opacity-60" : ""}`}>
-                    {rows.map((row) => (
+                    {rows.map((row, index) => (
                         <tr
-                            key={rowKey(row)}
+                            key={rowKey(row, index)}
                             onClick={onRowClick ? () => onRowClick(row) : undefined}
                             className={`text-sm text-gray-700 ${onRowClick ? "hover:bg-gray-50 cursor-pointer" : ""}`}
                         >

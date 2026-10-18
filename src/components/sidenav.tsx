@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowIcon } from "../components/icons";
-import { ILink, ILinkChild, NavBadgeKey } from "../lib/routes/nav_links";
+import { ILink, ILinkChild, NavBadgeKey, resolveNavTarget } from "../lib/routes/nav_links";
 import { UserRole } from "../lib/enums";
 import { GetApprovalPendingCount } from "../lib/request-handlers/bookingMgt";
 
@@ -66,7 +66,12 @@ export default function SideNav({
           >
             <div className="w-full">
               <div
-                onClick={() => !link.secondary && handleNavigation(link.link)}
+                // resolveNavTarget, not link.link: a section's static link can
+                // point at a child this role may not see (Network Management
+                // → Events for OPERATIONS_ADMIN). Today only sections without
+                // children navigate from here, so this is the same page for
+                // them; it is the choke point for whoever adds parent links.
+                onClick={() => !link.secondary && handleNavigation(resolveNavTarget(link, role))}
                 className={`flex items-center gap-4 pt-3 pb-2 pl-3 xl:pl-6 rounded-md transition-colors
                                  hover:bg-white/10 focus:bg-white/10 active:bg-white/20 min-h-[48px]
                                  ${!link.secondary && route === "/" && link.name === "Dashboard" && "bg-white/10"}`}
