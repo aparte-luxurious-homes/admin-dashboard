@@ -76,6 +76,10 @@ export default function AgentNetworkCard({ userId }: { userId: string }) {
             );
             setShowEditTier(false);
             fetchTier();
+            // Gold mentors Silver and Silver mentors Bronze: any mentorship the
+            // new tier breaks has just ended, and the agents involved now wait
+            // under Network Management > Needs a mentor.
+            toast("Mentorships that no longer fit the new tier have ended. Assign new mentors under Network Management > Needs a mentor.", { duration: 7000 });
         } catch {
             // handled by toast.promise
         } finally {

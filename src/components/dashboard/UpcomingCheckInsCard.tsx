@@ -102,8 +102,15 @@ const UpcomingCheckInsCard = () => {
                         {b.property_name || b.unit_name || "Property"}
                       </div>
                       <div className="text-xs text-gray-500 truncate">
+                        {b.event_start_time && b.event_end_time
+                          ? `Event ${b.event_start_time}–${b.event_end_time} · `
+                          : b.property_type === "EVENT_CENTRE"
+                            ? "Event · "
+                            : ""}
                         {b.guest_first_name || "Guest"}
-                        {b.unit_count > 1 ? ` · ${b.unit_count} units` : ""}
+                        {b.unit_count > 1
+                          ? ` · ${b.unit_count} ${b.property_type === "EVENT_CENTRE" ? "halls" : "units"}`
+                          : ""}
                         {" · "}
                         <span className="font-mono">{b.booking_id}</span>
                       </div>

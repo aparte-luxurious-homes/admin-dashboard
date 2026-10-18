@@ -24,6 +24,7 @@ import { AgentNetworkRole, UserRole } from "../lib/enums";
 import { RootState } from "../lib/store";
 import { GetGatewayBalances } from "../lib/request-handlers/integrationsMgt";
 import { useNetworkEnabled } from "../lib/request-handlers/platformMgt";
+import { GetTeamStanding } from "../lib/request-handlers/teamMgt";
 import { ANALYTICS_CONFIGURED, clearConsent } from "../lib/analytics";
 import { MobileMenuContext } from "../contexts/MobileMenuContext";
 import BottomNav from "../components/mobile/BottomNav";
@@ -140,6 +141,14 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, [user?.role, dispatch, networkEnabled]);
 
+  // Team lead: a Silver / Gold agent with mentees. Asked of the server on
+  // every load; the Team section is hidden until it says yes.
+  const { data: teamStanding, isFetched: teamStandingFetched } = GetTeamStanding(
+    user?.role as UserRole | undefined,
+    networkEnabled,
+  );
+  const isTeamLead = networkEnabled && Boolean(teamStanding?.is_team_lead);
+
   const isZoneManager =
     networkEnabled &&
     (agentNetworkRole === AgentNetworkRole.AREA_MANAGER ||
@@ -155,9 +164,10 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     // the `network` pathName, so one filter removes the feature from every
     // role's sidebar. It also drives the route guard below, which bounces any
     // path with no nav entry the current role is allowed to see.
-    const base = networkEnabled
+    const base = (networkEnabled
       ? NAV_LINKS
-      : NAV_LINKS.filter((link) => link.pathName !== "network");
+      : NAV_LINKS.filter((link) => link.pathName !== "network")
+    ).filter((link) => link.pathName !== "team" || isTeamLead);
     // Agents only. The admin "Network Management" section shares the `network`
     // pathName and carries its own Zone Assignments child, and isZoneManager is
     // false for staff (it is derived from an agent's zone standing) — so
@@ -187,7 +197,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
         ),
       };
     });
-  }, [isZoneManager, networkEnabled, user?.role]);
+  }, [isZoneManager, isTeamLead, networkEnabled, user?.role]);
 
   // Handle click to navigate
   const handleClick = () => {
@@ -273,6 +283,18 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
     // Feature switch first. Filtering the nav removes the links but leaves the
     // routes reachable by URL, and the loop below only bounces paths that match
     // a nav entry the role may NOT see — a path matching nothing falls through.
+    // The Team section exists only for team leads. Wait for the answer before
+    // bouncing, so a team lead opening a /team link directly is not sent away
+    // while it loads. The API refuses non-leads regardless.
+    if (
+      (currentRoute === "/team" || currentRoute.startsWith("/team/")) &&
+      (user.role !== UserRole.AGENT || !networkEnabled || (teamStandingFetched && !isTeamLead))
+    ) {
+      toast.error(MESSAGES.MSG_YOU_DON_T_HAVE_ACCESS_TO_THAT_PAGE);
+      router.replace(PAGE_ROUTES.dashboard.base);
+      return;
+    }
+
     if (!networkEnabled && currentRoute.startsWith("/network")) {
       toast.error(MESSAGES.MSG_THE_AGENT_NETWORK_FEATURE_IS_CURRENTLY_D);
       router.replace(PAGE_ROUTES.dashboard.base);
@@ -311,7 +333,7 @@ export default function Dashboard({ children }: { children: React.ReactNode }) {
       toast.error(MESSAGES.MSG_YOU_DON_T_HAVE_ACCESS_TO_THAT_PAGE);
       router.replace(PAGE_ROUTES.dashboard.base);
     }
-  }, [user, currentRoute, router, effectiveNavLinks, networkEnabled]);
+  }, [user, currentRoute, router, effectiveNavLinks, networkEnabled, isTeamLead, teamStandingFetched]);
 
   // Show loader while checking authentication or fetching user
   if (isCheckingAuth || (isFetching && !user)) {

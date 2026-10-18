@@ -91,6 +91,8 @@ export const API_ROUTES = {
                 amenities: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/amenities`,
                 media: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/media`,
                 availability: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/availability`,
+                // An event-centre hall's free times on one date (?date=YYYY-MM-DD).
+                eventSlots: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/event-slots`,
                 deleteMedia: (propertyId: string | number, unitId: string | number, mediaId: string | number) => `/properties/${propertyId}/units/${unitId}/media/${mediaId}`,
             },
             deleteMedia: (propertyId: string | number, mediaId: string | number) => `/properties/${propertyId}/media/${mediaId}`,
@@ -119,9 +121,14 @@ export const API_ROUTES = {
     },
     bookings: {
         base: '/bookings',
+        // Admin breakdown of who earns what from the listing and referral pools.
+        commissionSplit: (id: string) => `/bookings/${id}/commission-split`,
         upcoming: '/bookings/upcoming',
+        // Server price for a prospective booking; venues are priced only here.
+        quote: '/bookings/quote',
         guestLookup: '/bookings/guest-lookup',
         guestsDirectory: '/bookings/guests/directory',
+        guestCredentials: '/bookings/guest-credentials',
         details: (id: string) => `/bookings/${id}`,
         status: (id: string | number) => `/bookings/${id}/status`,
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
@@ -185,8 +192,10 @@ export const API_ROUTES = {
     statistic: {
         base: '/stats',
         gatewayBalances: '/stats/gateway-balances',
+        walletTotals: '/stats/wallet-totals',
         adminQueues: '/stats/admin/queues',
         adminAgentPerformance: '/stats/admin/agent-performance',
+        adminTopTeams: '/stats/admin/top-teams',
     },
     transactions: {
         base: '/wallets/transactions',
@@ -204,7 +213,14 @@ export const API_ROUTES = {
             details: (id: string) => `/admin/network/mentorship/${id}`,
             candidates: `/admin/network/mentorship/candidates`,
             mentors: `/admin/network/mentorship/mentors`,
+            // Bronze / Silver agents with no mentor, with suggested mentors.
+            unassigned: `/admin/network/mentorship/unassigned`,
+            // End a link and give its mentee a new mentor in one step.
+            reassign: (id: string) => `/admin/network/mentorship/${id}/reassign`,
         },
+        // Gold, then Silver with their Gold mentor, then Bronze with both
+        // mentors. `format=csv|pdf` downloads it.
+        report: `/admin/network/report`,
         events: {
             base: `/admin/network/events`,
             details: (id: string) => `/admin/network/events/${id}`,
@@ -261,6 +277,32 @@ export const API_ROUTES = {
         // tree — created ACTIVE, no approval step, since the lead is already
         // the approver.
         assignMentorship: `/network/mentorship/assign`,
+        // Deep dive on the caller's direct mentees, and the name-and-count
+        // summary of agents on the caller's tier.
+        myTeam: `/network/team`,
+        peers: `/network/peers`,
+    },
+    // Team lead workspace (Silver / Gold agents with mentees). Read-only;
+    // every change is a request an admin approves.
+    team: {
+        me: `/team/me`,
+        members: `/team/members`,
+        properties: `/team/properties`,
+        propertyDetails: (id: string) => `/team/properties/${id}`,
+        bookings: `/team/bookings`,
+        bookingDetails: (id: string) => `/team/bookings/${id}`,
+        transactions: `/team/transactions`,
+        reviews: `/team/reviews`,
+        referrals: `/team/referrals`,
+        requests: `/team/requests`,
+        mediaRequest: `/team/requests/media`,
+        requestDetails: (id: string) => `/team/requests/${id}`,
+    },
+    teamRequests: {
+        base: `/admin/team-requests`,
+        details: (id: string) => `/admin/team-requests/${id}`,
+        approve: (id: string) => `/admin/team-requests/${id}/approve`,
+        reject: (id: string) => `/admin/team-requests/${id}/reject`,
     },
     platform: {
         // Readable by any authenticated user — every client needs to know

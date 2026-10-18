@@ -25,6 +25,9 @@ import BookingGuestCard from "./BookingGuestCard";
 import BookingDatesCard from "./BookingDatesCard";
 import BookingPaymentCard from "./BookingPaymentCard";
 import BookingRevenueSplit from "./BookingRevenueSplit";
+import { CommissionSplitCard } from "@/src/components/team/AdminNetworkViews";
+import { useAuth } from "@/src/hooks/useAuth";
+import { UserRole } from "@/src/lib/enums";
 import BookingStatusBanner from "./BookingStatusBanner";
 import BookingOwnerAgentCard from "./BookingOwnerAgentCard";
 import BookingTimeline from "./BookingTimeline";
@@ -37,6 +40,10 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isOwner } = usePermissions();
+  const { user } = useAuth();
+  // Who earns what across agents and mentors: admins and operations admins only.
+  const canSeeCommissionSplit = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN]
+    .includes(user?.role as UserRole);
 
   const printContentRef = useRef<HTMLDivElement>(null);
   const [editMode, setEditMode] = useState(Boolean(searchParams.get("edit")));
@@ -301,6 +308,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                   })()}
 
                   <BookingRevenueSplit booking={booking} />
+                  <CommissionSplitCard bookingId={String(booking.id)} enabled={canSeeCommissionSplit} />
                   <BookingStatusBanner booking={booking} />
                   <BookingOwnerAgentCard booking={booking} />
 

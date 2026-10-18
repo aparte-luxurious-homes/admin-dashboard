@@ -76,6 +76,10 @@ export const PAGE_ROUTES = {
             manageVerifications: {
                 base: '/property-management/manage-verifications',
             },
+            teamRequests: {
+                base: '/property-management/team-requests',
+                details: (id: string) => `/property-management/team-requests/${id}`,
+            },
             myVerifications: {
                 base: '/property-management/my-verifications',
             },
@@ -125,6 +129,7 @@ export const PAGE_ROUTES = {
             base: '/reports',
             agentPerformance: '/reports/agent-performance',
             statements: '/reports/statements',
+            network: '/reports/network',
         },
         wallet: {
             base: '/wallet',
@@ -132,6 +137,19 @@ export const PAGE_ROUTES = {
         icalManagement: {
             feeds: '/ical-management/feeds',
             conflicts: '/ical-management/conflicts',
+        },
+        // Team lead workspace: Silver / Gold agents with mentees.
+        team: {
+            base: '/team',
+            members: '/team/members',
+            properties: '/team/properties',
+            propertyDetails: (id: string) => `/team/properties/${id}`,
+            bookings: '/team/bookings',
+            bookingDetails: (id: string) => `/team/bookings/${id}`,
+            transactions: '/team/transactions',
+            reviews: '/team/reviews',
+            referrals: '/team/referrals',
+            requests: '/team/requests',
         },
         network: {
             base: '/network',
@@ -151,6 +169,10 @@ export const PAGE_ROUTES = {
                 base: '/network/mentorship',
                 details: (id: string) => `/network/mentorship/${id}`,
             },
+            // Admin: agents who lost their mentor and need a new one.
+            needsMentor: '/network/needs-mentor',
+            // Agent: deep dive on own mentees, and same-tier summary.
+            myTeam: '/network/my-team',
             agents: {
                 base: '/network/agents',
                 details: (id: string) => `/network/agents/${id}`,

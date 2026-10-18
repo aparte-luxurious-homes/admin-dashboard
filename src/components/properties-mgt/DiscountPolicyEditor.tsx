@@ -38,6 +38,11 @@ interface DiscountPolicyEditorProps {
    * "off" means the property's policy applies, not that nothing applies.
    */
   inheritNote?: string;
+  /**
+   * What a tier counts: "night" for a stay, "day" for an event centre's
+   * multi-day discount (the API counts hire days for venues).
+   */
+  unitWord?: "night" | "day";
 }
 
 export default function DiscountPolicyEditor({
@@ -48,6 +53,7 @@ export default function DiscountPolicyEditor({
   allowedTypes = DISCOUNT_TYPES,
   compact = false,
   inheritNote,
+  unitWord = "night",
 }: DiscountPolicyEditorProps) {
   // `value` can arrive undefined — a wizard draft restored from localStorage
   // saved before this step existed, a unit with no override, or a property the
@@ -167,7 +173,7 @@ export default function DiscountPolicyEditor({
                   >
                     <div className="flex-1">
                       <label className="text-xs text-zinc-500 mb-1 block">
-                        Min Nights
+                        {unitWord === "day" ? "Min Days" : "Min Nights"}
                       </label>
                       <input
                         type="number"
@@ -248,8 +254,8 @@ export default function DiscountPolicyEditor({
               booking time, so a tier above it is not an error — it just does
               not do what it says. Worth saying out loud in the editor. */}
           <p className="text-[11px] text-zinc-400">
-            Discounts are capped at half the nightly rate. A larger value is
-            reduced to the cap when a guest books.
+            Discounts are capped at half the {unitWord === "day" ? "daily" : "nightly"} rate.
+            A larger value is reduced to the cap when a guest books.
           </p>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { PropertyType, IDiscountPolicy } from '../types';
+import { HallForm, emptyHallForm } from '../venue';
 
 export enum WizardStep {
     PROPERTY_DETAILS = 0,
@@ -23,6 +24,12 @@ export enum PropertyMediaCategory {
     BATHROOM = 'BATHROOM',
     TOILET = 'TOILET',
     BALCONY = 'BALCONY',
+    // Event-centre halls
+    HALL_INTERIOR = 'HALL_INTERIOR',
+    STAGE = 'STAGE',
+    SEATING_LAYOUT = 'SEATING_LAYOUT',
+    CHANGING_ROOM = 'CHANGING_ROOM',
+    CATERING_AREA = 'CATERING_AREA',
     WALKTHROUGH_VIDEO = 'WALKTHROUGH_VIDEO',
     OTHER = 'OTHER',
 }
@@ -38,6 +45,31 @@ export const OPTIONAL_PROPERTY_CATEGORIES: PropertyMediaCategory[] = [
     PropertyMediaCategory.COMMON_AREA,
     PropertyMediaCategory.ROOFTOP,
     PropertyMediaCategory.STAIRCASE,
+];
+
+// Event centres (PRD 4.3): the venue once, then each hall by its interior.
+// Mirrors api-v1 services/properties/validators.py, which flags any required
+// slot left empty to the verification reviewer.
+export const VENUE_REQUIRED_PROPERTY_CATEGORIES: PropertyMediaCategory[] = [
+    PropertyMediaCategory.EXTERIOR_FRONT,
+    PropertyMediaCategory.ENTRANCE,
+    PropertyMediaCategory.PARKING,
+];
+
+export const VENUE_OPTIONAL_PROPERTY_CATEGORIES: PropertyMediaCategory[] = [
+    PropertyMediaCategory.EXTERIOR_COMPOUND,
+];
+
+export const HALL_REQUIRED_CATEGORIES: PropertyMediaCategory[] = [
+    PropertyMediaCategory.HALL_INTERIOR,
+];
+
+export const HALL_OPTIONAL_CATEGORIES: PropertyMediaCategory[] = [
+    PropertyMediaCategory.STAGE,
+    PropertyMediaCategory.SEATING_LAYOUT,
+    PropertyMediaCategory.CHANGING_ROOM,
+    PropertyMediaCategory.TOILET,
+    PropertyMediaCategory.CATERING_AREA,
 ];
 
 // Static fallback when the unit's room counts are unavailable.
@@ -107,6 +139,11 @@ export const CATEGORY_LABELS: Record<PropertyMediaCategory, string> = {
     BATHROOM: 'Bathroom',
     TOILET: 'Toilet',
     BALCONY: 'Balcony',
+    HALL_INTERIOR: 'Hall interior',
+    STAGE: 'Stage / podium',
+    SEATING_LAYOUT: 'Seating layout',
+    CHANGING_ROOM: 'Changing room',
+    CATERING_AREA: 'Catering / kitchen area',
     WALKTHROUGH_VIDEO: 'Walkthrough video',
     OTHER: 'Other',
 };
@@ -119,6 +156,22 @@ export const WIZARD_STEPS = [
     { key: WizardStep.DISCOUNTS, label: 'Discounts', icon: 'solar:tag-price-bold-duotone' },
     { key: WizardStep.MEDIA_DOCS, label: 'Media & Docs', icon: 'solar:camera-bold-duotone' },
 ] as const;
+
+/** The steps as an event centre reads them: halls, not units. */
+export const wizardSteps = (venue: boolean) =>
+    WIZARD_STEPS.map((step) =>
+        venue && step.key === WizardStep.UNITS
+            ? { ...step, label: 'Halls & Spaces', icon: 'solar:buildings-2-bold-duotone' }
+            : step,
+    );
+
+/** Category label, worded for a venue where the stay wording would mislead. */
+export const categoryLabel = (cat: PropertyMediaCategory, venue: boolean): string =>
+    venue && cat === PropertyMediaCategory.EXTERIOR_COMPOUND
+        ? 'Compound / outdoor space'
+        : venue && cat === PropertyMediaCategory.EXTERIOR_FRONT
+            ? 'Front / exterior (cover photo)'
+            : CATEGORY_LABELS[cat];
 
 export type UnitFormValues = {
     _key: string;
@@ -134,17 +187,12 @@ export type UnitFormValues = {
     kitchen_count: number;
     bathroom_count: number;
     amenityNames: string[];
-    // Event centre (PRD 4.2 "Facilities Unit"). The standalone Add Unit screen
-    // has captured these since the feature shipped; the listing wizard — the
-    // flow the PRD actually puts the agent through — did not, so a venue
-    // listed here reached the API with no capacity, no rate card and no fees,
-    // and the guest's details page had nothing to show.
+    // Event centre (PRD 4.2 "Facilities Unit"): what the hall seats, parks
+    // and powers. Its rate card and hours come from HallForm.
     seating_capacity: number;
     standing_capacity: number;
     car_park_spaces: number;
     power_supply_provision: string;
-    event_price_per_hour: string;
-    event_price_per_half_day: string;
     // Not venue-only: a shortlet can charge for cleaning too.
     additional_fees: Array<{ fee_name: string; fee_amount: number; is_mandatory: boolean }>;
     /**
@@ -155,7 +203,7 @@ export type UnitFormValues = {
      */
     long_stay_discount_policy?: IDiscountPolicy | null;
     extension_discount_policy?: IDiscountPolicy | null;
-};
+} & HallForm;
 
 export type PropertyFormValues = {
     name: string;
@@ -196,7 +244,7 @@ export type PropertyFormValues = {
     event_types: string[];
 };
 
-export function createEmptyUnit(): UnitFormValues {
+export function createEmptyUnit(venue = false): UnitFormValues {
     return {
         _key: crypto.randomUUID(),
         name: '',
@@ -206,7 +254,8 @@ export function createEmptyUnit(): UnitFormValues {
         max_guests: 1,
         count: 1,
         is_whole_property: false,
-        bedroom_count: 1,
+        // A hall has no bedrooms; a stay starts with one.
+        bedroom_count: venue ? 0 : 1,
         living_room_count: 0,
         kitchen_count: 0,
         bathroom_count: 1,
@@ -215,8 +264,7 @@ export function createEmptyUnit(): UnitFormValues {
         standing_capacity: 0,
         car_park_spaces: 0,
         power_supply_provision: '',
-        event_price_per_hour: '',
-        event_price_per_half_day: '',
+        ...emptyHallForm(),
         additional_fees: [],
         long_stay_discount_policy: null,
         extension_discount_policy: null,

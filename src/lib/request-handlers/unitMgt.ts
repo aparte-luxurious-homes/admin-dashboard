@@ -291,6 +291,30 @@ export function GetUnitAvailability(
   });
 }
 
+/**
+ * What an event-centre hall can still be booked for on one date: free hourly
+ * start times (each with the longest hire that fits), half-day sessions, and
+ * whether the whole day is free. The same engine accepts or refuses the
+ * booking, so a slot offered here is one POST /bookings will take.
+ */
+export function GetEventSlots(
+  propertyId: string | number | undefined,
+  unitId: string | number | undefined,
+  date: string | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["eventSlots", propertyId, unitId, date],
+    queryFn: () =>
+      axiosRequest.get(
+        API_ROUTES.propertyManagement.properties.units.eventSlots(propertyId!, unitId!),
+        { params: { date } },
+      ),
+    enabled: enabled && !!propertyId && !!unitId && !!date,
+    staleTime: 30 * 1000,
+  });
+}
+
 export function CreateUnitAvailability() {
   const queryClient = useQueryClient();
   return useMutation({
