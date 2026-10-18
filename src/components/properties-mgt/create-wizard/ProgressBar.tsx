@@ -1,19 +1,22 @@
 'use client';
 
 import { Icon } from '@iconify/react';
-import { WizardStep, WIZARD_STEPS } from './types';
+import { WizardStep, wizardSteps } from './types';
 
 interface ProgressBarProps {
     currentStep: WizardStep;
     highestStep: WizardStep;
     onStepClick: (step: WizardStep) => void;
+    /** An event centre's second step is "Halls & Spaces", not "Units". */
+    isVenue?: boolean;
 }
 
-export default function ProgressBar({ currentStep, highestStep, onStepClick }: ProgressBarProps) {
+export default function ProgressBar({ currentStep, highestStep, onStepClick, isVenue = false }: ProgressBarProps) {
+    const steps = wizardSteps(isVenue);
     return (
         <div className="w-full">
             <div className="flex items-center justify-between max-w-2xl mx-auto">
-                {WIZARD_STEPS.map((step, index) => {
+                {steps.map((step, index) => {
                     const isActive = currentStep === step.key;
                     const isCompleted = step.key < currentStep;
                     const isClickable = step.key <= highestStep;
@@ -33,10 +36,10 @@ export default function ProgressBar({ currentStep, highestStep, onStepClick }: P
                                 {/* Mobile: show step number instead of label */}
                                 <span className={`text-[10px] font-semibold sm:hidden ${
                                     isActive ? 'text-primary' : isCompleted ? 'text-primary/70' : 'text-zinc-400'}`}>
-                                    {index + 1}/{WIZARD_STEPS.length}
+                                    {index + 1}/{steps.length}
                                 </span>
                             </button>
-                            {index < WIZARD_STEPS.length - 1 && (
+                            {index < steps.length - 1 && (
                                 <div className="flex-1 mx-1 sm:mx-3 mt-[-18px]">
                                     <div className="h-0.5 rounded-full bg-zinc-200 overflow-hidden">
                                         <div className={`h-full bg-primary transition-all duration-500 ${step.key < currentStep ? 'w-full' : 'w-0'}`} />

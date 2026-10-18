@@ -215,12 +215,24 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
         <div className="p-4 sm:p-5">
           <div className="space-y-2">
             <div className="flex justify-between items-center py-1 text-xs sm:text-sm">
-              <span className="text-zinc-600">Price per night</span>
+              <span className="text-zinc-600">
+                {booking.isVenue ? `Rate ${booking.rateLabel}` : "Price per night"}
+              </span>
               <span className="font-medium text-zinc-800">{formatMoney(booking.pricePerNight)}</span>
             </div>
             <div className="flex justify-between items-center py-1 text-xs sm:text-sm">
-              <span className="text-zinc-600">Nights</span>
-              <span className="font-medium text-zinc-800">×{booking.nights}</span>
+              <span className="text-zinc-600">
+                {booking.isVenue
+                  ? booking.billingUnit === "PER_HOUR"
+                    ? "Hours"
+                    : booking.billingUnit === "PER_HALF_DAY"
+                      ? "Sessions"
+                      : "Days"
+                  : "Nights"}
+              </span>
+              <span className="font-medium text-zinc-800">
+                ×{booking.isVenue ? booking.billingDuration : booking.nights}
+              </span>
             </div>
             <div className="flex justify-between items-center py-1 text-xs sm:text-sm">
               <span className="text-zinc-600">Units</span>

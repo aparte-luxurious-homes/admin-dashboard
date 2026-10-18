@@ -37,6 +37,7 @@ import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { IoIosStarOutline } from "react-icons/io";
 import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
 import toast from "react-hot-toast";
+import { headlineUnitLabel, hoursLabel, rateSummary } from "../venue";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AvailabilityCalendar from "./AvailabilityCalendar";
 import { format, addMonths } from "date-fns";
@@ -242,7 +243,10 @@ export default function UnitDetailsView({
                       )}
                     </p>
                     <p className="text-[8px] sm:text-[9px] md:text-[10px] font-bold text-white/70 uppercase tracking-[0.2em] mt-0.5 sm:mt-1">
-                      Per Night
+                      {/* A hall offers venue rates; a stay is let by the night. */}
+                      {(propertyUnit?.offered_billing_units?.length ?? 0) > 0
+                        ? `Per ${headlineUnitLabel(propertyUnit)}`
+                        : "Per Night"}
                     </p>
                   </div>
                 </div>
@@ -277,8 +281,42 @@ export default function UnitDetailsView({
                   />
                   Essential Features
                 </h3>
+                {(propertyUnit?.offered_billing_units?.length ?? 0) > 0 && (
+                  <div className="p-3 bg-white border border-zinc-200 rounded-xl text-sm text-zinc-700 space-y-1">
+                    <p className="font-semibold">{rateSummary(propertyUnit, formatMoney)}</p>
+                    <p className="text-xs text-zinc-500">
+                      {hoursLabel(propertyUnit) && `Open ${hoursLabel(propertyUnit)} · `}
+                      {propertyUnit?.allows_multiple_bookings_per_day
+                        ? `Several events a day, ${propertyUnit?.event_buffer_minutes ?? 0} min apart`
+                        : "One booking a day"}
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-                  {[
+                  {((propertyUnit?.offered_billing_units?.length ?? 0) > 0
+                    ? [
+                        {
+                          label: "Seated",
+                          value: propertyUnit?.seating_capacity || propertyUnit?.seatingCapacity || 0,
+                          icon: LuUsers,
+                        },
+                        {
+                          label: "Standing",
+                          value: propertyUnit?.standing_capacity || propertyUnit?.standingCapacity || 0,
+                          icon: LuUsers,
+                        },
+                        {
+                          label: "Toilets",
+                          value: propertyUnit?.bathroomCount || propertyUnit?.bathroom_count || 0,
+                          icon: PiBathtub,
+                        },
+                        {
+                          label: "Car Park",
+                          value: propertyUnit?.car_park_spaces || propertyUnit?.carParkSpaces || 0,
+                          icon: PiBuildingApartment,
+                        },
+                      ]
+                    : [
                     {
                       label: "Bedrooms",
                       value:
@@ -311,7 +349,7 @@ export default function UnitDetailsView({
                         0,
                       icon: LuSofa,
                     },
-                  ].map((feature, i) => (
+                  ]).map((feature, i) => (
                     <div
                       key={i}
                       className="p-1 sm:p-1 md:p-1 lg:p-1 bg-white border border-zinc-200 rounded-[4px] sm:rounded-[8px] md:rounded-[1rem] flex flex-col items-center gap-2 sm:gap-3 md:gap-4 hover:border-primary/40 hover:shadow-lg transition-all group cursor-default"

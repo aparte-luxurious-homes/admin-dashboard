@@ -23,12 +23,25 @@ export default function BookingDatesCard({ booking }: BookingDatesCardProps) {
           <div>
             <p className="text-xs text-zinc-500 flex items-center gap-1 mb-0.5">
               <FaCalendarAlt className="text-[10px]" />
-              Check-in
+              {booking.isVenue ? "Event date" : "Check-in"}
             </p>
             <p className="text-sm sm:text-base font-semibold text-zinc-800">
               {booking.startDate ? formatDate(booking.startDate) : "N/A"}
             </p>
           </div>
+          {booking.isVenue ? (
+          <div>
+            <p className="text-xs text-zinc-500 flex items-center gap-1 mb-0.5">
+              <FaClock className="text-[10px]" />
+              Time
+            </p>
+            <p className="text-sm sm:text-base font-semibold text-zinc-800">
+              {booking.eventStartTime && booking.eventEndTime
+                ? `${booking.eventStartTime}–${booking.eventEndTime}`
+                : "Opening to closing"}
+            </p>
+          </div>
+          ) : (
           <div>
             <p className="text-xs text-zinc-500 flex items-center gap-1 mb-0.5">
               <FaCalendarAlt className="text-[10px]" />
@@ -38,13 +51,16 @@ export default function BookingDatesCard({ booking }: BookingDatesCardProps) {
               {booking.endDate ? formatDate(booking.endDate) : "N/A"}
             </p>
           </div>
+          )}
           <div>
             <p className="text-xs text-zinc-500 flex items-center gap-1 mb-0.5">
               <FaClock className="text-[10px]" />
-              Duration
+              {booking.isVenue ? "Hire" : "Duration"}
             </p>
             <p className="text-sm sm:text-base font-semibold text-zinc-800">
-              {booking.nights} {booking.nights === 1 ? "Night" : "Nights"}
+              {booking.isVenue
+                ? booking.hireLabel
+                : `${booking.nights} ${booking.nights === 1 ? "Night" : "Nights"}`}
             </p>
           </div>
         </div>
@@ -56,7 +72,7 @@ export default function BookingDatesCard({ booking }: BookingDatesCardProps) {
             </p>
           </div>
           <div>
-            <p className="text-xs text-zinc-500">Units</p>
+            <p className="text-xs text-zinc-500">{booking.isVenue ? "Halls" : "Units"}</p>
             <p className="text-sm sm:text-base font-semibold text-zinc-800">
               {booking.unitCount}
             </p>

@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { getApiErrorMessage } from "@/src/lib/apiError";
 import Spinner from "../../ui/Spinner";
 import { Icon } from "@iconify/react";
+import { isVenue } from "../venue";
 
 interface DiscountProposalModalProps {
   isOpen: boolean;
@@ -19,10 +20,13 @@ function DiscountPolicyDiff({
   title,
   currentPolicy,
   proposedPolicy,
+  unitWord = "night",
 }: {
   title: string;
   currentPolicy?: IDiscountPolicy;
   proposedPolicy?: IDiscountPolicy;
+  /** "day" for an event centre's multi-day discount. */
+  unitWord?: "night" | "day";
 }) {
   if (!proposedPolicy) return null;
 
@@ -44,7 +48,7 @@ function DiscountPolicyDiff({
               <div className="space-y-1">
                 {currentPolicy!.tiers!.map((tier, idx) => (
                   <div key={idx} className="text-xs text-zinc-600 bg-white p-2 rounded border border-zinc-100">
-                    {tier.min_nights}+ nights: {tier.value}{currentPolicy.discount_type === DiscountType.PERCENTAGE ? '%' : ' flat'}
+                    {tier.min_nights}+ {unitWord}s: {tier.value}{currentPolicy.discount_type === DiscountType.PERCENTAGE ? '%' : ' flat'}
                   </div>
                 ))}
               </div>
@@ -64,7 +68,7 @@ function DiscountPolicyDiff({
               <div className="space-y-1">
                 {proposedPolicy!.tiers!.map((tier, idx) => (
                   <div key={idx} className="text-xs text-zinc-800 font-medium bg-primary/5 p-2 rounded border border-primary/20">
-                    {tier.min_nights}+ nights: {tier.value}{proposedPolicy.discount_type === DiscountType.PERCENTAGE ? '%' : ' flat'}
+                    {tier.min_nights}+ {unitWord}s: {tier.value}{proposedPolicy.discount_type === DiscountType.PERCENTAGE ? '%' : ' flat'}
                   </div>
                 ))}
               </div>
@@ -83,8 +87,11 @@ export default function DiscountProposalModal({
 }: DiscountProposalModalProps) {
   const { mutate: reviewProposal, isPending } = ReviewDiscountProposal();
 
+  const venue = isVenue(property.property_type ?? property.propertyType);
   const hasProposedLongStay = !!property.proposed_long_stay_discount_policy;
-  const hasProposedExtension = !!property.proposed_extension_discount_policy;
+  // Venue bookings are never extended, so an extension proposal on one has
+  // nothing to price and is not worth the owner's attention.
+  const hasProposedExtension = !venue && !!property.proposed_extension_discount_policy;
 
   if (!hasProposedLongStay && !hasProposedExtension) return null;
 
@@ -119,7 +126,8 @@ export default function DiscountProposalModal({
         <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
           {hasProposedLongStay && (
             <DiscountPolicyDiff
-              title="Long-Stay Discount"
+              title={venue ? "Multi-Day Discount" : "Long-Stay Discount"}
+              unitWord={venue ? "day" : "night"}
               currentPolicy={property.long_stay_discount_policy}
               proposedPolicy={property.proposed_long_stay_discount_policy}
             />

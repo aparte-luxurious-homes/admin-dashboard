@@ -57,14 +57,28 @@ export interface IDiscountPolicy {
     tiers: IDiscountTier[];
 }
 
+export enum AmenityScope {
+    STAY = 'STAY',
+    VENUE = 'VENUE',
+    ALL = 'ALL',
+}
+
 export interface IAmenity {
     id: string
     name: string
+    /** Which listings may offer it: a venue sees VENUE + ALL, a stay STAY + ALL. */
+    applies_to?: AmenityScope | string
     createdAt?: string
     updatedAt?: string
 }
 
 
+
+export interface IHalfDayWindow {
+    name: string
+    start: string
+    end: string
+}
 
 export interface IPropertyVerification {
     id: string
@@ -174,6 +188,19 @@ export interface IPropertyUnit {
     event_price_per_hour?: string
     eventPricePerHalfDay?: string
     event_price_per_half_day?: string
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null
+    closing_time?: string | null
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null
+    /** Read-only: the hire types a guest can actually book, and the one a
+        card quotes ("PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"). */
+    offered_billing_units?: string[]
+    headline_billing_unit?: string | null
     /** This unit's OWN override. null/absent = inherits the property's. */
     long_stay_discount_policy?: IDiscountPolicy | null
     extension_discount_policy?: IDiscountPolicy | null
@@ -196,11 +223,29 @@ export interface IPropertyUnit {
 }
 
 
+/** Why a row is on a network-scoped agent's list (Silver, Gold, Area Manager,
+    Regional Lead). Set by the API only for those agents: null on their own
+    rows, absent for everyone else. See api-v1 services/properties/source.py. */
+export type PropertySourceType =
+    | "REFERRAL"
+    | "VERIFICATION"
+    | "MENTEE"
+    | "ZONE"
+    | "ZONE_AGENT"
+    | "NETWORK"
+
+export interface IPropertySource {
+    type: PropertySourceType
+    /** The person (or, for ZONE, the zone) the row came through. */
+    via: { id: string; name: string | null } | null
+}
+
 export interface IProperty {
     [x: string]: any
     id: string
     ownerId: string
     owner_id?: string
+    source?: IPropertySource | null
     bookingMode?: BookingMode
     booking_mode?: BookingMode
     assignedAgent?: string
@@ -264,6 +309,28 @@ export enum DocumentType {
     EVENT_PERMIT = 'EVENT_PERMIT',
     INSURANCE_CERTIFICATE = 'INSURANCE_CERTIFICATE',
     OTHER_SUPPORTING_DOCUMENT = 'OTHER_SUPPORTING_DOCUMENT',
+}
+
+export const STANDARD_PROPERTY_DOCUMENTS: DocumentType[] = [
+    DocumentType.UTILITY_BILL,
+    DocumentType.POWER_BILL,
+    DocumentType.TENANCY_AGREEMENT,
+    DocumentType.TITLE_DEED,
+    DocumentType.CERTIFICATE_OF_OCCUPANCY,
+];
+
+export const EVENT_CENTRE_DOCUMENTS: DocumentType[] = [
+    ...STANDARD_PROPERTY_DOCUMENTS,
+    DocumentType.EVENT_PERMIT,
+    DocumentType.INSURANCE_CERTIFICATE,
+    DocumentType.OTHER_SUPPORTING_DOCUMENT,
+];
+
+export function getDocumentTypesForProperty(propertyType?: PropertyType | string | null): DocumentType[] {
+    if (propertyType === PropertyType.EVENT_CENTRE || propertyType === 'EVENT_CENTRE') {
+        return EVENT_CENTRE_DOCUMENTS;
+    }
+    return STANDARD_PROPERTY_DOCUMENTS;
 }
 
 export interface IPropertyDocument {
@@ -377,9 +444,18 @@ export interface IUpdatePropertyUnit {
     standing_capacity?: number,
     car_park_spaces?: number,
     power_supply_provision?: string,
-    event_price_per_day?: string,
-    event_price_per_hour?: string,
-    event_price_per_half_day?: string,
+    event_price_per_day?: string | null,
+    event_price_per_hour?: string | null,
+    event_price_per_half_day?: string | null,
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null,
+    closing_time?: string | null,
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null,
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null,
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null,
     additional_fees?: Array<{
         fee_name: string,
         fee_amount: number,
@@ -407,9 +483,18 @@ export interface ICreatePropertyUnit {
     standing_capacity?: number,
     car_park_spaces?: number,
     power_supply_provision?: string,
-    event_price_per_day?: string,
-    event_price_per_hour?: string,
-    event_price_per_half_day?: string,
+    event_price_per_day?: string | null,
+    event_price_per_hour?: string | null,
+    event_price_per_half_day?: string | null,
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null,
+    closing_time?: string | null,
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null,
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null,
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null,
     additional_fees?: Array<{
         fee_name: string,
         fee_amount: number,

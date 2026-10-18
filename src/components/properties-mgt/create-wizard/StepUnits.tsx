@@ -3,6 +3,7 @@
 import { Icon } from "@iconify/react";
 import { UnitFormValues } from "./types";
 import UnitCard from "./UnitCard";
+import { venueCopy } from "../venue";
 
 interface StepUnitsProps {
   units: UnitFormValues[];
@@ -10,21 +11,40 @@ interface StepUnitsProps {
   onEditUnit: (index: number) => void;
   onDeleteUnit: (index: number) => void;
   onDiscontinueListing: () => void;
+  /** Event centres list halls and spaces rather than units. */
+  isVenue?: boolean;
 }
+
+const STAY_TIPS = [
+  'Use descriptive names like "Deluxe Ocean View Suite" instead of "Unit 1"',
+  "Set competitive pricing by researching similar properties in your area",
+  "Add caution fees for high-value units to protect against damages",
+  "Accurately list room counts and amenities to set the right expectations",
+];
+
+const VENUE_TIPS = [
+  'Name each space the way guests know it, e.g. "Main Banquet Hall" or "Garden"',
+  "Offer every way the hall is really hired: by the day, half day or hour",
+  "Set opening hours and the gap you need to clean up between events",
+  "Give honest seated and standing capacities; guests filter on them",
+];
 
 export default function StepUnits({
   units,
   onAddUnit,
   onEditUnit,
   onDeleteUnit,
-  onDiscontinueListing
+  onDiscontinueListing,
+  isVenue = false,
 }: StepUnitsProps) {
+  const copy = venueCopy(isVenue);
   // Once any unit is marked "whole property", the listing represents the entire property
   // as a single bookable entity — adding a second unit makes no sense.
   const hasWholePropertyUnit = units.some((u) => u.is_whole_property);
   const addDisabled = hasWholePropertyUnit;
-  const addDisabledHint =
-    "This listing has a whole-property unit; remove or untoggle it to add another unit.";
+  const addDisabledHint = isVenue
+    ? "This listing is hired as a whole venue; remove or untoggle that to add a hall."
+    : "This listing has a whole-property unit; remove or untoggle it to add another unit.";
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -37,11 +57,12 @@ export default function StepUnits({
                 icon="solar:widget-3-bold-duotone"
                 className="text-xl text-primary"
               />
-              Property Units
+              {isVenue ? "Halls & Spaces" : "Property Units"}
             </h3>
             <p className="text-xs text-zinc-500 mt-1">
-              Add rentable units to your property. You can add units now or
-              after creation.
+              {isVenue
+                ? "Add each hall or space guests can hire, with its rates, hours and capacity. You can add more after creation."
+                : "Add rentable units to your property. You can add units now or after creation."}
             </p>
           </div>
 
@@ -66,7 +87,7 @@ export default function StepUnits({
             className="h-9 px-6 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary"
           >
             <Icon icon="solar:add-circle-bold" className="text-sm" />
-            Add Unit
+            Add {copy.Unit}
           </button>
         )}
       </div>
@@ -81,11 +102,12 @@ export default function StepUnits({
             />
           </div>
           <h4 className="text-sm font-bold text-zinc-700 mb-1">
-            No units added yet
+            No {copy.units} added yet
           </h4>
           <p className="text-xs text-zinc-500 mb-6 max-w-sm">
-            Units represent the individual bookable spaces within your property.
-            Add at least one unit to start receiving bookings.
+            {isVenue
+              ? "Halls are the spaces guests hire for their events: a main hall, a VIP lounge, a garden. Add at least one to start receiving bookings."
+              : "Units represent the individual bookable spaces within your property. Add at least one unit to start receiving bookings."}
           </p>
           <button
             type="button"
@@ -93,7 +115,7 @@ export default function StepUnits({
             className="h-10 px-6 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2"
           >
             <Icon icon="solar:add-circle-bold" className="text-sm" />
-            Add Your First Unit
+            Add Your First {copy.Unit}
           </button>
         </div>
       )}
@@ -106,6 +128,7 @@ export default function StepUnits({
               key={unit._key}
               unit={unit}
               index={index}
+              isVenue={isVenue}
               onEdit={() => onEditUnit(index)}
               onDelete={() => onDeleteUnit(index)}
             />
@@ -123,7 +146,7 @@ export default function StepUnits({
                 className="text-2xl text-zinc-400 group-hover:text-primary"
               />
               <span className="text-xs font-semibold text-zinc-500 group-hover:text-primary">
-                Add Another Unit
+                Add Another {copy.Unit}
               </span>
             </button>
           )}
@@ -141,37 +164,18 @@ export default function StepUnits({
           Tips for Great Listings
         </h4>
         <ul className="space-y-2 relative z-10">
-          <li className="text-xs text-zinc-400 flex items-start gap-2">
-            <Icon
-              icon="solar:check-circle-bold"
-              className="text-primary text-sm mt-0.5 flex-shrink-0"
-            />
-            Use descriptive names like &quot;Deluxe Ocean View Suite&quot;
-            instead of &quot;Unit 1&quot;
-          </li>
-          <li className="text-xs text-zinc-400 flex items-start gap-2">
-            <Icon
-              icon="solar:check-circle-bold"
-              className="text-primary text-sm mt-0.5 flex-shrink-0"
-            />
-            Set competitive pricing by researching similar properties in your
-            area
-          </li>
-          <li className="text-xs text-zinc-400 flex items-start gap-2">
-            <Icon
-              icon="solar:check-circle-bold"
-              className="text-primary text-sm mt-0.5 flex-shrink-0"
-            />
-            Add caution fees for high-value units to protect against damages
-          </li>
-          <li className="text-xs text-zinc-400 flex items-start gap-2">
-            <Icon
-              icon="solar:check-circle-bold"
-              className="text-primary text-sm mt-0.5 flex-shrink-0"
-            />
-            Accurately list room counts and amenities to set the right
-            expectations
-          </li>
+          {(isVenue ? VENUE_TIPS : STAY_TIPS).map((tip) => (
+            <li
+              key={tip}
+              className="text-xs text-zinc-400 flex items-start gap-2"
+            >
+              <Icon
+                icon="solar:check-circle-bold"
+                className="text-primary text-sm mt-0.5 flex-shrink-0"
+              />
+              {tip}
+            </li>
+          ))}
         </ul>
       </div>
     </div>

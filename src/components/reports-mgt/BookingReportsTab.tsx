@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
+import {
+    REPORT_PAYMENT_METHODS,
+    receivesReportsByEmail,
+    requestReport,
+} from "@/src/lib/request-handlers/reportsMgt";
 import { GetAllProperties } from "@/src/lib/request-handlers/propertyMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import toast from "react-hot-toast";
-import { FiDownload } from "react-icons/fi";
+import { notifyReportError, notifyReportOutcome } from "./reportToast";
+import { FiDownload, FiMail } from "react-icons/fi";
 import Spinner from "@/src/components/ui/Spinner";
 import { UserRole } from "@/src/lib/enums";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -23,31 +27,36 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
     // Fetch properties for the dropdown
     const { data: propertiesData } = GetAllProperties(1, 100, "", user?.role as UserRole, user?.id);
     const properties = propertiesData?.data?.data?.items || [];
+    const emailed = receivesReportsByEmail(user?.role);
+    const ActionIcon = emailed ? FiMail : FiDownload;
 
     const handleExport = async (formatType: 'pdf' | 'csv' | 'xlsx') => {
         try {
             setExportingFormat(formatType);
-            
-            // Build query params
-            const queryParams = new URLSearchParams({ format: formatType });
+
+            // Build query params. The API takes the plural, comma-separated
+            // names; the singular ones it used to be sent were silently ignored.
+            // `format` is added by requestReport.
+            const queryParams = new URLSearchParams();
             if (startDate) queryParams.append("start_date", startDate);
             if (endDate) queryParams.append("end_date", endDate);
-            if (propertyId) queryParams.append("property_id", propertyId);
-            if (status) queryParams.append("status", status);
-            if (paymentMethod) queryParams.append("payment_method", paymentMethod);
+            if (propertyId) queryParams.append("property_ids", propertyId);
+            if (status) queryParams.append("statuses", status);
+            if (paymentMethod) queryParams.append("payment_methods", paymentMethod);
             if (targetOwnerId) queryParams.append("target_owner_id", targetOwnerId);
-            
-            const baseUrl = user?.role === 'AGENT' 
-                ? API_ROUTES.agents.bookings.export 
+
+            const baseUrl = user?.role === 'AGENT'
+                ? API_ROUTES.agents.bookings.export
                 : API_ROUTES.reports.bookings.export;
-            const url = `${baseUrl}?${queryParams.toString()}`;
-            
-            await requestReportDownload(url, formatType);
-            toast.success(`${formatType.toUpperCase()} export generated successfully`);
-        } catch (err: any) {
+            const query = queryParams.toString();
+            const url = query ? `${baseUrl}?${query}` : baseUrl;
+
+            notifyReportOutcome(await requestReport(url, formatType, user?.role));
+        } catch (err) {
             console.error("Export failed:", err);
-            const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Failed to export report";
-            toast.error(errorMsg);
+            // In the API's words: a report too large to email says so and asks
+            // for a narrower date range, and that has to reach the owner as is.
+            notifyReportError(err, "Failed to export report");
         } finally {
             setExportingFormat(null);
         }
@@ -59,6 +68,9 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
                 <div className="mb-6">
                     <h2 className="text-xl font-bold text-gray-800">Generate Booking Report</h2>
                     <p className="text-sm text-gray-500">Customize your report using the filters below.</p>
+                    {emailed && (
+                        <p className="text-sm text-gray-500 mt-1">Reports are sent to the email address on your account.</p>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -122,10 +134,12 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
                             className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
                         >
                             <option value="">All Payment Methods</option>
-                            <option value="PAYSTACK">Paystack</option>
-                            <option value="TRANSFER">Bank Transfer</option>
-                            <option value="CASH">Cash</option>
-                            <option value="POS">POS</option>
+                            {/* Values are the API's stored payment_method strings, not
+                                gateway names: "online" covers every gateway (Paystack,
+                                Monnify, Flutterwave). See REPORT_PAYMENT_METHODS. */}
+                            {REPORT_PAYMENT_METHODS.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -139,7 +153,7 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-700 rounded-md shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'pdf' ? <Spinner width="16" height="16" color="currentColor" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'pdf' ? <Spinner width="16" height="16" color="currentColor" /> : <ActionIcon className="w-4 h-4" />}
                         Export to PDF
                     </button>
                     
@@ -148,7 +162,7 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-green-200 text-green-700 rounded-md shadow-sm hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'csv' ? <Spinner width="16" height="16" color="currentColor" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'csv' ? <Spinner width="16" height="16" color="currentColor" /> : <ActionIcon className="w-4 h-4" />}
                         Export to CSV
                     </button>
                     
@@ -157,7 +171,7 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
                         disabled={!!exportingFormat}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-md shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors text-sm font-medium"
                     >
-                        {exportingFormat === 'xlsx' ? <Spinner width="16" height="16" color="currentColor" /> : <FiDownload className="w-4 h-4" />}
+                        {exportingFormat === 'xlsx' ? <Spinner width="16" height="16" color="currentColor" /> : <ActionIcon className="w-4 h-4" />}
                         Export to Excel (.xlsx)
                     </button>
                 </div>

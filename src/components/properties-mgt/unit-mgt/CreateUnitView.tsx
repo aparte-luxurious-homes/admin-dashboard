@@ -33,6 +33,14 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { Icon } from "@iconify/react";
 import CustomCheckbox from "@/components/ui/customCheckbox";
+import HallFields from "../HallFields";
+import { HallForm, emptyHallForm, hallPayload, isVenue, validateHall } from "../venue";
+import {
+  CATEGORY_LABELS,
+  HALL_OPTIONAL_CATEGORIES,
+  HALL_REQUIRED_CATEGORIES,
+  PropertyMediaCategory,
+} from "../create-wizard/types";
 
 // Define the type for form values
 type FormValues = {
@@ -295,9 +303,19 @@ export default function CreateUnitView({
 }) {
   const { user } = useAuth();
   const { mutate, isPending } = CreatePropertyUnit();
-  const { data: fetchedAmenites } = GetAmenities();
   const { mutate: uploadMedia } = UploadPropertyUnitMedia();
   const { data: propertyData, isLoading } = GetSingleProperty(propertyId);
+  const propertyIsVenue = isVenue(
+    propertyData?.data?.data?.property_type ?? propertyData?.data?.data?.propertyType,
+  );
+  // A hall picks from the venue amenity list, a unit from the stay list.
+  const { data: fetchedAmenites } = GetAmenities(propertyIsVenue ? "VENUE" : "STAY");
+  const [hall, setHall] = useState<HallForm>(emptyHallForm());
+  const [hallError, setHallError] = useState<string | null>(null);
+  // Which hall photo slot this batch of uploads fills.
+  const [hallPhotoCategory, setHallPhotoCategory] = useState<PropertyMediaCategory>(
+    PropertyMediaCategory.HALL_INTERIOR,
+  );
 
   const [availableAmenities, setAvailableAmenities] =
     useState<IAmenity[]>(fixedAmenities);
@@ -371,20 +389,37 @@ export default function CreateUnitView({
         availableAmenities,
         values.amenityNames,
       );
+      if (isEventCentre) {
+        const problem = validateHall(hall);
+        if (problem) {
+          setHallError(problem);
+          toast.error(problem);
+          return;
+        }
+      }
 
       const payload: ICreatePropertyUnit[] = [
         {
           ...values,
           amenities: sortedAmenities,
-          price_per_night: String(values.price_per_night),
           caution_fee: String(values.caution_fee),
           seating_capacity: isEventCentre ? values.seating_capacity : undefined,
           standing_capacity: isEventCentre ? values.standing_capacity : undefined,
           car_park_spaces: isEventCentre ? values.car_park_spaces : undefined,
           power_supply_provision: isEventCentre ? values.power_supply_provision : undefined,
-          event_price_per_day: isEventCentre ? String(values.price_per_night) : undefined,
-          event_price_per_hour: isEventCentre && values.event_price_per_hour ? String(values.event_price_per_hour) : undefined,
-          event_price_per_half_day: isEventCentre && values.event_price_per_half_day ? String(values.event_price_per_half_day) : undefined,
+          // A hall's rate card, hours and same-day rule; the headline price
+          // and zero room counts come from hallPayload too.
+          ...(isEventCentre
+            ? {
+                ...hallPayload(hall),
+                max_guests: Math.max(values.seating_capacity || 0, values.standing_capacity || 0, 1),
+              }
+            : {
+                price_per_night: String(values.price_per_night),
+                event_price_per_day: undefined,
+                event_price_per_hour: undefined,
+                event_price_per_half_day: undefined,
+              }),
           additional_fees: values.additional_fees,
         },
       ];
@@ -407,6 +442,7 @@ export default function CreateUnitView({
 
                 formData.append("media_type", MediaType.IMAGE);
                 formData.append("is_featured", "true");
+                if (isEventCentre) formData.append("category", hallPhotoCategory);
 
                 uploadMedia(
                   {
@@ -517,7 +553,7 @@ export default function CreateUnitView({
               </Link>
               <div className="h-4 w-px bg-zinc-200" />
               <h1 className="text-sm font-semibold text-zinc-900">
-                Create New Unit
+                {isEventCentre ? "Add a Hall or Space" : "Create New Unit"}
               </h1>
             </div>
 
@@ -593,7 +629,10 @@ export default function CreateUnitView({
           onClose={() => setShowAmenityForm(false)}
           isOpen={showAmenityForm}
         >
-          <CreateAmenityForm show={setShowAmenityForm} />
+          <CreateAmenityForm
+            show={setShowAmenityForm}
+            defaultScope={isEventCentre ? "VENUE" : "STAY"}
+          />
         </CustomModal>
       )}
 
@@ -631,7 +670,7 @@ export default function CreateUnitView({
                     htmlFor="name"
                     className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1"
                   >
-                    Unit Name <span className="text-primary">*</span>
+                    {isEventCentre ? "Hall Name" : "Unit Name"} <span className="text-primary">*</span>
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400">
@@ -640,7 +679,7 @@ export default function CreateUnitView({
                     <input
                       id="name"
                       type="text"
-                      placeholder="e.g., Two-Bedroom Suite"
+                      placeholder={isEventCentre ? "e.g., Main Banquet Hall" : "e.g., Two-Bedroom Suite"}
                       value={formik.values.name}
                       onChange={formik.handleChange}
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-9 pr-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all text-sm"
@@ -673,6 +712,20 @@ export default function CreateUnitView({
               </div>
             </div>
 
+            {/* How the hall is hired (event centres) */}
+            {isEventCentre && (
+              <div className="bg-white border border-zinc-200 rounded-xl p-4">
+                <HallFields
+                  value={hall}
+                  onChange={(patch) => {
+                    setHallError(null);
+                    setHall((prev) => ({ ...prev, ...patch }));
+                  }}
+                  error={hallError}
+                />
+              </div>
+            )}
+
             {/* Unit Configuration */}
             <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-zinc-100">
@@ -684,9 +737,11 @@ export default function CreateUnitView({
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900">
-                    Unit Configuration
+                    {isEventCentre ? "Capacity & Facilities" : "Unit Configuration"}
                   </h3>
-                  <p className="text-[10px] text-zinc-500">Layout & capacity</p>
+                  <p className="text-[10px] text-zinc-500">
+                    {isEventCentre ? "Guests, parking and toilets" : "Layout & capacity"}
+                  </p>
                 </div>
               </div>
 
@@ -717,7 +772,11 @@ export default function CreateUnitView({
 
               <div className="pt-3 mt-1 border-t border-zinc-100 flex items-center justify-between">
                 <CustomCheckbox
-                  label="This unit represents the whole property"
+                  label={
+                    isEventCentre
+                      ? "Guests hire the entire venue"
+                      : "This unit represents the whole property"
+                  }
                   checked={formik.values.is_whole_property}
                   onChange={(val: boolean) =>
                     formik.setFieldValue("is_whole_property", val)
@@ -728,7 +787,7 @@ export default function CreateUnitView({
                     htmlFor="count"
                     className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1"
                   >
-                    Units
+                    {isEventCentre ? "Identical halls" : "Units"}
                   </label>
                   <CountInput
                     value={formik.values.count}
@@ -905,6 +964,24 @@ export default function CreateUnitView({
                 </div>
               </div>
 
+              {isEventCentre && (
+                <div>
+                  <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider ml-1 block mb-1">
+                    These photos show
+                  </label>
+                  <select
+                    value={hallPhotoCategory}
+                    onChange={(e) => setHallPhotoCategory(e.target.value as PropertyMediaCategory)}
+                    className="w-full md:w-1/2 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 focus:border-primary outline-none text-sm"
+                  >
+                    {[...HALL_REQUIRED_CATEGORIES, ...HALL_OPTIONAL_CATEGORIES].map((cat) => (
+                      <option key={cat} value={cat}>
+                        {CATEGORY_LABELS[cat]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="w-full">
                 <CustomDropzone
                   onDrop={setUploadedMedia}
@@ -927,18 +1004,23 @@ export default function CreateUnitView({
                   />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold">Pricing</h3>
-                  <p className="text-[10px] text-zinc-400">Set your rates</p>
+                  <h3 className="text-sm font-semibold">
+                    {isEventCentre ? "Caution Fee" : "Pricing"}
+                  </h3>
+                  <p className="text-[10px] text-zinc-400">
+                    {isEventCentre ? "Hall rates are set under How is this hall hired?" : "Set your rates"}
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-3">
+                {!isEventCentre && (
                 <div>
                   <label
                     htmlFor="price_per_night"
                     className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1"
                   >
-                    {isEventCentre ? "Price (Per Day/Event)" : "Price Per Night"}
+                    Price Per Night
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -958,60 +1040,6 @@ export default function CreateUnitView({
                     />
                   </div>
                 </div>
-
-                {isEventCentre && (
-                  <>
-                    <div>
-                      <label
-                        htmlFor="event_price_per_hour"
-                        className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1"
-                      >
-                        Price (Per Hour)
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                          <TbCurrencyNaira className="text-base text-zinc-500" />
-                        </div>
-                        <input
-                          id="event_price_per_hour"
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={formik.values.event_price_per_hour}
-                          onChange={(e) =>
-                            formik.setFieldValue("event_price_per_hour", e.target.value)
-                          }
-                          className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-2 focus:bg-white/10 focus:border-primary/50 outline-none transition-all font-semibold text-base text-white placeholder:text-zinc-700"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="event_price_per_half_day"
-                        className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider ml-1"
-                      >
-                        Price (Per Half-Day)
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                          <TbCurrencyNaira className="text-base text-zinc-500" />
-                        </div>
-                        <input
-                          id="event_price_per_half_day"
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={formik.values.event_price_per_half_day}
-                          onChange={(e) =>
-                            formik.setFieldValue("event_price_per_half_day", e.target.value)
-                          }
-                          className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-2 focus:bg-white/10 focus:border-primary/50 outline-none transition-all font-semibold text-base text-white placeholder:text-zinc-700"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-                  </>
                 )}
 
                 <div>
@@ -1043,6 +1071,7 @@ export default function CreateUnitView({
                   </div>
                 </div>
 
+                {!isEventCentre && (
                 <div className="pt-3 border-t border-white/10">
                   <p className="text-[8px] font-medium text-zinc-500 uppercase tracking-wider mb-2 text-center">
                     Total Package
@@ -1057,6 +1086,7 @@ export default function CreateUnitView({
                     </span>
                   </div>
                 </div>
+                )}
               </div>
             </div>
 

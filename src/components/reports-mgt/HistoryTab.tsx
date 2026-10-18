@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { GetStatements, requestReportDownload } from "@/src/lib/request-handlers/reportsMgt";
+import { GetStatements, receivesReportsByEmail, requestReport } from "@/src/lib/request-handlers/reportsMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import toast from "react-hot-toast";
-import { FiDownload, FiExternalLink } from "react-icons/fi";
+import { notifyReportError, notifyReportOutcome } from "./reportToast";
+import { FiDownload, FiExternalLink, FiMail } from "react-icons/fi";
 import { format } from "date-fns";
 import TablePagination from "@/src/components/TablePagination";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -26,6 +26,8 @@ export default function HistoryTab() {
     const { user } = useAuth();
     const isAgent = user?.role === 'AGENT';
     const userType = isAgent ? 'agent' : 'owner';
+    const emailed = receivesReportsByEmail(user?.role);
+    const ActionIcon = emailed ? FiMail : FiDownload;
 
     const { data: statementsData, isLoading, error } = GetStatements(userType, user?.id?.toString());
     const statements: IStatement[] = statementsData?.data?.data || [];
@@ -53,12 +55,10 @@ export default function HistoryTab() {
                 ? API_ROUTES.agents.statements.download(user.id.toString(), year, month)
                 : API_ROUTES.reports.statements.download(user.id.toString(), year, month);
 
-            await requestReportDownload(url, formatType);
-            toast.success(`${formatType.toUpperCase()} downloaded successfully`);
-        } catch (err: any) {
-            console.error("Download failed:", err);
-            const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Failed to download statement";
-            toast.error(errorMsg);
+            notifyReportOutcome(await requestReport(url, formatType, user?.role));
+        } catch (err) {
+            console.error("Statement request failed:", err);
+            notifyReportError(err, "Failed to get statement");
         } finally {
             setDownloadingId(null);
         }
@@ -72,7 +72,11 @@ export default function HistoryTab() {
                 <div className="flex justify-between items-center mb-4">
                     <div>
                         <h2 className="text-xl font-bold text-gray-800">History</h2>
-                        <p className="text-sm text-gray-500">Download statements for any past month.</p>
+                        <p className="text-sm text-gray-500">
+                            {emailed
+                                ? "Get statements for any past month, sent to the email address on your account."
+                                : "Download statements for any past month."}
+                        </p>
                     </div>
                 </div>
 
@@ -122,7 +126,7 @@ export default function HistoryTab() {
                                                             {downloadingId === `${stmt.year}-${stmt.month}-pdf` ? (
                                                                 <Spinner width="16" height="16" />
                                                             ) : (
-                                                                <FiDownload className="w-4 h-4" />
+                                                                <ActionIcon className="w-4 h-4" />
                                                             )}
                                                             PDF
                                                         </button>
@@ -135,7 +139,7 @@ export default function HistoryTab() {
                                                             {downloadingId === `${stmt.year}-${stmt.month}-csv` ? (
                                                                 <Spinner width="16" height="16" />
                                                             ) : (
-                                                                <FiDownload className="w-4 h-4" />
+                                                                <ActionIcon className="w-4 h-4" />
                                                             )}
                                                             CSV
                                                         </button>

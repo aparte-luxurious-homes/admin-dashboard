@@ -14,6 +14,7 @@ import { ApproveRefundModal } from "@/src/components/finance-mgt/modals/ApproveR
 import { ApproveWithdrawalModal } from "@/src/components/finance-mgt/modals/ApproveWithdrawalModal";
 import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/RejectWithdrawalModal";
 import { ReverseWithdrawalModal } from "@/src/components/finance-mgt/modals/ReverseWithdrawalModal";
+import { RetryWithdrawalModal, isRetryableWithdrawal } from "@/src/components/finance-mgt/modals/RetryWithdrawalModal";
 import { Button } from "@/src/components/ui/button";
 import { usePermissions } from "@/src/hooks/usePermissions";
 
@@ -168,6 +169,7 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     const [isWithdrawalApprovalOpen, setIsWithdrawalApprovalOpen] = useState(false);
     const [isWithdrawalRejectionOpen, setIsWithdrawalRejectionOpen] = useState(false);
     const [isWithdrawalReverseOpen, setIsWithdrawalReverseOpen] = useState(false);
+    const [isWithdrawalRetryOpen, setIsWithdrawalRetryOpen] = useState(false);
     const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
     const params = useParams();
     const id = params?.id;
@@ -214,6 +216,9 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
     // in-flight, or marked successful but failed at the provider.
     const canReverseWithdrawal =
         isWithdrawal && ["AWAITING_AUTHORIZATION", "PENDING", "SUCCESSFUL"].includes(data?.status ?? "");
+    // Retry re-sends a payout that failed on our side and was refunded, so the
+    // customer never has to withdraw again.
+    const canRetryWithdrawal = isRetryableWithdrawal(data);
 
     // Refresh asks the provider what actually happened and applies it. It is the
     // counterpart to Reverse, which assumes the payout did not happen — and which
@@ -378,6 +383,19 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                                         </Button>
                                     </div>
                                 )}
+
+                                {/* Retry — re-send a reversed payout that failed on our side */}
+                                {canRetryWithdrawal && canManageFinances && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <Button
+                                            onClick={() => setIsWithdrawalRetryOpen(true)}
+                                            className="bg-sky-600 text-white hover:bg-sky-700"
+                                        >
+                                            <Icon icon="mdi:send-clock" className="mr-1" width="16" />
+                                            Retry payout
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Divider */}
@@ -525,6 +543,18 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                         currency={data.currency}
                         walletId={data.wallet_id}
                         status={data.status}
+                    />
+                    <RetryWithdrawalModal
+                        isOpen={isWithdrawalRetryOpen}
+                        onClose={() => {
+                            setIsWithdrawalRetryOpen(false);
+                            fetchData();
+                        }}
+                        transactionId={data.id}
+                        email={data.user?.email || ""}
+                        amount={data.amount}
+                        currency={data.currency}
+                        walletId={data.wallet_id}
                     />
                 </>
             )}

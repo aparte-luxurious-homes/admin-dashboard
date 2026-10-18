@@ -1,0 +1,2 @@
+# Output of a bare `tsc -p src/components/team/__tests__`; run.mjs builds to a temp folder instead.
+.dist/

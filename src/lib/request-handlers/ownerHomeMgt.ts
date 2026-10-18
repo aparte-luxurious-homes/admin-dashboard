@@ -92,6 +92,10 @@ export interface CalendarBooking {
     check_in: string;
     check_out: string;
     nights: number;
+    /** Event-centre hourly / half-day hires ("HH:MM"); null for stays. */
+    event_start_time?: string | null;
+    event_end_time?: string | null;
+    billing_unit?: string;
     guest_paid: string;
     platform_fee: string;
     your_share: string;

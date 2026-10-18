@@ -23,7 +23,7 @@ import { IoLocationOutline } from "react-icons/io5";
 import { IoMdReturnLeft } from "react-icons/io";
 import BookingAvailabilityCalendar from "./BookingAvailabilityCalendar";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { addYears } from "date-fns";
+import { addDays, addYears } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CreateBooking,
@@ -34,10 +34,39 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import toast from "react-hot-toast";
 import { useMediaQuery } from "@mui/material";
-import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
+import {
+  UploadGuestCredential,
+  UploadPaymentProof,
+} from "@/src/lib/request-handlers/bookingMgt";
+import { getApiErrorMessage } from "@/src/lib/apiError";
 import { HiOutlineCloudUpload } from "react-icons/hi";
 import { MdOutlinePayments } from "react-icons/md";
 import { Icon } from "@iconify/react";
+import EventHirePicker, {
+  EventHire,
+  emptyHire,
+  hireIsComplete,
+} from "./EventHirePicker";
+import { GetBookingQuote } from "@/src/lib/request-handlers/bookingMgt";
+import { headlineUnitLabel, isVenue } from "../../properties-mgt/venue";
+
+/** "10:00–13:00 (3 hours)", "Morning session" or "2 days". */
+function describeHire(hire: EventHire, quote: any): string {
+  if (hire.billing_unit === "PER_DAY") {
+    return `${hire.billing_duration} day${hire.billing_duration === 1 ? "" : "s"}`;
+  }
+  const times =
+    quote?.event_start_time && quote?.event_end_time
+      ? `${quote.event_start_time}–${quote.event_end_time}`
+      : "";
+  if (hire.billing_unit === "PER_HALF_DAY") {
+    return `${hire.half_day_window_name ?? "Session"}${times ? ` (${times})` : ""}`;
+  }
+  return `${times ? `${times} ` : ""}(${hire.billing_duration} hour${hire.billing_duration === 1 ? "" : "s"})`;
+}
+
+// Payment methods the API treats as offline (money collected off-platform).
+const OFFLINE_PAYMENT_METHODS = ["cash", "pos", "bank_transfer"];
 
 export default function CreateBookingView() {
   const router = useRouter();
@@ -83,6 +112,10 @@ export default function CreateBookingView() {
     GuestLookup(newGuestLookupTerm);
   const { mutate, isPending } = CreateBooking();
   const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
+  const { mutate: uploadCredential } = UploadGuestCredential();
+  const [credentialUploading, setCredentialUploading] = useState<
+    "ID_DOCUMENT" | "PHOTO" | null
+  >(null);
 
   // Local Data State
   const [selectionMode, setSelectionMode] = useState<boolean>(true);
@@ -100,6 +133,15 @@ export default function CreateBookingView() {
   const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } =
     GetSingleProperty(selectedProperty?.id);
   const fullPropertyDetails = singlePropertyData?.data?.data;
+  // An event-centre hall is booked by day, session or hour at a free time,
+  // and priced by the server from its rate card (EventHirePicker).
+  const isVenueBooking = isVenue(
+    fullPropertyDetails?.property_type ??
+      fullPropertyDetails?.propertyType ??
+      selectedProperty?.property_type ??
+      selectedProperty?.propertyType,
+  );
+  const [hire, setHire] = useState<EventHire>(emptyHire(null));
 
   // Fetch live availability for selected unit (accounts for active bookings occupancy)
   const { data: liveAvailabilityData, isLoading: isLoadingAvailability } =
@@ -136,6 +178,12 @@ export default function CreateBookingView() {
       guest_last_name: "",
       guest_email: "",
       guest_phone: "",
+      // Front-desk guest verification for offline bookings (URLs staged via
+      // POST /bookings/guest-credentials). The API requires a phone number
+      // plus at least one of these for a cash/POS/transfer booking made on a
+      // guest's behalf.
+      guest_id_document_url: "",
+      guest_photo_url: "",
       agent_custom_fee: (0).toFixed(2),
     },
     onSubmit: async (values) => {
@@ -179,6 +227,11 @@ export default function CreateBookingView() {
         return;
       }
 
+      if (isVenueBooking && !hireIsComplete(hire)) {
+        toast.error("Choose how the hall is hired and a free time.");
+        return;
+      }
+
       // Validation: proof is mandatory for bank transfer if marking as paid
       if (
         values.mark_as_paid &&
@@ -189,8 +242,30 @@ export default function CreateBookingView() {
         return;
       }
 
+      // Offline (cash/POS/transfer) bookings on a guest's behalf: the desk must
+      // have captured who the guest is first. Mirrors the server rule so the
+      // refusal is explained here rather than as a 400.
+      if (offlineCredentialsMissing) {
+        toast.error(
+          !guestPhoneOnFile?.trim()
+            ? "Enter the guest's phone number before creating an offline booking."
+            : "Capture the guest's ID document or a photo of the guest before creating an offline booking.",
+        );
+        return;
+      }
+
       const payload = {
         ...values,
+        // An unpaid booking with a payment link is paid ONLINE; recording the
+        // form's default "cash" on it misfiled it as an offline booking.
+        payment_method: effectivePaymentMethod,
+        // For an existing guest with no phone on file, send the number the
+        // desk confirmed so the API records it on their account.
+        guest_phone: isNewGuest
+          ? values.guest_phone
+          : selectedUser?.phone
+            ? ""
+            : values.guest_phone,
         start_date: formatDateToYYYYMMDD(values.start_date!),
         end_date: formatDateToYYYYMMDD(values.end_date!),
         // Ensure user_id is null if we are creating a new guest
@@ -204,10 +279,23 @@ export default function CreateBookingView() {
         total_price: Number(values.total_price) + Number(values.agent_custom_fee || 0),
         // Send it as a number too, for the same reason.
         agent_custom_fee: Number(values.agent_custom_fee || 0),
+        ...(isVenueBooking
+          ? {
+              billing_unit: hire.billing_unit,
+              billing_duration: hire.billing_duration,
+              event_start_time: hire.event_start_time,
+              half_day_window_name: hire.half_day_window_name,
+            }
+          : {}),
       };
 
       // Don't send empty referral_code — omit the key entirely
       if (!payload.referral_code) delete (payload as any).referral_code;
+      // Empty credential URLs / phone write nothing; omit them rather than
+      // send "" (the API would otherwise treat "" as "not provided" anyway).
+      if (!payload.guest_id_document_url) delete (payload as any).guest_id_document_url;
+      if (!payload.guest_photo_url) delete (payload as any).guest_photo_url;
+      if (!payload.guest_phone) delete (payload as any).guest_phone;
 
       mutate(
         {
@@ -304,6 +392,7 @@ export default function CreateBookingView() {
     );
     if (unit) {
       setSeletedUnit(unit);
+      setHire(emptyHire(unit));
       formik.setFieldValue("unit_id", unit.id);
       formik.setFieldValue("unit_count", 1);
     }
@@ -417,8 +506,45 @@ export default function CreateBookingView() {
 
   const { values, setFieldValue } = formik;
 
+  // A venue hire holds the event day (or the days of a full-day hire), so the
+  // end date follows the hire rather than a second calendar click.
+  useEffect(() => {
+    if (!isVenueBooking || !values.start_date) return;
+    const days = hire.billing_unit === "PER_DAY" ? hire.billing_duration : 1;
+    const end = addDays(new Date(values.start_date as any), days);
+    if (!values.end_date || formatDateToYYYYMMDD(values.end_date as any) !== formatDateToYYYYMMDD(end as any)) {
+      setFieldValue("end_date", end);
+    }
+  }, [isVenueBooking, values.start_date, values.end_date, hire, setFieldValue]);
+
+  const venueQuotePayload = useMemo(() => {
+    if (!isVenueBooking || !selectedUnit || !values.start_date || !values.end_date) return null;
+    if (!hireIsComplete(hire)) return null;
+    return {
+      unit_id: selectedUnit.id,
+      start_date: formatDateToYYYYMMDD(values.start_date as any),
+      end_date: formatDateToYYYYMMDD(values.end_date as any),
+      guests_count: Number(values.guests_count) || 1,
+      unit_count: Number(values.unit_count) || 1,
+      billing_unit: hire.billing_unit,
+      billing_duration: hire.billing_duration,
+      event_start_time: hire.event_start_time,
+      half_day_window_name: hire.half_day_window_name,
+    };
+  }, [isVenueBooking, selectedUnit, values.start_date, values.end_date, values.guests_count, values.unit_count, hire]);
+  const { data: venueQuoteData, error: venueQuoteError } = GetBookingQuote(venueQuotePayload);
+  const venueQuote = venueQuotePayload ? venueQuoteData?.data?.data : null;
+
+  useEffect(() => {
+    if (!isVenueBooking) return;
+    const total = venueQuote ? Number(venueQuote.total_price) : 0;
+    if (total !== values.total_price) setFieldValue("total_price", total);
+  }, [isVenueBooking, venueQuote, values.total_price, setFieldValue]);
+
   // Effect to calculate price
   useEffect(() => {
+    // A venue is priced by the server's quote, above.
+    if (isVenueBooking) return;
     // Only calculate if we have both dates and a selected unit
     if (values.start_date && values.end_date && selectedUnit) {
       const days = getDayDifference(
@@ -456,6 +582,7 @@ export default function CreateBookingView() {
     selectedUnit,
     setFieldValue,
     values.total_price, // Add this to compare
+    isVenueBooking,
   ]);
 
   // Auto-populate referral code with agent's own code when a guest is selected
@@ -493,6 +620,67 @@ export default function CreateBookingView() {
       })
       .map((el: any) => ({ date: el?.date }));
   }, [liveAvailabilityData, formik.values.unit_count]);
+
+  // ---- Front-desk guest verification (offline bookings) ----
+  // What the server will record as the payment method: an unpaid booking that
+  // sends a payment link is paid online whatever the form's default says.
+  const effectivePaymentMethod =
+    !formik.values.mark_as_paid && formik.values.send_payment_link
+      ? "online"
+      : formik.values.payment_method;
+  const isOfflineBooking =
+    !isAgent && OFFLINE_PAYMENT_METHODS.includes(effectivePaymentMethod);
+  // The phone the booking will carry: typed for a new guest, or on file (or
+  // typed, if missing) for an existing one.
+  const guestPhoneOnFile = isNewGuest
+    ? formik.values.guest_phone
+    : selectedUser?.phone || formik.values.guest_phone;
+  const hasCredentialImage =
+    !!formik.values.guest_id_document_url || !!formik.values.guest_photo_url;
+  const offlineCredentialsMissing =
+    isOfflineBooking && (!guestPhoneOnFile?.trim() || !hasCredentialImage);
+
+  const handleCredentialUpload =
+    (kind: "ID_DOCUMENT" | "PHOTO") =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      // Reset so the same file can be re-picked after a removal.
+      event.target.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image (JPG, PNG or WEBP).");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Image is too large. Maximum size is 10 MB.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("kind", kind);
+      formData.append("file", file);
+      setCredentialUploading(kind);
+      uploadCredential(
+        { payload: formData },
+        {
+          onSuccess: (data: any) => {
+            const url = data?.data?.data?.url;
+            if (url) {
+              formik.setFieldValue(
+                kind === "ID_DOCUMENT" ? "guest_id_document_url" : "guest_photo_url",
+                url,
+              );
+              toast.success(
+                kind === "ID_DOCUMENT" ? "ID document captured" : "Guest photo captured",
+              );
+            }
+          },
+          onError: (error: any) => {
+            toast.error(getApiErrorMessage(error, "Failed to upload the image"));
+          },
+          onSettled: () => setCredentialUploading(null),
+        },
+      );
+    };
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -692,7 +880,7 @@ export default function CreateBookingView() {
                                 selectedUnit.price_per_night ??
                                 0,
                             )}
-                            /night
+                            {isVenueBooking ? ` / ${headlineUnitLabel(selectedUnit)}` : "/night"}
                           </span>
                         </p>
                       </div>
@@ -1047,7 +1235,7 @@ export default function CreateBookingView() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-700">
-                  Stay Duration
+                  {isVenueBooking ? "Event Date" : "Stay Duration"}
                   {isLoadingAvailability && selectedUnit && (
                     <span className="ml-2 text-xs text-zinc-400 font-normal">
                       Loading availability...
@@ -1070,6 +1258,27 @@ export default function CreateBookingView() {
                 <p className="text-xs text-gray-500 mt-2">
                   * Bookings are limited to 1 year in advance.
                 </p>
+                {isVenueBooking && selectedUnit && (
+                  <div className="mt-4 p-4 rounded-xl border border-zinc-200 bg-white">
+                    <EventHirePicker
+                      propertyId={selectedProperty?.id}
+                      unit={selectedUnit}
+                      date={
+                        values.start_date
+                          ? formatDateToYYYYMMDD(values.start_date as any)
+                          : undefined
+                      }
+                      value={hire}
+                      onChange={setHire}
+                    />
+                    {venueQuoteError && (
+                      <p className="text-xs text-red-500 mt-2">
+                        {(venueQuoteError as any)?.response?.data?.detail ??
+                          "That time can't be booked."}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1136,9 +1345,13 @@ export default function CreateBookingView() {
                 <div className="flex justify-between text-sm">
                   <span className="text-zinc-500">Duration</span>
                   <span className="text-zinc-900 font-medium">
-                    {formik.values.start_date && formik.values.end_date
-                      ? `${getDayDifference(formik.values.start_date as any, formik.values.end_date as any)} Nights`
-                      : "-"}
+                    {isVenueBooking
+                      ? hireIsComplete(hire)
+                        ? describeHire(hire, venueQuote)
+                        : "-"
+                      : formik.values.start_date && formik.values.end_date
+                        ? `${getDayDifference(formik.values.start_date as any, formik.values.end_date as any)} Nights`
+                        : "-"}
                   </span>
                 </div>
               </div>
@@ -1150,15 +1363,19 @@ export default function CreateBookingView() {
                     Rate (x{formik.values.unit_count || 1} units)
                   </span>
                   <span className="font-medium text-zinc-900">
-                    {selectedUnit
-                      ? formatMoney(
-                          Number(
-                            selectedUnit.pricePerNight ??
-                              selectedUnit.price_per_night ??
-                              0,
-                          ) * Number(formik.values.unit_count || 1),
-                        )
-                      : "-"}
+                    {isVenueBooking
+                      ? venueQuote
+                        ? formatMoney(Number(venueQuote.base_price))
+                        : "-"
+                      : selectedUnit
+                        ? formatMoney(
+                            Number(
+                              selectedUnit.pricePerNight ??
+                                selectedUnit.price_per_night ??
+                                0,
+                            ) * Number(formik.values.unit_count || 1),
+                          )
+                        : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -1239,6 +1456,137 @@ export default function CreateBookingView() {
                   referrer.
                 </p>
               </div>
+
+              {/* Front-desk guest verification — offline bookings only */}
+              {isOfflineBooking && (
+                <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon icon="solar:shield-user-bold" className="text-primary text-lg" />
+                    <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">
+                      Guest Verification
+                    </h4>
+                  </div>
+                  <p className="text-xs text-zinc-500 -mt-2">
+                    Required for cash, POS and bank-transfer bookings. Confirm the
+                    guest&apos;s phone number and capture their ID document and/or a
+                    photo of the guest (at least one).
+                  </p>
+
+                  {!isNewGuest && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-zinc-500 uppercase">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      {selectedUser?.phone ? (
+                        <div className="w-full h-11 px-4 border border-zinc-200 bg-zinc-50 rounded-lg flex items-center text-sm text-zinc-700">
+                          {selectedUser.phone}
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">
+                            on file
+                          </span>
+                        </div>
+                      ) : (
+                        <input
+                          type="tel"
+                          className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                          placeholder="+234..."
+                          value={formik.values.guest_phone}
+                          onChange={(e) => formik.setFieldValue("guest_phone", e.target.value)}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {isNewGuest && !formik.values.guest_phone?.trim() && (
+                    <p className="text-xs text-amber-600 font-medium">
+                      Enter the guest&apos;s phone number in the guest details above.
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        {
+                          kind: "ID_DOCUMENT" as const,
+                          field: "guest_id_document_url" as const,
+                          label: "ID document",
+                          hint: "Photo of a passport, driver's licence, NIN slip or voter's card",
+                          capture: undefined,
+                          icon: "solar:card-bold",
+                        },
+                        {
+                          kind: "PHOTO" as const,
+                          field: "guest_photo_url" as const,
+                          label: "Guest photo",
+                          hint: "Take a photo of the guest at the desk",
+                          capture: "user" as const,
+                          icon: "solar:camera-bold",
+                        },
+                      ]
+                    ).map(({ kind, field, label, hint, capture, icon }) => {
+                      const url = formik.values[field];
+                      const busy = credentialUploading === kind;
+                      const inputId = `guest-credential-${kind.toLowerCase()}`;
+                      return (
+                        <div key={kind} className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase">
+                            {label}
+                          </label>
+                          <input
+                            type="file"
+                            id={inputId}
+                            className="hidden"
+                            accept="image/*"
+                            capture={capture}
+                            onChange={handleCredentialUpload(kind)}
+                            disabled={busy}
+                          />
+                          {url ? (
+                            <div className="relative">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={url}
+                                alt={label}
+                                className="w-full h-32 object-cover rounded-lg border border-primary/40"
+                              />
+                              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-2 py-1.5 bg-black/50 rounded-b-lg text-[11px] text-white">
+                                <span>Captured</span>
+                                <div className="flex items-center gap-2">
+                                  <label htmlFor={inputId} className="cursor-pointer underline">
+                                    Retake
+                                  </label>
+                                  <button
+                                    type="button"
+                                    className="underline"
+                                    onClick={() => formik.setFieldValue(field, "")}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <label
+                              htmlFor={inputId}
+                              className="flex flex-col items-center justify-center gap-1.5 w-full h-32 border-2 border-dashed border-zinc-300 text-zinc-500 rounded-lg cursor-pointer hover:border-primary hover:text-primary transition-all text-sm font-medium px-3 text-center"
+                            >
+                              {busy ? (
+                                <Spinner />
+                              ) : (
+                                <>
+                                  <Icon icon={icon} className="text-2xl" />
+                                  <span>{capture ? "Take photo" : "Upload image"}</span>
+                                  <span className="text-[10px] font-normal text-zinc-400">
+                                    {hint}
+                                  </span>
+                                </>
+                              )}
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Payment Handling Section */}
               <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
@@ -1442,6 +1790,8 @@ export default function CreateBookingView() {
                   (isNewGuest && !formik.values.guest_email) ||
                   !formik.values.start_date ||
                   isUploading ||
+                  credentialUploading !== null ||
+                  offlineCredentialsMissing ||
                   (isNewGuest && !!duplicateGuestMatch && !duplicateDismissed)
                 }
                 className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all mt-6 flex items-center justify-center gap-2"
@@ -1458,6 +1808,12 @@ export default function CreateBookingView() {
               {isNewGuest && !!duplicateGuestMatch && !duplicateDismissed ? (
                 <p className="text-xs text-center text-amber-600 mt-2 font-medium">
                   Resolve the duplicate guest before proceeding
+                </p>
+              ) : offlineCredentialsMissing ? (
+                <p className="text-xs text-center text-amber-600 mt-2 font-medium">
+                  {!guestPhoneOnFile?.trim()
+                    ? "Offline booking: enter the guest's phone number to proceed"
+                    : "Offline booking: capture the guest's ID document or photo to proceed"}
                 </p>
               ) : !selectedProperty ||
                 !selectedUnit ||
