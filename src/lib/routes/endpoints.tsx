@@ -192,6 +192,7 @@ export const API_ROUTES = {
     statistic: {
         base: '/stats',
         gatewayBalances: '/stats/gateway-balances',
+        walletTotals: '/stats/wallet-totals',
         adminQueues: '/stats/admin/queues',
         adminAgentPerformance: '/stats/admin/agent-performance',
         adminTopTeams: '/stats/admin/top-teams',

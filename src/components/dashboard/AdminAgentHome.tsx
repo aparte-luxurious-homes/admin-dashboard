@@ -20,7 +20,8 @@ import { API_ROUTES } from "@/src/lib/routes/endpoints";
 import UsersChart from "@/src/components/userchart/userchart";
 import LineChart from "@/src/components/linecharts/linecharts";
 import GatewayBalancesCard from "@/src/components/finance-mgt/GatewayBalancesCard";
-import { GetGatewayBalances } from "@/src/lib/request-handlers/integrationsMgt";
+import { GetGatewayBalances, GetWalletTotals } from "@/src/lib/request-handlers/integrationsMgt";
+import WalletTotalsCard from "@/src/components/finance-mgt/WalletTotalsCard";
 
 import DashboardKpiRow from "@/src/components/dashboard/DashboardKpiRow";
 import AdminQueuesCard from "@/src/components/dashboard/AdminQueuesCard";
@@ -137,6 +138,13 @@ const AdminAgentHome = () => {
     canViewGatewayBalances,
   );
   const balances = gatewayData?.data?.data || {};
+  // Wallet liability for reconciliation, same audience as the gateway balances.
+  const {
+    data: walletTotalsData,
+    isLoading: walletTotalsLoading,
+    error: walletTotalsError,
+  } = GetWalletTotals(canViewGatewayBalances);
+  const walletTotals = walletTotalsData?.data?.data ?? null;
 
   const fetchStatistics = useCallback(async () => {
     setIsStatLoading(true);
@@ -291,6 +299,20 @@ const AdminAgentHome = () => {
                       }
                     }
                     isLoading={gatewayLoading}
+                  />
+                )}
+                {canViewGatewayBalances && (
+                  <WalletTotalsCard
+                    totals={walletTotals}
+                    isLoading={walletTotalsLoading}
+                    error={
+                      walletTotalsError
+                        ? ((walletTotalsError as { response?: { data?: { detail?: string; message?: string } } })
+                            ?.response?.data?.detail ??
+                          (walletTotalsError as { message?: string })?.message ??
+                          "Could not load wallet totals")
+                        : null
+                    }
                   />
                 )}
                 <Grid container spacing={2}>

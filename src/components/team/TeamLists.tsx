@@ -231,7 +231,8 @@ export function TeamReferralsView() {
 
 // ---------------------------------------------------------------------------
 
-type ReqStatus = "" | "PENDING" | "APPROVED" | "REJECTED" | "FAILED" | "CANCELLED";
+// APPLYING: an admin has approved and the change is being applied (API status machine PENDING -> APPLYING -> APPROVED | FAILED).
+type ReqStatus = "" | "PENDING" | "APPLYING" | "APPROVED" | "REJECTED" | "FAILED" | "CANCELLED";
 
 export function TeamRequestsView() {
     const [status, setStatus] = useState<ReqStatus>("PENDING");
@@ -248,6 +249,7 @@ export function TeamRequestsView() {
                     { value: "PENDING", label: "Pending" },
                     { value: "APPROVED", label: "Approved" },
                     { value: "REJECTED", label: "Rejected" },
+                    { value: "APPLYING", label: "Applying" },
                     { value: "FAILED", label: "Could not apply" },
                     { value: "CANCELLED", label: "Cancelled" },
                     { value: "", label: "All" },
