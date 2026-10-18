@@ -1,6 +1,6 @@
 'use client'
 
-import { useLogin } from "@/src/hooks/useAuth";
+import { GuestAccountError, useLogin } from "@/src/hooks/useAuth";
 import { useState, useEffect } from "react";
 import Button from "@/src/components/button";
 import InputGroup from "../../../../components/formcomponent/InputGroup";
@@ -20,6 +20,8 @@ import { UserRole } from "@/src/lib/enums";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import useValidator from "@/src/hooks/useValidator";
 import PhoneOtpModal from "@/src/components/auth/PhoneOtpModal";
+import GuestAccountSwitch from "@/src/components/auth/GuestAccountSwitch";
+import type { IUser } from "@/src/lib/types";
 
 export default function Login() {
   const { mutate: loginMutation, isPending } = useLogin();
@@ -29,6 +31,9 @@ export default function Login() {
   const [passwordType, setPasswordType] = useState<string>("password");
   const [isTokenAuthenticating, setIsTokenAuthenticating] = useState(false);
   const [phoneOtpPhone, setPhoneOtpPhone] = useState<string | null>(null);
+  // A sign-in that reached a GUEST account: offer the account-type switch
+  // instead of refusing. Memory only; no cookie is set for a guest.
+  const [guestSession, setGuestSession] = useState<{ token: string; user: IUser } | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
@@ -71,9 +76,15 @@ export default function Login() {
         .then(async (response) => {
           const user = response.data.data;
 
-          // Check for guest role
+          // A guest arriving from aparte.ng (e.g. "List your Aparte") gets
+          // the account-type switch, not a refusal. Drop the cookie that was
+          // set for the /profile call and the token from the URL.
           if (user.role === UserRole.GUEST) {
-            throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
+            Cookies.remove("token");
+            setGuestSession({ token, user });
+            setIsTokenAuthenticating(false);
+            router.replace(PAGE_ROUTES.auth.login);
+            return;
           }
 
           // Update Redux store. An unapproved agent is handled by
@@ -115,6 +126,10 @@ export default function Login() {
         { email, password },
         {
           onError: (error: any) => {
+            if (error instanceof GuestAccountError) {
+              setGuestSession({ token: error.token, user: error.user });
+              return;
+            }
             // Phone verification gate: backend returns 401 with detail.code so
             // the frontend can step the user through SMS-OTP entry instead of
             // dead-ending on a generic toast.
@@ -148,6 +163,18 @@ export default function Login() {
 
   if (isTokenAuthenticating) {
     return <Loader message="Authenticating..." />;
+  }
+
+  if (guestSession) {
+    return (
+      <div className="min-h-screen w-full flex justify-center items-center px-4 py-8">
+        <GuestAccountSwitch
+          token={guestSession.token}
+          user={guestSession.user}
+          onCancel={() => setGuestSession(null)}
+        />
+      </div>
+    );
   }
 
   return (
@@ -253,6 +280,7 @@ export default function Login() {
         isOpen={!!phoneOtpPhone}
         phone={phoneOtpPhone || ""}
         onClose={() => setPhoneOtpPhone(null)}
+        onGuestAccount={setGuestSession}
       />
     </div>
   );
