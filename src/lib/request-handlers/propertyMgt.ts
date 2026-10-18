@@ -259,6 +259,12 @@ export function UpdatePropertyVerification() {
  * Amenities a listing may offer. `appliesTo` narrows the list: "VENUE" for an
  * event centre (stage, sound system, chairs...), "STAY" for everything else.
  * Omitted, it returns the whole taxonomy (admin views).
+ *
+ * The EDIT screens omit it on purpose and scope what they offer client-side
+ * (see components/properties-mgt/amenitySelection.ts): resolving a listing's
+ * selected names against the scoped slice is what detached a venue's
+ * already-attached stay amenities on save. The create flows, where nothing is
+ * attached yet, still ask for the slice.
  */
 export function GetAmenities(appliesTo?: "VENUE" | "STAY") {
   return useQuery({

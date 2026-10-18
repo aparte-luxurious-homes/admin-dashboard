@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { FaPlus, FaMinus } from "react-icons/fa6";
 import { IoBedOutline } from "react-icons/io5";
 import { TbCurrencyNaira, TbToolsKitchen } from "react-icons/tb";
 import { PiBathtub } from "react-icons/pi";
 import { LuSofa, LuUsers } from "react-icons/lu";
-import MultipleChoice from "@/components/ui/MultipleChoice";
+import AmenityPicker from "../AmenityPicker";
+import { AmenityPickerScope, amenityPickerOptions } from "../amenitySelection";
 import { DiscountType, IAmenity, IDiscountPolicy, PropertyType } from "../types";
 import DiscountPolicyEditor from "../DiscountPolicyEditor";
 import HallFields from "../HallFields";
@@ -222,6 +223,11 @@ export default function UnitDrawer({
     editingUnit ?? createEmptyUnit(isEventCentre),
   );
   const [hallError, setHallError] = useState<string | null>(null);
+  // What the unit held when the drawer opened. An amenity of the other kind
+  // (a hall's stay amenity) is offered, tagged, only because it is attached;
+  // snapshotting here rather than reading the live selection keeps the chip
+  // on screen after it is unticked, so the change can be undone before save.
+  const [attachedAmenityNames, setAttachedAmenityNames] = useState<string[]>([]);
 
   const updateFee = (index: number, field: string, value: string | number | boolean) =>
     setUnit((prev) => ({
@@ -235,8 +241,18 @@ export default function UnitDrawer({
     if (isOpen) {
       setUnit(editingUnit ?? createEmptyUnit(isEventCentre));
       setHallError(null);
+      setAttachedAmenityNames(editingUnit?.amenityNames ?? []);
     }
   }, [isOpen, editingUnit, isEventCentre]);
+
+  // Offer the listing's own kind; keep what is attached. In the create wizard
+  // `availableAmenities` is already the scoped slice, so this changes nothing
+  // there; in the edit view it is the full taxonomy plus the attached rows.
+  const amenityScope: AmenityPickerScope = isEventCentre ? "VENUE" : "STAY";
+  const amenityOptions = useMemo(
+    () => amenityPickerOptions(availableAmenities ?? [], amenityScope, attachedAmenityNames),
+    [availableAmenities, amenityScope, attachedAmenityNames],
+  );
 
   const updateField = (field: string, value: any) => {
     // Toggling "Whole property" ON: lock count to 1 and auto-fill name if blank.
@@ -746,9 +762,10 @@ export default function UnitDrawer({
               )}
             </div>
             <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3 max-h-40 overflow-y-auto">
-              <MultipleChoice
-                options={availableAmenities?.map((el) => el.name) ?? []}
+              <AmenityPicker
+                options={amenityOptions}
                 selected={unit.amenityNames}
+                scope={amenityScope}
                 onChange={(val) => updateField("amenityNames", [...val])}
               />
             </div>

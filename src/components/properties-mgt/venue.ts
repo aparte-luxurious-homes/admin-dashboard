@@ -7,7 +7,7 @@
  * the forms from offering what it would refuse, and make every card say the
  * same thing about a hall.
  */
-import { IHalfDayWindow, PropertyType } from "./types";
+import { IHalfDayWindow, IPropertyUnit, PropertyType } from "./types";
 
 export type BillingUnit = "PER_DAY" | "PER_HALF_DAY" | "PER_HOUR";
 
@@ -74,16 +74,47 @@ export const emptyHallForm = (): HallForm => ({
   allows_multiple_bookings_per_day: true,
 });
 
+/**
+ * A hall as the screens hold it: the API row (snake_case), the camelCase
+ * mirror older payloads carry, or a unit form. Everything is optional and
+ * each helper falls back when a field is missing, which is also what lets an
+ * IPropertyUnit, a UnitFormValues or a half-filled draft pass as one without
+ * conversion. The camelCase keys IPropertyUnit does not already declare are
+ * listed here so `pick` stays typed in both spellings.
+ */
+export type HallLike = Partial<IPropertyUnit> & {
+  openingTime?: string | null;
+  closingTime?: string | null;
+  halfDayWindows?: IHalfDayWindow[] | null;
+  eventBufferMinutes?: number | null;
+  allowsMultipleBookingsPerDay?: boolean | null;
+  headlineBillingUnit?: string | null;
+};
+
+/** The rate fields alone, as a form (strings) or an API row (nullable). */
+export type RateCardLike = {
+  event_price_per_day?: string | null;
+  event_price_per_half_day?: string | null;
+  event_price_per_hour?: string | null;
+  offers_full_day?: boolean;
+  offers_half_day?: boolean;
+  offers_hourly?: boolean;
+};
+
 const positive = (v: unknown): number => {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
-const pick = (unit: any, snake: string, camel: string) =>
-  unit?.[snake] ?? unit?.[camel];
+/** The snake_case field, else its camelCase twin. */
+const pick = <S extends keyof HallLike, C extends keyof HallLike>(
+  unit: HallLike | null | undefined,
+  snake: S,
+  camel: C,
+): HallLike[S] | HallLike[C] => unit?.[snake] ?? unit?.[camel];
 
 /** Read a hall from the API (snake_case or camelCase) into form values. */
-export const hallFormFromUnit = (unit: any): HallForm => {
+export const hallFormFromUnit = (unit: HallLike | null | undefined): HallForm => {
   const day = pick(unit, "event_price_per_day", "eventPricePerDay");
   const half = pick(unit, "event_price_per_half_day", "eventPricePerHalfDay");
   const hour = pick(unit, "event_price_per_hour", "eventPricePerHour");
@@ -101,7 +132,7 @@ export const hallFormFromUnit = (unit: any): HallForm => {
     closing_time: (pick(unit, "closing_time", "closingTime") || DEFAULT_CLOSING).slice(0, 5),
     half_day_windows:
       Array.isArray(windows) && windows.length
-        ? windows.map((w: IHalfDayWindow) => ({ ...w }))
+        ? windows.map((w) => ({ ...w }))
         : DEFAULT_HALF_DAY_WINDOWS.map((w) => ({ ...w })),
     event_buffer_minutes: buffer == null ? DEFAULT_BUFFER_MINUTES : Number(buffer),
     // A stored NULL means "one booking a day" (the backend reads it that way).
@@ -146,10 +177,9 @@ export const validateHall = (h: HallForm): string | null => {
 
 /** The headline rate: day, else half day, else hour. */
 export const headlineRate = (
-  rates: Pick<HallRates, "event_price_per_day" | "event_price_per_half_day" | "event_price_per_hour"> &
-    Partial<HallRates>,
+  rates: RateCardLike,
 ): { price: number; unit: BillingUnit } | null => {
-  const order: [BillingUnit, string, boolean | undefined][] = [
+  const order: [BillingUnit, string | null | undefined, boolean | undefined][] = [
     ["PER_DAY", rates.event_price_per_day, rates.offers_full_day],
     ["PER_HALF_DAY", rates.event_price_per_half_day, rates.offers_half_day],
     ["PER_HOUR", rates.event_price_per_hour, rates.offers_hourly],
@@ -183,7 +213,10 @@ export const hallPayload = (h: HallForm) => {
 };
 
 /** "₦500,000 / day · ₦50,000 / hour" — every rate a hall offers. */
-export const rateSummary = (unit: any, formatMoney: (n: number) => string): string => {
+export const rateSummary = (
+  unit: HallLike | null | undefined,
+  formatMoney: (n: number) => string,
+): string => {
   const parts: string[] = [];
   const add = (v: unknown, label: string) => {
     if (positive(v)) parts.push(`${formatMoney(positive(v))} / ${label}`);
@@ -195,15 +228,18 @@ export const rateSummary = (unit: any, formatMoney: (n: number) => string): stri
 };
 
 /** "08:00–23:00" for a hall, or "" when unknown. */
-export const hoursLabel = (unit: any): string => {
+export const hoursLabel = (unit: HallLike | null | undefined): string => {
   const open = pick(unit, "opening_time", "openingTime");
   const close = pick(unit, "closing_time", "closingTime");
   return open && close ? `${String(open).slice(0, 5)}–${String(close).slice(0, 5)}` : "";
 };
 
 /** What a hall's headline price is per: "day", "half day" or "hour". */
-export const headlineUnitLabel = (unit: any): string => {
-  const stored = pick(unit, "headline_billing_unit", "headlineBillingUnit") as BillingUnit | null;
+export const headlineUnitLabel = (unit: HallLike | null | undefined): string => {
+  const stored = pick(unit, "headline_billing_unit", "headlineBillingUnit") as
+    | BillingUnit
+    | null
+    | undefined;
   if (stored && BILLING_UNIT_LABEL[stored]) return BILLING_UNIT_LABEL[stored];
   const derived = headlineRate({
     event_price_per_day: pick(unit, "event_price_per_day", "eventPricePerDay"),
@@ -214,7 +250,10 @@ export const headlineUnitLabel = (unit: any): string => {
 };
 
 /** A listing's price for a table or card: "₦X/night", or "from ₦X / hour" for a venue. */
-export const listingPriceLabel = (units: any[] | undefined, venue: boolean): string => {
+export const listingPriceLabel = (
+  units: ReadonlyArray<HallLike> | null | undefined,
+  venue: boolean,
+): string => {
   const rows = (units ?? [])
     .map((u) => ({ u, price: parseFloat(String(u?.price_per_night ?? u?.pricePerNight ?? 0)) || 0 }))
     .filter((r) => r.price > 0);

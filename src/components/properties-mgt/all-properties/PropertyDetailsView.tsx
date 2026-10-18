@@ -74,12 +74,12 @@ export default function PropertyDetailsView({
   const { canDeleteProperty } = usePermissions();
 
   const { data, isLoading } = GetSingleProperty(propertyId);
-  // A venue picks from the venue amenity list, a stay from the stay list.
-  const { data: fetchedAmenites } = GetAmenities(
-    isVenue(data?.data?.data?.property_type ?? data?.data?.data?.propertyType)
-      ? "VENUE"
-      : "STAY",
-  );
+  // The whole taxonomy, not the venue or stay slice, on purpose. This feeds
+  // the edit view only, and that view scopes what its pickers OFFER itself.
+  // Fetching the scoped slice here meant a venue's attached stay amenities
+  // (Parking, Security, Power...) could not be resolved to ids on save and
+  // were silently detached — see amenitySelection.ts.
+  const { data: fetchedAmenites } = GetAmenities();
   const { mutate: deleteMutation, isPending: deleteIsPending } =
     DeleteProperty();
   const { mutate: assignAgent, isPending: assignmentLoading } =

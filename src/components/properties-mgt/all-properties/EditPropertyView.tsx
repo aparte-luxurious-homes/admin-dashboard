@@ -13,6 +13,7 @@ import {
   IAmenity,
   IProperty,
   IPropertyDocument, IPropertyMedia,
+  IPropertyUnit,
   IUpdateProperty,
   MediaType,
   PropertyType,
@@ -20,6 +21,13 @@ import {
 } from "../types";
 import CustomCheckbox from "../../ui/customCheckbox";
 import MultipleChoice from "../../ui/MultipleChoice";
+import AmenityPicker from "../AmenityPicker";
+import {
+  AmenityPickerScope,
+  amenityIdsForNames,
+  amenityPickerOptions,
+  mergeAmenities,
+} from "../amenitySelection";
 import { IoCloudUploadOutline } from "react-icons/io5";
 import Image from "next/image";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
@@ -202,7 +210,7 @@ function Field({
 }
 
 /** A unit from the API as the unit drawer edits it. */
-function toUnitForm(u: any): UnitFormValues {
+function toUnitForm(u: IPropertyUnit): UnitFormValues {
   return {
     _key: String(u.id),
     name: u.name ?? '',
@@ -216,7 +224,7 @@ function toUnitForm(u: any): UnitFormValues {
     living_room_count: u.living_room_count ?? u.livingRoomCount ?? 0,
     kitchen_count: u.kitchen_count ?? u.kitchenCount ?? 0,
     bathroom_count: u.bathroom_count ?? u.bathroomCount ?? 0,
-    amenityNames: (u.amenities ?? []).map((a: any) => a.name ?? a),
+    amenityNames: (u.amenities ?? []).map((a) => a.name),
     // Event-centre facilities, rate card and hours. Reloading a venue keeps
     // them, so the next save cannot silently blank them.
     seating_capacity: u.seating_capacity ?? u.seatingCapacity ?? 0,
@@ -306,6 +314,25 @@ export default function EditPropertyView({
     (propertyData?.units ?? []).map(toUnitForm),
   );
 
+  // Everything a name on this screen can resolve to: the full taxonomy
+  // (which carries each amenity's scope) plus whatever the listing and its
+  // units already hold. This screen used to resolve names against the
+  // SCOPED list — venue amenities for a venue — so a venue's attached stay
+  // amenities (Parking, Security, Power...) were absent from the payload and
+  // detached on the first save, whatever the owner had come to change. The
+  // listing's own rows come back as {id, name}, so they go after the taxonomy
+  // and only stand in for an amenity it lacks: one since deleted, or any of
+  // them while the taxonomy is still loading. See amenitySelection.ts.
+  const knownAmenities = useMemo(
+    () =>
+      mergeAmenities(
+        availableAmenities,
+        propertyData?.amenities,
+        ...(propertyData?.units ?? []).map((u) => u.amenities),
+      ),
+    [availableAmenities, propertyData],
+  );
+
   // Mirrors StepUnits in the create wizard: once a unit represents the whole
   // property, the listing is that one bookable entity and a second unit makes
   // no sense. Declared after `existingUnits` because it reads it.
@@ -317,7 +344,9 @@ export default function EditPropertyView({
   }, [propertyData]);
 
   const handleSaveUnit = (unit: UnitFormValues) => {
-    const unitAmenityIds = sortAmenities(availableAmenities ?? [], unit.amenityNames);
+    // Against everything known, not the scoped list: a hall's attached stay
+    // amenities must survive a save that never touched them.
+    const unitAmenityIds = amenityIdsForNames(knownAmenities, unit.amenityNames);
     const venue = isVenue(formik.values.type);
     if (venue) {
       const problem = validateHall(unit);
@@ -475,18 +504,6 @@ Deleting anyway removes the unit but does NOT ` +
 
   if (loadError) console.error("Google Maps load error:", loadError);
 
-  const sortAmenities = (amenities: IAmenity[], newAmenities: string[]) => {
-    const sortedAmenities: any[] = [];
-    const prevAmenityNames = amenities.map((a) => a.name);
-    for (const amenity of newAmenities) {
-      if (prevAmenityNames.includes(amenity)) {
-        const pos = prevAmenityNames.indexOf(amenity);
-        sortedAmenities.push(amenities[pos].id);
-      }
-    }
-    return sortedAmenities;
-  };
-
   const formik = useFormik({
     initialValues: {
       name: propertyData?.name ?? "",
@@ -533,10 +550,10 @@ Deleting anyway removes the unit but does NOT ` +
         (propertyData as any)?.extension_discount_policy ?? null,
     },
     onSubmit: (values: any) => {
-      const sortedAmenities = sortAmenities(
-        availableAmenities,
-        values.amenityNames,
-      );
+      // Every selected name, attached stay amenities on a venue included.
+      // Sending the list replaces the listing's amenities wholesale, so a
+      // name that fails to resolve here is an amenity that gets detached.
+      const sortedAmenities = amenityIdsForNames(knownAmenities, values.amenityNames);
       if (values.isFeatured !== propertyData.isFeatured)
         featureProperty({ propertyId: propertyData.id });
       const currentBookingMode =
@@ -639,6 +656,21 @@ Deleting anyway removes the unit but does NOT ` +
       );
     },
   });
+
+  // The amenity picker follows the type being EDITED, like the documents
+  // below: a HOTEL switched to EVENT_CENTRE offers venue amenities before
+  // save. It OFFERS only that scope, but what the listing already holds stays
+  // on screen whichever way the type goes — tagged when it belongs to the
+  // other kind — so the owner can remove it on purpose and never by accident.
+  const amenityScope: AmenityPickerScope = isVenue(formik.values.type) ? "VENUE" : "STAY";
+  const attachedAmenityNames = useMemo(
+    () => (propertyData?.amenities ?? []).map((a) => a.name),
+    [propertyData],
+  );
+  const amenityOptions = useMemo(
+    () => amenityPickerOptions(knownAmenities, amenityScope, attachedAmenityNames),
+    [knownAmenities, amenityScope, attachedAmenityNames],
+  );
 
   // Documents offered follow the type currently selected in the form, with the
   // saved type as the fallback before the form has initialised.
@@ -775,7 +807,10 @@ Deleting anyway removes the unit but does NOT ` +
         onClose={() => { setUnitDrawerOpen(false); setEditingUnitIndex(null); }}
         onSave={handleSaveUnit}
         editingUnit={editingUnitIndex !== null ? existingUnits[editingUnitIndex] : null}
-        availableAmenities={availableAmenities ?? []}
+        // The full set, attached rows included: the drawer scopes what it
+        // OFFERS itself, and must be able to show a hall's attached stay
+        // amenities to let them be removed deliberately.
+        availableAmenities={knownAmenities}
         showAmenityForm={() => setShowAmenityForm(true)}
         userRole={user?.role}
         propertyType={formik.values.type}
@@ -1071,9 +1106,10 @@ Deleting anyway removes the unit but does NOT ` +
                 </div>
               )}
 
-              <MultipleChoice
-                options={availableAmenities?.map((am) => am.name) || []}
+              <AmenityPicker
+                options={amenityOptions}
                 selected={formik.values.amenityNames}
+                scope={amenityScope}
                 onChange={(val) =>
                   formik.setFieldValue("amenityNames", [...val])
                 }

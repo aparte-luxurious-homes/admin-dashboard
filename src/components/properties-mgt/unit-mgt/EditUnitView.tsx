@@ -1,12 +1,13 @@
 import { MESSAGES } from '@/src/lib/messages';
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
-import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, PropertyType } from "../types";
+import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, PropertyType } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
 import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia, DeleteUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
-import MultipleChoice from "../../ui/MultipleChoice";
+import AmenityPicker from "../AmenityPicker";
+import { AmenityPickerScope, amenityIdsForNames, amenityPickerOptions, mergeAmenities } from "../amenitySelection";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import Image from "next/image";
 import { PriceTagIcon, TrashIcon } from "../../icons";
@@ -49,10 +50,12 @@ export default function EditUnitView({
     const propertyIsVenue = isVenue(
         propertyData?.data?.data?.property_type ?? propertyData?.data?.data?.propertyType,
     );
-    // A hall picks from the venue amenity list, a unit from the stay list.
-    const { data: fetchedAmenites } = GetAmenities(propertyIsVenue ? "VENUE" : "STAY");
+    // The whole taxonomy: the picker scopes what it OFFERS itself. Fetching
+    // the scoped slice here is the same bug EditPropertyView had — a hall's
+    // attached stay amenities could not be resolved to ids and were silently
+    // detached on save. See amenitySelection.ts.
+    const { data: fetchedAmenites } = GetAmenities();
     const [unit, setUnit] = useState<IPropertyUnit>(unitData);
-    const [amenities, setAmenities] = useState<IAmenity[]>([]);
     const dispatch = useDispatch();
     const { mutate, isPending } = UpdatePropertyUnit();
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
@@ -85,23 +88,23 @@ export default function EditUnitView({
         if (unitDetails?.data?.data) setHall(hallFormFromUnit(unitDetails.data.data))
     }, [unitDetails])
 
-    useEffect(() => {
-        setAmenities(fetchedAmenites?.data?.data)
-    }, [fetchedAmenites])
-
-
-    const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
-        const sortedAmenities = []
-        let prevAmenityNames = amenities.map((a) => a.name);
-        for (const amenity of newAmeities) {
-            if (prevAmenityNames.includes(amenity)) {
-                const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos].id)
-            }
-        }
-
-        return sortedAmenities;
-    }
+    // Taxonomy first (it carries each amenity's scope), then the unit's own
+    // rows, which only stand in for an amenity the taxonomy lacks or has not
+    // loaded yet. Names resolve to ids against all of it, so an attached
+    // amenity survives a save whatever its scope.
+    const knownAmenities = useMemo(
+        () => mergeAmenities(fetchedAmenites?.data?.data, unit?.amenities),
+        [fetchedAmenites, unit],
+    );
+    const amenityScope: AmenityPickerScope = propertyIsVenue ? "VENUE" : "STAY";
+    const attachedAmenityNames = useMemo(
+        () => (unit?.amenities ?? []).map((a) => a.name),
+        [unit],
+    );
+    const amenityOptions = useMemo(
+        () => amenityPickerOptions(knownAmenities, amenityScope, attachedAmenityNames),
+        [knownAmenities, amenityScope, attachedAmenityNames],
+    );
 
     const removeParam = (param: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -138,7 +141,7 @@ export default function EditUnitView({
         },
         enableReinitialize: true,
         onSubmit: (values) => {
-            const sortedAmenities = sortAmenities(amenities, values.amenityNames);
+            const sortedAmenities = amenityIdsForNames(knownAmenities, values.amenityNames);
             if (isEventCentre) {
                 const problem = validateHall(hall);
                 if (problem) {
@@ -548,9 +551,10 @@ export default function EditUnitView({
                                 )}
                             </div>
                             <div className="bg-zinc-50/50 border border-zinc-100 rounded-2xl p-6">
-                                <MultipleChoice
-                                    options={amenities?.map(el => el.name)}
+                                <AmenityPicker
+                                    options={amenityOptions}
                                     selected={formik.values.amenityNames}
+                                    scope={amenityScope}
                                     onChange={(val) => formik.setFieldValue("amenityNames", [...val])}
                                 />
                             </div>
