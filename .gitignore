@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .worktrees/
+
+# unit tests (npm run test:unit) compile here
+/.test-dist/
