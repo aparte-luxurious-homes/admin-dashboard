@@ -1,10 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { receivesReportsByEmail, requestReport } from "@/src/lib/request-handlers/reportsMgt";
+import {
+    REPORT_PAYMENT_METHODS,
+    receivesReportsByEmail,
+    requestReport,
+} from "@/src/lib/request-handlers/reportsMgt";
 import { GetAllProperties } from "@/src/lib/request-handlers/propertyMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import toast from "react-hot-toast";
+import { notifyReportError, notifyReportOutcome } from "./reportToast";
 import { FiDownload, FiMail } from "react-icons/fi";
 import Spinner from "@/src/components/ui/Spinner";
 import { UserRole } from "@/src/lib/enums";
@@ -47,12 +51,12 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
             const query = queryParams.toString();
             const url = query ? `${baseUrl}?${query}` : baseUrl;
 
-            const message = await requestReport(url, formatType, user?.role);
-            toast.success(message);
-        } catch (err: any) {
+            notifyReportOutcome(await requestReport(url, formatType, user?.role));
+        } catch (err) {
             console.error("Export failed:", err);
-            const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Failed to export report";
-            toast.error(errorMsg);
+            // In the API's words: a report too large to email says so and asks
+            // for a narrower date range, and that has to reach the owner as is.
+            notifyReportError(err, "Failed to export report");
         } finally {
             setExportingFormat(null);
         }
@@ -130,10 +134,12 @@ export default function BookingReportsTab({ targetOwnerId }: { targetOwnerId?: s
                             className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
                         >
                             <option value="">All Payment Methods</option>
-                            <option value="PAYSTACK">Paystack</option>
-                            <option value="TRANSFER">Bank Transfer</option>
-                            <option value="CASH">Cash</option>
-                            <option value="POS">POS</option>
+                            {/* Values are the API's stored payment_method strings, not
+                                gateway names: "online" covers every gateway (Paystack,
+                                Monnify, Flutterwave). See REPORT_PAYMENT_METHODS. */}
+                            {REPORT_PAYMENT_METHODS.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
                         </select>
                     </div>
                 </div>

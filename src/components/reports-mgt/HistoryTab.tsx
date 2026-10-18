@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { GetStatements, receivesReportsByEmail, requestReport } from "@/src/lib/request-handlers/reportsMgt";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
-import toast from "react-hot-toast";
+import { notifyReportError, notifyReportOutcome } from "./reportToast";
 import { FiDownload, FiExternalLink, FiMail } from "react-icons/fi";
 import { format } from "date-fns";
 import TablePagination from "@/src/components/TablePagination";
@@ -55,12 +55,10 @@ export default function HistoryTab() {
                 ? API_ROUTES.agents.statements.download(user.id.toString(), year, month)
                 : API_ROUTES.reports.statements.download(user.id.toString(), year, month);
 
-            const message = await requestReport(url, formatType, user?.role);
-            toast.success(message);
-        } catch (err: any) {
+            notifyReportOutcome(await requestReport(url, formatType, user?.role));
+        } catch (err) {
             console.error("Statement request failed:", err);
-            const errorMsg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "Failed to get statement";
-            toast.error(errorMsg);
+            notifyReportError(err, "Failed to get statement");
         } finally {
             setDownloadingId(null);
         }
