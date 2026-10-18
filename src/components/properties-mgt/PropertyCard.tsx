@@ -80,7 +80,7 @@ export default function PropertyCard({ property, onDelete }: PropertyCardProps) 
 
       {property?.source && (
         <div className="mb-2">
-          <PropertySourceBadge source={property.source} />
+          <PropertySourceBadge source={property.source} showExplanation />
         </div>
       )}
 

@@ -48,6 +48,27 @@ export function GetBookingQuote(payload: Record<string, unknown> | null) {
   });
 }
 
+/**
+ * Stage a front-desk guest credential (ID document photo or guest photo) for
+ * an offline booking before it is created. `kind` is ID_DOCUMENT or PHOTO.
+ * Returns `{ data: { url, kind } }`; the URL goes into the POST /bookings
+ * payload as guest_id_document_url / guest_photo_url.
+ */
+export function UploadGuestCredential() {
+  return useMutation({
+    mutationFn: ({ payload }: { payload: FormData }) =>
+      axiosRequest.post(API_ROUTES.bookings.guestCredentials, payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+        transformRequest: (data, headers) => {
+          if (headers) {
+            delete headers["Content-Type"];
+          }
+          return data;
+        },
+      }),
+  });
+}
+
 export function UploadPaymentProof() {
   return useMutation({
     mutationFn: ({ payload }: { payload: FormData }) =>

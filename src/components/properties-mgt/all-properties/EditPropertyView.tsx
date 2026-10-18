@@ -278,16 +278,10 @@ export default function EditPropertyView({
     const { data: docsData, refetch: refetchDocs } = GetPropertyDocuments(propertyData.id);
     const [documents, setDocuments] = useState<IPropertyDocument[]>([]);
     const [selectedDocType, setSelectedDocType] = useState<DocumentType>(DocumentType.UTILITY_BILL);
-    const availableDocTypes = useMemo(
-        () => getDocumentTypesForProperty(propertyData?.propertyType ?? propertyData?.property_type ?? propertyData?.type),
-        [propertyData?.propertyType, propertyData?.property_type, propertyData?.type],
-    );
-
-    useEffect(() => {
-        if (!availableDocTypes.includes(selectedDocType)) {
-            setSelectedDocType(availableDocTypes[0] || DocumentType.UTILITY_BILL);
-        }
-    }, [availableDocTypes, selectedDocType]);
+    // The document dropdown follows the type being EDITED (formik.values.type,
+    // set below), not the saved propertyType: switching HOTEL -> EVENT_CENTRE
+    // must offer the event-centre documents before save, and switching back
+    // must stop offering them. See `availableDocTypes` after the formik setup.
 
   // Event types
   const { data: fetchedEventTypes } = GetEventTypes();
@@ -645,6 +639,20 @@ Deleting anyway removes the unit but does NOT ` +
       );
     },
   });
+
+  // Documents offered follow the type currently selected in the form, with the
+  // saved type as the fallback before the form has initialised.
+  const editedPropertyType = formik.values.type ?? propertyData?.propertyType ?? propertyData?.property_type;
+  const availableDocTypes = useMemo(
+    () => getDocumentTypesForProperty(editedPropertyType),
+    [editedPropertyType],
+  );
+
+  useEffect(() => {
+    if (!availableDocTypes.includes(selectedDocType)) {
+      setSelectedDocType(availableDocTypes[0] || DocumentType.UTILITY_BILL);
+    }
+  }, [availableDocTypes, selectedDocType]);
 
   const handleGeocode = async () => {
     const { address, city, state, country } = formik.values;

@@ -87,6 +87,11 @@ export interface IBooking {
     payment_proof_url?: string
     paymentNotes?: string
     payment_notes?: string
+    // Front-desk guest verification on offline on-behalf bookings
+    guestIdDocumentUrl?: string | null
+    guest_id_document_url?: string | null
+    guestPhotoUrl?: string | null
+    guest_photo_url?: string | null
     rejectionReason?: string
     rejection_reason?: string
     revenueSplit?: RevenueSplit;

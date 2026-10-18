@@ -44,7 +44,23 @@ const SOURCE_STYLES: Record<
     },
 };
 
-export default function PropertySourceBadge({ source }: { source?: IPropertySource | null }) {
+/** The one-line reason a row is on the list, for tooltips and screen readers. */
+export function explainPropertySource(source?: IPropertySource | null): string | null {
+    if (!source) return null;
+    const style = SOURCE_STYLES[source.type] ?? SOURCE_STYLES.NETWORK;
+    return style.explain(source.via?.name || null);
+}
+
+export default function PropertySourceBadge({
+    source,
+    showExplanation = false,
+}: {
+    source?: IPropertySource | null;
+    /** Render the explanation as visible text under the pill. `title` never
+     *  fires on touch and a span is not focusable, so on the mobile card the
+     *  reason has to be on screen to be reachable at all. */
+    showExplanation?: boolean;
+}) {
     if (!source) return null;
     const style = SOURCE_STYLES[source.type] ?? SOURCE_STYLES.NETWORK;
     const name = source.via?.name || null;
@@ -53,13 +69,21 @@ export default function PropertySourceBadge({ source }: { source?: IPropertySour
     const text = name
         ? `${style.label} · ${name}`
         : source.type === "REFERRAL" ? "Your referral" : style.label;
+    const explanation = style.explain(name);
 
     return (
-        <span
-            title={style.explain(name)}
-            className={`inline-flex max-w-[200px] items-center px-2 py-0.5 rounded-full border text-[10px] font-medium ${style.className}`}
-        >
-            <span className="truncate">{text}</span>
+        <span className="inline-flex flex-col items-start gap-0.5">
+            <span
+                title={explanation}
+                aria-label={`${text}. ${explanation}`}
+                tabIndex={0}
+                className={`inline-flex max-w-[200px] items-center px-2 py-0.5 rounded-full border text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 ${style.className}`}
+            >
+                <span className="truncate">{text}</span>
+            </span>
+            {showExplanation && (
+                <span className="text-[10px] text-gray-500 leading-tight">{explanation}</span>
+            )}
         </span>
     );
 }

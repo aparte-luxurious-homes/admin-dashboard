@@ -49,6 +49,9 @@ export interface NormalizedBooking {
   paymentMethod: string;
   paymentProofUrl: string;
   paymentNotes: string;
+  // Front-desk guest verification (offline on-behalf bookings)
+  guestIdDocumentUrl: string;
+  guestPhotoUrl: string;
   referralCodeUsed: string;
   referrerId: string;
   // Booking attribution — the caller (agent/admin) who actually submitted the
@@ -161,6 +164,8 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     paymentMethod: raw.paymentMethod || r.payment_method || "",
     paymentProofUrl: raw.paymentProofUrl || r.payment_proof_url || "",
     paymentNotes: raw.paymentNotes || r.payment_notes || "",
+    guestIdDocumentUrl: raw.guestIdDocumentUrl || r.guest_id_document_url || "",
+    guestPhotoUrl: raw.guestPhotoUrl || r.guest_photo_url || "",
     referralCodeUsed: r.referral_code_used || "",
     referrerId: r.referrer_id || "",
     bookedBy: r.booked_by || r.bookedBy || "",
