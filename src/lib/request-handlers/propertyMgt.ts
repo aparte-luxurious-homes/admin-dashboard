@@ -255,11 +255,24 @@ export function UpdatePropertyVerification() {
   });
 }
 
-export function GetAmenities() {
+/**
+ * Amenities a listing may offer. `appliesTo` narrows the list: "VENUE" for an
+ * event centre (stage, sound system, chairs...), "STAY" for everything else.
+ * Omitted, it returns the whole taxonomy (admin views).
+ *
+ * The EDIT screens omit it on purpose and scope what they offer client-side
+ * (see components/properties-mgt/amenitySelection.ts): resolving a listing's
+ * selected names against the scoped slice is what detached a venue's
+ * already-attached stay amenities on save. The create flows, where nothing is
+ * attached yet, still ask for the slice.
+ */
+export function GetAmenities(appliesTo?: "VENUE" | "STAY") {
   return useQuery({
-    queryKey: [PropertyRequestKeys.getAmenities],
+    queryKey: [PropertyRequestKeys.getAmenities, appliesTo ?? "ALL"],
     queryFn: () =>
-      axiosRequest.get(API_ROUTES.propertyManagement.amenities.base),
+      axiosRequest.get(API_ROUTES.propertyManagement.amenities.base, {
+        params: appliesTo ? { applies_to: appliesTo } : undefined,
+      }),
   });
 }
 
@@ -274,13 +287,23 @@ export function GetEventTypes() {
 export function CreateAmenity() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name }: { name: string }) =>
-      axiosRequest.post(API_ROUTES.propertyManagement.amenities.base, { name }),
+    mutationFn: ({
+      name,
+      applies_to = "STAY",
+    }: {
+      name: string;
+      applies_to?: "STAY" | "VENUE" | "ALL";
+    }) =>
+      axiosRequest.post(API_ROUTES.propertyManagement.amenities.base, {
+        name,
+        applies_to,
+      }),
 
     onSuccess: () => {
-      // Invalidate the specific property query so it refetches
+      // Every open amenity picker reads getAmenities; invalidating only the
+      // create key left them showing the list without the new amenity.
       queryClient.invalidateQueries({
-        queryKey: [PropertyRequestKeys.createAmenities],
+        queryKey: [PropertyRequestKeys.getAmenities],
       });
     },
   });

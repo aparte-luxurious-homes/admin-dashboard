@@ -6,6 +6,7 @@ import { LuUsers } from 'react-icons/lu';
 import { TbCurrencyNaira } from 'react-icons/tb';
 import { UnitFormValues } from './types';
 import { formatMoney } from '@/src/lib/utils';
+import { hoursLabel, rateSummary } from '../venue';
 
 interface UnitCardProps {
     unit: UnitFormValues;
@@ -24,6 +25,8 @@ interface UnitCardProps {
      */
     canDelete?: boolean;
     deleteDisabledReason?: string;
+    /** Show a hall: its rates, capacity and hours, never beds or "/night". */
+    isVenue?: boolean;
 }
 
 export default function UnitCard({
@@ -33,6 +36,7 @@ export default function UnitCard({
     onDelete,
     canDelete = true,
     deleteDisabledReason,
+    isVenue = false,
 }: UnitCardProps) {
     return (
         <div className="bg-white border border-zinc-200 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all group">
@@ -81,6 +85,28 @@ export default function UnitCard({
                 </div>
             </div>
 
+            {isVenue ? (
+            <div className="mt-3 pt-3 border-t border-zinc-100 space-y-1.5">
+                <p className="text-xs font-semibold text-zinc-700">
+                    {rateSummary(unit, formatMoney) || 'No rates set'}
+                </p>
+                <div className="flex items-center gap-3 flex-wrap text-[11px] text-zinc-500">
+                    <span className="flex items-center gap-1">
+                        <LuUsers className="text-primary text-sm" />
+                        {unit.seating_capacity || 0} seated · {unit.standing_capacity || 0} standing
+                    </span>
+                    {hoursLabel(unit) && <span>{hoursLabel(unit)}</span>}
+                    <span className="px-1.5 py-0.5 bg-zinc-100 rounded font-semibold">
+                        {unit.allows_multiple_bookings_per_day ? 'Several a day' : 'Once a day'}
+                    </span>
+                    {unit.count > 1 && (
+                        <span className="px-1.5 py-0.5 bg-primary/10 text-primary font-bold rounded text-[10px]">
+                            x{unit.count}
+                        </span>
+                    )}
+                </div>
+            </div>
+            ) : (
             <div className="mt-3 pt-3 border-t border-zinc-100 flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-1.5 text-xs text-zinc-600">
                     <TbCurrencyNaira className="text-primary text-sm" />
@@ -103,6 +129,7 @@ export default function UnitCard({
                     </span>
                 )}
             </div>
+            )}
         </div>
     );
 }

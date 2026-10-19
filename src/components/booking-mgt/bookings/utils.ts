@@ -1,5 +1,6 @@
 import { IBooking, BookingStatus } from "../types";
 import { getDayDifference } from "@/src/lib/utils";
+import { isVenue } from "../../properties-mgt/venue";
 
 /**
  * Normalized booking data — resolves snake_case vs camelCase API inconsistencies
@@ -48,6 +49,9 @@ export interface NormalizedBooking {
   paymentMethod: string;
   paymentProofUrl: string;
   paymentNotes: string;
+  // Front-desk guest verification (offline on-behalf bookings)
+  guestIdDocumentUrl: string;
+  guestPhotoUrl: string;
   referralCodeUsed: string;
   referrerId: string;
   // Booking attribution — the caller (agent/admin) who actually submitted the
@@ -73,6 +77,17 @@ export interface NormalizedBooking {
   // Computed fields
   nights: number;
   pricePerNight: number;
+  /** Event-centre hire: how it is billed and when it runs. */
+  isVenue: boolean;
+  billingUnit: string;
+  billingDuration: number;
+  eventStartTime: string | null;
+  eventEndTime: string | null;
+  sessionName: string | null;
+  /** "per day" / "per hour" / "per session"; "per night" for a stay. */
+  rateLabel: string;
+  /** "10:00–13:00 (3 hours)", "Morning · 08:00–14:00", "2 days", "3 nights". */
+  hireLabel: string;
   subtotal: number;
   property: IBooking["unit"]["property"];
 }
@@ -84,8 +99,42 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
   const startDate = raw.startDate || r.start_date || "";
   const endDate = raw.endDate || r.end_date || "";
   const nights = startDate && endDate ? getDayDifference(endDate, startDate) : 0;
-  const pricePerNight = Number(raw.unit?.pricePerNight || r.unit?.price_per_night || 0);
   const unitCount = raw.unitCount || r.unit_count || 1;
+
+  // An event-centre hire is billed by its own rate card, not per night.
+  const property = r.property || raw.unit?.property || null;
+  const venue = isVenue(property?.propertyType ?? property?.property_type);
+  const billingUnit = String(r.billing_unit ?? (venue ? "PER_DAY" : "PER_NIGHT"));
+  const billingDuration = Number(r.billing_duration ?? (venue && billingUnit !== "PER_DAY" ? 1 : nights)) || 1;
+  const eventStartTime = r.event_start_time ?? null;
+  const eventEndTime = r.event_end_time ?? null;
+  const sessionName = r.half_day_window_name ?? null;
+  const unitRaw: any = raw.unit ?? r.unit ?? {};
+  const venueRate = Number(
+    billingUnit === "PER_HOUR"
+      ? unitRaw.eventPricePerHour ?? unitRaw.event_price_per_hour
+      : billingUnit === "PER_HALF_DAY"
+        ? unitRaw.eventPricePerHalfDay ?? unitRaw.event_price_per_half_day
+        : unitRaw.eventPricePerDay ?? unitRaw.event_price_per_day ?? unitRaw.pricePerNight ?? unitRaw.price_per_night,
+  ) || 0;
+  const pricePerNight = venue
+    ? venueRate
+    : Number(raw.unit?.pricePerNight || r.unit?.price_per_night || 0);
+  const times = eventStartTime && eventEndTime ? `${eventStartTime}–${eventEndTime}` : "";
+  const hireLabel = !venue
+    ? `${nights} ${nights === 1 ? "night" : "nights"}`
+    : billingUnit === "PER_HOUR"
+      ? `${times} (${billingDuration} ${billingDuration === 1 ? "hour" : "hours"})`.trim()
+      : billingUnit === "PER_HALF_DAY"
+        ? `${sessionName ?? "Half day"}${times ? ` · ${times}` : ""}`
+        : `${billingDuration} ${billingDuration === 1 ? "day" : "days"}`;
+  const rateLabel = !venue
+    ? "per night"
+    : billingUnit === "PER_HOUR"
+      ? "per hour"
+      : billingUnit === "PER_HALF_DAY"
+        ? "per session"
+        : "per day";
 
   return {
     id: raw.id,
@@ -115,6 +164,8 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     paymentMethod: raw.paymentMethod || r.payment_method || "",
     paymentProofUrl: raw.paymentProofUrl || r.payment_proof_url || "",
     paymentNotes: raw.paymentNotes || r.payment_notes || "",
+    guestIdDocumentUrl: raw.guestIdDocumentUrl || r.guest_id_document_url || "",
+    guestPhotoUrl: raw.guestPhotoUrl || r.guest_photo_url || "",
     referralCodeUsed: r.referral_code_used || "",
     referrerId: r.referrer_id || "",
     bookedBy: r.booked_by || r.bookedBy || "",
@@ -127,8 +178,16 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     // Computed
     nights,
     pricePerNight,
-    subtotal: pricePerNight * nights * unitCount,
-    property: r.property || raw.unit?.property || null,
+    isVenue: venue,
+    billingUnit,
+    billingDuration,
+    eventStartTime,
+    eventEndTime,
+    sessionName,
+    rateLabel,
+    hireLabel,
+    subtotal: pricePerNight * (venue ? billingDuration : nights) * unitCount,
+    property,
   };
 }
 

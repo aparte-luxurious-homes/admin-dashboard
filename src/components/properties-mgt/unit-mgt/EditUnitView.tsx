@@ -1,12 +1,13 @@
 import { MESSAGES } from '@/src/lib/messages';
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
-import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, PropertyType } from "../types";
+import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, PropertyType } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
 import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia, DeleteUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
-import MultipleChoice from "../../ui/MultipleChoice";
+import AmenityPicker from "../AmenityPicker";
+import { AmenityPickerScope, amenityIdsForNames, amenityPickerOptions, mergeAmenities } from "../amenitySelection";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import Image from "next/image";
 import { PriceTagIcon, TrashIcon } from "../../icons";
@@ -24,6 +25,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import HallFields from "../HallFields";
+import { HallForm, hallFormFromUnit, hallPayload, isVenue, validateHall } from "../venue";
+import {
+    CATEGORY_LABELS,
+    HALL_OPTIONAL_CATEGORIES,
+    HALL_REQUIRED_CATEGORIES,
+    PropertyMediaCategory,
+} from "../create-wizard/types";
 
 export default function EditUnitView({
     handleEditMode,
@@ -38,9 +47,15 @@ export default function EditUnitView({
 }) {
     const { data: unitDetails, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
     const { data: propertyData } = GetSingleProperty(propertyId);
+    const propertyIsVenue = isVenue(
+        propertyData?.data?.data?.property_type ?? propertyData?.data?.data?.propertyType,
+    );
+    // The whole taxonomy: the picker scopes what it OFFERS itself. Fetching
+    // the scoped slice here is the same bug EditPropertyView had — a hall's
+    // attached stay amenities could not be resolved to ids and were silently
+    // detached on save. See amenitySelection.ts.
     const { data: fetchedAmenites } = GetAmenities();
     const [unit, setUnit] = useState<IPropertyUnit>(unitData);
-    const [amenities, setAmenities] = useState<IAmenity[]>([]);
     const dispatch = useDispatch();
     const { mutate, isPending } = UpdatePropertyUnit();
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
@@ -59,28 +74,37 @@ export default function EditUnitView({
     const loadedProperty = propertyData?.data?.data;
     const isEventCentre = loadedProperty?.propertyType === PropertyType.EVENT_CENTRE || loadedProperty?.property_type === PropertyType.EVENT_CENTRE;
 
+    // A hall's rate card, hours and same-day rule, edited with the same
+    // component the listing wizard uses.
+    const [hall, setHall] = useState<HallForm>(() => hallFormFromUnit(unitData));
+    const [hallError, setHallError] = useState<string | null>(null);
+    const [hallPhotoCategory, setHallPhotoCategory] = useState<PropertyMediaCategory>(
+        PropertyMediaCategory.HALL_INTERIOR,
+    );
+
     useEffect(() => {
         setUnit(unitDetails?.data?.data)
         setMedia(unitDetails?.data?.data?.media)
+        if (unitDetails?.data?.data) setHall(hallFormFromUnit(unitDetails.data.data))
     }, [unitDetails])
 
-    useEffect(() => {
-        setAmenities(fetchedAmenites?.data?.data)
-    }, [fetchedAmenites])
-
-
-    const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
-        const sortedAmenities = []
-        let prevAmenityNames = amenities.map((a) => a.name);
-        for (const amenity of newAmeities) {
-            if (prevAmenityNames.includes(amenity)) {
-                const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos].id)
-            }
-        }
-
-        return sortedAmenities;
-    }
+    // Taxonomy first (it carries each amenity's scope), then the unit's own
+    // rows, which only stand in for an amenity the taxonomy lacks or has not
+    // loaded yet. Names resolve to ids against all of it, so an attached
+    // amenity survives a save whatever its scope.
+    const knownAmenities = useMemo(
+        () => mergeAmenities(fetchedAmenites?.data?.data, unit?.amenities),
+        [fetchedAmenites, unit],
+    );
+    const amenityScope: AmenityPickerScope = propertyIsVenue ? "VENUE" : "STAY";
+    const attachedAmenityNames = useMemo(
+        () => (unit?.amenities ?? []).map((a) => a.name),
+        [unit],
+    );
+    const amenityOptions = useMemo(
+        () => amenityPickerOptions(knownAmenities, amenityScope, attachedAmenityNames),
+        [knownAmenities, amenityScope, attachedAmenityNames],
+    );
 
     const removeParam = (param: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -117,7 +141,15 @@ export default function EditUnitView({
         },
         enableReinitialize: true,
         onSubmit: (values) => {
-            const sortedAmenities = sortAmenities(amenities, values.amenityNames);
+            const sortedAmenities = amenityIdsForNames(knownAmenities, values.amenityNames);
+            if (isEventCentre) {
+                const problem = validateHall(hall);
+                if (problem) {
+                    setHallError(problem);
+                    toast.error(problem);
+                    return;
+                }
+            }
 
             const updatePayload: IUpdatePropertyUnit = {
                 name: values.name,
@@ -135,11 +167,17 @@ export default function EditUnitView({
                 standing_capacity: isEventCentre ? values.standingCapacity : undefined,
                 car_park_spaces: isEventCentre ? values.carParkSpaces : undefined,
                 power_supply_provision: isEventCentre ? values.powerSupplyProvision : undefined,
-                event_price_per_day: isEventCentre ? String(values.pricePerNight) : undefined,
-                event_price_per_hour: isEventCentre && values.eventPricePerHour ? String(values.eventPricePerHour) : undefined,
-                event_price_per_half_day: isEventCentre && values.eventPricePerHalfDay ? String(values.eventPricePerHalfDay) : undefined,
                 additional_fees: values.additionalFees,
                 amenities: sortedAmenities,
+                // A hall: rates (an unticked one is cleared), hours, sessions
+                // and the same-day rule, with the headline price and zero room
+                // counts the API also derives.
+                ...(isEventCentre
+                    ? {
+                        ...hallPayload(hall),
+                        max_guests: Math.max(values.seatingCapacity || 0, values.standingCapacity || 0, 1),
+                    }
+                    : {}),
             };
             mutate({
                 propertyId: String(unit?.propertyId || propertyId),
@@ -310,6 +348,20 @@ export default function EditUnitView({
                             </div>
                         </div>
                     </div>
+
+                    {/* How the hall is hired (event centres) */}
+                    {isEventCentre && (
+                        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
+                            <HallFields
+                                value={hall}
+                                onChange={(patch) => {
+                                    setHallError(null);
+                                    setHall((prev) => ({ ...prev, ...patch }));
+                                }}
+                                error={hallError}
+                            />
+                        </div>
+                    )}
 
                     {/* Configurations Section */}
                     <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
@@ -499,9 +551,10 @@ export default function EditUnitView({
                                 )}
                             </div>
                             <div className="bg-zinc-50/50 border border-zinc-100 rounded-2xl p-6">
-                                <MultipleChoice
-                                    options={amenities?.map(el => el.name)}
+                                <AmenityPicker
+                                    options={amenityOptions}
                                     selected={formik.values.amenityNames}
+                                    scope={amenityScope}
                                     onChange={(val) => formik.setFieldValue("amenityNames", [...val])}
                                 />
                             </div>
@@ -617,6 +670,22 @@ export default function EditUnitView({
                             </div>
 
                             <div className="mt-8">
+                                {isEventCentre && (
+                                    <div className="mb-3">
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1 block mb-1">
+                                            These photos show
+                                        </label>
+                                        <select
+                                            value={hallPhotoCategory}
+                                            onChange={(e) => setHallPhotoCategory(e.target.value as PropertyMediaCategory)}
+                                            className="w-full md:w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 focus:border-primary outline-none text-sm"
+                                        >
+                                            {[...HALL_REQUIRED_CATEGORIES, ...HALL_OPTIONAL_CATEGORIES].map((cat) => (
+                                                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <CustomDropzone
                                     onDrop={setUploadedMedia}
                                     multiple
@@ -630,6 +699,7 @@ export default function EditUnitView({
                                             uploadedMedia.forEach(file => formData.append("media_file", file));
                                             formData.append("media_type", MediaType.IMAGE);
                                             formData.append("is_featured", "true");
+                                            if (isEventCentre) formData.append("category", hallPhotoCategory);
                                             uploadMedia({ propertyId: String(propertyId), unitId: String(unitId), payload: formData }, {
                                                 onSuccess: () => toast.success(MESSAGES.MSG_MEDIA_UPLOADED_SUCCESSFULLY),
                                                 onError: (error: any) => toast.error(error?.response?.data?.detail || MESSAGES.MSG_UPLOAD_FAILED)
@@ -653,12 +723,13 @@ export default function EditUnitView({
 
                             <h3 className="text-lg font-bold mb-8 flex items-center gap-2 relative z-10">
                                 <Icon icon="solar:tag-bold-duotone" className="text-xl text-primary" />
-                                Pricing Strategy
+                                {isEventCentre ? "Caution Fee" : "Pricing Strategy"}
                             </h3>
 
                             <div className="space-y-6 relative z-10">
+                                {!isEventCentre && (
                                 <div className="space-y-2">
-                                    <label htmlFor="price-per-night" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">{isEventCentre ? "Price (Per Day/Event)" : "Price Per Night"}</label>
+                                    <label htmlFor="price-per-night" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Price Per Night</label>
                                     <div className="relative group/input">
                                         <div className="absolute inset-y-0 left-3 flex items-center h-full pointer-events-none">
                                             <TbCurrencyNaira className="text-2xl text-zinc-600 group-focus-within/input:text-primary transition-colors" />
@@ -676,45 +747,6 @@ export default function EditUnitView({
                                     </div>
                                 </div>
 
-                                {isEventCentre && (
-                                    <>
-                                        <div className="space-y-2">
-                                            <label htmlFor="event-price-per-hour" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Price (Per Hour)</label>
-                                            <div className="relative group/input">
-                                                <div className="absolute inset-y-0 left-3 flex items-center h-full pointer-events-none">
-                                                    <TbCurrencyNaira className="text-2xl text-zinc-600 group-focus-within/input:text-primary transition-colors" />
-                                                </div>
-                                                <input
-                                                    id="event-price-per-hour"
-                                                    type="number"
-                                                    min="0.01"
-                                                    step="0.01"
-                                                    value={formik.values.eventPricePerHour}
-                                                    onChange={(e) => formik.setFieldValue('eventPricePerHour', e.target.value)}
-                                                    className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label htmlFor="event-price-per-half-day" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Price (Per Half-Day)</label>
-                                            <div className="relative group/input">
-                                                <div className="absolute inset-y-0 left-3 flex items-center h-full pointer-events-none">
-                                                    <TbCurrencyNaira className="text-2xl text-zinc-600 group-focus-within/input:text-primary transition-colors" />
-                                                </div>
-                                                <input
-                                                    id="event-price-per-half-day"
-                                                    type="number"
-                                                    min="0.01"
-                                                    step="0.01"
-                                                    value={formik.values.eventPricePerHalfDay}
-                                                    onChange={(e) => formik.setFieldValue('eventPricePerHalfDay', e.target.value)}
-                                                    className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                        </div>
-                                    </>
                                 )}
 
                                 <div className="space-y-2">
@@ -736,6 +768,7 @@ export default function EditUnitView({
                                     </div>
                                 </div>
 
+                                {!isEventCentre && (
                                 <div className="pt-6 border-t border-white/10">
                                     <div className="flex flex-col items-center text-center">
                                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Total Revenue Display</p>
@@ -747,6 +780,7 @@ export default function EditUnitView({
                                         </div>
                                     </div>
                                 </div>
+                                )}
                             </div>
                         </div>
 

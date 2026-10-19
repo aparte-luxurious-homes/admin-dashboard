@@ -48,6 +48,12 @@ export interface IBooking {
     start_date?: string
     endDate: string
     end_date?: string
+    /** How the booking is billed; event-centre hires also carry their times. */
+    billing_unit?: "PER_NIGHT" | "PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"
+    billing_duration?: number
+    event_start_time?: string | null
+    event_end_time?: string | null
+    half_day_window_name?: string | null
     guestsCount: number
     guests_count?: number
     unitCount: number
@@ -81,6 +87,11 @@ export interface IBooking {
     payment_proof_url?: string
     paymentNotes?: string
     payment_notes?: string
+    // Front-desk guest verification on offline on-behalf bookings
+    guestIdDocumentUrl?: string | null
+    guest_id_document_url?: string | null
+    guestPhotoUrl?: string | null
+    guest_photo_url?: string | null
     rejectionReason?: string
     rejection_reason?: string
     revenueSplit?: RevenueSplit;
@@ -143,6 +154,13 @@ export interface ICreateBooking {
     send_payment_link?: boolean
     referral_code?: string
 
+    // Event-centre hires (see EventHirePicker). The server derives the end
+    // time from the hall's terms; only the start / session is sent.
+    billing_unit?: "PER_NIGHT" | "PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"
+    billing_duration?: number
+    event_start_time?: string | null
+    half_day_window_name?: string | null
+
     // Quick Guest Onboarding
     guest_first_name?: string
     guest_last_name?: string
@@ -162,5 +180,11 @@ export interface IUpdateBooking {
     payment_proof_url?: string
     payment_notes?: string
     mark_as_paid?: boolean
+    // Event-centre hires (see EventHirePicker). The server derives the end
+    // time from the hall's terms; only the start / session is sent.
+    billing_unit?: "PER_NIGHT" | "PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"
+    billing_duration?: number
+    event_start_time?: string | null
+    half_day_window_name?: string | null
 }
 

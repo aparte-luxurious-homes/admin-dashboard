@@ -19,6 +19,14 @@ import { IoMdReturnLeft } from "react-icons/io";
 import { MdOutlinePayments } from "react-icons/md";
 import { HiOutlineCloudUpload } from "react-icons/hi";
 import Image from "next/image";
+import { isVenue } from "../../properties-mgt/venue";
+
+/** YYYY-MM-DD plus `days`, in local time like the date inputs. */
+function shiftDate(ymd: string, days: number): string {
+    const [y, m, d] = ymd.split("-").map(Number);
+    const dt = new Date(y, m - 1, d + days);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
 
 export default function EditBookingDetails({
     handleEditMode,
@@ -104,9 +112,31 @@ export default function EditBookingDetails({
     const { values, setFieldValue, handleSubmit, isValid } = formik;
     const { start_date, end_date, unit_count } = values;
 
+    // An event-centre hire keeps its hire (day / session / hours and its
+    // time); only the date moves, and the server re-prices and re-checks the
+    // hall's time on save. Its length in days never changes on an edit.
+    const source: any = details ?? bookingData;
+    const venueBooking = isVenue(
+        source?.property?.propertyType ?? source?.property?.property_type ??
+        source?.unit?.property?.property_type ?? source?.unit?.property?.propertyType,
+    );
+    const hireDays = Math.max(
+        1,
+        getDayDifference(
+            source?.startDate ?? source?.start_date,
+            source?.endDate ?? source?.end_date,
+        ),
+    );
+    const hireTimes =
+        source?.event_start_time && source?.event_end_time
+            ? `${source.event_start_time}–${source.event_end_time}`
+            : null;
+
     const [calculatedTotal, setCalculatedTotal] = useState<number>(Number(bookingData?.totalPrice || 0));
 
     useEffect(() => {
+        // A venue's price comes from its rate card, on the server.
+        if (venueBooking) return;
         if (start_date && end_date) {
             const days = getDayDifference(start_date, end_date);
             const pricePerNight = Number(details?.unit?.pricePerNight ?? details?.unit?.price_per_night ?? bookingData?.unit?.pricePerNight ?? bookingData?.unit?.price_per_night ?? 0);
@@ -116,7 +146,7 @@ export default function EditBookingDetails({
             setCalculatedTotal(newTotal);
             setFieldValue('total_price', newTotal);
         }
-    }, [start_date, end_date, unit_count, details, bookingData, setFieldValue]);
+    }, [start_date, end_date, unit_count, details, bookingData, setFieldValue, venueBooking]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -183,19 +213,39 @@ export default function EditBookingDetails({
                             <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
                                 <h2 className="text-xl font-medium text-zinc-800 mb-6 flex items-center gap-2">
                                     <span className="bg-blue-50 text-blue-600 p-1.5 rounded-lg"><UsersIcon className="w-5 h-5" color="currentColor" /></span>
-                                    Stay Details
+                                    {venueBooking ? "Event Details" : "Stay Details"}
                                 </h2>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-zinc-700">Check-in Date</label>
+                                        <label className="text-sm font-medium text-zinc-700">
+                                            {venueBooking ? "Event Date" : "Check-in Date"}
+                                        </label>
                                         <input
                                             type="date"
                                             className="w-full h-12 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
                                             value={values.start_date}
-                                            onChange={(e) => setFieldValue('start_date', e.target.value)}
+                                            onChange={(e) => {
+                                                setFieldValue('start_date', e.target.value);
+                                                if (venueBooking && e.target.value) {
+                                                    setFieldValue('end_date', shiftDate(e.target.value, hireDays));
+                                                }
+                                            }}
                                         />
                                     </div>
+                                    {venueBooking ? (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-zinc-700">Hire</label>
+                                        <p className="h-12 px-4 flex items-center border border-zinc-200 bg-zinc-50 rounded-lg text-sm text-zinc-700">
+                                            {source?.half_day_window_name
+                                                ? `${source.half_day_window_name}${hireTimes ? ` · ${hireTimes}` : ""}`
+                                                : hireTimes ?? `${hireDays} full day${hireDays === 1 ? "" : "s"}`}
+                                        </p>
+                                        <p className="text-[11px] text-zinc-500">
+                                            The time stays the same. To change it, cancel and make a new booking.
+                                        </p>
+                                    </div>
+                                    ) : (
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-zinc-700">Check-out Date</label>
                                         <input
@@ -205,6 +255,7 @@ export default function EditBookingDetails({
                                             onChange={(e) => setFieldValue('end_date', e.target.value)}
                                         />
                                     </div>
+                                    )}
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-zinc-700">Guests</label>
@@ -365,9 +416,11 @@ export default function EditBookingDetails({
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Duration</span>
                                         <span className="text-zinc-900 font-medium">
-                                            {values.start_date && values.end_date
-                                                ? `${getDayDifference(values.start_date, values.end_date)} Nights`
-                                                : '-'}
+                                            {venueBooking
+                                                ? hireTimes ?? `${hireDays} day${hireDays === 1 ? "" : "s"}`
+                                                : values.start_date && values.end_date
+                                                    ? `${getDayDifference(values.start_date, values.end_date)} Nights`
+                                                    : '-'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between text-sm">

@@ -18,7 +18,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Autoplay } from "swiper/modules";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import EditProperty from "./EditPropertyView";
 import { BookingMode, IProperty, IPropertyUnit } from "../types";
 import {
@@ -46,6 +46,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import {
   DocumentType,
+  getDocumentTypesForProperty,
   IPropertyDocument,
   PropertyVerificationStatus,
 } from "../types";
@@ -61,6 +62,7 @@ import Spinner from "../../ui/Spinner";
 import { formatDate } from "@/src/lib/utils";
 import DiscountProposalModal from "./DiscountProposalModal";
 import PublishToLinkCard from "@/src/components/links/PublishToLinkCard";
+import { headlineUnitLabel, hoursLabel, isVenue } from "../venue";
 
 export default function PropertyDetailsView({
   propertyId,
@@ -72,6 +74,11 @@ export default function PropertyDetailsView({
   const { canDeleteProperty } = usePermissions();
 
   const { data, isLoading } = GetSingleProperty(propertyId);
+  // The whole taxonomy, not the venue or stay slice, on purpose. This feeds
+  // the edit view only, and that view scopes what its pickers OFFER itself.
+  // Fetching the scoped slice here meant a venue's attached stay amenities
+  // (Parking, Security, Power...) could not be resolved to ids on save and
+  // were silently detached — see amenitySelection.ts.
   const { data: fetchedAmenites } = GetAmenities();
   const { mutate: deleteMutation, isPending: deleteIsPending } =
     DeleteProperty();
@@ -132,6 +139,16 @@ export default function PropertyDetailsView({
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>(
     DocumentType.UTILITY_BILL,
   );
+  const availableDocTypes = useMemo(
+    () => getDocumentTypesForProperty(property?.propertyType ?? property?.property_type),
+    [property?.propertyType, property?.property_type],
+  );
+
+  useEffect(() => {
+    if (!availableDocTypes.includes(selectedDocType)) {
+      setSelectedDocType(availableDocTypes[0] || DocumentType.UTILITY_BILL);
+    }
+  }, [availableDocTypes, selectedDocType]);
   const { mutate: uploadDoc } = UploadPropertyDocument();
   const { mutate: verifyDoc, isPending: docVerifyPending } =
     UpdatePropertyDocumentStatus();
@@ -679,7 +696,9 @@ export default function PropertyDetailsView({
                                       0,
                                     ).toLocaleString()}
                                     <span className="text-[9px] font-normal text-zinc-400 ml-0.5">
-                                      /night
+                                      {isVenue(property?.property_type ?? property?.propertyType)
+                                        ? ` / ${headlineUnitLabel(el)}`
+                                        : "/night"}
                                     </span>
                                   </p>
                                 </div>
@@ -692,6 +711,15 @@ export default function PropertyDetailsView({
                                   {el.description ||
                                     "View this unit for more details."}
                                 </p>
+                                {isVenue(property?.property_type ?? property?.propertyType) ? (
+                                  <div className="flex items-center gap-3 pt-2 mt-1 border-t border-zinc-50 text-zinc-500 text-xs font-semibold flex-wrap">
+                                    <span>
+                                      {el.seating_capacity ?? el.seatingCapacity ?? 0} seated ·{" "}
+                                      {el.standing_capacity ?? el.standingCapacity ?? 0} standing
+                                    </span>
+                                    {hoursLabel(el) && <span>{hoursLabel(el)}</span>}
+                                  </div>
+                                ) : (
                                 <div className="flex items-center gap-4 pt-2 mt-1 border-t border-zinc-50">
                                   <div className="flex items-center gap-1.5 text-zinc-500 text-xs font-semibold">
                                     <IoBedOutline className="text-primary" />
@@ -708,6 +736,7 @@ export default function PropertyDetailsView({
                                     Baths
                                   </div>
                                 </div>
+                                )}
                               </div>
                             </Link>
                           ))}
@@ -1386,7 +1415,7 @@ export default function PropertyDetailsView({
                   </label>
                   <CustomDropdown
                     selected={selectedDocType}
-                    options={Object.values(DocumentType)}
+                    options={availableDocTypes}
                     handleSelection={(val) =>
                       setSelectedDocType(val as DocumentType)
                     }
@@ -1421,7 +1450,7 @@ export default function PropertyDetailsView({
                             },
                             onError: (err: any) => {
                               toast.error(
-                                err?.response?.data?.detail || MESSAGES.MSG_UPLOAD_FAILED,
+                                getApiErrorMessage(err, MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED),
                               );
                               setDocUploadPending(false);
                             },

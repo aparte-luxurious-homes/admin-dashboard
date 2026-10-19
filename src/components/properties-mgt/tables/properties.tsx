@@ -25,7 +25,9 @@ import { getApiErrorMessage, isConflict } from "@/src/lib/apiError";
 import { toast } from "react-hot-toast";
 import { useIsMobile } from "@/src/hooks/useIsMobile";
 import PropertyCard from "../PropertyCard";
+import PropertySourceBadge from "../PropertySourceBadge";
 import PullToRefresh from "../../mobile/PullToRefresh";
+import { isVenue, listingPriceLabel } from "../venue";
 
 type StatusFilter = 'all' | 'verified' | 'unverified';
 
@@ -276,8 +278,13 @@ export default function PropertiesTable() {
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
                                         onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
                                     >
-                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">
-                                            {property?.name ?? '--/--'}
+                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 max-w-xs">
+                                            <div className="truncate">{property?.name ?? '--/--'}</div>
+                                            {property?.source && (
+                                                <div className="mt-1">
+                                                    <PropertySourceBadge source={property.source} />
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">
                                             {property?.property_type ?? '--/--'}
@@ -298,7 +305,9 @@ export default function PropertiesTable() {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
-                                            {property?.units && property.units.length > 0 ? (() => {
+                                            {property?.units && property.units.length > 0 && isVenue(property?.property_type ?? property?.propertyType)
+                                                ? listingPriceLabel(property.units, true)
+                                                : property?.units && property.units.length > 0 ? (() => {
                                                 const prices = property.units.map((u: any) => parseFloat(String(u.price_per_night || u.pricePerNight || 0)));
                                                 const minPrice = Math.min(...prices);
                                                 const maxPrice = Math.max(...prices);

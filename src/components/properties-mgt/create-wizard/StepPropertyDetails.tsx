@@ -21,6 +21,7 @@ import { CreateAmenityForm } from "../all-properties/CreatePropertyView";
 import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
 import { UserRole } from "@/src/lib/enums";
 import { PropertyFormValues } from "./types";
+import { isVenue } from "../venue";
 import { validatePropertyName } from "./nameValidator";
 
 type AddressComponent = {
@@ -228,6 +229,7 @@ export default function StepPropertyDetails({
   const nameError = formik.values.name
     ? validatePropertyName(formik.values.name)
     : null;
+  const venue = isVenue(formik.values.property_type);
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -237,7 +239,10 @@ export default function StepPropertyDetails({
           onClose={() => setShowAmenityForm(false)}
           isOpen={showAmenityForm}
         >
-          <CreateAmenityForm show={setShowAmenityForm} />
+          <CreateAmenityForm
+            show={setShowAmenityForm}
+            defaultScope={venue ? "VENUE" : "STAY"}
+          />
         </CustomModal>
       )}
 
@@ -284,7 +289,15 @@ export default function StepPropertyDetails({
                 formik.setFieldValue("property_type", val)
               }
               options={Object.values(PropertyType)}
-              formatLabel={(val) => val || "Select property type"}
+              formatLabel={(val) =>
+                val
+                  ? val
+                      .toLowerCase()
+                      .split("_")
+                      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+                      .join(" ")
+                  : "Select property type"
+              }
             />
           </div>
           <div className="md:col-span-2 space-y-1.5">
@@ -296,7 +309,11 @@ export default function StepPropertyDetails({
                 id="description"
                 maxLength={300}
                 rows={3}
-                placeholder="Provide a compelling description of this property..."
+                placeholder={
+                  venue
+                    ? "Describe the venue and the events it suits best: weddings, conferences, birthdays..."
+                    : "Provide a compelling description of this property..."
+                }
                 value={formik.values.description}
                 onChange={formik.handleChange}
                 className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-4 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none"
@@ -695,6 +712,7 @@ export default function StepPropertyDetails({
             selected={formik.values.amenities}
             onChange={(val) => formik.setFieldValue("amenities", [...val])}
           />
+          {!venue && (
           <div className="pt-4 mt-4 border-t border-zinc-100 space-y-3">
             <CustomCheckbox
               label="Pets are allowed in this property"
@@ -711,6 +729,7 @@ export default function StepPropertyDetails({
               }
             />
           </div>
+          )}
         </div>
       </div>
 
@@ -745,18 +764,23 @@ export default function StepPropertyDetails({
             icon="solar:document-text-bold-duotone"
             className="text-lg text-primary"
           />
-          Property Rules
+          {venue ? "Venue Rules" : "Property Rules"}
         </h3>
         <p className="text-xs text-zinc-500">
-          Optional. Add any rules or guidelines guests should follow during
-          their stay.
+          {venue
+            ? "Optional. Shown to guests before they pay: what they may and may not do at the venue."
+            : "Optional. Add any rules or guidelines guests should follow during their stay."}
         </p>
         <div className="relative">
           <textarea
             id="rules"
             maxLength={1000}
             rows={4}
-            placeholder="e.g., No loud music after 10pm. No smoking indoors. Check-out by 12pm..."
+            placeholder={
+              venue
+                ? "e.g., Decorations must not be nailed to walls. Outside caterers must register with us. Setup from 7am; tear-down by midnight..."
+                : "e.g., No loud music after 10pm. No smoking indoors. Check-out by 12pm..."
+            }
             value={formik.values.rules}
             onChange={formik.handleChange}
             className="w-full bg-zinc-50 border border-zinc-200 rounded-xl p-4 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none text-sm"

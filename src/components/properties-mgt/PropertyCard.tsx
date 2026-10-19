@@ -6,6 +6,8 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { LuEye, LuTrash2, LuBed, LuBath, LuUsers } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import PropertySourceBadge from "./PropertySourceBadge";
+import { isVenue, listingPriceLabel } from "./venue";
 
 interface PropertyCardProps {
   property: IProperty;
@@ -21,6 +23,7 @@ function formatRange(values: number[]): string {
 }
 
 export default function PropertyCard({ property, onDelete }: PropertyCardProps) {
+  const venue = isVenue(property?.property_type ?? property?.propertyType);
   const router = useRouter();
   const { canDeleteProperty } = usePermissions();
 
@@ -30,13 +33,16 @@ export default function PropertyCard({ property, onDelete }: PropertyCardProps) 
   const minPrice = prices.length ? Math.min(...prices) : 0;
   const maxPrice = prices.length ? Math.max(...prices) : 0;
 
-  const priceLabel = prices.length === 0
-    ? "No units"
-    : minPrice === maxPrice
-      ? `₦${minPrice.toLocaleString()}/night`
-      : `₦${minPrice.toLocaleString()} – ₦${maxPrice.toLocaleString()}/night`;
+  const priceLabel = venue
+    ? listingPriceLabel(property?.units, true)
+    : prices.length === 0
+      ? "No units"
+      : minPrice === maxPrice
+        ? `₦${minPrice.toLocaleString()}/night`
+        : `₦${minPrice.toLocaleString()} – ₦${maxPrice.toLocaleString()}/night`;
 
-  const bedroomLabel = formatRange(
+  // A hall has no bedrooms to count; its capacity is what matters.
+  const bedroomLabel = venue ? "" : formatRange(
     (property?.units ?? []).map((u: any) => Number(u.bedroom_count ?? u.bedroomCount) || 0)
   );
   const bathroomLabel = formatRange(
@@ -71,6 +77,12 @@ export default function PropertyCard({ property, onDelete }: PropertyCardProps) 
           {property?.is_verified ? "Verified" : "Unverified"}
         </span>
       </div>
+
+      {property?.source && (
+        <div className="mb-2">
+          <PropertySourceBadge source={property.source} showExplanation />
+        </div>
+      )}
 
       {(property?.proposed_long_stay_discount_policy || property?.proposed_extension_discount_policy) && (
         <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-medium">

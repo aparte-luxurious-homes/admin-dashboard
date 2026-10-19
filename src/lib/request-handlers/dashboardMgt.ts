@@ -44,6 +44,10 @@ export interface UpcomingBookingItem {
     property_name: string | null;
     unit_name: string | null;
     guest_first_name: string | null;
+    /** Event-centre hires: when the event runs ("HH:MM"); null for stays. */
+    property_type?: string | null;
+    event_start_time?: string | null;
+    event_end_time?: string | null;
     start_date: string;
     end_date: string;
     unit_count: number;
