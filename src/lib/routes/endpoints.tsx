@@ -226,6 +226,14 @@ export const API_ROUTES = {
         // Gold, then Silver with their Gold mentor, then Bronze with both
         // mentors. `format=csv|pdf` downloads it.
         report: `/admin/network/report`,
+        // Monthly team targets: every team head's target vs achieved, set one
+        // (this month or from next month), its history, and a whole team.
+        targets: {
+            base: `/admin/network/targets`,
+            set: (agentId: string) => `/admin/network/targets/${agentId}`,
+            history: (agentId: string) => `/admin/network/targets/${agentId}/history`,
+            tree: (agentId: string) => `/admin/network/targets/${agentId}/tree`,
+        },
         events: {
             base: `/admin/network/events`,
             details: (id: string) => `/admin/network/events/${id}`,
@@ -286,6 +294,8 @@ export const API_ROUTES = {
         // summary of agents on the caller's tier.
         myTeam: `/network/team`,
         peers: `/network/peers`,
+        // The caller's target share, achieved and %, plus their team's.
+        myTargets: `/network/targets/me`,
     },
     // Team lead workspace (Silver / Gold agents with mentees). Read-only;
     // every change is a request an admin approves.
