@@ -22,7 +22,10 @@ import {
     GetTopTeams,
     GetUnassignedAgents,
     ReassignMentor,
+    MONEY_MEASURES,
     ReportParams,
+    TARGET_MEASURES,
+    TargetMeasureKey,
 } from "@/src/lib/request-handlers/teamMgt";
 import { Badge, DataTable, Pager, Panel, SearchBox, Stat, Tabs, ngn, shortDate } from "./ui";
 import { describeRequest, displayValue, fieldLabel } from "./requestText";
@@ -38,6 +41,14 @@ import {
 } from "./commissionSplit";
 
 const SIZE = 20;
+
+const TARGET_SHORT_LABEL: Record<TargetMeasureKey, string> = {
+    referred_count: "Referred bookings",
+    referred_value: "Referred value",
+    listed_booking_count: "Listed bookings",
+    listed_booking_value: "Listed value",
+    verified_listings: "Verified listings",
+};
 
 // ---------------------------------------------------------------------------
 // team requests: queue and review
@@ -314,15 +325,26 @@ const REPORT_COLUMNS = (group: "gold" | "silver" | "bronze") => {
     });
     cols.push(
         { header: "Team (direct / all)", render: (r) => `${r.direct_mentees} / ${r.whole_team}` },
-        { header: "Listed", render: (r) => r.properties_listed },
-        { header: "Verified", render: (r) => r.properties_verified },
-        { header: "Listed & booked", render: (r) => r.listed_properties_booked },
+        { header: "Verified listings", render: (r) => r.verified_listings ?? r.properties_verified },
+        { header: "Lifetime listings booked", render: (r) => `${r.listed_properties_booked} of ${r.lifetime_verified_listings ?? "—"}` },
         { header: "Listed bookings value", render: (r) => `${r.listed_bookings} · ${ngn(r.listed_booking_value)}` },
         { header: "Sign-ups", render: (r) => r.referred_signups },
         { header: "Referral bookings value", render: (r) => `${r.referral_bookings} · ${ngn(r.referral_booking_value)}` },
     );
     return cols;
 };
+
+// With `month`, each row carries the agent's target share, what their part of
+// the team achieved and the %, per measure (services/network/targets.py).
+const TARGET_REPORT_COLUMNS: { header: string; render: (r: any) => any }[] = TARGET_MEASURES.map((m) => ({
+    header: `${TARGET_SHORT_LABEL[m]} (target)`,
+    render: (r: any) => {
+        const money = MONEY_MEASURES.includes(m);
+        const show = (v: any) => (v == null ? "—" : money ? ngn(v) : v);
+        const pct = r[`pct_${m}`];
+        return `${show(r[`achieved_${m}`])} / ${show(r[`target_${m}`])}${pct == null ? "" : ` · ${pct}%`}`;
+    },
+}));
 
 export function NetworkReportView() {
     // Month to date in WAT, the clock the API counts "by date made" on. The
@@ -344,7 +366,7 @@ export function NetworkReportView() {
     return (
         <Panel
             title="Agent network report"
-            subtitle="Gold agents, then Silver agents with their Gold mentor, then Bronze agents with both mentors. Bookings are paid bookings, counted by the date they were made (West Africa Time)."
+            subtitle="Gold agents, then Silver agents with their Gold mentor, then Bronze agents with both mentors. Bookings count only when paid through Aparte (online or wallet), by the date the payment was confirmed (West Africa Time). Listings count once, when first verified."
             actions={<>
                 <button className={btn} disabled={!!downloading} onClick={() => download("csv")}>{downloading === "csv" ? "Preparing…" : "Download CSV"}</button>
                 <button className={btn} disabled={!!downloading} onClick={() => download("pdf")}>{downloading === "pdf" ? "Preparing…" : "Download PDF"}</button>
@@ -358,6 +380,9 @@ export function NetworkReportView() {
                         <option value="">All tiers</option><option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="BRONZE">Bronze</option>
                     </select>
                 </label>
+                <label className="text-xs text-gray-600">Or a whole month, with targets
+                    <input type="month" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.month ?? ""} onChange={(e) => setDraft({ ...draft, month: e.target.value || undefined })} />
+                </label>
                 <button className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium" onClick={() => setParams(draft)}>Apply</button>
                 {params.team_head_id && <button className={btn} onClick={() => { const p = { ...params, team_head_id: undefined }; setParams(p); setDraft(p); }}>Show all teams</button>}
             </div>
@@ -370,7 +395,7 @@ export function NetworkReportView() {
                         rowKey={(r: any) => r.agent_id}
                         onRowClick={group === "gold" ? (r: any) => { const p = { ...params, team_head_id: r.agent_id }; setParams(p); setDraft(p); } : undefined}
                         empty={{ title: `No ${group} agents` }}
-                        columns={REPORT_COLUMNS(group)}
+                        columns={[...REPORT_COLUMNS(group), ...(params.month ? TARGET_REPORT_COLUMNS : [])]}
                     />
                 </div>
             ))}
@@ -421,8 +446,7 @@ export function MyTeamView() {
                     columns={[
                         { header: "Mentee", render: (r: any) => r.name },
                         { header: "Status", render: (r: any) => <Badge value={r.mentorship_status} /> },
-                        { header: "Listed", render: (r: any) => r.properties_listed },
-                        { header: "Verified", render: (r: any) => r.properties_verified },
+                        { header: "Verified listings", render: (r: any) => r.verified_listings ?? r.properties_verified },
                         { header: "Listed bookings", render: (r: any) => `${r.listed_bookings} · ${ngn(r.listed_booking_value)}` },
                         { header: "Referral bookings", render: (r: any) => `${r.referral_bookings} · ${ngn(r.referral_booking_value)}` },
                         { header: "You earned", render: (r: any) => ngn(r.earned_from) },
