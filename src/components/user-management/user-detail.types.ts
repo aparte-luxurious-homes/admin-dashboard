@@ -36,9 +36,18 @@ export interface Wallet {
   currency: string;
 }
 
+export type EmailStatus = "OK" | "BOUNCING" | "UNDELIVERABLE";
+
 export interface UserDetail {
   id: string;
   email: string;
+  /** Whether our emails are reaching this address. "OK" when unknown. */
+  emailStatus: EmailStatus;
+  emailBouncedAt: string | null;
+  /** A plain sentence from the API, e.g. "The mailbox doesn't exist." */
+  emailBounceReason: string | null;
+  /** The full corrected address when a typo is likely. */
+  emailSuggestion: string | null;
   phone: string | null;
   role: string;
   isActive: boolean;
@@ -65,6 +74,13 @@ function str(val: unknown): string | null {
   return typeof val === "string" && val ? val : null;
 }
 
+const EMAIL_STATUSES: readonly EmailStatus[] = ["OK", "BOUNCING", "UNDELIVERABLE"];
+
+export function normalizeEmailStatus(val: unknown): EmailStatus {
+  const upper = typeof val === "string" ? val.toUpperCase() : "";
+  return (EMAIL_STATUSES as readonly string[]).includes(upper) ? (upper as EmailStatus) : "OK";
+}
+
 function normalizeWallet(raw: any): Wallet {
   return {
     id: String(raw.id ?? ""),
@@ -79,6 +95,10 @@ export function normalizeUser(raw: any): UserDetail {
   return {
     id: String(raw.id ?? ""),
     email: raw.email ?? "",
+    emailStatus: normalizeEmailStatus(raw.email_status ?? raw.emailStatus),
+    emailBouncedAt: str(raw.email_bounced_at ?? raw.emailBouncedAt),
+    emailBounceReason: str(raw.email_bounce_reason ?? raw.emailBounceReason),
+    emailSuggestion: str(raw.email_suggestion ?? raw.emailSuggestion),
     phone: str(raw.phone),
     role: typeof raw.role === "string" ? raw.role : raw.role?.value ?? "",
     isActive: raw.isActive ?? raw.is_active ?? false,
