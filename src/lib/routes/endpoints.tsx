@@ -40,8 +40,15 @@ export const API_ROUTES = {
             kycHistory: (id: string | number) => `/admin/users/${id}/kyc/history`,
             uploadKycOnBehalf: (id: string | number) => `/admin/users/${id}/kyc/documents`,
             roles: '/admin/users/roles',
+            /** Re-send transactional emails that failed in the last 7 days. */
+            resendFailedEmails: (id: string | number) => `/admin/users/${id}/email-health/resend`,
         },
         kycQueue: '/admin/kyc/queue',
+        /** Bounced / undeliverable addresses (perm users.view_email_health). */
+        emailHealth: {
+            base: '/admin/email-health',
+            summary: '/admin/email-health/summary',
+        },
         integrations: {
             configs: '/admin/integrations/configs',
             configByKey: (key: string) => `/admin/integrations/configs/${key}`,
@@ -193,6 +200,10 @@ export const API_ROUTES = {
         base: '/wallets/payments',
         details: (paymentId: string) => `/wallets/payments/${paymentId}`,
         validate: (paymentId: string) => `/wallets/payments/${paymentId}/validate`,
+    },
+    utils: {
+        /** Typo suggestion + MX check for an address. Auth optional. */
+        emailCheck: '/utils/email-check',
     },
     statistic: {
         base: '/stats',
