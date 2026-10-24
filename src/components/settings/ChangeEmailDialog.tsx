@@ -203,7 +203,6 @@ const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                             inputMode="numeric"
                             autoComplete="one-time-code"
                             autoFocus
-                            maxLength={EMAIL_CODE_LENGTH + 4}
                             value={code}
                             onChange={(e) => {
                                 setCode(sanitizeEmailCode(e.target.value));
