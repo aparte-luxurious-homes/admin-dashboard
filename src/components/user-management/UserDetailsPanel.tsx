@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { UserDetail } from "./user-detail.types";
 import { useAuth } from "@/src/hooks/useAuth";
-import { canViewEmailHealth } from "@/src/lib/request-handlers/emailHealthMgt";
+import { canFixEmail, canViewEmailHealth } from "@/src/lib/request-handlers/emailHealthMgt";
 import FixEmailDialog from "./email-health/FixEmailDialog";
 import { formatBounceDate } from "./email-health/EmailHealthChip";
 
@@ -25,11 +25,13 @@ function Field({ label, value }: { label: string; value: string | null }) {
 
 /**
  * The email field, plus — for staff, when our emails are bouncing off it —
- * why, since when, and a "Fix email" button.
+ * why and since when. The "Fix email" button is narrower than the badge:
+ * SUPPORT_ADMIN sees the problem but cannot change the address (canFixEmail).
  */
 function EmailField({ user, onUpdated }: { user: UserDetail; onUpdated?: () => void }) {
   const { user: viewer } = useAuth();
   const [isFixOpen, setIsFixOpen] = useState(false);
+  const mayFix = canFixEmail(viewer?.role);
   const bouncing =
     canViewEmailHealth(viewer?.role) &&
     (user.emailStatus === "BOUNCING" || user.emailStatus === "UNDELIVERABLE");
@@ -48,14 +50,16 @@ function EmailField({ user, onUpdated }: { user: UserDetail; onUpdated?: () => v
         <p className={`text-sm font-medium break-all ${undeliverable ? "text-red-700" : "text-amber-700"}`}>
           {user.email || "--/--"}
         </p>
-        <button
-          type="button"
-          onClick={() => setIsFixOpen(true)}
-          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
-        >
-          <Icon icon="mdi:email-edit-outline" className="w-3.5 h-3.5" />
-          Fix email
-        </button>
+        {mayFix && (
+          <button
+            type="button"
+            onClick={() => setIsFixOpen(true)}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
+          >
+            <Icon icon="mdi:email-edit-outline" className="w-3.5 h-3.5" />
+            Fix email
+          </button>
+        )}
       </div>
       <p className="text-xs text-gray-600">
         Emails to this address aren&apos;t arriving.
@@ -65,16 +69,18 @@ function EmailField({ user, onUpdated }: { user: UserDetail; onUpdated?: () => v
       {user.emailSuggestion && (
         <p className="text-xs text-amber-700">Did they mean {user.emailSuggestion}?</p>
       )}
-      <FixEmailDialog
-        isOpen={isFixOpen}
-        onClose={() => setIsFixOpen(false)}
-        userId={user.id}
-        userLabel={fullName}
-        currentEmail={user.email}
-        suggestion={user.emailSuggestion}
-        reason={user.emailBounceReason}
-        onFixed={onUpdated}
-      />
+      {mayFix && (
+        <FixEmailDialog
+          isOpen={isFixOpen}
+          onClose={() => setIsFixOpen(false)}
+          userId={user.id}
+          userLabel={fullName}
+          currentEmail={user.email}
+          suggestion={user.emailSuggestion}
+          reason={user.emailBounceReason}
+          onFixed={onUpdated}
+        />
+      )}
     </div>
   );
 }

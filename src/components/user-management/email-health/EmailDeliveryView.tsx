@@ -9,7 +9,9 @@ import TablePagination from "@/src/components/TablePagination";
 import { useTableState } from "@/src/hooks/useTableState";
 import { getApiErrorMessage } from "@/src/lib/apiError";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import { useAuth } from "@/src/hooks/useAuth";
 import {
+    canFixEmail,
     EmailHealthItem,
     EmailStatus,
     GetEmailHealthList,
@@ -74,6 +76,9 @@ const EmailDeliveryView: React.FC = () => {
     });
     const summary = GetEmailHealthSummary();
     const resend = ResendFailedEmails();
+    // SUPPORT_ADMIN sees the list and can Resend, but cannot change an address.
+    const { user: viewer } = useAuth();
+    const mayFix = canFixEmail(viewer?.role);
 
     const [fixing, setFixing] = useState<EmailHealthItem | null>(null);
     const [resendingId, setResendingId] = useState<string | null>(null);
@@ -117,7 +122,7 @@ const EmailDeliveryView: React.FC = () => {
                     <h3 className="font-semibold text-lg">Email delivery</h3>
                     <p className="text-sm text-gray-500">
                         People whose emails aren&apos;t arriving, usually because of a mistyped address.
-                        Fix the address and their recent emails are re-sent.
+                        Fixing the address re-sends their recent failed emails.
                     </p>
                 </div>
                 <button
@@ -273,14 +278,16 @@ const EmailDeliveryView: React.FC = () => {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex justify-end gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setFixing(it)}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-primary rounded-lg hover:bg-primary/90 whitespace-nowrap"
-                                                    >
-                                                        <Icon icon="mdi:email-edit-outline" className="w-4 h-4" />
-                                                        Fix email
-                                                    </button>
+                                                    {mayFix && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFixing(it)}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-primary rounded-lg hover:bg-primary/90 whitespace-nowrap"
+                                                        >
+                                                            <Icon icon="mdi:email-edit-outline" className="w-4 h-4" />
+                                                            Fix email
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         onClick={() => onResend(it)}
@@ -316,7 +323,7 @@ const EmailDeliveryView: React.FC = () => {
                 )}
             </div>
 
-            {fixing && (
+            {mayFix && fixing && (
                 <FixEmailDialog
                     isOpen={!!fixing}
                     onClose={() => setFixing(null)}
