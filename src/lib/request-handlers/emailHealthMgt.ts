@@ -84,7 +84,7 @@ enum EmailHealthKeys {
  * The API wraps most payloads in CustomResponse (`{ data: ... }`) but not all.
  * Accept either so a backend envelope change cannot blank these screens.
  */
-function unwrap<T>(body: unknown, probe: string): T {
+export function unwrap<T>(body: unknown, probe: string): T {
     const outer = body as Record<string, unknown> | null | undefined;
     const inner = outer?.data as Record<string, unknown> | null | undefined;
     if (inner && typeof inner === "object" && probe in inner) return inner as T;

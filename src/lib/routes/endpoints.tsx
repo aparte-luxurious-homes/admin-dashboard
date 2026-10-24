@@ -83,6 +83,10 @@ export const API_ROUTES = {
         kycDocuments: '/profile/kyc/documents',
         // A GUEST account switching itself to OWNER or AGENT (login screen).
         accountType: '/profile/account-type',
+        // Self-service email change: POST sends a code to the new address,
+        // DELETE cancels the pending change, confirm switches it.
+        emailChange: '/profile/email/change',
+        emailConfirm: '/profile/email/confirm',
         kyc: {
             upload: '/kyc/upload',
             details: (docId: string | number) => `/kyc/${docId}/details`,

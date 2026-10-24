@@ -48,6 +48,8 @@ export interface UserDetail {
   emailBounceReason: string | null;
   /** The full corrected address when a typo is likely. */
   emailSuggestion: string | null;
+  /** An address they asked to move to and have not confirmed yet. */
+  pendingEmail?: string | null;
   phone: string | null;
   role: string;
   isActive: boolean;
@@ -99,6 +101,7 @@ export function normalizeUser(raw: any): UserDetail {
     emailBouncedAt: str(raw.email_bounced_at ?? raw.emailBouncedAt),
     emailBounceReason: str(raw.email_bounce_reason ?? raw.emailBounceReason),
     emailSuggestion: str(raw.email_suggestion ?? raw.emailSuggestion),
+    pendingEmail: str(raw.pending_email ?? raw.pendingEmail),
     phone: str(raw.phone),
     role: typeof raw.role === "string" ? raw.role : raw.role?.value ?? "",
     isActive: raw.isActive ?? raw.is_active ?? false,
