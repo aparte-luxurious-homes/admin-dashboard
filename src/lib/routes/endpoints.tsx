@@ -42,6 +42,8 @@ export const API_ROUTES = {
             roles: '/admin/users/roles',
             /** Re-send transactional emails that failed in the last 7 days. */
             resendFailedEmails: (id: string | number) => `/admin/users/${id}/email-health/resend`,
+            /** Correct a bouncing address (perm users.fix_email). Resends failed emails itself. */
+            fixEmail: (id: string | number) => `/admin/users/${id}/email`,
         },
         kycQueue: '/admin/kyc/queue',
         /** Bounced / undeliverable addresses (perm users.view_email_health). */

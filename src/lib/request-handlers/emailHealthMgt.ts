@@ -29,6 +29,22 @@ export function canViewEmailHealth(role: string | null | undefined): boolean {
     return EMAIL_HEALTH_ROLES.includes(role as UserRole);
 }
 
+/**
+ * Who may CHANGE an address. Mirrors users.fix_email on the API: changing
+ * someone's email is an account-takeover lever, so SUPPORT_ADMIN stays
+ * review-only here, as it is for NIN/BVN. Support keeps the badge, the list
+ * and Resend.
+ */
+export const FIX_EMAIL_ROLES: readonly UserRole[] = [
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.OPERATIONS_ADMIN,
+];
+
+export function canFixEmail(role: string | null | undefined): boolean {
+    return FIX_EMAIL_ROLES.includes(role as UserRole);
+}
+
 export interface EmailHealthAgent {
     id: string;
     name: string | null;
@@ -161,23 +177,49 @@ export function ResendFailedEmails() {
     });
 }
 
+export interface FixEmailResult {
+    email: string;
+    email_status: EmailStatus;
+    email_bounced_at: string | null;
+    email_bounce_reason: string | null;
+    email_suggestion: string | null;
+    /** Failed emails from the last 7 days the API re-sent to the new address. */
+    resent: number;
+}
+
 /**
- * Change only the user's email through the existing admin update endpoint.
- * The API's UserUpdate is all-optional, so sending `{ email }` alone leaves
- * every other field as it is. On an email change the backend resets the
- * bounce state and re-sends the last 7 days of failed emails itself.
+ * Correct a bouncing address: `PATCH /admin/users/{id}/email`. The API resets
+ * the bounce state, reactivates the address with Postmark and re-sends the
+ * failed emails in the same call, so no separate Resend is needed after it.
  */
-export function UpdateUserEmail() {
+export function FixUserEmail() {
     const invalidate = useInvalidateEmailHealth();
     return useMutation({
         mutationFn: async ({ userId, email }: { userId: string; email: string }) => {
-            const res = await axiosRequest.put(API_ROUTES.admin.users.userByUuid(userId), {
+            const res = await axiosRequest.patch(API_ROUTES.admin.users.fixEmail(userId), {
                 email: email.trim(),
             });
-            return res?.data;
+            const body = unwrap<FixEmailResult>(res?.data, "resent");
+            return { ...body, resent: Number(body?.resent ?? 0) } as FixEmailResult;
         },
         onSuccess: invalidate,
     });
+}
+
+/** A plain sentence for each way the fix-email route can refuse. */
+export function fixEmailErrorMessage(error: unknown): string | null {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    switch (status) {
+        case 409:
+            return "Another account already uses that email address.";
+        case 400:
+        case 422:
+            return "That doesn't look like a valid email address.";
+        case 403:
+            return "Your role can't change email addresses. Ask an admin or operations admin.";
+        default:
+            return null;
+    }
 }
 
 /** `value`, but only after it has stopped changing for `ms`. */
