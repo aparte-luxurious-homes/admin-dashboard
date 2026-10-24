@@ -69,7 +69,14 @@ const FixEmailDialog: React.FC<FixEmailDialogProps> = ({
             toast.success("Email updated.");
             setSavedEmail(trimmed);
         } catch (error) {
-            toast.error(getApiErrorMessage(error, "Couldn't update the email."));
+            // The update rides users.update, which not every role that can SEE
+            // email health holds (support staff usually don't).
+            const status = (error as { response?: { status?: number } })?.response?.status;
+            toast.error(
+                status === 403
+                    ? "Your role can't change email addresses. Ask an admin to make this fix."
+                    : getApiErrorMessage(error, "Couldn't update the email.")
+            );
         }
     };
 
