@@ -18,6 +18,11 @@ import { IoCopyOutline, IoCheckmarkOutline } from "react-icons/io5";
 import KycVerification from "@/src/components/settings/KycVerification";
 import { humanizeProfileField } from "@/src/components/shared/IncompleteProfileDialog";
 import { UserRole } from "@/src/lib/enums";
+import ChangeEmailDialog from "@/src/components/settings/ChangeEmailDialog";
+import EmailHealthChip, { formatBounceDate } from "@/src/components/user-management/email-health/EmailHealthChip";
+import { normalizeEmailStatus } from "@/src/components/user-management/user-detail.types";
+import { CancelEmailChange } from "@/src/lib/request-handlers/emailChangeMgt";
+import { emailChangeError } from "@/src/lib/email-change";
 
 // KYC verification is self-serve for AGENT/OWNER/GUEST. Admin roles' identity
 // is vetted during onboarding, so we don't render the upload widget for them.
@@ -101,6 +106,20 @@ const PersonalInfoPage = () => {
   }, []);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
+  const cancelEmailChange = CancelEmailChange();
+
+  // useAuth's query is gated by `enabled: !!token && !user`, so invalidating
+  // it alone won't refetch: push fresh data into Redux and the query cache.
+  const refreshUser = async () => {
+    try {
+      const fresh = await fetchUser();
+      dispatch(setUser(fresh));
+      queryClient.setQueryData(["authUser"], fresh);
+    } catch {
+      // Best-effort — next poll interval will catch up.
+    }
+  };
   // Controlled form state — single source of truth. Synced from `user` via
   // the effect below so the form rehydrates when React Query refetches.
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -131,7 +150,8 @@ const PersonalInfoPage = () => {
   const handleEditProfile = () => {
     setIsEditing(true);
     const formData = new FormData();
-    // Skip email (server-side disabled) and empty fields so the partial
+    // Skip email (changed only through the verified flow; PUT /profile
+    // refuses a different address) and empty fields so the partial
     // update doesn't blank out columns the user didn't touch.
     (Object.entries(form) as [keyof FormState, string][]).forEach(([key, value]) => {
       if (key === "email") return;
@@ -150,17 +170,9 @@ const PersonalInfoPage = () => {
           duration: 3000,
           style: { maxWidth: "500px", width: "max-content" },
         });
-        // useAuth's query is gated by `enabled: !!token && !user`, so
-        // invalidate alone won't refetch — push fresh data into Redux
-        // explicitly so the form (and missingProfileFields) reflect the
-        // values the server just persisted.
-        try {
-          const fresh = await fetchUser();
-          dispatch(setUser(fresh));
-          queryClient.setQueryData(["authUser"], fresh);
-        } catch {
-          // Best-effort — next poll interval will catch up.
-        }
+        // So the form (and missingProfileFields) reflect what the server
+        // just persisted.
+        await refreshUser();
       })
       .catch((err) => {
         setIsEditing(false);
@@ -183,6 +195,16 @@ const PersonalInfoPage = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleCancelEmailChange = async () => {
+    try {
+      await cancelEmailChange.mutateAsync();
+      toast.success("Email change cancelled.");
+      await refreshUser();
+    } catch (err) {
+      toast.error(emailChangeError(err, "request").message);
+    }
+  };
+
   if (!user) {
     return (
       <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[400px] flex items-center justify-center">
@@ -193,6 +215,14 @@ const PersonalInfoPage = () => {
     );
   }
 
+  const pendingEmail = user.pending_email ?? user.pendingEmail ?? null;
+  const emailStatus = normalizeEmailStatus(user.email_status ?? user.emailStatus);
+  const emailBouncing = emailStatus === "BOUNCING" || emailStatus === "UNDELIVERABLE";
+  const bounceReason = user.email_bounce_reason ?? user.emailBounceReason ?? null;
+  const bouncedAt = user.email_bounced_at ?? user.emailBouncedAt ?? null;
+  const bounceSince = formatBounceDate(bouncedAt);
+  const emailSuggestion = user.email_suggestion ?? user.emailSuggestion ?? null;
+
   return (
     <>
       <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md">
@@ -202,6 +232,43 @@ const PersonalInfoPage = () => {
           link_one="/settings"
           link_one_name="Settings"
         />
+
+        {/* Bounce alerts link here: say what is wrong and offer the fix. */}
+        {emailBouncing && (
+          <div
+            className={`mt-4 mb-2 border rounded-lg p-4 ${
+              emailStatus === "UNDELIVERABLE"
+                ? "border-red-200 bg-red-50 text-red-900"
+                : "border-amber-300 bg-amber-50 text-amber-900"
+            }`}
+            role="status"
+          >
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <EmailHealthChip status={emailStatus} bouncedAt={bouncedAt} reason={bounceReason} />
+            </div>
+            <p className="font-semibold mb-1">
+              Our emails aren&apos;t reaching <span className="break-all">{user.email}</span>.
+            </p>
+            <p className="text-sm">
+              {bounceReason ? `${bounceReason} ` : ""}
+              {bounceSince ? `Since ${bounceSince}. ` : ""}
+              Booking updates, receipts and security codes are sent to this address. Change it to one
+              you check.
+            </p>
+            {emailSuggestion && (
+              <p className="text-sm mt-1">
+                Did you mean <span className="font-semibold break-all">{emailSuggestion}</span>?
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsChangeEmailOpen(true)}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-primary rounded-lg hover:bg-primary/90"
+            >
+              {pendingEmail ? "Enter your code" : "Change email"}
+            </button>
+          </div>
+        )}
 
         {fromIncomplete && missingFields.length > 0 && (
           <div className="mt-4 mb-2 border border-amber-300 bg-amber-50 text-amber-900 rounded-lg p-4">
@@ -253,6 +320,41 @@ const PersonalInfoPage = () => {
                 inputType="email"
                 inputName="email"
               />
+              {/* Read-only above: a new address must prove it receives mail first. */}
+              {pendingEmail ? (
+                <div className="mt-2 p-3 rounded-lg border border-blue-100 bg-blue-50 text-sm text-blue-900">
+                  <p>
+                    Waiting for you to confirm{" "}
+                    <span className="font-semibold break-all">{pendingEmail}</span>. We sent a 6-digit
+                    code there.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsChangeEmailOpen(true)}
+                      className="font-semibold text-primary underline underline-offset-2"
+                    >
+                      Enter code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleCancelEmailChange()}
+                      disabled={cancelEmailChange.isPending}
+                      className="text-gray-600 hover:text-red-600 underline underline-offset-2 disabled:opacity-50"
+                    >
+                      Cancel change
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsChangeEmailOpen(true)}
+                  className="mt-2 text-sm font-semibold text-primary underline underline-offset-2"
+                >
+                  Change email
+                </button>
+              )}
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
               <InputGroup
@@ -330,6 +432,16 @@ const PersonalInfoPage = () => {
           </div>
         </div>
       </div>
+
+      {isChangeEmailOpen && (
+        <ChangeEmailDialog
+          onClose={() => setIsChangeEmailOpen(false)}
+          currentEmail={user.email}
+          pendingEmail={pendingEmail}
+          suggestion={emailBouncing ? emailSuggestion : null}
+          onChanged={() => void refreshUser()}
+        />
+      )}
 
       {showKyc && (
         <div
