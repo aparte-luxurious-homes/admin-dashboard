@@ -29,21 +29,8 @@ export function canViewEmailHealth(role: string | null | undefined): boolean {
     return EMAIL_HEALTH_ROLES.includes(role as UserRole);
 }
 
-/**
- * Who may CHANGE an address. Mirrors users.fix_email on the API: changing
- * someone's email is an account-takeover lever, so SUPPORT_ADMIN stays
- * review-only here, as it is for NIN/BVN. Support keeps the badge, the list
- * and Resend.
- */
-export const FIX_EMAIL_ROLES: readonly UserRole[] = [
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.OPERATIONS_ADMIN,
-];
-
-export function canFixEmail(role: string | null | undefined): boolean {
-    return FIX_EMAIL_ROLES.includes(role as UserRole);
-}
+// Who may change whose address lives in a pure module so it is unit-tested.
+export { FIX_EMAIL_ROLES, canFixEmail, canFixEmailFor, fixEmailErrorMessage } from "../email-access";
 
 export interface EmailHealthAgent {
     id: string;
@@ -204,22 +191,6 @@ export function FixUserEmail() {
         },
         onSuccess: invalidate,
     });
-}
-
-/** A plain sentence for each way the fix-email route can refuse. */
-export function fixEmailErrorMessage(error: unknown): string | null {
-    const status = (error as { response?: { status?: number } })?.response?.status;
-    switch (status) {
-        case 409:
-            return "Another account already uses that email address.";
-        case 400:
-        case 422:
-            return "That doesn't look like a valid email address.";
-        case 403:
-            return "Your role can't change email addresses. Ask an admin or operations admin.";
-        default:
-            return null;
-    }
 }
 
 /** `value`, but only after it has stopped changing for `ms`. */

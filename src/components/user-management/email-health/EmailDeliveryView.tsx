@@ -12,6 +12,7 @@ import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { useAuth } from "@/src/hooks/useAuth";
 import {
     canFixEmail,
+    canFixEmailFor,
     EmailHealthItem,
     EmailStatus,
     GetEmailHealthList,
@@ -76,7 +77,8 @@ const EmailDeliveryView: React.FC = () => {
     });
     const summary = GetEmailHealthSummary();
     const resend = ResendFailedEmails();
-    // SUPPORT_ADMIN sees the list and can Resend, but cannot change an address.
+    // SUPPORT_ADMIN sees the list and can Resend, but cannot change an address;
+    // only a SUPER_ADMIN may change a staff account's (canFixEmailFor, per row).
     const { user: viewer } = useAuth();
     const mayFix = canFixEmail(viewer?.role);
 
@@ -278,7 +280,7 @@ const EmailDeliveryView: React.FC = () => {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex justify-end gap-2">
-                                                    {mayFix && (
+                                                    {canFixEmailFor(viewer?.role, it.role) && (
                                                         <button
                                                             type="button"
                                                             onClick={() => setFixing(it)}

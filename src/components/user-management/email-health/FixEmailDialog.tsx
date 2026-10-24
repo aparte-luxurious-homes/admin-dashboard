@@ -28,7 +28,7 @@ interface FixEmailDialogProps {
  *
  * One step: the API resets the bounce state, reactivates the address with
  * Postmark and re-sends the last 7 days of failed emails in the same call,
- * and reports how many it re-sent. Render only for canFixEmail() roles; the
+ * and reports how many it re-sent. Render only where canFixEmailFor() allows; the
  * route is gated on users.fix_email, which SUPPORT_ADMIN does not hold.
  */
 const FixEmailDialog: React.FC<FixEmailDialogProps> = ({

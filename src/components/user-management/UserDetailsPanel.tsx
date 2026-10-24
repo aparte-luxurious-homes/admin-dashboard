@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { UserDetail } from "./user-detail.types";
 import { useAuth } from "@/src/hooks/useAuth";
-import { canFixEmail, canViewEmailHealth } from "@/src/lib/request-handlers/emailHealthMgt";
+import { canFixEmailFor, canViewEmailHealth } from "@/src/lib/request-handlers/emailHealthMgt";
 import FixEmailDialog from "./email-health/FixEmailDialog";
 import { formatBounceDate } from "./email-health/EmailHealthChip";
 
@@ -26,12 +26,13 @@ function Field({ label, value }: { label: string; value: string | null }) {
 /**
  * The email field, plus — for staff, when our emails are bouncing off it —
  * why and since when. The "Fix email" button is narrower than the badge:
- * SUPPORT_ADMIN sees the problem but cannot change the address (canFixEmail).
+ * SUPPORT_ADMIN sees the problem but cannot change the address, and only a
+ * SUPER_ADMIN may change a staff account's address (canFixEmailFor).
  */
 function EmailField({ user, onUpdated }: { user: UserDetail; onUpdated?: () => void }) {
   const { user: viewer } = useAuth();
   const [isFixOpen, setIsFixOpen] = useState(false);
-  const mayFix = canFixEmail(viewer?.role);
+  const mayFix = canFixEmailFor(viewer?.role, user.role);
   const bouncing =
     canViewEmailHealth(viewer?.role) &&
     (user.emailStatus === "BOUNCING" || user.emailStatus === "UNDELIVERABLE");
