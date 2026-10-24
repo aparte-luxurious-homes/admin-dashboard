@@ -48,6 +48,7 @@ import EventHirePicker, {
   hireIsComplete,
 } from "./EventHirePicker";
 import { GetBookingQuote } from "@/src/lib/request-handlers/bookingMgt";
+import EmailSuggestion from "@/src/components/shared/EmailSuggestion";
 import { headlineUnitLabel, isVenue } from "../../properties-mgt/venue";
 
 /** "10:00–13:00 (3 hours)", "Morning session" or "2 days". */
@@ -1087,6 +1088,14 @@ export default function CreateBookingView() {
                                 </div>
                               )}
                           </div>
+                          {/* The booking confirmation goes to this address;
+                              catch gnail.com before it bounces. Warn only. */}
+                          <EmailSuggestion
+                            email={formik.values.guest_email}
+                            onApply={(suggested) =>
+                              handleNewGuestFieldChange("guest_email", suggested)
+                            }
+                          />
                         </div>
                         <div className="space-y-1">
                           <label className="text-xs font-semibold text-zinc-500 uppercase">
