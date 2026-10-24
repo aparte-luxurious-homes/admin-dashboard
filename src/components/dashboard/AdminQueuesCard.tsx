@@ -8,6 +8,11 @@ import {
   QueueSummary,
 } from "@/src/lib/request-handlers/dashboardMgt";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import { useAuth } from "@/src/hooks/useAuth";
+import {
+  canViewEmailHealth,
+  GetEmailHealthSummary,
+} from "@/src/lib/request-handlers/emailHealthMgt";
 
 interface QueueRowProps {
   icon: string;
@@ -75,6 +80,59 @@ const QueueRow = ({
   );
 };
 
+/**
+ * Undeliverable email addresses. Hidden unless the summary actually loads:
+ * a 403 (no users.view_email_health) or 404 (API not deployed yet) means
+ * the tile has nothing to say, not that the dashboard is broken.
+ */
+const UndeliverableEmailsRow = () => {
+  const { user } = useAuth();
+  const allowed = canViewEmailHealth(user?.role);
+  const { data, isError } = GetEmailHealthSummary(allowed);
+  if (!allowed || isError || !data) return null;
+
+  const { undeliverable, bouncing } = data;
+  return (
+    <Link
+      href={PAGE_ROUTES.dashboard.userManagement.emailDelivery.base}
+      className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 transition-colors group"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-rose-600 bg-rose-50">
+          <Icon icon="solar:letter-unread-bold-duotone" className="w-5 h-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-gray-800 truncate">
+            Undeliverable emails
+          </div>
+          {undeliverable > 0 || bouncing > 0 ? (
+            <div className="text-xs text-gray-500">
+              {bouncing > 0
+                ? `${bouncing} more bouncing`
+                : "Fix the address to resend"}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-400">Up to date</div>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span
+          className={`text-2xl font-bold ${
+            undeliverable === 0 ? "text-gray-300" : "text-red-600"
+          }`}
+        >
+          {undeliverable}
+        </span>
+        <Icon
+          icon="mdi:chevron-right"
+          className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors"
+        />
+      </div>
+    </Link>
+  );
+};
+
 const AdminQueuesCard = () => {
   const { data, isLoading } = GetAdminQueues();
 
@@ -131,6 +189,7 @@ const AdminQueuesCard = () => {
             summary={data?.booking_requests}
             accentColor="text-amber-600 bg-amber-50"
           />
+          <UndeliverableEmailsRow />
         </div>
       )}
     </div>
