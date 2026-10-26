@@ -12,7 +12,10 @@ import {
   RetryBookingPayment,
   ResendPaymentLink,
   ReconcileBookingPayment,
+  PayBookingWithWallet,
 } from "@/src/lib/request-handlers/bookingMgt";
+import { GetMyWallet } from "@/src/lib/request-handlers/financeMgt";
+import { getApiErrorMessage } from "@/src/lib/apiError";
 import { usePermissions } from "@/src/hooks/usePermissions";
 import { NormalizedBooking, getStatusColors } from "./utils";
 
@@ -58,6 +61,37 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
     RECONCILE_ROLES.has(role) &&
     (booking.status === BookingStatus.PENDING ||
       booking.status === BookingStatus.PENDING_PAYMENT);
+
+  // Agents can settle an unpaid booking from their own wallet. The API also
+  // requires them to have made the booking or be the property's agent.
+  const canPayFromWallet = role === UserRole.AGENT && canResend;
+  const { wallet: myWallet, balance: walletBalance } = GetMyWallet(canPayFromWallet);
+  const { mutate: payWithWallet, isPending: isPayingWithWallet } = PayBookingWithWallet();
+  const [walletConfirmOpen, setWalletConfirmOpen] = useState(false);
+  // A wallet payment carries no gateway fee: the charge is the booking total.
+  const walletCharge = booking.totalPrice;
+  const walletShort = !myWallet || walletBalance < walletCharge;
+
+  const handlePayFromWallet = () => {
+    payWithWallet(
+      { bookingId: booking.id },
+      {
+        onSuccess: () => {
+          setWalletConfirmOpen(false);
+          toast.success(
+            `Paid ${formatMoney(walletCharge)} from your wallet. Booking confirmed.`,
+            { duration: 6000 },
+          );
+        },
+        onError: (error: unknown) => {
+          toast.error(getApiErrorMessage(error, "Wallet payment failed"), {
+            duration: 8000,
+            style: { maxWidth: "420px" },
+          });
+        },
+      },
+    );
+  };
 
   const [reconcileOpen, setReconcileOpen] = useState(false);
   const [reconcileProvider, setReconcileProvider] = useState<ReconcileProvider | "">("");
@@ -331,6 +365,56 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
                 gateway URL and emails + SMSes the guest. */}
             {canResend && (
               <div className={`${canRetry ? "mt-2" : "mt-4 pt-4 border-t border-zinc-200"}`}>
+                {canPayFromWallet && (
+                  <div className="mb-3">
+                    {!walletConfirmOpen ? (
+                      <button
+                        onClick={() => setWalletConfirmOpen(true)}
+                        disabled={isPayingWithWallet || walletShort}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-primary text-white rounded-lg text-xs sm:text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Icon icon="solar:wallet-money-bold" className="text-base" />
+                        <span>Pay from my wallet</span>
+                      </button>
+                    ) : (
+                      <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg space-y-2">
+                        <p className="text-xs sm:text-sm text-teal-900">
+                          Pay <strong>{formatMoney(walletCharge)}</strong> from your
+                          wallet and confirm this booking? Any payment link the
+                          guest was sent stops working.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handlePayFromWallet}
+                            disabled={isPayingWithWallet}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary text-white rounded-lg text-xs sm:text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                          >
+                            <Icon
+                              icon={isPayingWithWallet ? "mdi:loading" : "mdi:check"}
+                              className={`text-base ${isPayingWithWallet ? "animate-spin" : ""}`}
+                            />
+                            <span>{isPayingWithWallet ? "Paying..." : "Confirm payment"}</span>
+                          </button>
+                          <button
+                            onClick={() => setWalletConfirmOpen(false)}
+                            disabled={isPayingWithWallet}
+                            className="px-3 py-2 bg-white border border-zinc-300 text-zinc-700 rounded-lg text-xs sm:text-sm hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[10px] sm:text-xs text-zinc-500 mt-1.5 text-center">
+                      {!myWallet
+                        ? "You don't have a wallet yet"
+                        : walletShort
+                          ? `Balance ${formatMoney(walletBalance)} doesn't cover ${formatMoney(walletCharge)}`
+                          : `Balance ${formatMoney(walletBalance)} · no processing fee`}
+                    </p>
+                  </div>
+                )}
+
                 <button
                   onClick={handlePayOnBehalf}
                   disabled={isResending}

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
+import { FinanceRequestKeys } from "./financeMgt";
 import {
   ICreateBooking,
   IUpdateBooking,
@@ -198,6 +199,8 @@ export function CreateBooking() {
       queryClient.invalidateQueries({
         queryKey: [BookingRequestKeys.getAllBookings],
       });
+      // A booking paid from the agent's wallet changed their balance.
+      queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.myWallet] });
     },
   });
 }
@@ -319,6 +322,30 @@ export function ResendPaymentLink() {
       queryClient.invalidateQueries({
         queryKey: [BookingRequestKeys.getBookingDetails],
       });
+    },
+  });
+}
+
+/**
+ * Agent pays a PENDING booking from their own wallet. Charges the booking
+ * total with no gateway fee, confirms it, and retires any payment link the
+ * guest was sent so they can't pay twice.
+ */
+export function PayBookingWithWallet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/pay-with-wallet`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+      queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.myWallet] });
     },
   });
 }

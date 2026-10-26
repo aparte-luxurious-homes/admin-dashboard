@@ -48,7 +48,9 @@ import EventHirePicker, {
   hireIsComplete,
 } from "./EventHirePicker";
 import { GetBookingQuote } from "@/src/lib/request-handlers/bookingMgt";
+import { GetMyWallet } from "@/src/lib/request-handlers/financeMgt";
 import { headlineUnitLabel, isVenue } from "../../properties-mgt/venue";
+import { BookingMode } from "../../properties-mgt/types";
 
 /** "10:00–13:00 (3 hours)", "Morning session" or "2 days". */
 function describeHire(hire: EventHire, quote: any): string {
@@ -77,6 +79,9 @@ export default function CreateBookingView() {
   // payment or pick offline methods. Backend rejects regardless; we hide the
   // controls so the UI doesn't offer choices that 403.
   const isAgent = user?.role === UserRole.AGENT;
+  // Agents can pay from their own wallet instead of sending a link.
+  const { wallet: myWallet, balance: walletBalance, isLoading: walletLoading } =
+    GetMyWallet(isAgent);
 
   // State
   const [guestSearchInput, setGuestSearchInput] = useState<string>("");
@@ -172,6 +177,9 @@ export default function CreateBookingView() {
       // also generates the link regardless; this just controls email + SMS
       // notification.
       send_payment_link: isAgent,
+      // Agents only: pay now from the agent's own wallet instead of sending
+      // the guest a payment link (payment_method "wallet").
+      pay_from_wallet: false,
       referral_code: "",
       // Onboarding fields
       guest_first_name: "",
@@ -254,11 +262,21 @@ export default function CreateBookingView() {
         return;
       }
 
+      if (paysFromWallet && isRequestToBook) {
+        toast.error(
+          "This property takes booking requests. Send a payment link, or pay from your wallet on the booking page once the owner approves.",
+        );
+        return;
+      }
+
+      const { pay_from_wallet: _payFromWallet, ...formValues } = values;
       const payload = {
-        ...values,
+        ...formValues,
         // An unpaid booking with a payment link is paid ONLINE; recording the
         // form's default "cash" on it misfiled it as an offline booking.
         payment_method: effectivePaymentMethod,
+        // Paid now from the agent's wallet: nobody needs a link.
+        send_payment_link: paysFromWallet ? false : values.send_payment_link,
         // For an existing guest with no phone on file, send the number the
         // desk confirmed so the API records it on their account.
         guest_phone: isNewGuest
@@ -303,14 +321,19 @@ export default function CreateBookingView() {
         },
         {
           onSuccess: (values) => {
-            toast.success(MESSAGES.MSG_BOOKING_CREATED_SUCCESSFULLY, {
-              duration: 6000,
-              style: {
-                maxWidth: "500px",
-                width: "max-content",
-              },
-            });
             const data = values?.data?.data;
+            toast.success(
+              data?.wallet_payment
+                ? `Booking confirmed and paid from your wallet (${formatMoney(data.wallet_payment.amount)})`
+                : MESSAGES.MSG_BOOKING_CREATED_SUCCESSFULLY,
+              {
+                duration: 6000,
+                style: {
+                  maxWidth: "500px",
+                  width: "max-content",
+                },
+              },
+            );
             if (!data) return;
             // If a payment link was generated, hand it off to the booking
             // details page via sessionStorage so the detail view can render
@@ -361,7 +384,8 @@ export default function CreateBookingView() {
               error?.response?.data?.message ||
               MESSAGES.MSG_SOMETHING_WENT_WRONG;
             toast.error(message, {
-              duration: 6000,
+              // Wallet refusals carry figures the agent needs to read.
+              duration: paysFromWallet ? 9000 : 6000,
               style: {
                 maxWidth: "500px",
                 width: "max-content",
@@ -624,10 +648,37 @@ export default function CreateBookingView() {
   // ---- Front-desk guest verification (offline bookings) ----
   // What the server will record as the payment method: an unpaid booking that
   // sends a payment link is paid online whatever the form's default says.
-  const effectivePaymentMethod =
-    !formik.values.mark_as_paid && formik.values.send_payment_link
+  // An agent paying from their wallet is a "wallet" payment.
+  const paysFromWallet = isAgent && formik.values.pay_from_wallet;
+  const effectivePaymentMethod = paysFromWallet
+    ? "wallet"
+    : !formik.values.mark_as_paid && formik.values.send_payment_link
       ? "online"
       : formik.values.payment_method;
+
+  // ---- Agent wallet payment ----
+  // A request-to-book property can't be paid until the owner approves.
+  const isRequestToBook =
+    (fullPropertyDetails?.booking_mode ??
+      fullPropertyDetails?.bookingMode ??
+      selectedProperty?.booking_mode ??
+      selectedProperty?.bookingMode) === BookingMode.REQUEST_TO_BOOK;
+  // What the wallet will be charged: the booking total, with no gateway fee.
+  // An estimate — the server prices the booking (a long-stay discount can make
+  // it lower) and refuses, with nothing created, if the balance falls short.
+  const walletChargeEstimate =
+    Number(formik.values.total_price || 0) +
+    Number(formik.values.agent_custom_fee || 0);
+  const walletLooksShort =
+    walletChargeEstimate > 0 && walletBalance < walletChargeEstimate;
+
+  // Switching to a request-to-book property drops a wallet choice it can't take.
+  useEffect(() => {
+    if (isRequestToBook && formik.values.pay_from_wallet) {
+      formik.setFieldValue("pay_from_wallet", false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRequestToBook, formik.values.pay_from_wallet]);
   const isOfflineBooking =
     !isAgent && OFFLINE_PAYMENT_METHODS.includes(effectivePaymentMethod);
   // The phone the booking will carry: typed for a new guest, or on file (or
@@ -1620,24 +1671,82 @@ export default function CreateBookingView() {
                     </div>
                   )}
 
-                  {/* Send payment link — for agents this is locked ON because
-                      they have no other way to collect payment from the guest. */}
+                  {/* Agents collect one of two ways: send the guest a payment
+                      link, or pay now from their own wallet. They cannot mark
+                      a booking as paid. */}
                   {isAgent ? (
-                    <div className="flex items-start gap-3 p-3 rounded-lg border bg-teal-50 border-teal-200">
-                      <Icon
-                        icon="mdi:email-send-outline"
-                        className="mt-0.5 text-teal-700 text-lg"
-                      />
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-teal-900 block">
-                          Payment link will be sent to guest
-                        </span>
-                        <span className="text-xs text-teal-700 block mt-0.5">
-                          We'll email + SMS the guest a checkout URL when you
-                          confirm. You also get a copyable link to share on
-                          WhatsApp.
-                        </span>
-                      </div>
+                    <div className="space-y-2" role="radiogroup" aria-label="How will this booking be paid?">
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={!formik.values.pay_from_wallet}
+                        onClick={() => formik.setFieldValue("pay_from_wallet", false)}
+                        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                          !formik.values.pay_from_wallet
+                            ? "bg-teal-50 border-teal-300 ring-1 ring-teal-300"
+                            : "bg-zinc-50 border-zinc-200 hover:bg-zinc-100"
+                        }`}
+                      >
+                        <Icon
+                          icon="mdi:email-send-outline"
+                          className={`mt-0.5 text-lg ${!formik.values.pay_from_wallet ? "text-teal-700" : "text-zinc-500"}`}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-zinc-900 block">
+                            Send the guest a payment link
+                          </span>
+                          <span className="text-xs text-zinc-600 block mt-0.5">
+                            We'll email + SMS the guest a checkout URL when you
+                            confirm. You also get a copyable link to share on
+                            WhatsApp.
+                          </span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={!!formik.values.pay_from_wallet}
+                        disabled={isRequestToBook || (!walletLoading && !myWallet)}
+                        onClick={() => formik.setFieldValue("pay_from_wallet", true)}
+                        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          formik.values.pay_from_wallet
+                            ? "bg-teal-50 border-teal-300 ring-1 ring-teal-300"
+                            : "bg-zinc-50 border-zinc-200 hover:bg-zinc-100"
+                        }`}
+                      >
+                        <Icon
+                          icon="solar:wallet-money-bold"
+                          className={`mt-0.5 text-lg ${formik.values.pay_from_wallet ? "text-teal-700" : "text-zinc-500"}`}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-zinc-900 block">
+                            Pay now from my wallet
+                          </span>
+                          <span className="text-xs text-zinc-600 block mt-0.5">
+                            {walletLoading
+                              ? "Checking your balance..."
+                              : myWallet
+                                ? `Balance ${formatMoney(walletBalance)}. The booking is confirmed straight away, with no processing fee.`
+                                : "You don't have a wallet yet."}
+                          </span>
+                          {isRequestToBook && (
+                            <span className="text-xs text-amber-700 block mt-1">
+                              This property takes booking requests. Pay from
+                              your wallet on the booking page once the owner
+                              approves.
+                            </span>
+                          )}
+                        </div>
+                      </button>
+
+                      {paysFromWallet && walletLooksShort && (
+                        <p className="text-xs text-amber-700 font-medium">
+                          Your balance ({formatMoney(walletBalance)}) looks short
+                          of this booking (about {formatMoney(walletChargeEstimate)}).
+                          Top up your wallet or send a payment link instead.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div
@@ -1800,7 +1909,9 @@ export default function CreateBookingView() {
                   <Spinner />
                 ) : (
                   <>
-                    <span>Confirm Booking</span>
+                    <span>
+                      {paysFromWallet ? "Confirm & Pay from Wallet" : "Confirm Booking"}
+                    </span>
                     <PriceTagIcon color="white" />
                   </>
                 )}
