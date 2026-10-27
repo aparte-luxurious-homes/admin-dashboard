@@ -5,12 +5,13 @@ import { Icon } from "@iconify/react";
 
 /**
  * The platform's wallet liability, read beside the gateway balances for
- * reconciliation: what the gateways hold versus what Aparte owes its wallet
- * holders, plus withdrawals already debited from a wallet but not yet settled
- * by the bank (money that has left the wallets but not yet the gateway, so it
- * is added back when the two sides are compared).
+ * reconciliation. Data: GET /stats/wallet-totals.
  *
- * Data: GET /stats/wallet-totals.
+ * The API counts REAL wallets only. Soft-deleted accounts and the seeded test
+ * accounts are left out (and listed under "Excluded" so nothing disappears),
+ * and admin adjustments are shown on their own line: that money never passed
+ * through Paystack or Monnify, so the figure to compare with the gateways is
+ * the gateway-backed one, plus withdrawals still in flight.
  */
 interface CurrencyTotal {
   currency: string;
@@ -29,6 +30,15 @@ interface InFlight {
   count: number;
 }
 
+interface Adjustment {
+  currency: string;
+  total_amount: string;
+}
+
+interface Excluded extends CurrencyTotal {
+  reason: "SOFT_DELETED" | "TEST_ACCOUNT" | string;
+}
+
 export interface WalletTotals {
   generated_at?: string;
   by_currency: CurrencyTotal[];
@@ -37,6 +47,12 @@ export interface WalletTotals {
   platform_wallets: CurrencyTotal[];
   in_flight_withdrawals: InFlight[];
   negative_balance_wallets: number;
+  // Present from the reconciliation update onwards; older API responses omit
+  // them and the card falls back to the plain wallet total.
+  net_adjustments?: Adjustment[];
+  gateway_backed?: Omit<CurrencyTotal, "wallets">[];
+  excluded?: Excluded[];
+  all_wallets?: CurrencyTotal[];
 }
 
 interface WalletTotalsCardProps {
@@ -63,17 +79,22 @@ const ROLE_LABEL: Record<string, string> = {
   ANALYST: "Analyst",
 };
 
-const Figure: React.FC<{ label: string; value: string; hint?: string; tone?: "default" | "warn" }> = ({
-  label,
-  value,
-  hint,
-  tone = "default",
-}) => (
+const EXCLUDED_LABEL: Record<string, string> = {
+  SOFT_DELETED: "deleted accounts",
+  TEST_ACCOUNT: "test accounts",
+};
+
+const Figure: React.FC<{
+  label: string;
+  value: string;
+  hint?: string;
+  emphasis?: boolean;
+}> = ({ label, value, hint, emphasis = false }) => (
   <div className="flex-1 min-w-0">
-    <p className="text-xs font-medium text-gray-500 truncate">{label}</p>
-    <p
-      className={`text-xl sm:text-2xl font-bold ${tone === "warn" ? "text-amber-600" : "text-gray-900"}`}
-    >
+    <p className={`text-xs font-medium truncate ${emphasis ? "text-[#028090]" : "text-gray-500"}`}>
+      {label}
+    </p>
+    <p className={`font-bold ${emphasis ? "text-2xl sm:text-[28px] text-gray-900" : "text-xl sm:text-2xl text-gray-900"}`}>
       {value}
     </p>
     {hint && <p className="text-[11px] text-gray-400 mt-0.5">{hint}</p>}
@@ -87,23 +108,33 @@ const SkeletonFigure: React.FC = () => (
   </div>
 );
 
+const Divider = () => (
+  <>
+    <div className="hidden sm:block w-px bg-gray-200" />
+    <hr className="sm:hidden border-gray-200" />
+  </>
+);
+
 const WalletTotalsCard: React.FC<WalletTotalsCardProps> = ({ totals, isLoading, error }) => {
   // One currency at a time keeps the card readable; NGN is the platform's
-  // currency and the only one with balances today. Other currencies, if any,
-  // are listed underneath so nothing is hidden.
-  const currencies = Array.from(
-    new Set((totals?.by_currency ?? []).map((c) => c.currency)),
-  );
+  // currency. Other currencies, if any, are listed underneath.
+  const currencies = Array.from(new Set((totals?.by_currency ?? []).map((c) => c.currency)));
   const primary = currencies.includes("NGN") ? "NGN" : currencies[0] ?? "NGN";
-  const pick = (rows: CurrencyTotal[] | undefined) =>
+  const pick = <T extends { currency: string }>(rows: T[] | undefined) =>
     rows?.find((r) => r.currency === primary);
 
-  const all = pick(totals?.by_currency);
+  const real = pick(totals?.by_currency);
   const users = pick(totals?.user_wallets);
   const platform = pick(totals?.platform_wallets);
-  const flight = totals?.in_flight_withdrawals?.find((r) => r.currency === primary);
+  const flight = pick(totals?.in_flight_withdrawals);
+  const adjustments = pick(totals?.net_adjustments);
+  const gatewayBacked = pick(totals?.gateway_backed);
   const roles = (totals?.by_role ?? []).filter((r) => r.currency === primary);
+  const excluded = (totals?.excluded ?? []).filter((r) => r.currency === primary);
   const negatives = totals?.negative_balance_wallets ?? 0;
+
+  const headline = gatewayBacked?.total_balance ?? real?.total_balance ?? 0;
+  const adjustmentValue = Number(adjustments?.total_amount ?? 0);
 
   return (
     <div className="border border-[#D9D9D9] rounded-[15px] p-4 sm:p-5 bg-white shadow-md">
@@ -114,7 +145,8 @@ const WalletTotalsCard: React.FC<WalletTotalsCardProps> = ({ totals, isLoading, 
         </div>
         {totals?.generated_at && (
           <span className="text-[11px] text-gray-400">
-            as at {new Date(totals.generated_at).toLocaleString("en-NG", { timeZone: "Africa/Lagos" })} WAT
+            as at{" "}
+            {new Date(totals.generated_at).toLocaleString("en-NG", { timeZone: "Africa/Lagos" })} WAT
           </span>
         )}
       </div>
@@ -129,25 +161,38 @@ const WalletTotalsCard: React.FC<WalletTotalsCardProps> = ({ totals, isLoading, 
             {isLoading ? (
               <>
                 <SkeletonFigure />
-                <div className="hidden sm:block w-px bg-gray-200" />
+                <Divider />
                 <SkeletonFigure />
-                <div className="hidden sm:block w-px bg-gray-200" />
+                <Divider />
+                <SkeletonFigure />
+                <Divider />
                 <SkeletonFigure />
               </>
             ) : (
               <>
                 <Figure
+                  emphasis
+                  label="Gateway-backed balance"
+                  value={formatMoney(headline, primary)}
+                  hint={
+                    gatewayBacked
+                      ? "Real wallets less admin adjustments"
+                      : "All wallets (update the API for the reconciliation view)"
+                  }
+                />
+                <Divider />
+                <Figure
                   label="Owed to wallet holders"
                   value={formatMoney(users?.total_balance ?? 0, primary)}
                   hint={`${users?.wallets ?? 0} guest, owner and agent wallets`}
                 />
-                <div className="hidden sm:block w-px bg-gray-200" />
+                <Divider />
                 <Figure
                   label="Platform (staff) wallets"
                   value={formatMoney(platform?.total_balance ?? 0, primary)}
                   hint="Where the platform fee is credited"
                 />
-                <div className="hidden sm:block w-px bg-gray-200" />
+                <Divider />
                 <Figure
                   label="Withdrawals in flight"
                   value={formatMoney(flight?.total_amount ?? 0, primary)}
@@ -162,17 +207,20 @@ const WalletTotalsCard: React.FC<WalletTotalsCardProps> = ({ totals, isLoading, 
           </div>
 
           {!isLoading && (
-            <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="mt-4 pt-3 border-t border-gray-100 space-y-1.5">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
                 <span className="font-medium text-gray-700">
-                  All wallets: {formatMoney(all?.total_balance ?? 0, primary)} across {all?.wallets ?? 0}
+                  Real wallets: {formatMoney(real?.total_balance ?? 0, primary)} across {real?.wallets ?? 0}
                 </span>
-                {roles.map((r) => (
-                  <span key={r.role} className="inline-flex items-center gap-1">
-                    <span className="text-gray-400">{ROLE_LABEL[r.role] ?? r.role}</span>
-                    <span className="font-medium">{formatMoney(r.total_balance, primary)}</span>
+                {adjustments && (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="text-gray-400">Admin adjustments (not gateway money)</span>
+                    <span className={`font-medium ${adjustmentValue < 0 ? "text-amber-600" : ""}`}>
+                      {adjustmentValue > 0 ? "−" : adjustmentValue < 0 ? "+" : ""}
+                      {formatMoney(Math.abs(adjustmentValue), primary)}
+                    </span>
                   </span>
-                ))}
+                )}
                 {negatives > 0 && (
                   <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
                     <Icon icon="mdi:alert-outline" />
@@ -180,8 +228,30 @@ const WalletTotalsCard: React.FC<WalletTotalsCardProps> = ({ totals, isLoading, 
                   </span>
                 )}
               </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+                {roles.map((r) => (
+                  <span key={r.role} className="inline-flex items-center gap-1">
+                    <span className="text-gray-400">{ROLE_LABEL[r.role] ?? r.role}</span>
+                    <span className="font-medium">{formatMoney(r.total_balance, primary)}</span>
+                  </span>
+                ))}
+              </div>
+
+              {excluded.length > 0 && (
+                <p className="text-[11px] text-gray-400">
+                  Excluded:{" "}
+                  {excluded
+                    .map(
+                      (e) =>
+                        `${EXCLUDED_LABEL[e.reason] ?? e.reason.toLowerCase()} ${formatMoney(e.total_balance, primary)} (${e.wallets})`,
+                    )
+                    .join(" · ")}
+                </p>
+              )}
+
               {currencies.length > 1 && (
-                <p className="text-[11px] text-gray-400 mt-1">
+                <p className="text-[11px] text-gray-400">
                   Other currencies:{" "}
                   {(totals?.by_currency ?? [])
                     .filter((c) => c.currency !== primary)
@@ -189,8 +259,10 @@ const WalletTotalsCard: React.FC<WalletTotalsCardProps> = ({ totals, isLoading, 
                     .join(" · ")}
                 </p>
               )}
-              <p className="text-[11px] text-gray-400 mt-1">
-                Reconcile: gateway balances ≈ owed to wallet holders + platform wallets + withdrawals in flight.
+
+              <p className="text-[11px] text-gray-400">
+                Reconcile: gateway balances ≈ gateway-backed balance + withdrawals in flight + money
+                held for confirmed stays not yet checked in.
               </p>
             </div>
           )}
