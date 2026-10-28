@@ -9,6 +9,7 @@ export enum FinanceRequestKeys {
     approveRefund = "approveRefund",
     approveWithdrawal = "approveWithdrawal",
     updateWallet = "updateWallet",
+    adjustmentRequests = "adjustmentRequests",
 }
 
 /** Where an agent sends money to fund their wallet by bank transfer. */
@@ -42,23 +43,138 @@ export function GetOfflineFunding(enabled: boolean = true) {
     return { ...query, details };
 }
 
+/**
+ * A manual credit or debit. The API refuses one without a reason AND either a
+ * reference number or a receipt (upload it first with UploadAdjustmentReceipt).
+ */
 export interface UpdateWalletPayload {
     action: "CREDIT" | "DEBIT";
     amount: string;
     reason: string;
+    reference_number?: string;
+    receipt_url?: string;
     comment?: string;
 }
 
+export type AdjustmentStatus =
+    | "PENDING" | "APPLYING" | "APPROVED" | "REJECTED" | "CANCELLED" | "FAILED";
+
+export interface AdjustmentPerson {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+}
+
+export interface AdjustmentRequest {
+    id: string;
+    wallet_id: string;
+    wallet_holder: AdjustmentPerson | null;
+    action: "CREDIT" | "DEBIT";
+    amount: string;
+    currency: string;
+    reason: string;
+    reference_number: string | null;
+    receipt_url: string | null;
+    comment: string | null;
+    status: AdjustmentStatus;
+    requested_by: AdjustmentPerson | null;
+    requested_by_role: string | null;
+    decided_by: AdjustmentPerson | null;
+    decided_at: string | null;
+    decision_note: string | null;
+    transaction_id: string | null;
+    apply_error: string | null;
+    created_at: string | null;
+    /** Only on the PATCH response: true when it was applied at once. */
+    applied?: boolean;
+}
+
+export interface AdjustmentRequestList {
+    items: AdjustmentRequest[];
+    total: number;
+    page: number;
+    size: number;
+    /** Approvers only (null for requesters): the whole queue, whatever the filter. */
+    pending_total: number | null;
+    oldest_pending_at: string | null;
+    can_approve: boolean;
+}
+
+/**
+ * 200 means an admin's adjustment was applied; 202 means it was filed for
+ * approval and the balance has not moved. Read `data.applied` to tell them apart.
+ */
 export function UpdateWallet() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ walletId, payload }: { walletId: string; payload: UpdateWalletPayload }) =>
-            axiosRequest.patch(API_ROUTES.wallet.update(walletId), payload),
+        mutationFn: async ({ walletId, payload }: { walletId: string; payload: UpdateWalletPayload }) => {
+            const response = await axiosRequest.patch(API_ROUTES.wallet.update(walletId), payload);
+            return response?.data?.data as AdjustmentRequest;
+        },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.adjustmentRequests] });
+        },
+    });
+}
+
+/** Stage a receipt before the adjustment is submitted; returns its URL. */
+export function UploadAdjustmentReceipt() {
+    return useMutation({
+        mutationFn: async (file: File) => {
+            const form = new FormData();
+            form.append("file", file);
+            const response = await axiosRequest.post(API_ROUTES.wallet.adjustmentReceipts, form, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            return response?.data?.data?.url as string;
+        },
+    });
+}
+
+export interface AdjustmentRequestFilters {
+    status?: AdjustmentStatus;
+    walletId?: string;
+    page?: number;
+    size?: number;
+}
+
+/** Approvers see every request; operations and support see their own. */
+export function GetAdjustmentRequests(filters: AdjustmentRequestFilters = {}, enabled = true) {
+    const { status, walletId, page = 1, size = 20 } = filters;
+    return useQuery({
+        queryKey: [FinanceRequestKeys.adjustmentRequests, status ?? "ALL", walletId ?? "", page, size],
+        queryFn: async () => {
+            const response = await axiosRequest.get(API_ROUTES.wallet.adjustmentRequests, {
+                params: { status, wallet_id: walletId, page, size },
+            });
+            return response?.data?.data as AdjustmentRequestList;
+        },
+        enabled,
+        staleTime: 30 * 1000,
+        refetchOnWindowFocus: true,
+    });
+}
+
+function useAdjustmentDecision(route: (id: string) => string) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, note }: { id: string; note?: string }) => {
+            const response = await axiosRequest.post(route(id), note ? { note } : {});
+            return response?.data?.data as AdjustmentRequest;
+        },
+        // Settle on error too: a 409 FAILED approval still changed the row.
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.adjustmentRequests] });
             queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.getAllTransactions] });
         },
     });
 }
+
+export const ApproveAdjustment = () => useAdjustmentDecision(API_ROUTES.wallet.approveAdjustment);
+export const RejectAdjustment = () => useAdjustmentDecision(API_ROUTES.wallet.rejectAdjustment);
+export const CancelAdjustment = () => useAdjustmentDecision(API_ROUTES.wallet.cancelAdjustment);
 
 export interface ApproveRefundPayload {
     refund_method: string;

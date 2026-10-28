@@ -8,6 +8,9 @@ import {
   QueueSummary,
 } from "@/src/lib/request-handlers/dashboardMgt";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import { GetAdjustmentRequests } from "@/src/lib/request-handlers/financeMgt";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface QueueRowProps {
   icon: string;
@@ -77,6 +80,17 @@ const QueueRow = ({
 
 const AdminQueuesCard = () => {
   const { data, isLoading } = GetAdminQueues();
+  // One row is enough: the response carries the whole queue's size and age,
+  // and `can_approve` says whether this admin decides adjustments at all.
+  const { data: adjustments } = GetAdjustmentRequests({ status: "PENDING", size: 1 });
+  const adjustmentQueue: QueueSummary | undefined = adjustments?.can_approve
+    ? {
+        count: adjustments.pending_total ?? 0,
+        oldest_age_days: adjustments.oldest_pending_at
+          ? Math.floor((Date.now() - new Date(adjustments.oldest_pending_at).getTime()) / DAY_MS)
+          : 0,
+      }
+    : undefined;
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
@@ -101,6 +115,15 @@ const AdminQueuesCard = () => {
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
+          {adjustmentQueue && (
+            <QueueRow
+              icon="solar:wallet-money-bold-duotone"
+              label="Wallet adjustments to approve"
+              href={PAGE_ROUTES.dashboard.walletAdjustments.base}
+              summary={adjustmentQueue}
+              accentColor="text-amber-600 bg-amber-50"
+            />
+          )}
           <QueueRow
             icon="solar:document-add-bold-duotone"
             label="KYC Reviews Pending"
