@@ -24,6 +24,7 @@ import { useIsMobile } from "@/src/hooks/useIsMobile";
 import BookingCard from "../BookingCard";
 import PullToRefresh from "../../mobile/PullToRefresh";
 import BookingAttributionChip from "../bookings/AttributionChip";
+import WhatsAppSourceChip from "../bookings/WhatsAppSourceChip";
 
 export default function BookingsTable({
     unitId,
@@ -332,6 +333,7 @@ export default function BookingsTable({
                                                     {(booking as any)?.status?.replace('_', ' ') ?? '--/--'}
                                                 </span>
                                                 <BookingAttributionChip booking={booking as any} />
+                                                <WhatsAppSourceChip booking={booking as any} />
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700 text-center">

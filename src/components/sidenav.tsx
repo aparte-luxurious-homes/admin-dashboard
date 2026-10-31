@@ -7,12 +7,30 @@ import { ArrowIcon } from "../components/icons";
 import { ILink, ILinkChild, NavBadgeKey, resolveNavTarget } from "../lib/routes/nav_links";
 import { UserRole } from "../lib/enums";
 import { GetApprovalPendingCount } from "../lib/request-handlers/bookingMgt";
+import { GetWhatsAppHandoverCount } from "../lib/request-handlers/whatsappMgt";
 
 function NavChildBadge({ badgeKey }: { badgeKey: NavBadgeKey }) {
   if (badgeKey === "approvalPending") {
     return <ApprovalPendingBadge />;
   }
+  if (badgeKey === "whatsappHandover") {
+    return <WhatsAppHandoverBadge />;
+  }
   return null;
+}
+
+/** WhatsApp chats the bot handed to ops and nobody has closed yet. */
+function WhatsAppHandoverBadge() {
+  const { data: count } = GetWhatsAppHandoverCount();
+  if (!count || count <= 0) return null;
+  return (
+    <span
+      className="ml-auto mr-2 inline-flex items-center justify-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-semibold text-white min-w-[22px]"
+      title="WhatsApp chats waiting for ops"
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
 }
 
 function ApprovalPendingBadge() {

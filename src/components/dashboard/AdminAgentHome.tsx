@@ -34,6 +34,7 @@ import { TopTeamsCard } from "@/src/components/team/AdminNetworkViews";
 import { UserRole } from "@/src/lib/enums";
 import AgentNetworkDashboardCard from "@/src/components/dashboard/AgentNetworkDashboardCard";
 import ShareMyLinkCard from "@/src/components/links/ShareMyLinkCard";
+import WhatsAppBotCard from "@/src/components/dashboard/WhatsAppBotCard";
 import KycPromptCard from "@/src/components/dashboard/KycPromptCard";
 import OfflineFundingCard from "@/src/components/finance-mgt/OfflineFundingCard";
 import { useNetworkEnabled } from "@/src/lib/request-handlers/platformMgt";
@@ -271,6 +272,10 @@ const AdminAgentHome = () => {
                             feature was invisible until now. The component
                             self-hides for every other role. */}
             {isAgent && <ShareMyLinkCard />}
+
+            {/* AGENT: the WhatsApp bot number, QR and a status line to post.
+                Hides itself when the bot is switched off. */}
+            {isAgent && <WhatsAppBotCard />}
 
             {/* AGENT: how to fund the wallet by bank transfer. Same card, and
                 the same API-served account details, as the wallet page. Hides
