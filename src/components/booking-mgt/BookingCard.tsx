@@ -7,6 +7,7 @@ import { formatDate, formatMoney } from "@/src/lib/utils";
 import { LuEye, LuTrash2 } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import BookingAttributionChip from "./bookings/AttributionChip";
+import WhatsAppSourceChip from "./bookings/WhatsAppSourceChip";
 
 const STATUS_STYLES: Record<string, string> = {
   CONFIRMED: "bg-green-100 text-green-800",
@@ -50,6 +51,7 @@ export default function BookingCard({ booking, onDelete }: BookingCardProps) {
         </span>
         <div className="flex items-center gap-1 flex-shrink-0">
           <BookingAttributionChip booking={booking as any} size="sm" />
+          <WhatsAppSourceChip booking={booking as any} size="sm" />
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
               STATUS_STYLES[status] ?? "bg-gray-100 text-gray-800"

@@ -316,6 +316,19 @@ export const API_ROUTES = {
         // SUPER_ADMIN only; adds who last moved the switch.
         adminFeatures: '/admin/platform/features',
         networkFeature: '/admin/platform/features/network',
+        // The WhatsApp booking bot's public number. Any authenticated role.
+        whatsapp: '/platform/whatsapp',
+    },
+    // Aparte on WhatsApp: ops inbox and funnel (whatsapp.view_inbox /
+    // whatsapp.reply / whatsapp.view_analytics on the API).
+    whatsapp: {
+        conversations: '/admin/whatsapp/conversations',
+        conversation: (id: string) => `/admin/whatsapp/conversations/${id}`,
+        takeover: (id: string) => `/admin/whatsapp/conversations/${id}/takeover`,
+        release: (id: string) => `/admin/whatsapp/conversations/${id}/release`,
+        resolve: (id: string) => `/admin/whatsapp/conversations/${id}/resolve`,
+        reply: (id: string) => `/admin/whatsapp/conversations/${id}/reply`,
+        funnel: '/admin/whatsapp/funnel',
     },
     permissions: {
         base: '/permissions',

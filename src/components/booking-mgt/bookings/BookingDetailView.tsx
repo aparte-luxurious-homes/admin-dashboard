@@ -34,6 +34,7 @@ import BookingTimeline from "./BookingTimeline";
 import BookingActionBar from "./BookingActionBar";
 import BookingExtensions from "./BookingExtensions";
 import FreshPaymentLinkCard from "./FreshPaymentLinkCard";
+import WhatsAppSourceChip, { isWhatsAppBooking } from "./WhatsAppSourceChip";
 
 export default function BookingDetailView({ bookingId }: { bookingId: string }) {
   const pathname = usePathname();
@@ -213,6 +214,12 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
               <div className="flex flex-col lg:flex-row gap-5">
                 {/* Main content */}
                 <div className="flex-1 space-y-4 sm:space-y-5 md:space-y-6 min-w-0">
+                  {isWhatsAppBooking(rawBooking) && (
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                      <WhatsAppSourceChip booking={rawBooking} />
+                      <span>Booked through the Aparte WhatsApp bot.</span>
+                    </div>
+                  )}
                   <BookingPropertyCard booking={booking} />
                   <BookingDatesCard booking={booking} />
                   <BookingGuestCard booking={booking} />

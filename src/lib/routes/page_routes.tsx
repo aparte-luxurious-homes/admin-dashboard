@@ -134,6 +134,12 @@ export const PAGE_ROUTES = {
         wallet: {
             base: '/wallet',
         },
+        whatsapp: {
+            base: '/whatsapp',
+            inbox: '/whatsapp/inbox',
+            conversation: (id: string) => `/whatsapp/inbox/${id}`,
+            analytics: '/whatsapp/analytics',
+        },
         icalManagement: {
             feeds: '/ical-management/feeds',
             conflicts: '/ical-management/conflicts',
