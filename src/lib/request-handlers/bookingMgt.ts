@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
+import { FinanceRequestKeys } from "./financeMgt";
 import {
   ICreateBooking,
   IUpdateBooking,
@@ -66,6 +67,51 @@ export function UploadGuestCredential() {
           return data;
         },
       }),
+  });
+}
+
+/**
+ * Capture a guest credential and attach it to an existing booking: stage the
+ * image, then PUT its URL onto the booking. Paying for someone else's booking
+ * from a wallet needs one (the wallet identifies the agent, not the guest).
+ */
+export function AttachGuestCredential() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      bookingId,
+      kind,
+      file,
+    }: {
+      bookingId: string | number;
+      kind: "ID_DOCUMENT" | "PHOTO";
+      file: File;
+    }) => {
+      const formData = new FormData();
+      formData.append("kind", kind);
+      formData.append("file", file);
+      const staged = await axiosRequest.post(API_ROUTES.bookings.guestCredentials, formData, {
+        transformRequest: (data, headers) => {
+          if (headers) {
+            delete headers["Content-Type"];
+          }
+          return data;
+        },
+      });
+      const url = staged?.data?.data?.url;
+      if (!url) throw new Error("The image was not stored. Try again.");
+      return axiosRequest.put(API_ROUTES.bookings.details(String(bookingId)), {
+        [kind === "ID_DOCUMENT" ? "guest_id_document_url" : "guest_photo_url"]: url,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+    },
   });
 }
 
@@ -198,6 +244,8 @@ export function CreateBooking() {
       queryClient.invalidateQueries({
         queryKey: [BookingRequestKeys.getAllBookings],
       });
+      // A booking paid from the agent's wallet changed their balance.
+      queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.myWallet] });
     },
   });
 }
@@ -319,6 +367,30 @@ export function ResendPaymentLink() {
       queryClient.invalidateQueries({
         queryKey: [BookingRequestKeys.getBookingDetails],
       });
+    },
+  });
+}
+
+/**
+ * Agent pays a PENDING booking from their own wallet. Charges the booking
+ * total with no gateway fee, confirms it, and retires any payment link the
+ * guest was sent so they can't pay twice.
+ */
+export function PayBookingWithWallet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/pay-with-wallet`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+      queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.myWallet] });
     },
   });
 }

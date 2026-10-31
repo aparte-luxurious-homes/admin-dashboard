@@ -147,6 +147,8 @@ export interface ICreateBooking {
     status?: BookingStatus
     total_price: number
     caution_fee?: number
+    // "cash" | "pos" | "bank_transfer" | "online" | "wallet" (agents only:
+    // pay now from the agent's own wallet)
     payment_method?: string
     payment_proof_url?: string
     payment_notes?: string

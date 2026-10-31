@@ -9,6 +9,29 @@ export enum FinanceRequestKeys {
     approveRefund = "approveRefund",
     approveWithdrawal = "approveWithdrawal",
     updateWallet = "updateWallet",
+    myWallet = "myWallet",
+}
+
+export interface MyWallet {
+    id: string;
+    balance: string;
+    currency: string;
+}
+
+/**
+ * The signed-in user's NGN wallet (falling back to their first), or null when
+ * they have none. Paying for a booking from a wallet always spends this one.
+ */
+export function GetMyWallet(enabled: boolean = true) {
+    const query = useQuery({
+        queryKey: [FinanceRequestKeys.myWallet],
+        queryFn: () => axiosRequest.get(API_ROUTES.wallet.base),
+        enabled,
+    });
+    const wallets: MyWallet[] = query.data?.data?.data?.items ?? [];
+    const wallet = wallets.find((w) => w.currency === "NGN") ?? wallets[0] ?? null;
+    const balance = wallet ? Number(wallet.balance) || 0 : 0;
+    return { ...query, wallet, balance };
 }
 
 /** Where an agent sends money to fund their wallet by bank transfer. */
