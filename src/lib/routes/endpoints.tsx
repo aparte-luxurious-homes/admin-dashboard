@@ -189,6 +189,13 @@ export const API_ROUTES = {
         refreshWithdrawalStatus: (walletId: string | number, transactionId: string | number) =>
             `/wallets/${walletId}/withdrawals/${transactionId}/refresh-status`,
         pendingWithdrawals: '/wallets/pending-withdrawals',
+        // Manual adjustments. Every one needs a reason plus a reference number or
+        // a receipt; operations and support adjustments wait for an admin.
+        adjustmentReceipts: '/wallets/adjustment-receipts',
+        adjustmentRequests: '/wallets/adjustment-requests',
+        approveAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/approve`,
+        rejectAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/reject`,
+        cancelAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/cancel`,
         // Bulk sweep, admin-runnable as well as cron-runnable.
         reconcileDisbursementsJob: '/jobs/reconcile-stuck-disbursements',
         transactions: {
@@ -215,6 +222,7 @@ export const API_ROUTES = {
         base: '/stats',
         gatewayBalances: '/stats/gateway-balances',
         walletTotals: '/stats/wallet-totals',
+        pendingBookings: '/stats/pending-bookings',
         adminQueues: '/stats/admin/queues',
         adminAgentPerformance: '/stats/admin/agent-performance',
         adminTopTeams: '/stats/admin/top-teams',

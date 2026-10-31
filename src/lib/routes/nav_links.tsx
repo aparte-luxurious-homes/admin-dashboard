@@ -382,6 +382,16 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
+        // Admins approve here; operations and support follow their own requests.
+        name: 'Wallet Adjustments',
+        pathName: 'wallet-adjustments',
+        link: PAGE_ROUTES.dashboard.walletAdjustments.base,
+        icon: <FinancialsIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+        secondary: true,
+        children: undefined,
+    },
+    {
         name: 'Referrals',
         pathName: 'referrals',
         link: PAGE_ROUTES.dashboard.referrals.base,

@@ -137,6 +137,9 @@ export const PAGE_ROUTES = {
         wallet: {
             base: '/wallet',
         },
+        walletAdjustments: {
+            base: '/wallet-adjustments',
+        },
         icalManagement: {
             feeds: '/ical-management/feeds',
             conflicts: '/ical-management/conflicts',
