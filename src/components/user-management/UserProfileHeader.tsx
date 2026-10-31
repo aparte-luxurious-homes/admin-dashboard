@@ -6,6 +6,9 @@ import { Icon } from "@iconify/react";
 import { UserDetail, Wallet, RoleConfig } from "./user-detail.types";
 import Badge from "@/src/components/badge";
 import Button from "@/src/components/button";
+import { useAuth } from "@/src/hooks/useAuth";
+import { canViewEmailHealth } from "@/src/lib/request-handlers/emailHealthMgt";
+import EmailHealthChip from "./email-health/EmailHealthChip";
 
 interface UserProfileHeaderProps {
   user: UserDetail;
@@ -58,6 +61,9 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
   const contactParts = [user.email, user.phone].filter(Boolean);
   const kycStatus = user.profile.kycStatus || "PENDING";
   const kycColor = KYC_COLORS[kycStatus] || KYC_COLORS.PENDING;
+  // Bounce state is staff-only (users.view_email_health on the API).
+  const { user: viewer } = useAuth();
+  const showEmailHealth = canViewEmailHealth(viewer?.role);
 
   return (
     <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-6 mb-6">
@@ -104,6 +110,14 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
             >
               KYC: {kycStatus}
             </span>
+            {showEmailHealth && (
+              <EmailHealthChip
+                status={user.emailStatus}
+                bouncedAt={user.emailBouncedAt}
+                reason={user.emailBounceReason}
+                suggestion={user.emailSuggestion}
+              />
+            )}
           </div>
         </div>
 

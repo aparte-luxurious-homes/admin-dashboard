@@ -263,6 +263,18 @@ export interface IUser {
   is_profile_complete?: boolean;
   missingProfileFields?: string[];
   missing_profile_fields?: string[];
+  /** Whether our emails reach this address: "OK" | "BOUNCING" | "UNDELIVERABLE". */
+  email_status?: "OK" | "BOUNCING" | "UNDELIVERABLE";
+  emailStatus?: "OK" | "BOUNCING" | "UNDELIVERABLE";
+  email_bounced_at?: string | null;
+  emailBouncedAt?: string | null;
+  email_bounce_reason?: string | null;
+  emailBounceReason?: string | null;
+  email_suggestion?: string | null;
+  emailSuggestion?: string | null;
+  /** An address the user asked to move to and has not confirmed with the emailed code yet. */
+  pending_email?: string | null;
+  pendingEmail?: string | null;
 }
 
 export interface IAuthorization {

@@ -42,11 +42,11 @@ function httpError(status: number, detail: unknown) {
 }
 
 test("payment-method filter values are the strings the API stores on bookings.payment_method", () => {
-    // api-v1 services/bookings/schemas.py: "cash", "pos", "bank_transfer", "online".
-    // PAYSTACK / TRANSFER / CASH / POS matched nothing and emptied the report.
+    // api-v1 services/bookings/schemas.py: "cash", "pos", "bank_transfer", "online",
+    // "wallet". PAYSTACK / TRANSFER / CASH / POS matched nothing and emptied the report.
     assert.deepEqual(
         REPORT_PAYMENT_METHODS.map((m) => m.value).sort(),
-        ["bank_transfer", "cash", "online", "pos"],
+        ["bank_transfer", "cash", "online", "pos", "wallet"],
     );
     for (const m of REPORT_PAYMENT_METHODS) {
         assert.equal(m.value, m.value.toLowerCase(), `${m.value} must be lowercase`);

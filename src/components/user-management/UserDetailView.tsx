@@ -100,7 +100,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({ roleConfig }) => {
             {networkEnabled && roleConfig.role === "AGENT" && id && (
               <AgentNetworkCard userId={String(id)} />
             )}
-            <UserDetailsPanel user={user} />
+            <UserDetailsPanel user={user} onUpdated={refetch} />
             <KycReviewPanel user={user} onUpdate={refetch} />
             <KycHistoryTimeline userId={String(id)} />
             <AllowMagicOtpToggle

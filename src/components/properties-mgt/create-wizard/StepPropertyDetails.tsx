@@ -23,6 +23,7 @@ import { UserRole } from "@/src/lib/enums";
 import { PropertyFormValues } from "./types";
 import { isVenue } from "../venue";
 import { validatePropertyName } from "./nameValidator";
+import EmailSuggestion from "@/src/components/shared/EmailSuggestion";
 
 type AddressComponent = {
   long_name: string;
@@ -448,6 +449,14 @@ export default function StepPropertyDetails({
                     className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-sm"
                   />
                 </div>
+                {/* The owner's account invite goes here; a typo means they
+                    never get it. Warn only. */}
+                <EmailSuggestion
+                  email={formik.values.owner_email}
+                  onApply={(suggested) =>
+                    formik.setFieldValue("owner_email", suggested)
+                  }
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">

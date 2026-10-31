@@ -40,8 +40,17 @@ export const API_ROUTES = {
             kycHistory: (id: string | number) => `/admin/users/${id}/kyc/history`,
             uploadKycOnBehalf: (id: string | number) => `/admin/users/${id}/kyc/documents`,
             roles: '/admin/users/roles',
+            /** Re-send transactional emails that failed in the last 7 days. */
+            resendFailedEmails: (id: string | number) => `/admin/users/${id}/email-health/resend`,
+            /** Correct a bouncing address (perm users.fix_email). Resends failed emails itself. */
+            fixEmail: (id: string | number) => `/admin/users/${id}/email`,
         },
         kycQueue: '/admin/kyc/queue',
+        /** Bounced / undeliverable addresses (perm users.view_email_health). */
+        emailHealth: {
+            base: '/admin/email-health',
+            summary: '/admin/email-health/summary',
+        },
         integrations: {
             configs: '/admin/integrations/configs',
             configByKey: (key: string) => `/admin/integrations/configs/${key}`,
@@ -74,6 +83,10 @@ export const API_ROUTES = {
         kycDocuments: '/profile/kyc/documents',
         // A GUEST account switching itself to OWNER or AGENT (login screen).
         accountType: '/profile/account-type',
+        // Self-service email change: POST sends a code to the new address,
+        // DELETE cancels the pending change, confirm switches it.
+        emailChange: '/profile/email/change',
+        emailConfirm: '/profile/email/confirm',
         kyc: {
             upload: '/kyc/upload',
             details: (docId: string | number) => `/kyc/${docId}/details`,
@@ -176,6 +189,13 @@ export const API_ROUTES = {
         refreshWithdrawalStatus: (walletId: string | number, transactionId: string | number) =>
             `/wallets/${walletId}/withdrawals/${transactionId}/refresh-status`,
         pendingWithdrawals: '/wallets/pending-withdrawals',
+        // Manual adjustments. Every one needs a reason plus a reference number or
+        // a receipt; operations and support adjustments wait for an admin.
+        adjustmentReceipts: '/wallets/adjustment-receipts',
+        adjustmentRequests: '/wallets/adjustment-requests',
+        approveAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/approve`,
+        rejectAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/reject`,
+        cancelAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/cancel`,
         // Bulk sweep, admin-runnable as well as cron-runnable.
         reconcileDisbursementsJob: '/jobs/reconcile-stuck-disbursements',
         transactions: {
@@ -194,10 +214,15 @@ export const API_ROUTES = {
         details: (paymentId: string) => `/wallets/payments/${paymentId}`,
         validate: (paymentId: string) => `/wallets/payments/${paymentId}/validate`,
     },
+    utils: {
+        /** Typo suggestion + MX check for an address. Auth optional. */
+        emailCheck: '/utils/email-check',
+    },
     statistic: {
         base: '/stats',
         gatewayBalances: '/stats/gateway-balances',
         walletTotals: '/stats/wallet-totals',
+        pendingBookings: '/stats/pending-bookings',
         adminQueues: '/stats/admin/queues',
         adminAgentPerformance: '/stats/admin/agent-performance',
         adminTopTeams: '/stats/admin/top-teams',
@@ -226,6 +251,14 @@ export const API_ROUTES = {
         // Gold, then Silver with their Gold mentor, then Bronze with both
         // mentors. `format=csv|pdf` downloads it.
         report: `/admin/network/report`,
+        // Monthly team targets: every team head's target vs achieved, set one
+        // (this month or from next month), its history, and a whole team.
+        targets: {
+            base: `/admin/network/targets`,
+            set: (agentId: string) => `/admin/network/targets/${agentId}`,
+            history: (agentId: string) => `/admin/network/targets/${agentId}/history`,
+            tree: (agentId: string) => `/admin/network/targets/${agentId}/tree`,
+        },
         events: {
             base: `/admin/network/events`,
             details: (id: string) => `/admin/network/events/${id}`,
@@ -286,6 +319,8 @@ export const API_ROUTES = {
         // summary of agents on the caller's tier.
         myTeam: `/network/team`,
         peers: `/network/peers`,
+        // The caller's target share, achieved and %, plus their team's.
+        myTargets: `/network/targets/me`,
     },
     // Team lead workspace (Silver / Gold agents with mentees). Read-only;
     // every change is a request an admin approves.

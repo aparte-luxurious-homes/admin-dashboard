@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import { GetAssignableRoles } from '@/src/lib/request-handlers/userMgt';
+import EmailSuggestion from "@/src/components/shared/EmailSuggestion";
 
 interface UserEditFormProps {
     initialData: {
@@ -185,6 +186,10 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                                 onChange={e => handleChange('email', e.target.value)}
                             />
                         </div>
+                        <EmailSuggestion
+                            email={formData.email}
+                            onApply={(suggested) => handleChange('email', suggested)}
+                        />
                     </div>
 
                     <div className="md:col-span-2 space-y-2">

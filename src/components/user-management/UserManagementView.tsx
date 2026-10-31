@@ -27,6 +27,7 @@ import {
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import { useDispatch } from "react-redux";
 import TablePagination from "@/src/components/TablePagination";
+import EmailSuggestion from "@/src/components/shared/EmailSuggestion";
 import { LuEye } from "react-icons/lu";
 import { HiOutlinePencilAlt } from "react-icons/hi";
 import { useRouter } from "next/navigation";
@@ -902,6 +903,12 @@ const UserManagementView = ({
                       }
                     />
                   </div>
+                  <EmailSuggestion
+                    email={createForm.email}
+                    onApply={(suggested) =>
+                      setCreateForm({ ...createForm, email: suggested })
+                    }
+                  />
                 </div>
 
                 <div className="md:col-span-2 space-y-1.5 sm:space-y-2">

@@ -16,13 +16,14 @@ export function receivesReportsByEmail(role?: string) {
 /**
  * Payment-method filter values for the booking report, spelled the way the API
  * stores them on bookings.payment_method (api-v1 services/bookings/schemas.py:
- * "online", "bank_transfer", "cash", "pos"). The filter used to send PAYSTACK /
+ * "online", "wallet", "bank_transfer", "cash", "pos"). The filter used to send PAYSTACK /
  * TRANSFER / CASH / POS. While the API still ignored the misnamed parameter
  * nobody noticed; once the parameter name was fixed, every payment-method
  * filter matched nothing and returned an empty report.
  */
 export const REPORT_PAYMENT_METHODS = [
     { value: "online", label: "Online (card/transfer via gateway)" },
+    { value: "wallet", label: "Agent wallet" },
     { value: "bank_transfer", label: "Bank transfer" },
     { value: "cash", label: "Cash" },
     { value: "pos", label: "POS" },
