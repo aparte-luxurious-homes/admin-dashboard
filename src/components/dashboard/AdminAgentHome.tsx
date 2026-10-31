@@ -25,6 +25,7 @@ import WalletTotalsCard from "@/src/components/finance-mgt/WalletTotalsCard";
 
 import DashboardKpiRow from "@/src/components/dashboard/DashboardKpiRow";
 import AdminQueuesCard from "@/src/components/dashboard/AdminQueuesCard";
+import PendingBookingsCard from "@/src/components/dashboard/PendingBookingsCard";
 import UpcomingCheckInsCard from "@/src/components/dashboard/UpcomingCheckInsCard";
 import AgentReferralCard from "@/src/components/dashboard/AgentReferralCard";
 import AgentVerificationQueueCard from "@/src/components/dashboard/AgentVerificationQueueCard";
@@ -284,7 +285,17 @@ const AdminAgentHome = () => {
             {/* ADMIN: queues → gateway → charts */}
             {isAdmin && (
               <>
-                <AdminQueuesCard />
+                {/* Pending bookings beside the queues: both are "what needs
+                    a person today", and the paid-but-unconfirmed bucket is
+                    guest money with nothing to show for it. */}
+                <Grid container spacing={2} alignItems="flex-start">
+                  <Grid size={{ xs: 12, xl: 7 }}>
+                    <PendingBookingsCard />
+                  </Grid>
+                  <Grid size={{ xs: 12, xl: 5 }}>
+                    <AdminQueuesCard />
+                  </Grid>
+                </Grid>
                 {/* Treasury numbers: SUPER_ADMIN + ADMIN only.
                                     OPS and SUPPORT keep the rest of the admin
                                     dashboard; the merchant balances are not an

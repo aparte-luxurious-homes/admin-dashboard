@@ -48,6 +48,7 @@ import EventHirePicker, {
   hireIsComplete,
 } from "./EventHirePicker";
 import { GetBookingQuote } from "@/src/lib/request-handlers/bookingMgt";
+import EmailSuggestion from "@/src/components/shared/EmailSuggestion";
 import { GetMyWallet } from "@/src/lib/request-handlers/financeMgt";
 import { headlineUnitLabel, isVenue } from "../../properties-mgt/venue";
 import { BookingMode } from "../../properties-mgt/types";
@@ -250,14 +251,14 @@ export default function CreateBookingView() {
         return;
       }
 
-      // Offline (cash/POS/transfer) bookings on a guest's behalf: the desk must
-      // have captured who the guest is first. Mirrors the server rule so the
-      // refusal is explained here rather than as a 400.
+      // Offline (cash/POS/transfer) and wallet-paid bookings on a guest's
+      // behalf: the desk must have captured who the guest is first. Mirrors
+      // the server rule so the refusal is explained here rather than as a 400.
       if (offlineCredentialsMissing) {
         toast.error(
           !guestPhoneOnFile?.trim()
-            ? "Enter the guest's phone number before creating an offline booking."
-            : "Capture the guest's ID document or a photo of the guest before creating an offline booking.",
+            ? "Enter the guest's phone number before creating this booking."
+            : "Capture the guest's ID document or a photo of the guest before creating this booking.",
         );
         return;
       }
@@ -681,6 +682,9 @@ export default function CreateBookingView() {
   }, [isRequestToBook, formik.values.pay_from_wallet]);
   const isOfflineBooking =
     !isAgent && OFFLINE_PAYMENT_METHODS.includes(effectivePaymentMethod);
+  // A wallet payment identifies the agent, not the guest, so the API holds it
+  // to the same front-desk rule as an offline booking.
+  const needsGuestVerification = isOfflineBooking || paysFromWallet;
   // The phone the booking will carry: typed for a new guest, or on file (or
   // typed, if missing) for an existing one.
   const guestPhoneOnFile = isNewGuest
@@ -689,7 +693,7 @@ export default function CreateBookingView() {
   const hasCredentialImage =
     !!formik.values.guest_id_document_url || !!formik.values.guest_photo_url;
   const offlineCredentialsMissing =
-    isOfflineBooking && (!guestPhoneOnFile?.trim() || !hasCredentialImage);
+    needsGuestVerification && (!guestPhoneOnFile?.trim() || !hasCredentialImage);
 
   const handleCredentialUpload =
     (kind: "ID_DOCUMENT" | "PHOTO") =>
@@ -1138,6 +1142,14 @@ export default function CreateBookingView() {
                                 </div>
                               )}
                           </div>
+                          {/* The booking confirmation goes to this address;
+                              catch gnail.com before it bounces. Warn only. */}
+                          <EmailSuggestion
+                            email={formik.values.guest_email}
+                            onApply={(suggested) =>
+                              handleNewGuestFieldChange("guest_email", suggested)
+                            }
+                          />
                         </div>
                         <div className="space-y-1">
                           <label className="text-xs font-semibold text-zinc-500 uppercase">
@@ -1508,8 +1520,8 @@ export default function CreateBookingView() {
                 </p>
               </div>
 
-              {/* Front-desk guest verification — offline bookings only */}
-              {isOfflineBooking && (
+              {/* Front-desk guest verification — offline and wallet-paid bookings */}
+              {needsGuestVerification && (
                 <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Icon icon="solar:shield-user-bold" className="text-primary text-lg" />
@@ -1518,7 +1530,7 @@ export default function CreateBookingView() {
                     </h4>
                   </div>
                   <p className="text-xs text-zinc-500 -mt-2">
-                    Required for cash, POS and bank-transfer bookings. Confirm the
+                    Required for cash, POS, bank-transfer and wallet-paid bookings. Confirm the
                     guest&apos;s phone number and capture their ID document and/or a
                     photo of the guest (at least one).
                   </p>
@@ -1923,8 +1935,8 @@ export default function CreateBookingView() {
               ) : offlineCredentialsMissing ? (
                 <p className="text-xs text-center text-amber-600 mt-2 font-medium">
                   {!guestPhoneOnFile?.trim()
-                    ? "Offline booking: enter the guest's phone number to proceed"
-                    : "Offline booking: capture the guest's ID document or photo to proceed"}
+                    ? "Enter the guest's phone number to proceed"
+                    : "Capture the guest's ID document or photo to proceed"}
                 </p>
               ) : !selectedProperty ||
                 !selectedUnit ||

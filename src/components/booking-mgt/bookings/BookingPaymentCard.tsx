@@ -13,6 +13,7 @@ import {
   ResendPaymentLink,
   ReconcileBookingPayment,
   PayBookingWithWallet,
+  AttachGuestCredential,
 } from "@/src/lib/request-handlers/bookingMgt";
 import { GetMyWallet } from "@/src/lib/request-handlers/financeMgt";
 import { getApiErrorMessage } from "@/src/lib/apiError";
@@ -71,6 +72,36 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
   // A wallet payment carries no gateway fee: the charge is the booking total.
   const walletCharge = booking.totalPrice;
   const walletShort = !myWallet || walletBalance < walletCharge;
+  // The API refuses a wallet payment for a guest with no ID or face photo on
+  // the booking (the wallet identifies the agent, not the guest). Say so up
+  // front instead of letting the agent hit the 400.
+  const walletNeedsCredentials =
+    !booking.guestIdDocumentUrl && !booking.guestPhotoUrl;
+  const { mutate: attachCredential, isPending: isAttaching } = AttachGuestCredential();
+
+  const handleAttachCredential =
+    (kind: "ID_DOCUMENT" | "PHOTO") => (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image (JPG, PNG or WEBP).");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Image is too large. Maximum size is 10 MB.");
+        return;
+      }
+      attachCredential(
+        { bookingId: booking.id, kind, file },
+        {
+          onSuccess: () =>
+            toast.success(kind === "ID_DOCUMENT" ? "ID document added" : "Guest photo added"),
+          onError: (error: unknown) =>
+            toast.error(getApiErrorMessage(error, "Failed to add the image")),
+        },
+      );
+    };
 
   const handlePayFromWallet = () => {
     payWithWallet(
@@ -370,7 +401,7 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
                     {!walletConfirmOpen ? (
                       <button
                         onClick={() => setWalletConfirmOpen(true)}
-                        disabled={isPayingWithWallet || walletShort}
+                        disabled={isPayingWithWallet || walletShort || walletNeedsCredentials}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-primary text-white rounded-lg text-xs sm:text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Icon icon="solar:wallet-money-bold" className="text-base" />
@@ -402,6 +433,36 @@ export default function BookingPaymentCard({ booking }: BookingPaymentCardProps)
                           >
                             Cancel
                           </button>
+                        </div>
+                      </div>
+                    )}
+                    {walletNeedsCredentials && (
+                      <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-xs text-amber-900">
+                          To pay from your wallet, add the guest&apos;s ID document or a
+                          photo of the guest first.
+                        </p>
+                        <div className="flex gap-2 mt-2">
+                          {([
+                            { kind: "ID_DOCUMENT" as const, label: "ID document", icon: "solar:card-bold" },
+                            { kind: "PHOTO" as const, label: "Guest photo", icon: "solar:camera-bold" },
+                          ]).map(({ kind, label, icon }) => (
+                            <label
+                              key={kind}
+                              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-white border border-amber-300 text-amber-900 rounded-lg text-xs cursor-pointer hover:bg-amber-100 transition-colors ${isAttaching ? "opacity-50 pointer-events-none" : ""}`}
+                            >
+                              <Icon icon={isAttaching ? "mdi:loading" : icon} className={isAttaching ? "animate-spin" : ""} />
+                              <span>{label}</span>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                capture={kind === "PHOTO" ? "user" : "environment"}
+                                className="hidden"
+                                disabled={isAttaching}
+                                onChange={handleAttachCredential(kind)}
+                              />
+                            </label>
+                          ))}
                         </div>
                       </div>
                     )}

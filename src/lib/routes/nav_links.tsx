@@ -107,6 +107,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.userManagement.kycQueue.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
+            {
+                name: 'Email delivery',
+                pathName: 'email-delivery',
+                link: PAGE_ROUTES.dashboard.userManagement.emailDelivery.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
         ]
     },
     {
@@ -188,6 +194,14 @@ export const NAV_LINKS: ILink[] = [
                 name: 'My team & peers',
                 pathName: 'my-team',
                 link: PAGE_ROUTES.dashboard.network.myTeam,
+                allow: [UserRole.AGENT],
+            },
+            {
+                // Every agent's monthly target share, achieved and %; leads
+                // also see the people below them.
+                name: 'My targets',
+                pathName: 'my-targets',
+                link: PAGE_ROUTES.dashboard.network.myTargets,
                 allow: [UserRole.AGENT],
             },
             {
@@ -402,6 +416,16 @@ export const NAV_LINKS: ILink[] = [
         ]
     },
     {
+        // Admins approve here; operations and support follow their own requests.
+        name: 'Wallet Adjustments',
+        pathName: 'wallet-adjustments',
+        link: PAGE_ROUTES.dashboard.walletAdjustments.base,
+        icon: <FinancialsIcon className={"w-5"} color={"white"} />,
+        allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+        secondary: true,
+        children: undefined,
+    },
+    {
         name: 'Referrals',
         pathName: 'referrals',
         link: PAGE_ROUTES.dashboard.referrals.base,
@@ -492,6 +516,14 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Network report',
                 pathName: 'network',
                 link: PAGE_ROUTES.dashboard.reports.network,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
+            },
+            {
+                // Set each team's monthly target and track target vs achieved.
+                // ANALYST reads; the API refuses them the edit.
+                name: 'Team targets',
+                pathName: 'targets',
+                link: PAGE_ROUTES.dashboard.reports.targets,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
             },
             {

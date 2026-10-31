@@ -6,6 +6,7 @@ enum DashboardKeys {
     adminQueues = "dashboard:adminQueues",
     upcomingBookings = "dashboard:upcomingBookings",
     agentPerformance = "dashboard:agentPerformance",
+    pendingBookings = "dashboard:pendingBookings",
 }
 
 // Five-minute staleTime matches the backend's read pattern — these aren't
@@ -34,6 +35,52 @@ export function GetAdminQueues(enabled = true) {
         },
         enabled,
         staleTime: FIVE_MIN,
+        refetchOnWindowFocus: true,
+    });
+}
+
+export type PendingBucket = "PAID_NOT_CONFIRMED" | "APPROVAL_OVERDUE" | "ABANDONED" | "IN_PROGRESS";
+
+export interface PendingBookingRow {
+    id: string;
+    booking_id: string;
+    status: string;
+    bucket: PendingBucket;
+    created_at: string | null;
+    start_date: string | null;
+    property_name: string | null;
+    guest_name: string | null;
+    /** Total plus gateway fee, as a decimal string. */
+    value_payable: string;
+}
+
+export interface PendingBookingsResponse {
+    generated_at: string;
+    total_pending: number;
+    by_status: { status: string; count: number; value_payable: string; oldest_created_at: string | null }[];
+    buckets: { bucket: PendingBucket; count: number; value_payable: string }[];
+    /** Rows that need a person: paid-but-pending first, then overdue requests. */
+    attention: PendingBookingRow[];
+    held_for_stays: {
+        bookings: number;
+        owner_escrow_held: string;
+        caution_held: string;
+        checkin_overdue: number;
+    };
+}
+
+/** GET /stats/pending-bookings: every staff role may read it. */
+export function GetPendingBookings(enabled = true) {
+    return useQuery({
+        queryKey: [DashboardKeys.pendingBookings],
+        queryFn: async () => {
+            const response = await axiosRequest.get(API_ROUTES.statistic.pendingBookings);
+            return (response?.data?.data ?? response?.data) as PendingBookingsResponse;
+        },
+        enabled,
+        // Paid-but-unconfirmed money is the reason this card exists, so it
+        // refreshes faster than the five-minute queues beside it.
+        staleTime: 60 * 1000,
         refetchOnWindowFocus: true,
     });
 }

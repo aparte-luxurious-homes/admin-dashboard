@@ -2,97 +2,106 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import type { CatalogAnalytics, CatalogConfig, CatalogShareKit, HostLinkProperty } from "../types";
+import type {
+  CatalogAnalytics,
+  CatalogConfig,
+  CatalogShareKit,
+  HostLinkProperty,
+} from "../types";
 
 export type { CatalogShareKit } from "../types";
 
 enum LinksRequestKeys {
-    myCatalog = "myCatalog",
-    myCatalogAnalytics = "myCatalogAnalytics",
-    myLinkProperties = "myLinkProperties",
+  myCatalog = "myCatalog",
+  myCatalogAnalytics = "myCatalogAnalytics",
+  myLinkProperties = "myLinkProperties",
 }
 
 /** The CustomResponse envelope arrives one level deeper under axios. */
 export function unwrapKit<T>(data: any): T | undefined {
-    return data?.data?.data ?? data?.data;
+  return data?.data?.data ?? data?.data;
 }
 
 export function GetMyCatalog(enabled: boolean = true) {
-    return useQuery({
-        queryKey: [LinksRequestKeys.myCatalog],
-        queryFn: () => axiosRequest.get(API_ROUTES.links.myCatalog),
-        staleTime: 1000 * 60 * 5,
-        enabled,
-        // A user with no handle yet is a 200 with `handle: null`, not an error —
-        // don't retry-storm on the genuine failures either.
-        retry: 1,
-    });
+  return useQuery({
+    queryKey: [LinksRequestKeys.myCatalog],
+    queryFn: () => axiosRequest.get(API_ROUTES.links.myCatalog),
+    staleTime: 1000 * 60 * 5,
+    enabled,
+    // A user with no handle yet is a 200 with `handle: null`, not an error —
+    // don't retry-storm on the genuine failures either.
+    retry: 1,
+  });
 }
 
 export function UpdateMyCatalog() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (payload: {
-            handle?: string;
-            is_catalog_published?: boolean;
-            /** Partial: only the keys sent change; null clears one. */
-            catalog_config?: CatalogConfig;
-        }) => axiosRequest.patch(API_ROUTES.links.myCatalog, payload),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myCatalog] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      handle?: string;
+      is_catalog_published?: boolean;
+      /** Partial: only the keys sent change; null clears one. */
+      catalog_config?: CatalogConfig;
+    }) => axiosRequest.patch(API_ROUTES.links.myCatalog, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myCatalog] });
+    },
+  });
 }
 
 /** Multipart upload of the page's banner. The axios instance drops the JSON
  * Content-Type for FormData bodies, so the browser sets the boundary. */
 export function UploadCatalogCover() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (file: File) => {
-            const form = new FormData();
-            form.append("file", file);
-            return axiosRequest.post(API_ROUTES.links.myCatalogCover, form, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myCatalog] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return axiosRequest.post(API_ROUTES.links.myCatalogCover, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myCatalog] });
+    },
+  });
 }
 
 export function DeleteCatalogCover() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: () => axiosRequest.delete(API_ROUTES.links.myCatalogCover),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myCatalog] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => axiosRequest.delete(API_ROUTES.links.myCatalogCover),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myCatalog] });
+    },
+  });
 }
 
-export function GetMyCatalogAnalytics(window: string = "30d", enabled: boolean = true) {
-    return useQuery<CatalogAnalytics | undefined>({
-        queryKey: [LinksRequestKeys.myCatalogAnalytics, window],
-        queryFn: async () =>
-            unwrapKit<CatalogAnalytics>(
-                await axiosRequest.get(API_ROUTES.links.myCatalogAnalytics(window))
-            ),
-        staleTime: 1000 * 60 * 5,
-        enabled,
-    });
+export function GetMyCatalogAnalytics(
+  window: string = "30d",
+  enabled: boolean = true,
+) {
+  return useQuery<CatalogAnalytics | undefined>({
+    queryKey: [LinksRequestKeys.myCatalogAnalytics, window],
+    queryFn: async () =>
+      unwrapKit<CatalogAnalytics>(
+        await axiosRequest.get(API_ROUTES.links.myCatalogAnalytics(window)),
+      ),
+    staleTime: 1000 * 60 * 5,
+    enabled,
+  });
 }
 
 export function GetMyLinkProperties(enabled: boolean = true) {
-    return useQuery<HostLinkProperty[]>({
-        queryKey: [LinksRequestKeys.myLinkProperties],
-        queryFn: async () =>
-            unwrapKit<HostLinkProperty[]>(await axiosRequest.get(API_ROUTES.links.myProperties)) ??
-            [],
-        staleTime: 1000 * 60,
-        enabled,
-    });
+  return useQuery<HostLinkProperty[]>({
+    queryKey: [LinksRequestKeys.myLinkProperties],
+    queryFn: async () =>
+      unwrapKit<HostLinkProperty[]>(
+        await axiosRequest.get(API_ROUTES.links.myProperties),
+      ) ?? [],
+    staleTime: 1000 * 60,
+    enabled,
+  });
 }
 
 /**
@@ -103,53 +112,64 @@ export function GetMyLinkProperties(enabled: boolean = true) {
  * the API is on a different origin. Going through the axios instance reuses
  * the Authorization header every other call gets.
  */
-export async function downloadCatalogQr(userId: string, handle: string, size = 1024) {
-    const response = await axiosRequest.get(API_ROUTES.links.catalogQr(userId, size), {
-        responseType: "blob",
-    });
-    const url = URL.createObjectURL(response.data as Blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `aparte-${handle}-qr.png`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    // Revoke on the next tick — revoking synchronously can cancel the download
-    // in some browsers before it has read the blob.
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+export async function downloadCatalogQr(
+  userId: string,
+  handle: string,
+  size = 1024,
+) {
+  const response = await axiosRequest.get(
+    API_ROUTES.links.catalogQr(userId, size),
+    {
+      responseType: "blob",
+    },
+  );
+  const url = URL.createObjectURL(response.data as Blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `aparte-${handle}-qr.png`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  // Revoke on the next tick — revoking synchronously can cancel the download
+  // in some browsers before it has read the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**
  * The same QR as an on-screen preview: an object URL that is revoked when
  * the component unmounts or the handle changes.
  */
-export function useCatalogQrPreview(userId?: string, handle?: string | null, size = 320) {
-    const [src, setSrc] = useState<string | null>(null);
+export function useCatalogQrPreview(
+  userId?: string,
+  handle?: string | null,
+  size = 320,
+) {
+  const [src, setSrc] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!userId || !handle) {
-            setSrc(null);
-            return;
-        }
-        let objectUrl: string | null = null;
-        let cancelled = false;
-        axiosRequest
-            .get(API_ROUTES.links.catalogQr(userId, size), { responseType: "blob" })
-            .then((response) => {
-                if (cancelled) return;
-                objectUrl = URL.createObjectURL(response.data as Blob);
-                setSrc(objectUrl);
-            })
-            .catch(() => {
-                if (!cancelled) setSrc(null);
-            });
-        return () => {
-            cancelled = true;
-            if (objectUrl) URL.revokeObjectURL(objectUrl);
-        };
-    }, [userId, handle, size]);
+  useEffect(() => {
+    if (!userId || !handle) {
+      setSrc(null);
+      return;
+    }
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    axiosRequest
+      .get(API_ROUTES.links.catalogQr(userId, size), { responseType: "blob" })
+      .then((response) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        setSrc(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setSrc(null);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [userId, handle, size]);
 
-    return src;
+  return src;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,41 +183,46 @@ export function useCatalogQrPreview(userId?: string, handle?: string | null, siz
 // ---------------------------------------------------------------------------
 
 export interface PropertyShareKit {
-    property_id: string;
-    slug: string | null;
-    is_link_published: boolean;
-    is_verified: boolean;
-    /** The public booking page. Null until a slug exists. */
-    direct_url: string | null;
-    qr_url: string | null;
+  property_id: string;
+  slug: string | null;
+  is_link_published: boolean;
+  is_verified: boolean;
+  /** The public booking page. Null until a slug exists. */
+  direct_url: string | null;
+  qr_url: string | null;
 }
 
 export function GetPropertyShareKit(propertyId?: string, enabled = true) {
-    return useQuery({
-        queryKey: ["propertyShareKit", propertyId],
-        queryFn: () =>
-            axiosRequest.get(API_ROUTES.links.propertyShareKit(propertyId!)),
-        enabled: Boolean(propertyId) && enabled,
-        staleTime: 1000 * 60,
-        retry: 1,
-    });
+  return useQuery({
+    queryKey: ["propertyShareKit", propertyId],
+    queryFn: () =>
+      axiosRequest.get(API_ROUTES.links.propertyShareKit(propertyId!)),
+    enabled: Boolean(propertyId) && enabled,
+    staleTime: 1000 * 60,
+    retry: 1,
+  });
 }
 
 export function UpdatePropertyLink(propertyId?: string) {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (payload: {
-            is_link_published?: boolean;
-            slug?: string;
-            link_config?: Record<string, unknown>;
-        }) => axiosRequest.patch(API_ROUTES.links.propertyLink(propertyId!), payload),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["propertyShareKit", propertyId] });
-            // The catalog's property_count is derived from published properties,
-            // so the share card on the dashboard is now stale too — and so is
-            // the page editor's listings table.
-            queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myCatalog] });
-            queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myLinkProperties] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      is_link_published?: boolean;
+      slug?: string;
+      link_config?: Record<string, unknown>;
+    }) =>
+      axiosRequest.patch(API_ROUTES.links.propertyLink(propertyId!), payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["propertyShareKit", propertyId],
+      });
+      // The catalog's property_count is derived from published properties,
+      // so the share card on the dashboard is now stale too — and so is
+      // the page editor's listings table.
+      queryClient.invalidateQueries({ queryKey: [LinksRequestKeys.myCatalog] });
+      queryClient.invalidateQueries({
+        queryKey: [LinksRequestKeys.myLinkProperties],
+      });
+    },
+  });
 }

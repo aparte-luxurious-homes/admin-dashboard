@@ -26,6 +26,9 @@ export const PAGE_ROUTES = {
             kycQueue: {
                 base: '/user-management/kyc-queue',
             },
+            emailDelivery: {
+                base: '/user-management/email-delivery',
+            },
         },
         bookingManagement: {
             bookingDisputes: {
@@ -130,6 +133,7 @@ export const PAGE_ROUTES = {
             agentPerformance: '/reports/agent-performance',
             statements: '/reports/statements',
             network: '/reports/network',
+            targets: '/reports/targets',
         },
         wallet: {
             base: '/wallet',
@@ -139,6 +143,9 @@ export const PAGE_ROUTES = {
             inbox: '/whatsapp/inbox',
             conversation: (id: string) => `/whatsapp/inbox/${id}`,
             analytics: '/whatsapp/analytics',
+        },
+        walletAdjustments: {
+            base: '/wallet-adjustments',
         },
         icalManagement: {
             feeds: '/ical-management/feeds',
@@ -179,6 +186,7 @@ export const PAGE_ROUTES = {
             needsMentor: '/network/needs-mentor',
             // Agent: deep dive on own mentees, and same-tier summary.
             myTeam: '/network/my-team',
+            myTargets: '/network/my-targets',
             agents: {
                 base: '/network/agents',
                 details: (id: string) => `/network/agents/${id}`,
