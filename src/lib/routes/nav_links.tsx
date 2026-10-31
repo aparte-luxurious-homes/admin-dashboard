@@ -196,6 +196,14 @@ export const NAV_LINKS: ILink[] = [
                 allow: [UserRole.AGENT],
             },
             {
+                // Every agent's monthly target share, achieved and %; leads
+                // also see the people below them.
+                name: 'My targets',
+                pathName: 'my-targets',
+                link: PAGE_ROUTES.dashboard.network.myTargets,
+                allow: [UserRole.AGENT],
+            },
+            {
                 name: 'Actions',
                 pathName: 'actions',
                 link: PAGE_ROUTES.dashboard.network.configs.actions.base,
@@ -482,6 +490,14 @@ export const NAV_LINKS: ILink[] = [
                 name: 'Network report',
                 pathName: 'network',
                 link: PAGE_ROUTES.dashboard.reports.network,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
+            },
+            {
+                // Set each team's monthly target and track target vs achieved.
+                // ANALYST reads; the API refuses them the edit.
+                name: 'Team targets',
+                pathName: 'targets',
+                link: PAGE_ROUTES.dashboard.reports.targets,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.ANALYST],
             },
             {

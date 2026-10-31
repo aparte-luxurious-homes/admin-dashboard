@@ -133,6 +133,7 @@ export const PAGE_ROUTES = {
             agentPerformance: '/reports/agent-performance',
             statements: '/reports/statements',
             network: '/reports/network',
+            targets: '/reports/targets',
         },
         wallet: {
             base: '/wallet',
@@ -179,6 +180,7 @@ export const PAGE_ROUTES = {
             needsMentor: '/network/needs-mentor',
             // Agent: deep dive on own mentees, and same-tier summary.
             myTeam: '/network/my-team',
+            myTargets: '/network/my-targets',
             agents: {
                 base: '/network/agents',
                 details: (id: string) => `/network/agents/${id}`,

@@ -31,6 +31,10 @@ enum TeamKeys {
     myTeam = "networkMyTeam",
     peers = "networkPeers",
     split = "bookingCommissionSplit",
+    myTargets = "networkMyTargets",
+    adminTargets = "networkAdminTargets",
+    targetHistory = "networkTargetHistory",
+    targetTree = "networkTargetTree",
 }
 
 export type Paged<T> = { items: T[]; total: number; page: number; size: number };
@@ -265,6 +269,8 @@ export interface ReportParams {
     end_date?: string;
     tier?: string;
     team_head_id?: string;
+    /** YYYY-MM: report that whole month, with target / achieved / % columns. */
+    month?: string;
 }
 
 export function GetNetworkReport(params: ReportParams) {
@@ -325,5 +331,127 @@ export function GetCommissionSplit(bookingId?: string, enabled = true) {
         enabled: enabled && Boolean(bookingId),
         select: unwrap,
         retry: false,
+    });
+}
+
+// ---------------------------------------------------------------------------
+// team targets (services/network/targets.py)
+// ---------------------------------------------------------------------------
+
+export type TargetMeasureKey =
+    | "referred_count"
+    | "referred_value"
+    | "listed_booking_count"
+    | "listed_booking_value"
+    | "verified_listings";
+
+export const TARGET_MEASURES: TargetMeasureKey[] = [
+    "referred_count",
+    "referred_value",
+    "listed_booking_count",
+    "listed_booking_value",
+    "verified_listings",
+];
+
+export const MONEY_MEASURES: TargetMeasureKey[] = ["referred_value", "listed_booking_value"];
+
+export interface TargetMeasure {
+    label: string;
+    /** null = no target set for this measure. */
+    target: number | null;
+    achieved: number;
+    /** achieved / target x 100; may exceed 100. null when there is no target. */
+    pct: number | null;
+}
+
+export interface TargetNode {
+    agent: { id: string; name: string; tier: string | null };
+    share_source: "DIRECT" | "INHERITED" | null;
+    target_overridden: boolean;
+    /** False for someone who joined after the 1st: no share until next month. */
+    has_share: boolean;
+    measures: Record<TargetMeasureKey, TargetMeasure>;
+    info: {
+        lifetime_verified_listings: number;
+        listed_properties_booked: number;
+        listed_properties_booked_pct: number | null;
+    };
+    own_work?: Record<TargetMeasureKey, TargetMeasure>;
+    members?: TargetNode[];
+    team_size?: number;
+    direct_target?: TargetRow | null;
+}
+
+export interface TargetRow {
+    id: string;
+    agent_id: string;
+    effective_month: string;
+    referred_count: number | null;
+    referred_value: number | null;
+    listed_booking_count: number | null;
+    listed_booking_value: number | null;
+    verified_listings: number | null;
+    cleared: boolean;
+    note: string | null;
+    set_by: { id: string; name: string } | null;
+    created_at: string | null;
+}
+
+export type TargetInput = Partial<Record<TargetMeasureKey, number | null>> & {
+    apply_from: "THIS_MONTH" | "NEXT_MONTH";
+    note?: string;
+};
+
+/** The calling agent's share, achieved and %, and (for leads) their team. */
+export function GetMyTargets(month?: string, enabled = true) {
+    return useQuery({
+        queryKey: [TeamKeys.myTargets, month],
+        queryFn: () => axiosRequest.get(API_ROUTES.network.myTargets, { params: { month } }),
+        enabled,
+        select: (resp: any): { month: string; is_lead: boolean; me: TargetNode } => unwrap(resp),
+    });
+}
+
+export function GetAdminTargets(month?: string) {
+    return useQuery({
+        queryKey: [TeamKeys.adminTargets, month],
+        queryFn: () => axiosRequest.get(API_ROUTES.network.targets.base, { params: { month } }),
+        select: (resp: any): {
+            month: string;
+            items: TargetNode[];
+            overridden: { agent: TargetNode["agent"]; inherits_from: TargetNode["agent"] }[];
+        } => unwrap(resp),
+    });
+}
+
+export function GetTargetHistory(agentId?: string) {
+    return useQuery({
+        queryKey: [TeamKeys.targetHistory, agentId],
+        queryFn: () => axiosRequest.get(API_ROUTES.network.targets.history(agentId as string)),
+        enabled: Boolean(agentId),
+        select: (resp: any): TargetRow[] => unwrap(resp)?.items ?? [],
+    });
+}
+
+export function GetTargetTree(agentId?: string, month?: string) {
+    return useQuery({
+        queryKey: [TeamKeys.targetTree, agentId, month],
+        queryFn: () =>
+            axiosRequest.get(API_ROUTES.network.targets.tree(agentId as string), { params: { month } }),
+        enabled: Boolean(agentId),
+        select: (resp: any): { month: string; team: TargetNode } => unwrap(resp),
+    });
+}
+
+export function SetAgentTarget() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (args: { agentId: string; body: TargetInput }) =>
+            axiosRequest.put(API_ROUTES.network.targets.set(args.agentId), args.body),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: [TeamKeys.adminTargets] });
+            qc.invalidateQueries({ queryKey: [TeamKeys.targetHistory] });
+            qc.invalidateQueries({ queryKey: [TeamKeys.targetTree] });
+        },
     });
 }
