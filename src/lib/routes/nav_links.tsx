@@ -106,6 +106,12 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.userManagement.kycQueue.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
             },
+            {
+                name: 'Email delivery',
+                pathName: 'email-delivery',
+                link: PAGE_ROUTES.dashboard.userManagement.emailDelivery.base,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
+            },
         ]
     },
     {
