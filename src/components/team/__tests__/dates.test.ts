@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { calendarDateIn, defaultReportRange, lagosMonthStart, lagosToday, REPORT_TIME_ZONE, REPORT_TIME_ZONE_LABEL } from "../dates";
+import { calendarDateIn, defaultReportRange, lagosMonth, lagosMonthStart, lagosToday, REPORT_TIME_ZONE, REPORT_TIME_ZONE_LABEL } from "../dates";
 
 describe("network report default dates in WAT (AN-L7b)", () => {
     // 23:30 UTC on 31 March is 00:30 WAT on 1 April. The old defaults came from
@@ -16,6 +16,11 @@ describe("network report default dates in WAT (AN-L7b)", () => {
     it("defaults to month-to-date in WAT, so the first of the month is not last month's range", () => {
         assert.deepEqual(defaultReportRange(lateMarchUtc), { start_date: "2026-04-01", end_date: "2026-04-01" });
         assert.equal(lagosMonthStart(lateMarchUtc), "2026-04-01");
+    });
+
+    it("opens the report on the WAT month, which rolls over an hour before UTC's", () => {
+        assert.equal(lagosMonth(lateMarchUtc), "2026-04");
+        assert.equal(lagosMonth(new Date("2026-06-15T12:00:00Z")), "2026-06");
     });
 
     it("agrees with UTC for the other 23 hours of the day", () => {
