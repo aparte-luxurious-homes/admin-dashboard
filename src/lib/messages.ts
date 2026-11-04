@@ -59,7 +59,6 @@ export const MESSAGES = {
   MSG_AGENT_IS_REQUIRED: "Agent is required",
   MSG_YOU_DON_T_HAVE_ACCESS_TO_THAT_PAGE: "You don't have access to that page",
   MSG_FAILED_TO_UPDATE_UNIT: "Failed to update unit",
-  MSG_OTP_SENT_TO_THE_EMAIL_ON_YOUR_ACCOUNT: "OTP sent to the email on your account.",
   MSG_PAYMENT_LINK_COPIED_TO_CLIPBOARD: "Payment link copied to clipboard",
   MSG_FEED_ENABLED: "Feed enabled.",
   MSG_COPIED_TO_CLIPBOARD: "Copied to clipboard!",

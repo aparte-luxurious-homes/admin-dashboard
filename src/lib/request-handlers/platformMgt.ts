@@ -6,11 +6,22 @@ import { API_ROUTES } from "../routes/endpoints";
 export enum PlatformRequestKeys {
     features = "platform:features",
     networkFeature = "platform:network-feature",
+    phoneVerificationFeature = "platform:phone-verification-feature",
 }
 
 /** Who last moved the switch — shown on the settings screen. */
 export interface NetworkFeatureState {
     network_enabled: boolean;
+    /** Null until the switch has been flipped at least once. */
+    updated_at: string | null;
+    updated_by: string | null;
+    updated_by_name: string | null;
+    updated_by_email: string | null;
+}
+
+/** The phone-verification switch and who last moved it. */
+export interface PhoneVerificationFeatureState {
+    phone_verification_enforced: boolean;
     /** Null until the switch has been flipped at least once. */
     updated_at: string | null;
     updated_by: string | null;
@@ -39,9 +50,14 @@ export function GetPlatformFeatures() {
         queryKey: [PlatformRequestKeys.features],
         queryFn: () => axiosRequest.get(API_ROUTES.platform.features),
         enabled: hasToken,
-        select: (resp: any): { networkEnabled: boolean } => {
+        select: (resp: any): { networkEnabled: boolean; phoneVerificationEnforced: boolean } => {
             const data = resp?.data?.data ?? resp?.data;
-            return { networkEnabled: data?.network_enabled !== false };
+            return {
+                networkEnabled: data?.network_enabled !== false,
+                // Off unless the API says otherwise: an older API without the
+                // field has no phone gate.
+                phoneVerificationEnforced: data?.phone_verification_enforced === true,
+            };
         },
         staleTime: 5 * 60 * 1000,
         refetchOnWindowFocus: false,
@@ -99,6 +115,51 @@ export function UpdateNetworkFeature() {
             axiosRequest.put(API_ROUTES.platform.networkFeature, payload),
         onSuccess: () => {
             queryClient.invalidateQueries();
+        },
+    });
+}
+
+/**
+ * The phone-verification switch plus its provenance, from
+ * GET /admin/platform/features. SUPER_ADMIN only.
+ *
+ * Unlike the network switch this one defaults to OFF when the field is
+ * missing: an API that predates the gate is not enforcing it.
+ */
+export function GetPhoneVerificationFeatureState(enabled = true) {
+    return useQuery({
+        queryKey: [PlatformRequestKeys.phoneVerificationFeature],
+        queryFn: () => axiosRequest.get(API_ROUTES.platform.adminFeatures),
+        enabled,
+        select: (resp: any): PhoneVerificationFeatureState => {
+            const data = resp?.data?.data ?? resp?.data;
+            const provenance = data?.phone_verification ?? null;
+            return {
+                phone_verification_enforced: data?.phone_verification_enforced === true,
+                updated_at: provenance?.updated_at ?? null,
+                updated_by: provenance?.updated_by ?? null,
+                updated_by_name: provenance?.updated_by_name ?? null,
+                updated_by_email: provenance?.updated_by_email ?? null,
+            };
+        },
+        staleTime: 0,
+        refetchOnWindowFocus: false,
+    });
+}
+
+/**
+ * Require (or stop requiring) an SMS-confirmed phone number from every owner,
+ * agent and guest. Same contract as UpdateNetworkFeature: the caller's own
+ * password, re-entered; a 401 back means it was wrong and nothing changed.
+ */
+export function UpdatePhoneVerificationFeature() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload: { enabled: boolean; password: string; reason?: string }) =>
+            axiosRequest.put(API_ROUTES.platform.phoneVerificationFeature, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [PlatformRequestKeys.phoneVerificationFeature] });
+            queryClient.invalidateQueries({ queryKey: [PlatformRequestKeys.features] });
         },
     });
 }
