@@ -5,6 +5,7 @@ import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, Users
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
 import { WHATSAPP_ANALYTICS_ROLES, WHATSAPP_INBOX_ROLES } from "../whatsappRoles";
+import { siteUrl } from "../siteUrl";
 
 export type NavBadgeKey = 'approvalPending' | 'whatsappHandover';
 
@@ -14,6 +15,8 @@ export interface ILinkChild {
     link: string,
     allow: UserRole[],
     badgeKey?: NavBadgeKey,
+    /** A full URL on another site (the public website). Opens in a new tab. */
+    external?: boolean,
 }
 
 export interface ILink {
@@ -24,7 +27,12 @@ export interface ILink {
     allow: UserRole[],
     secondary?: boolean,
     children?: ILinkChild[],
+    /** A full URL on another site (the public website). Opens in a new tab. */
+    external?: boolean,
 }
+
+/** Roles that manage the blog in the dashboard (the API decides who publishes). */
+const BLOG_STAFF = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN];
 
 /**
  * Where a section's parent entry takes `role`.
@@ -44,7 +52,7 @@ export interface ILink {
  */
 export function resolveNavTarget(link: ILink, role: UserRole): string {
     if (!link.children?.length) return link.link;
-    const first = link.children.find((child) => child.link !== '#' && child.allow.includes(role));
+    const first = link.children.find((child) => child.link !== '#' && !child.external && child.allow.includes(role));
     return first?.link ?? PAGE_ROUTES.dashboard.base;
 }
 
@@ -423,6 +431,39 @@ export const NAV_LINKS: ILink[] = [
         icon: <FinancialsIcon className={"w-5"} color={"white"} />,
         allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN],
         secondary: true,
+        children: undefined,
+    },
+    {
+        // Writing and publishing articles. Operations and support admins
+        // draft; admins publish and manage categories (enforced by the API).
+        name: 'Blog',
+        pathName: 'blog',
+        link: PAGE_ROUTES.dashboard.blog.base,
+        icon: <Icon icon="lucide:newspaper" width={20} color="white" />,
+        allow: BLOG_STAFF,
+        secondary: true,
+        children: [
+            { name: 'Articles', pathName: 'blog', link: PAGE_ROUTES.dashboard.blog.base, allow: BLOG_STAFF },
+            {
+                name: 'Categories',
+                pathName: 'categories',
+                link: PAGE_ROUTES.dashboard.blog.categories,
+                allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+            },
+            // pathName must not be '' : the sidebar highlights a child whose
+            // pathName is any segment of the route, and '' is always one.
+            { name: 'View on website', pathName: 'blog-website', link: siteUrl('/blog'), allow: BLOG_STAFF, external: true },
+        ],
+    },
+    {
+        // Owners and agents read the same public blog guests do.
+        name: 'Blog',
+        pathName: 'blog-public',
+        link: siteUrl('/blog'),
+        icon: <Icon icon="lucide:newspaper" width={20} color="white" />,
+        allow: [UserRole.OWNER, UserRole.AGENT],
+        secondary: false,
+        external: true,
         children: undefined,
     },
     {
