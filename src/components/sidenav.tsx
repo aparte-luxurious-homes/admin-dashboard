@@ -49,7 +49,12 @@ export default function SideNav({
   const router = useRouter();
 
   const handleNavigation = (path: string) => {
-    router.push(path);
+    if (link.external) {
+      // Another site (the public blog): keep the dashboard open behind it.
+      window.open(path, "_blank", "noopener,noreferrer");
+    } else {
+      router.push(path);
+    }
     onNavigate?.(); // Call onNavigate callback if provided
   };
 
@@ -98,6 +103,8 @@ export default function SideNav({
                   <Link
                     key={index}
                     href={child.link}
+                    target={child.external ? "_blank" : undefined}
+                    rel={child.external ? "noopener noreferrer" : undefined}
                     onClick={() => onNavigate?.()}
                     className={`flex items-center gap-4 pl-[3rem] xl:pl-[3.85rem] py-2 rounded-md transition-colors
                                      hover:bg-white/10 active:bg-white/20 min-h-[44px] ${getPathName(route, child.pathName) && "bg-white/10"}`}
