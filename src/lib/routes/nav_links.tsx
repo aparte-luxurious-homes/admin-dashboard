@@ -4,8 +4,9 @@ import { Icon } from "@iconify/react";
 import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon, RateIcon, PriceTagIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
+import { WHATSAPP_ANALYTICS_ROLES, WHATSAPP_INBOX_ROLES } from "../whatsappRoles";
 
-export type NavBadgeKey = 'approvalPending';
+export type NavBadgeKey = 'approvalPending' | 'whatsappHandover';
 
 export interface ILinkChild {
     name: string,
@@ -315,6 +316,31 @@ export const NAV_LINKS: ILink[] = [
                 pathName: 'stay-extensions',
                 link: PAGE_ROUTES.dashboard.bookingManagement.stayExtensions.base,
                 allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN, UserRole.OWNER, UserRole.AGENT],
+            },
+        ]
+    },
+    {
+        // Aparte on WhatsApp: the ops inbox for bot chats and the bot funnel.
+        // ANALYST sees the funnel only; resolveNavTarget sends them there.
+        name: 'WhatsApp',
+        pathName: 'whatsapp',
+        link: PAGE_ROUTES.dashboard.whatsapp.inbox,
+        icon: <Icon icon="mdi:whatsapp" width={20} color="white" />,
+        allow: WHATSAPP_ANALYTICS_ROLES,
+        secondary: true,
+        children: [
+            {
+                name: 'Inbox',
+                pathName: 'inbox',
+                link: PAGE_ROUTES.dashboard.whatsapp.inbox,
+                allow: WHATSAPP_INBOX_ROLES,
+                badgeKey: 'whatsappHandover',
+            },
+            {
+                name: 'Analytics',
+                pathName: 'analytics',
+                link: PAGE_ROUTES.dashboard.whatsapp.analytics,
+                allow: WHATSAPP_ANALYTICS_ROLES,
             },
         ]
     },
