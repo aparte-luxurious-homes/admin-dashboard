@@ -249,8 +249,11 @@ export const API_ROUTES = {
             reassign: (id: string) => `/admin/network/mentorship/${id}/reassign`,
         },
         // Gold, then Silver with their Gold mentor, then Bronze with both
-        // mentors. `format=csv|pdf` downloads it.
+        // mentors.
         report: `/admin/network/report`,
+        // The same report as a CSV or PDF in cloud storage; answers with its
+        // download_url, like every other staff export.
+        reportDownload: `/admin/network/report/download`,
         // Monthly team targets: every team head's target vs achieved, set one
         // (this month or from next month), its history, and a whole team.
         targets: {
