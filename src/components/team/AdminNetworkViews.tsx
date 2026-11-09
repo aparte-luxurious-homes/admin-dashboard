@@ -22,15 +22,14 @@ import {
     GetTopTeams,
     GetUnassignedAgents,
     ReassignMentor,
-    MONEY_MEASURES,
     ReportParams,
     TARGET_MEASURES,
-    TargetMeasureKey,
 } from "@/src/lib/request-handlers/teamMgt";
 import { Badge, DataTable, Pager, Panel, SearchBox, Stat, Tabs, ngn, shortDate } from "./ui";
 import { describeRequest, displayValue, fieldLabel } from "./requestText";
 import { lagosMonth, REPORT_TIME_ZONE_LABEL } from "./dates";
 import { peerRowKey } from "./rowKeys";
+import { SHORT_LABEL, TargetCell } from "./TargetViews";
 import {
     CommissionSplitData,
     CommissionSplitPosition,
@@ -41,14 +40,6 @@ import {
 } from "./commissionSplit";
 
 const SIZE = 20;
-
-const TARGET_SHORT_LABEL: Record<TargetMeasureKey, string> = {
-    referred_count: "Referred bookings",
-    referred_value: "Referred value",
-    listed_booking_count: "Listed bookings",
-    listed_booking_value: "Listed value",
-    verified_listings: "Verified listings",
-};
 
 // ---------------------------------------------------------------------------
 // team requests: queue and review
@@ -336,18 +327,15 @@ const REPORT_COLUMNS = (group: "gold" | "silver" | "bronze") => {
 
 // For a month, or a From/To inside one month, each row carries the agent's
 // target share for that month, what their part of the team achieved in the
-// period and the %, per measure (services/network/targets.py). A range across
-// months has no target, and the API then sends no target columns.
-const TARGET_REPORT_COLUMNS: { header: string; render: (r: any) => any }[] = TARGET_MEASURES.flatMap((m) => {
-    const money = MONEY_MEASURES.includes(m);
-    const show = (v: any) => (v == null ? "—" : money ? ngn(v) : v);
-    const label = TARGET_SHORT_LABEL[m];
-    return [
-        { header: `${label} target`, render: (r: any) => show(r[`target_${m}`]) },
-        { header: `${label} achieved`, render: (r: any) => show(r[`achieved_${m}`]) },
-        { header: `${label} % achieved`, render: (r: any) => (r[`pct_${m}`] == null ? "—" : `${r[`pct_${m}`]}%`) },
-    ];
-});
+// period and the %, per measure (services/network/targets.py). One cell per
+// measure, the same cell as the team targets page. A range across months has
+// no target, and the API then sends no target columns.
+const TARGET_REPORT_COLUMNS: { header: string; render: (r: any) => any }[] = TARGET_MEASURES.map((m) => ({
+    header: SHORT_LABEL[m],
+    render: (r: any) => (
+        <TargetCell measure={m} value={{ target: r[`target_${m}`], achieved: r[`achieved_${m}`], pct: r[`pct_${m}`] }} />
+    ),
+}));
 
 export function NetworkReportView() {
     // Opens on this WAT month, which carries the target columns. For the
