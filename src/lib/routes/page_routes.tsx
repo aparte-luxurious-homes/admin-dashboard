@@ -147,6 +147,12 @@ export const PAGE_ROUTES = {
         walletAdjustments: {
             base: '/wallet-adjustments',
         },
+        blog: {
+            base: '/blog',
+            create: '/blog/new',
+            edit: (id: string) => `/blog/${id}`,
+            categories: '/blog/categories',
+        },
         icalManagement: {
             feeds: '/ical-management/feeds',
             conflicts: '/ical-management/conflicts',
