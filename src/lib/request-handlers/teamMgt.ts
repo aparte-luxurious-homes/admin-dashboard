@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
 import { UserRole } from "../enums";
+import { requestReportDownload } from "./reportsMgt";
 
 /**
  * Agent Network cleanup (2026-10-14): team lead workspace, admin approval of
@@ -281,21 +282,15 @@ export function GetNetworkReport(params: ReportParams) {
     });
 }
 
-/** Download the report as CSV or PDF through the authenticated client. */
-export async function downloadNetworkReport(params: ReportParams, format: "csv" | "pdf") {
-    const resp = await axiosRequest.get(API_ROUTES.network.report, {
-        params: { ...params, format },
-        responseType: "blob",
-        timeout: 120000,
-    });
-    const url = URL.createObjectURL(resp.data);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `aparte-network-report.${format}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+/**
+ * Download the report as CSV or PDF the way every other staff export works:
+ * the API puts the file in cloud storage and a tab opened on the click is sent
+ * to it. This used to fetch the file as a blob and save it from the page,
+ * which phones and in-app browsers often refuse. Call it straight from the
+ * click handler, without awaiting anything first (see requestReportDownload).
+ */
+export function downloadNetworkReport(params: ReportParams, format: "csv" | "pdf") {
+    return requestReportDownload(API_ROUTES.network.reportDownload, format, { ...params });
 }
 
 export function GetTopTeams(enabled = true) {
