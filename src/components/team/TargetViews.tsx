@@ -35,7 +35,9 @@ import { lagosToday } from "./dates";
 
 const thisMonth = () => lagosToday().slice(0, 7);
 
-const SHORT_LABEL: Record<TargetMeasureKey, string> = {
+// Exported with TargetCell so the network report's target columns read
+// exactly like this page's.
+export const SHORT_LABEL: Record<TargetMeasureKey, string> = {
     referred_count: "Referred bookings",
     referred_value: "Referred booking value",
     listed_booking_count: "Bookings on listed properties",
@@ -73,6 +75,18 @@ function Progress({ pct }: { pct: number | null }) {
             </div>
             {/* Not capped: 125% is a result worth seeing. */}
             <span className={`text-xs font-semibold ${over ? "text-emerald-700" : "text-gray-700"}`}>{pct}%</span>
+        </div>
+    );
+}
+
+/** One measure in a table cell: achieved / target, with the progress bar under it. */
+export function TargetCell({ measure, value }: {
+    measure: TargetMeasureKey; value: Pick<TargetMeasure, "target" | "achieved" | "pct">;
+}) {
+    return (
+        <div className="min-w-[120px]">
+            <p className="text-sm">{fmt(measure, value.achieved)} <span className="text-gray-400">/ {fmt(measure, value.target)}</span></p>
+            <Progress pct={value.pct} />
         </div>
     );
 }
@@ -372,12 +386,7 @@ export function AdminTargetsView() {
                     { header: "Team", render: (r) => `${r.team_size ?? 0} agent${r.team_size === 1 ? "" : "s"}` },
                     ...TARGET_MEASURES.map((m) => ({
                         header: SHORT_LABEL[m],
-                        render: (r: TargetNode) => (
-                            <div className="min-w-[120px]">
-                                <p className="text-sm">{fmt(m, r.measures[m].achieved)} <span className="text-gray-400">/ {fmt(m, r.measures[m].target)}</span></p>
-                                <Progress pct={r.measures[m].pct} />
-                            </div>
-                        ),
+                        render: (r: TargetNode) => <TargetCell measure={m} value={r.measures[m]} />,
                     })),
                     {
                         header: "",
