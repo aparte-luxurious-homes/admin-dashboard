@@ -17,6 +17,12 @@ const DISBURSEMENT_KEY = "DISBURSEMENT_PROVIDER";
 const REWARD_ENABLED_KEY = "PROPERTY_VERIFICATION_REWARD_ENABLED";
 const REWARD_AMOUNT_KEY = "PROPERTY_VERIFICATION_REWARD_AMOUNT";
 const SMS_PROVIDER_KEY = "SMS_PROVIDER";
+const SMS_PROVIDER_FALLBACK_KEY = "SMS_PROVIDER_FALLBACK";
+// What the API uses when no SMS_PROVIDER row exists (SMS_PROVIDER_DEFAULT).
+const DEFAULT_SMS_PROVIDER = "kudisms";
+// No SMS_PROVIDER_FALLBACK row means no second route, unless the server's
+// environment sets one; "none" is what the API stores for "no retry".
+const DEFAULT_SMS_FALLBACK = "none";
 
 interface ProviderOption {
   value: string;
@@ -48,18 +54,34 @@ const providerOptions: ProviderOption[] = [
 
 const smsProviderOptions: ProviderOption[] = [
   {
-    value: "termii",
-    label: "Termii",
-    description: "Default OTP & SMS delivery",
-    icon: "mdi:message-text-outline",
-  },
-  {
     value: "kudisms",
-    label: "KudiSMS",
-    description: "Alternative SMS gateway",
+    label: "KudiSMS (recommended)",
+    description: "Primary OTP & SMS delivery",
     icon: "mdi:message-processing-outline",
   },
+  {
+    value: "termii",
+    label: "Termii",
+    description: "Alternative SMS gateway",
+    icon: "mdi:message-text-outline",
+  },
 ];
+
+const smsFallbackOptions: { value: string; label: string }[] = [
+  { value: "none", label: "None" },
+  { value: "termii", label: "Termii" },
+  { value: "kudisms", label: "KudiSMS" },
+];
+
+/** The API answers config errors as `detail` (string or {message}) or `message`. */
+const apiErrorMessage = (error: any, fallback: string): string => {
+  const data = error?.response?.data;
+  const candidate =
+    (typeof data?.detail === "string" && data.detail) ||
+    data?.detail?.message ||
+    data?.message;
+  return typeof candidate === "string" && candidate ? candidate : fallback;
+};
 
 const toastStyle = {
   duration: 3000,
@@ -75,6 +97,7 @@ const PaymentPayout = () => {
   const mutation = UpdateIntegrationConfig();
   const rewardMutation = UpdateIntegrationConfig();
   const smsMutation = UpdateIntegrationConfig();
+  const smsFallbackMutation = UpdateIntegrationConfig();
 
   const configs = data?.data?.data ?? data?.data ?? [];
 
@@ -97,8 +120,8 @@ const PaymentPayout = () => {
 
   // --- SMS provider state ---
   const smsConfig = configs.find((c: { key: string }) => c.key === SMS_PROVIDER_KEY);
-  // Default to "termii" when no record exists yet (matches backend SMS_PROVIDER_DEFAULT).
-  const currentSmsProvider: string = (smsConfig?.value ?? "termii").toLowerCase();
+  // Default to KudiSMS when no record exists yet (matches backend SMS_PROVIDER_DEFAULT).
+  const currentSmsProvider: string = (smsConfig?.value || DEFAULT_SMS_PROVIDER).toLowerCase();
   const smsUpdatedAt: string | undefined = smsConfig?.updated_at;
 
   const [smsUserSelected, setSmsUserSelected] = useState<string | null>(null);
@@ -111,6 +134,29 @@ const PaymentPayout = () => {
       setSmsUserSelected(null);
     }
   }, [currentSmsProvider, smsUserSelected]);
+
+  // --- SMS backup provider state (second route for verification codes) ---
+  const smsFallbackConfig = configs.find(
+    (c: { key: string }) => c.key === SMS_PROVIDER_FALLBACK_KEY
+  );
+  const currentSmsFallback: string = (
+    smsFallbackConfig?.value || DEFAULT_SMS_FALLBACK
+  ).toLowerCase();
+  const smsFallbackUpdatedAt: string | undefined = smsFallbackConfig?.updated_at;
+
+  const [smsFallbackSelected, setSmsFallbackSelected] = useState<string | null>(null);
+  const selectedSmsFallback = smsFallbackSelected ?? currentSmsFallback;
+  const hasSmsFallbackChanges =
+    smsFallbackSelected !== null && smsFallbackSelected !== currentSmsFallback;
+  // A backup that is the main provider is no second route at all.
+  const fallbackIsPrimary =
+    selectedSmsFallback !== "none" && selectedSmsFallback === selectedSmsProvider;
+
+  useEffect(() => {
+    if (smsFallbackSelected && smsFallbackSelected === currentSmsFallback) {
+      setSmsFallbackSelected(null);
+    }
+  }, [currentSmsFallback, smsFallbackSelected]);
 
   // --- Reward feature state ---
   const rewardEnabledConfig = configs.find(
@@ -282,7 +328,40 @@ const PaymentPayout = () => {
         },
         onError: (error: any) => {
           toast.error(
-            error?.response?.data?.message ?? "Failed to update SMS provider.",
+            apiErrorMessage(error, "Failed to update SMS provider."),
+            toastStyle
+          );
+        },
+      }
+    );
+  };
+
+  const handleSaveSmsFallback = () => {
+    if (!hasSmsFallbackChanges) return;
+
+    const label =
+      smsFallbackOptions.find((o) => o.value === selectedSmsFallback)?.label ??
+      selectedSmsFallback;
+
+    const confirmed = window.confirm(
+      selectedSmsFallback === "none"
+        ? "Remove the backup SMS provider? A verification code the main provider fails to send will not be retried."
+        : `Use ${label} as the backup SMS provider? Verification codes the main provider fails to send will be retried through ${label}.`
+    );
+    if (!confirmed) return;
+
+    smsFallbackMutation.mutate(
+      { key: SMS_PROVIDER_FALLBACK_KEY, payload: { value: selectedSmsFallback } },
+      {
+        onSuccess: (res) => {
+          toast.success(
+            res?.data?.message ?? "Backup SMS provider updated successfully.",
+            toastStyle
+          );
+        },
+        onError: (error: any) => {
+          toast.error(
+            apiErrorMessage(error, "Failed to update the backup SMS provider."),
             toastStyle
           );
         },
@@ -585,6 +664,61 @@ const PaymentPayout = () => {
               onClick={handleSaveSms}
             />
           </div>
+        </div>
+
+        {/* Backup provider for verification codes */}
+        <div className="mt-6 pt-6 border-t border-[#E4E7EC]">
+          <label
+            htmlFor="sms-provider-fallback"
+            className="block text-sm font-semibold text-gray-800"
+          >
+            Backup provider for verification codes
+          </label>
+          <p className="text-sm text-gray-500 mt-1">
+            If the main provider fails to send a sign-in or phone verification code,
+            it is retried once through this provider.
+          </p>
+
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <select
+              id="sms-provider-fallback"
+              value={selectedSmsFallback}
+              onChange={(e) => setSmsFallbackSelected(e.target.value)}
+              disabled={smsFallbackMutation.isPending}
+              className="w-full sm:w-64 px-3 py-2.5 border border-[#E4E7EC] rounded-lg bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
+            >
+              {smsFallbackOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                  {option.value === currentSmsFallback ? " (current)" : ""}
+                </option>
+              ))}
+            </select>
+            <div className="sm:ml-auto w-full sm:w-auto">
+              <Button
+                variant="primaryoutline"
+                buttonSize="medium"
+                color="btnfontprimary"
+                buttonName="Save Backup"
+                disabled={!hasSmsFallbackChanges || smsFallbackMutation.isPending}
+                isLoading={smsFallbackMutation.isPending}
+                onClick={handleSaveSmsFallback}
+              />
+            </div>
+          </div>
+
+          {fallbackIsPrimary && (
+            <p className="text-xs text-amber-700 mt-2">
+              This is the same as the main provider, so there is no second route.
+              Choose the other provider, or None.
+            </p>
+          )}
+
+          {smsFallbackUpdatedAt && (
+            <p className="text-xs text-gray-400 mt-3">
+              Last updated: {formatDate(smsFallbackUpdatedAt)}
+            </p>
+          )}
         </div>
       </div>
 

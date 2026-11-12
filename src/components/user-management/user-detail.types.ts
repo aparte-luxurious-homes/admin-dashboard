@@ -51,6 +51,11 @@ export interface UserDetail {
   /** An address they asked to move to and have not confirmed yet. */
   pendingEmail?: string | null;
   phone: string | null;
+  /** The email address was confirmed with a code. Null when the API didn't say. */
+  emailVerified: boolean | null;
+  /** True only when the phone number was confirmed by an SMS code. */
+  phoneVerified: boolean;
+  phoneVerifiedAt: string | null;
   role: string;
   isActive: boolean;
   isVerified: boolean;
@@ -103,6 +108,14 @@ export function normalizeUser(raw: any): UserDetail {
     emailSuggestion: str(raw.email_suggestion ?? raw.emailSuggestion),
     pendingEmail: str(raw.pending_email ?? raw.pendingEmail),
     phone: str(raw.phone),
+    emailVerified: typeof (raw.emailVerified ?? raw.email_verified) === "boolean"
+      ? (raw.emailVerified ?? raw.email_verified)
+      : null,
+    // Deliberately not the legacy snake_case `phone_verified` flag: a backfill
+    // set it for accounts that never confirmed an SMS code. `phoneVerified`
+    // (and a stamped `phone_verified_at`) mean an SMS code was confirmed.
+    phoneVerified: raw.phoneVerified === true || Boolean(raw.phoneVerifiedAt ?? raw.phone_verified_at),
+    phoneVerifiedAt: str(raw.phoneVerifiedAt ?? raw.phone_verified_at),
     role: typeof raw.role === "string" ? raw.role : raw.role?.value ?? "",
     isActive: raw.isActive ?? raw.is_active ?? false,
     isVerified: raw.isVerified ?? raw.is_verified ?? false,

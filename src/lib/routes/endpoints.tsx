@@ -8,7 +8,6 @@ export const API_ROUTES = {
         resendOtp: '/auth/otp/resend',
         logout: '/auth/logout',
         requestPhoneOtp: '/auth/phone/request-otp',
-        requestPhoneOtpViaEmail: '/auth/phone/request-otp-via-email',
         verifyPhoneOtp: '/auth/phone/verify',
     },
     admin: {
@@ -354,6 +353,7 @@ export const API_ROUTES = {
         // SUPER_ADMIN only; adds who last moved the switch.
         adminFeatures: '/admin/platform/features',
         networkFeature: '/admin/platform/features/network',
+        phoneVerificationFeature: '/admin/platform/features/phone-verification',
         // The WhatsApp booking bot's public number. Any authenticated role.
         whatsapp: '/platform/whatsapp',
     },
