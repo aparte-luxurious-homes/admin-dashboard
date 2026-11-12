@@ -158,8 +158,11 @@ export function GetStatements(userType: 'owner' | 'agent' = 'owner', userId?: st
  *
  * So callers must reach this without awaiting anything first — by then the
  * click is already spent.
+ *
+ * `params` carries the report's own filters (dates, tier, ...) alongside the
+ * format.
  */
-export async function requestReportDownload(url: string, format: string) {
+export async function requestReportDownload(url: string, format: string, params: Record<string, unknown> = {}) {
     const tab = window.open("", "_blank");
     if (tab) {
         tab.document.title = "Preparing report…";
@@ -168,7 +171,7 @@ export async function requestReportDownload(url: string, format: string) {
 
     try {
         const response = await axiosRequest.get(url, {
-            params: { format },
+            params: { ...params, format },
             timeout: REPORT_TIMEOUT_MS,
         });
 

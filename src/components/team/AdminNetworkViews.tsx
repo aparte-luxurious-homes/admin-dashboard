@@ -22,15 +22,14 @@ import {
     GetTopTeams,
     GetUnassignedAgents,
     ReassignMentor,
-    MONEY_MEASURES,
     ReportParams,
     TARGET_MEASURES,
-    TargetMeasureKey,
 } from "@/src/lib/request-handlers/teamMgt";
 import { Badge, DataTable, Pager, Panel, SearchBox, Stat, Tabs, ngn, shortDate } from "./ui";
 import { describeRequest, displayValue, fieldLabel } from "./requestText";
-import { defaultReportRange, REPORT_TIME_ZONE_LABEL } from "./dates";
+import { lagosMonth, REPORT_TIME_ZONE_LABEL } from "./dates";
 import { peerRowKey } from "./rowKeys";
+import { SHORT_LABEL, TargetCell } from "./TargetViews";
 import {
     CommissionSplitData,
     CommissionSplitPosition,
@@ -41,14 +40,6 @@ import {
 } from "./commissionSplit";
 
 const SIZE = 20;
-
-const TARGET_SHORT_LABEL: Record<TargetMeasureKey, string> = {
-    referred_count: "Referred bookings",
-    referred_value: "Referred value",
-    listed_booking_count: "Listed bookings",
-    listed_booking_value: "Listed value",
-    verified_listings: "Verified listings",
-};
 
 // ---------------------------------------------------------------------------
 // team requests: queue and review
@@ -334,26 +325,30 @@ const REPORT_COLUMNS = (group: "gold" | "silver" | "bronze") => {
     return cols;
 };
 
-// With `month`, each row carries the agent's target share, what their part of
-// the team achieved and the %, per measure (services/network/targets.py).
+// For a month, or a From/To inside one month, each row carries the agent's
+// target share for that month, what their part of the team achieved in the
+// period and the %, per measure (services/network/targets.py). One cell per
+// measure, the same cell as the team targets page. A range across months has
+// no target, and the API then sends no target columns.
 const TARGET_REPORT_COLUMNS: { header: string; render: (r: any) => any }[] = TARGET_MEASURES.map((m) => ({
-    header: `${TARGET_SHORT_LABEL[m]} (target)`,
-    render: (r: any) => {
-        const money = MONEY_MEASURES.includes(m);
-        const show = (v: any) => (v == null ? "—" : money ? ngn(v) : v);
-        const pct = r[`pct_${m}`];
-        return `${show(r[`achieved_${m}`])} / ${show(r[`target_${m}`])}${pct == null ? "" : ` · ${pct}%`}`;
-    },
+    header: SHORT_LABEL[m],
+    render: (r: any) => (
+        <TargetCell measure={m} value={{ target: r[`target_${m}`], achieved: r[`achieved_${m}`], pct: r[`pct_${m}`] }} />
+    ),
 }));
 
 export function NetworkReportView() {
-    // Month to date in WAT, the clock the API counts "by date made" on. The
-    // defaults used to come from toISOString(), which is UTC — see ./dates.ts.
-    // Lazy, so it is computed once rather than on every render.
-    const [params, setParams] = useState<ReportParams>(() => defaultReportRange());
+    // Opens on this WAT month, which carries the target columns. For the
+    // current month that is the 1st to today: nothing is paid or verified in
+    // the future. The API ignores start/end when a month is given, so the two
+    // controls clear each other. Lazy, so it is computed once.
+    const [params, setParams] = useState<ReportParams>(() => ({ month: lagosMonth() }));
     const [draft, setDraft] = useState<ReportParams>(params);
     const [downloading, setDownloading] = useState<string | null>(null);
     const { data, isLoading, isFetching, error } = GetNetworkReport(params);
+    // The API decides whether the period has a target month; read its answer
+    // rather than re-deriving the WAT month here.
+    const withTargets = (data?.columns ?? []).some((c: [string, string]) => c[0].startsWith("target_"));
 
     const download = async (format: "csv" | "pdf") => {
         setDownloading(format);
@@ -373,15 +368,15 @@ export function NetworkReportView() {
             </>}
         >
             <div className="mb-5 flex flex-wrap gap-3 items-end">
-                <label className="text-xs text-gray-600">From ({REPORT_TIME_ZONE_LABEL})<input type="date" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.start_date ?? ""} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} /></label>
-                <label className="text-xs text-gray-600">To ({REPORT_TIME_ZONE_LABEL})<input type="date" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.end_date ?? ""} onChange={(e) => setDraft({ ...draft, end_date: e.target.value })} /></label>
+                <label className="text-xs text-gray-600">From ({REPORT_TIME_ZONE_LABEL})<input type="date" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.start_date ?? ""} onChange={(e) => setDraft({ ...draft, start_date: e.target.value, month: undefined })} /></label>
+                <label className="text-xs text-gray-600">To ({REPORT_TIME_ZONE_LABEL})<input type="date" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.end_date ?? ""} onChange={(e) => setDraft({ ...draft, end_date: e.target.value, month: undefined })} /></label>
                 <label className="text-xs text-gray-600">Tier
                     <select className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.tier ?? ""} onChange={(e) => setDraft({ ...draft, tier: e.target.value || undefined })}>
                         <option value="">All tiers</option><option value="GOLD">Gold</option><option value="SILVER">Silver</option><option value="BRONZE">Bronze</option>
                     </select>
                 </label>
                 <label className="text-xs text-gray-600">Or a whole month, with targets
-                    <input type="month" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.month ?? ""} onChange={(e) => setDraft({ ...draft, month: e.target.value || undefined })} />
+                    <input type="month" className="block border border-gray-200 rounded-lg text-sm px-3 py-2" value={draft.month ?? ""} onChange={(e) => setDraft({ ...draft, month: e.target.value || undefined, start_date: undefined, end_date: undefined })} />
                 </label>
                 <button className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium" onClick={() => setParams(draft)}>Apply</button>
                 {params.team_head_id && <button className={btn} onClick={() => { const p = { ...params, team_head_id: undefined }; setParams(p); setDraft(p); }}>Show all teams</button>}
@@ -395,7 +390,7 @@ export function NetworkReportView() {
                         rowKey={(r: any) => r.agent_id}
                         onRowClick={group === "gold" ? (r: any) => { const p = { ...params, team_head_id: r.agent_id }; setParams(p); setDraft(p); } : undefined}
                         empty={{ title: `No ${group} agents` }}
-                        columns={[...REPORT_COLUMNS(group), ...(params.month ? TARGET_REPORT_COLUMNS : [])]}
+                        columns={[...REPORT_COLUMNS(group), ...(withTargets ? TARGET_REPORT_COLUMNS : [])]}
                     />
                 </div>
             ))}

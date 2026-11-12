@@ -111,6 +111,10 @@ export interface IBooking {
     is_my_referral?: boolean
     isMyManagement?: boolean
     is_my_management?: boolean
+    // Where the booking came from (BookingSource on the API), e.g.
+    // "WHATSAPP_BOT". Bot bookings also carry their conversation's id.
+    source?: string | null
+    wa_conversation_id?: string | null
 }
 
 export interface RevenueSplit {

@@ -248,8 +248,11 @@ export const API_ROUTES = {
             reassign: (id: string) => `/admin/network/mentorship/${id}/reassign`,
         },
         // Gold, then Silver with their Gold mentor, then Bronze with both
-        // mentors. `format=csv|pdf` downloads it.
+        // mentors.
         report: `/admin/network/report`,
+        // The same report as a CSV or PDF in cloud storage; answers with its
+        // download_url, like every other staff export.
+        reportDownload: `/admin/network/report/download`,
         // Monthly team targets: every team head's target vs achieved, set one
         // (this month or from next month), its history, and a whole team.
         targets: {
@@ -351,6 +354,19 @@ export const API_ROUTES = {
         adminFeatures: '/admin/platform/features',
         networkFeature: '/admin/platform/features/network',
         phoneVerificationFeature: '/admin/platform/features/phone-verification',
+        // The WhatsApp booking bot's public number. Any authenticated role.
+        whatsapp: '/platform/whatsapp',
+    },
+    // Aparte on WhatsApp: ops inbox and funnel (whatsapp.view_inbox /
+    // whatsapp.reply / whatsapp.view_analytics on the API).
+    whatsapp: {
+        conversations: '/admin/whatsapp/conversations',
+        conversation: (id: string) => `/admin/whatsapp/conversations/${id}`,
+        takeover: (id: string) => `/admin/whatsapp/conversations/${id}/takeover`,
+        release: (id: string) => `/admin/whatsapp/conversations/${id}/release`,
+        resolve: (id: string) => `/admin/whatsapp/conversations/${id}/resolve`,
+        reply: (id: string) => `/admin/whatsapp/conversations/${id}/reply`,
+        funnel: '/admin/whatsapp/funnel',
     },
     permissions: {
         base: '/permissions',

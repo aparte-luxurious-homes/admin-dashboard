@@ -21,6 +21,7 @@ const NON_NAVIGABLE_SEGMENTS = new Set<string>([
   "property-management",
   "transactions",
   "user-management",
+  "whatsapp",
 ]);
 
 export default function AutoBreadcrumb(): React.JSX.Element {
