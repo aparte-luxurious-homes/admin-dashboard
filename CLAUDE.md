@@ -246,6 +246,7 @@ interface IResponse<T> {
 | `/audit-logs` | System audit trail |
 | `/notifications/create\|manage` | Notification management |
 | `/settings` | User settings (profile, security, payouts) |
+| `/blog`, `/blog/new`, `/blog/[id]`, `/blog/categories` | Blog management (staff). Operations/support admins draft; admins publish, schedule, feature, delete and manage categories. The API's `can_publish` drives which buttons show. Editor is TipTap ([src/components/blog-mgt/RichTextEditor.tsx](src/components/blog-mgt/RichTextEditor.tsx)); keep its output inside the API's sanitiser allow-list (api-v1 `services/blog/content.py`). Owners and agents get an external "Blog" nav link to the website (`ILink.external`) |
 
 ---
 
