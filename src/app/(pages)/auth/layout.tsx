@@ -15,11 +15,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         // Only redirect if BOTH token AND user data exist (from Redux persistence)
         const token = Cookies.get("token");
         
-        console.log('[AuthLayout] Checking auth:', { hasToken: !!token, hasUser: !!user, userId: user?.id });
+        // console.log('[AuthLayout] Checking auth:', { hasToken: !!token, hasUser: !!user, userId: user?.id });
         
         // Only redirect if we have valid user data (prevents loop)
         if (token && user && user.id) {
-            console.log('[AuthLayout] Valid auth detected, redirecting to dashboard');
+            // console.log('[AuthLayout] Valid auth detected, redirecting to dashboard');
             router.replace(PAGE_ROUTES.dashboard.base);
         }
     }, [router, user]);

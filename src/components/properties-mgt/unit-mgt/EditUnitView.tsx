@@ -1,11 +1,13 @@
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
-import { IAmenity, IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, } from "../types";
+import { MESSAGES } from '@/src/lib/messages';
+import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { IPropertyMedia, IPropertyUnit, IUpdatePropertyUnit, MediaType, PropertyType } from "../types";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@/src/hooks/useAuth";
-import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia } from "@/src/lib/request-handlers/unitMgt";
+import { AssignUnitAmenities, DeletePropertyUnit, GetSinglePropertyUnit, UpdatePropertyUnit, UploadPropertyUnitMedia, DeleteUnitMedia } from "@/src/lib/request-handlers/unitMgt";
 import { useFormik } from "formik";
 import { FaPlus, FaRegBuilding } from "react-icons/fa";
-import MultipleChoice from "../../ui/MultipleChoice";
+import AmenityPicker from "../AmenityPicker";
+import { AmenityPickerScope, amenityIdsForNames, amenityPickerOptions, mergeAmenities } from "../amenitySelection";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
 import Image from "next/image";
 import { PriceTagIcon, TrashIcon } from "../../icons";
@@ -21,12 +23,20 @@ import Spinner from "../../ui/Spinner";
 import toast from "react-hot-toast";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { GetAmenities } from "@/src/lib/request-handlers/propertyMgt";
+import { GetAmenities, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import HallFields from "../HallFields";
+import { HallForm, hallFormFromUnit, hallPayload, isVenue, validateHall } from "../venue";
+import {
+    CATEGORY_LABELS,
+    HALL_OPTIONAL_CATEGORIES,
+    HALL_REQUIRED_CATEGORIES,
+    PropertyMediaCategory,
+} from "../create-wizard/types";
 
 export default function EditUnitView({
     handleEditMode,
-    unitData,
+    unitData, 
     propertyId,
     unitId,
 }: {
@@ -36,13 +46,21 @@ export default function EditUnitView({
     unitId: string | number,
 }) {
     const { data: unitDetails, isLoading } = GetSinglePropertyUnit(propertyId, unitId)
+    const { data: propertyData } = GetSingleProperty(propertyId);
+    const propertyIsVenue = isVenue(
+        propertyData?.data?.data?.property_type ?? propertyData?.data?.data?.propertyType,
+    );
+    // The whole taxonomy: the picker scopes what it OFFERS itself. Fetching
+    // the scoped slice here is the same bug EditPropertyView had — a hall's
+    // attached stay amenities could not be resolved to ids and were silently
+    // detached on save. See amenitySelection.ts.
     const { data: fetchedAmenites } = GetAmenities();
     const [unit, setUnit] = useState<IPropertyUnit>(unitData);
-    const [amenities, setAmenities] = useState<IAmenity[]>([]);
     const dispatch = useDispatch();
     const { mutate, isPending } = UpdatePropertyUnit();
     const { mutate: deleteMutation, isPending: deleteIsPending } = DeletePropertyUnit()
     const { mutate: uploadMedia, data: uploadData, isPending: uploadedMediaPending } = UploadPropertyUnitMedia();
+    const { mutate: deleteMedia } = DeleteUnitMedia();
     const { user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -53,28 +71,40 @@ export default function EditUnitView({
     const uploadRef = useRef<{ url: string; file: File }[]>([]);
     const { mutate: assignAmenity } = AssignUnitAmenities();
 
+    const loadedProperty = propertyData?.data?.data;
+    const isEventCentre = loadedProperty?.propertyType === PropertyType.EVENT_CENTRE || loadedProperty?.property_type === PropertyType.EVENT_CENTRE;
+
+    // A hall's rate card, hours and same-day rule, edited with the same
+    // component the listing wizard uses.
+    const [hall, setHall] = useState<HallForm>(() => hallFormFromUnit(unitData));
+    const [hallError, setHallError] = useState<string | null>(null);
+    const [hallPhotoCategory, setHallPhotoCategory] = useState<PropertyMediaCategory>(
+        PropertyMediaCategory.HALL_INTERIOR,
+    );
+
     useEffect(() => {
         setUnit(unitDetails?.data?.data)
         setMedia(unitDetails?.data?.data?.media)
+        if (unitDetails?.data?.data) setHall(hallFormFromUnit(unitDetails.data.data))
     }, [unitDetails])
 
-    useEffect(() => {
-        setAmenities(fetchedAmenites?.data?.data)
-    }, [fetchedAmenites])
-
-
-    const sortAmenities = (amenities: IAmenity[], newAmeities: string[]) => {
-        const sortedAmenities = []
-        let prevAmenityNames = amenities.map((a) => a.name);
-        for (const amenity of newAmeities) {
-            if (prevAmenityNames.includes(amenity)) {
-                const pos = prevAmenityNames.indexOf(amenity)
-                sortedAmenities.push(amenities[pos].id)
-            }
-        }
-
-        return sortedAmenities;
-    }
+    // Taxonomy first (it carries each amenity's scope), then the unit's own
+    // rows, which only stand in for an amenity the taxonomy lacks or has not
+    // loaded yet. Names resolve to ids against all of it, so an attached
+    // amenity survives a save whatever its scope.
+    const knownAmenities = useMemo(
+        () => mergeAmenities(fetchedAmenites?.data?.data, unit?.amenities),
+        [fetchedAmenites, unit],
+    );
+    const amenityScope: AmenityPickerScope = propertyIsVenue ? "VENUE" : "STAY";
+    const attachedAmenityNames = useMemo(
+        () => (unit?.amenities ?? []).map((a) => a.name),
+        [unit],
+    );
+    const amenityOptions = useMemo(
+        () => amenityPickerOptions(knownAmenities, amenityScope, attachedAmenityNames),
+        [knownAmenities, amenityScope, attachedAmenityNames],
+    );
 
     const removeParam = (param: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -91,6 +121,8 @@ export default function EditUnitView({
             name: unit?.name ?? "",
             description: unit?.description ?? "",
             pricePerNight: unit?.pricePerNight ?? unit?.price_per_night ?? "0.00",
+            eventPricePerHour: unit?.eventPricePerHour ?? (unit as any)?.event_price_per_hour ?? "0.00",
+            eventPricePerHalfDay: unit?.eventPricePerHalfDay ?? (unit as any)?.event_price_per_half_day ?? "0.00",
             cautionFee: unit?.cautionFee ?? unit?.caution_fee ?? "0.00",
             maxGuests: unit?.maxGuests ?? unit?.max_guests ?? 0,
             count: unit?.count ?? 0,
@@ -99,12 +131,25 @@ export default function EditUnitView({
             livingRoomCount: unit?.livingRoomCount ?? unit?.living_room_count ?? 0,
             kitchenCount: unit?.kitchenCount ?? unit?.kitchen_count ?? 0,
             bathroomCount: unit?.bathroomCount ?? unit?.bathroom_count ?? 0,
+            seatingCapacity: unit?.seatingCapacity ?? unit?.seating_capacity ?? 0,
+            standingCapacity: unit?.standingCapacity ?? unit?.standing_capacity ?? 0,
+            carParkSpaces: unit?.carParkSpaces ?? unit?.car_park_spaces ?? 0,
+            powerSupplyProvision: unit?.powerSupplyProvision ?? (unit as any)?.power_supply_provision ?? "",
+            additionalFees: (unit as any)?.additionalFees ?? (unit as any)?.additional_fees ?? [],
             amenities: (unit?.amenities || []).map((el: any) => el.id),
             amenityNames: (unit?.amenities || []).map((el: any) => el.name),
         },
         enableReinitialize: true,
         onSubmit: (values) => {
-            const sortedAmenities = sortAmenities(amenities, values.amenityNames);
+            const sortedAmenities = amenityIdsForNames(knownAmenities, values.amenityNames);
+            if (isEventCentre) {
+                const problem = validateHall(hall);
+                if (problem) {
+                    setHallError(problem);
+                    toast.error(problem);
+                    return;
+                }
+            }
 
             const updatePayload: IUpdatePropertyUnit = {
                 name: values.name,
@@ -118,7 +163,21 @@ export default function EditUnitView({
                 living_room_count: values.livingRoomCount,
                 kitchen_count: values.kitchenCount,
                 bathroom_count: values.bathroomCount,
+                seating_capacity: isEventCentre ? values.seatingCapacity : undefined,
+                standing_capacity: isEventCentre ? values.standingCapacity : undefined,
+                car_park_spaces: isEventCentre ? values.carParkSpaces : undefined,
+                power_supply_provision: isEventCentre ? values.powerSupplyProvision : undefined,
+                additional_fees: values.additionalFees,
                 amenities: sortedAmenities,
+                // A hall: rates (an unticked one is cleared), hours, sessions
+                // and the same-day rule, with the headline price and zero room
+                // counts the API also derives.
+                ...(isEventCentre
+                    ? {
+                        ...hallPayload(hall),
+                        max_guests: Math.max(values.seatingCapacity || 0, values.standingCapacity || 0, 1),
+                    }
+                    : {}),
             };
             mutate({
                 propertyId: String(unit?.propertyId || propertyId),
@@ -127,7 +186,7 @@ export default function EditUnitView({
             },
                 {
                     onSuccess: () => {
-                        toast.success('Unit updated successfully', {
+                        toast.success(MESSAGES.MSG_UNIT_UPDATED_SUCCESSFULLY, {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
@@ -138,7 +197,7 @@ export default function EditUnitView({
                         handleEditMode(false);
                     },
                     onError: () =>
-                        toast.error('Failed to update unit', {
+                        toast.error(MESSAGES.MSG_FAILED_TO_UPDATE_UNIT, {
                             duration: 6000,
                             style: {
                                 maxWidth: '500px',
@@ -149,15 +208,26 @@ export default function EditUnitView({
         },
     });
 
-    const handleDeleteImage = (e: number) => {
+    const handleDeleteImage = (id: string) => {
         dispatch(
             showAlert({
                 title: "Are you sure?",
-                description: `This action cannot be undone. This will permanently delete the image ${e}.`,
+                description: `This action cannot be undone. This will permanently delete the image.`,
                 confirmText: "Delete",
                 cancelText: "Cancel",
                 onConfirm: () => {
-                    console.log(e);
+                    deleteMedia({
+                        propertyId,
+                        unitId,
+                        mediaId: id
+                    }, {
+                        onSuccess: () => {
+                            toast.success(MESSAGES.MSG_IMAGE_DELETED_SUCCESSFULLY);
+                        },
+                        onError: (error: any) => {
+                            toast.error(error?.response?.data?.detail || "Failed to delete image");
+                        }
+                    });
                 },
             })
         );
@@ -187,7 +257,7 @@ export default function EditUnitView({
                                 router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(unit.propertyId))
                             },
                             onError: () =>
-                                toast.error('Something went wrong', {
+                                toast.error(MESSAGES.MSG_SOMETHING_WENT_WRONG, {
                                     duration: 6000,
                                     style: {
                                         maxWidth: '500px',
@@ -204,11 +274,14 @@ export default function EditUnitView({
 
     useEffect(() => {
         if (uploadData?.data) {
-            // Ensure uploadData.data is an array before spreading
-            setMedia((prev) => [...prev, ...(Array.isArray(uploadData.data) ? uploadData.data.map(el => el?.data?.media_url || el?.data?.mediaUrl) : [uploadData.data?.data])]);
+            // Response shape: { data: { message, data: [{id, media_url, ...}, ...] }, status }
+            const newMedia = uploadData.data?.data ?? uploadData.data;
+            const mediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
+            setMedia((prev) => [...prev, ...mediaArray]);
             if (uploadData.status === 201) {
-                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url)); // Revoke object URLs
-                uploadRef.current = []
+                setUploadedMedia([]);
+                uploadRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+                uploadRef.current = [];
             }
         }
     }, [uploadData]);
@@ -249,7 +322,7 @@ export default function EditUnitView({
                                     <input
                                         id="name"
                                         type="text"
-                                        placeholder="e.g. Luxury Penthouse Suite"
+                                        placeholder="e.g. Penthouse Suite"
                                         value={formik.values.name}
                                         onChange={formik.handleChange}
                                         className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
@@ -276,6 +349,20 @@ export default function EditUnitView({
                         </div>
                     </div>
 
+                    {/* How the hall is hired (event centres) */}
+                    {isEventCentre && (
+                        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
+                            <HallFields
+                                value={hall}
+                                onChange={(patch) => {
+                                    setHallError(null);
+                                    setHall((prev) => ({ ...prev, ...patch }));
+                                }}
+                                error={hallError}
+                            />
+                        </div>
+                    )}
+
                     {/* Configurations Section */}
                     <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
                         <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
@@ -296,12 +383,16 @@ export default function EditUnitView({
                             </div>
                         </div>
                         {/* Room Configuration Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className={`grid gap-4 ${isEventCentre ? 'grid-cols-1 md:grid-cols-1' : 'grid-cols-2 md:grid-cols-4'}`}>
                             {[
-                                { id: 'bedroomCount', label: 'Bedrooms', icon: IoBedOutline },
-                                { id: 'kitchenCount', label: 'Kitchens', icon: TbToolsKitchen },
-                                { id: 'bathroomCount', label: 'Bathrooms', icon: PiBathtub },
-                                { id: 'livingRoomCount', label: 'Lounges', icon: LuSofa },
+                                ...(isEventCentre ? [] : [
+                                    { id: 'bedroomCount', label: 'Bedrooms', icon: IoBedOutline },
+                                    { id: 'kitchenCount', label: 'Kitchens', icon: TbToolsKitchen }
+                                ]),
+                                { id: 'bathroomCount', label: isEventCentre ? 'Toilets/Baths' : 'Bathrooms', icon: PiBathtub },
+                                ...(isEventCentre ? [] : [
+                                    { id: 'livingRoomCount', label: 'Living Rooms', icon: LuSofa }
+                                ]),
                             ].map((field) => (
                                 <div key={field.id} className="space-y-2">
                                     <label htmlFor={field.id} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
@@ -322,29 +413,59 @@ export default function EditUnitView({
                                 </div>
                             ))}
                         </div>
+                        {/* Event Centre Specific Capacities */}
+                        {isEventCentre && (
+                            <div className="grid gap-4 grid-cols-1 md:grid-cols-3 mt-4">
+                                {[
+                                    { id: 'seatingCapacity', label: 'Seating Capacity', icon: LuUsers },
+                                    { id: 'standingCapacity', label: 'Standing Capacity', icon: LuUsers },
+                                    { id: 'carParkSpaces', label: 'Car Park Spaces', icon: IoBedOutline },
+                                ].map((field) => (
+                                    <div key={field.id} className="space-y-2">
+                                        <label htmlFor={field.id} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                                            {field.label}
+                                        </label>
+                                        <div className="relative group">
+                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                                <field.icon className="text-lg" />
+                                            </div>
+                                            <input
+                                                id={field.id}
+                                                type="number"
+                                                value={formik.values[field.id as keyof typeof formik.initialValues] as any}
+                                                onChange={(e) => formik.setFieldValue(field.id, Number(e.target.value))}
+                                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-11 pr-3 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Capacity & Count Section */}
                         <div className="pt-4 border-t border-zinc-100">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Max Guests */}
-                                <div className="space-y-2">
-                                    <label htmlFor="maxGuests" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
-                                        Max Guests (per unit)
-                                    </label>
-                                    <p className="text-[9px] text-zinc-400 ml-1 -mt-1">Max capacity for ONE unit instance</p>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
-                                            <LuUsers className="text-lg" />
+                                {!isEventCentre && (
+                                    <div className="space-y-2">
+                                        <label htmlFor="maxGuests" className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                                            Max Guests (per unit)
+                                        </label>
+                                        <p className="text-[9px] text-zinc-400 ml-1 -mt-1">Max capacity for ONE unit instance</p>
+                                        <div className="relative group">
+                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-zinc-400">
+                                                <LuUsers className="text-lg" />
+                                            </div>
+                                            <input
+                                                id="maxGuests"
+                                                type="number"
+                                                value={formik.values.maxGuests}
+                                                onChange={(e) => formik.setFieldValue('maxGuests', Number(e.target.value))}
+                                                className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-11 pr-3 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+                                            />
                                         </div>
-                                        <input
-                                            id="maxGuests"
-                                            type="number"
-                                            value={formik.values.maxGuests}
-                                            onChange={(e) => formik.setFieldValue('maxGuests', Number(e.target.value))}
-                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-11 pr-3 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
-                                        />
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Unit Count */}
                                 <div className="space-y-2">
@@ -393,6 +514,29 @@ export default function EditUnitView({
                             </div>
                         </div>
 
+                        {/* Power Supply Provision */}
+                        {isEventCentre && (
+                            <div className="pt-4 mt-2 border-t border-zinc-100">
+                                <div className="space-y-2 w-full md:w-1/2">
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1 block mb-2">
+                                        Power Supply Provision
+                                    </label>
+                                    <select
+                                        value={formik.values.powerSupplyProvision || ""}
+                                        onChange={(e) => formik.setFieldValue("powerSupplyProvision", e.target.value)}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+                                    >
+                                        <option value="" disabled>Select provision...</option>
+                                        <option value="Grid only">Grid only</option>
+                                        <option value="Generator backup">Generator backup</option>
+                                        <option value="Grid and Generator">Grid and Generator</option>
+                                        <option value="Inverter/solar">Inverter/solar</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Amenities Section */}
                         <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
                             <div className="flex items-center justify-between">
@@ -407,12 +551,86 @@ export default function EditUnitView({
                                 )}
                             </div>
                             <div className="bg-zinc-50/50 border border-zinc-100 rounded-2xl p-6">
-                                <MultipleChoice
-                                    options={amenities?.map(el => el.name)}
+                                <AmenityPicker
+                                    options={amenityOptions}
                                     selected={formik.values.amenityNames}
+                                    scope={amenityScope}
                                     onChange={(val) => formik.setFieldValue("amenityNames", [...val])}
                                 />
                             </div>
+                        </div>
+
+                        {/* Additional Fees */}
+                        <div className="bg-white border border-zinc-200 rounded-3xl p-8 space-y-6 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                                    <Icon icon="solar:wallet-money-bold-duotone" className="text-xl text-primary" />
+                                    Additional Fees (Optional)
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const currentFees = formik.values.additionalFees || [];
+                                        formik.setFieldValue("additionalFees", [
+                                            ...currentFees,
+                                            { fee_name: "", fee_amount: 0, is_mandatory: false }
+                                        ]);
+                                    }}
+                                    className="px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                                >
+                                    + Add Fee
+                                </button>
+                            </div>
+
+                            {formik.values.additionalFees?.map((fee: any, index: number) => (
+                                <div key={index} className="flex flex-col sm:flex-row gap-4 items-end border-b border-zinc-100 pb-4 mb-4">
+                                    <div className="w-full sm:w-1/3 space-y-2">
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Fee Name</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Security Fee"
+                                            value={fee.fee_name}
+                                            onChange={(e) => formik.setFieldValue(`additionalFees.${index}.fee_name`, e.target.value)}
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+                                        />
+                                    </div>
+                                    <div className="w-full sm:w-1/3 space-y-2">
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Amount (₦)</label>
+                                        <input
+                                            type="number"
+                                            placeholder="0.00"
+                                            value={fee.fee_amount || ""}
+                                            onChange={(e) => formik.setFieldValue(`additionalFees.${index}.fee_amount`, parseFloat(e.target.value) || 0)}
+                                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold text-zinc-900"
+                                        />
+                                    </div>
+                                    <div className="w-full sm:w-1/6 pb-3">
+                                        <CustomCheckbox
+                                            label="Mandatory"
+                                            checked={fee.is_mandatory}
+                                            onChange={(val: boolean) => formik.setFieldValue(`additionalFees.${index}.is_mandatory`, val)}
+                                        />
+                                    </div>
+                                    <div className="pb-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const newFees = [...(formik.values.additionalFees || [])];
+                                                newFees.splice(index, 1);
+                                                formik.setFieldValue("additionalFees", newFees);
+                                            }}
+                                            className="p-3 text-red-500 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
+                                        >
+                                            <Icon icon="solar:trash-bin-trash-bold" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {(!formik.values.additionalFees || formik.values.additionalFees.length === 0) && (
+                                <div className="text-center py-6 text-sm text-zinc-500 bg-zinc-50 rounded-2xl border border-dashed border-zinc-200">
+                                    No additional fees added. Click "+ Add Fee" to add one.
+                                </div>
+                            )}
                         </div>
 
                         {/* Media Section */}
@@ -424,12 +642,21 @@ export default function EditUnitView({
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                 {media?.map((el, index) => (
                                     <div key={index} className="relative aspect-video rounded-xl overflow-hidden group shadow-sm border border-zinc-100">
-                                        <Image
-                                            src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
-                                            alt={`unit_img_${index}`}
-                                            fill
-                                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
+                                        {(el.media_type || el.mediaType) === 'VIDEO' ? (
+                                            <video
+                                                src={el.media_url || el.mediaUrl || ""}
+                                                muted
+                                                preload="metadata"
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <Image
+                                                src={el.media_url || el.mediaUrl || "/png/placeholder.png"}
+                                                alt={`unit_img_${index}`}
+                                                fill
+                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        )}
                                         <div
                                             onClick={() => handleDeleteImage(el.id)}
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
@@ -443,6 +670,22 @@ export default function EditUnitView({
                             </div>
 
                             <div className="mt-8">
+                                {isEventCentre && (
+                                    <div className="mb-3">
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1 block mb-1">
+                                            These photos show
+                                        </label>
+                                        <select
+                                            value={hallPhotoCategory}
+                                            onChange={(e) => setHallPhotoCategory(e.target.value as PropertyMediaCategory)}
+                                            className="w-full md:w-1/2 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 focus:border-primary outline-none text-sm"
+                                        >
+                                            {[...HALL_REQUIRED_CATEGORIES, ...HALL_OPTIONAL_CATEGORIES].map((cat) => (
+                                                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <CustomDropzone
                                     onDrop={setUploadedMedia}
                                     multiple
@@ -456,9 +699,10 @@ export default function EditUnitView({
                                             uploadedMedia.forEach(file => formData.append("media_file", file));
                                             formData.append("media_type", MediaType.IMAGE);
                                             formData.append("is_featured", "true");
+                                            if (isEventCentre) formData.append("category", hallPhotoCategory);
                                             uploadMedia({ propertyId: String(propertyId), unitId: String(unitId), payload: formData }, {
-                                                onSuccess: () => toast.success('Media uploaded successfully'),
-                                                onError: () => toast.error('Upload failed')
+                                                onSuccess: () => toast.success(MESSAGES.MSG_MEDIA_UPLOADED_SUCCESSFULLY),
+                                                onError: (error: any) => toast.error(error?.response?.data?.detail || MESSAGES.MSG_UPLOAD_FAILED)
                                             });
                                         }}
                                         disabled={uploadedMediaPending}
@@ -479,10 +723,11 @@ export default function EditUnitView({
 
                             <h3 className="text-lg font-bold mb-8 flex items-center gap-2 relative z-10">
                                 <Icon icon="solar:tag-bold-duotone" className="text-xl text-primary" />
-                                Pricing Strategy
+                                {isEventCentre ? "Caution Fee" : "Pricing Strategy"}
                             </h3>
 
                             <div className="space-y-6 relative z-10">
+                                {!isEventCentre && (
                                 <div className="space-y-2">
                                     <label htmlFor="price-per-night" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Price Per Night</label>
                                     <div className="relative group/input">
@@ -492,6 +737,8 @@ export default function EditUnitView({
                                         <input
                                             id="price-per-night"
                                             type="number"
+                                            min="0.01"
+                                            step="0.01"
                                             value={formik.values.pricePerNight}
                                             onChange={(e) => formik.setFieldValue('pricePerNight', e.target.value)}
                                             className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
@@ -499,6 +746,8 @@ export default function EditUnitView({
                                         />
                                     </div>
                                 </div>
+
+                                )}
 
                                 <div className="space-y-2">
                                     <label htmlFor="caution-fee" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Caution Fee (Refundable)</label>
@@ -509,6 +758,8 @@ export default function EditUnitView({
                                         <input
                                             id="caution-fee"
                                             type="number"
+                                            min="0"
+                                            step="0.01"
                                             value={formik.values.cautionFee}
                                             onChange={(e) => formik.setFieldValue('cautionFee', e.target.value)}
                                             className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:bg-white/[0.08] focus:border-primary/50 outline-none transition-all font-bold text-2xl text-white placeholder:text-zinc-800"
@@ -517,6 +768,7 @@ export default function EditUnitView({
                                     </div>
                                 </div>
 
+                                {!isEventCentre && (
                                 <div className="pt-6 border-t border-white/10">
                                     <div className="flex flex-col items-center text-center">
                                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Total Revenue Display</p>
@@ -528,6 +780,7 @@ export default function EditUnitView({
                                         </div>
                                     </div>
                                 </div>
+                                )}
                             </div>
                         </div>
 

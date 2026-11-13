@@ -3,36 +3,63 @@
 import SettingCard from "@/src/components/settings-card/settingscard";
 import Grid from "@mui/material/Grid2";
 import { useAuth } from "@/src/hooks/useAuth";
-import { Icon } from "@iconify/react";
-
-const settingsOptions = [
-  {
-    title: "Personal info",
-    description: "Provide personal details",
-    route: "/settings/personal-info",
-    icon: <Icon icon="carbon:user-profile" width="32" height="32" />,
-  },
-  {
-    title: "Login & security",
-    description: "Update your password",
-    route: "/settings/login-security",
-    icon: <Icon icon="mdi:security" width="32" height="32" />,
-  },
-  {
-    title: "Payments & payouts",
-    description: "Review payments & coupons",
-    route: "/settings/payments-payouts",
-    icon: <Icon icon="material-symbols:payments" width="32" height="32" />,
-  },
-];
+import { MdOutlineAccountCircle, MdSecurity, MdPayments, MdOutlinePhonelinkLock } from "react-icons/md";
+import { IoGitNetworkOutline } from "react-icons/io5";
+import { UserRole } from "@/src/lib/enums";
 
 const SettingsPage = () => {
-  const { user, isFetching } = useAuth();
-  console.log(isFetching ? "Fetching User" : user);
+  const { user } = useAuth();
+
+  const settingsOptions = [
+    {
+      title: "Personal info",
+      description: "Profile details & identity verification",
+      route: "/settings/personal-info",
+      icon: <MdOutlineAccountCircle size={32} />,
+    },
+    {
+      title: "Login & security",
+      description: "Update your password",
+      route: "/settings/login-security",
+      icon: <MdSecurity size={32} />,
+    },
+    {
+      title: "Payments & payouts",
+      description: "Configure payment gateways & payouts",
+      route: "/settings/payments-payouts",
+      icon: <MdPayments size={32} />,
+    },
+    // Platform-wide switches. Conditionally rendered rather than CSS-hidden,
+    // so they are absent from the DOM for anyone who may not use them; the API
+    // enforces the same rules, this only keeps the cards out of sight.
+    // Network events: SUPER_ADMIN only.
+    ...(user?.role === UserRole.SUPER_ADMIN
+      ? [
+          {
+            title: "Network events",
+            description: "Enable or disable the Agent Network platform-wide",
+            route: "/settings/network-events",
+            icon: <IoGitNetworkOutline size={32} />,
+          },
+        ]
+      : []),
+    // Phone verification: SUPER_ADMIN and ADMIN (decided 2026-11-13).
+    ...(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN
+      ? [
+          {
+            title: "Phone verification",
+            description: "Require owners, agents and guests to confirm their phone by SMS",
+            route: "/settings/phone-verification",
+            icon: <MdOutlinePhonelinkLock size={32} />,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <>
-      <div className="p-[30px] mt-10 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
-        <h1 className="text-3xl font-bold">Account</h1>
+      <div className="p-4 sm:p-[20px] mx-2 sm:mx-5 mt-5 mb-100 border border-[#D9D9D9] rounded-[15px] bg-white shadow-md min-h-[calc(100vh-150px)]">
+        <h1 className="text-2xl sm:text-3xl font-bold">Account</h1>
         <p className="mb-10">Hi {user?.profile?.firstName}, <strong>{user?.email}</strong></p>
         <Grid container spacing={3}>
           {settingsOptions.map((option) => (

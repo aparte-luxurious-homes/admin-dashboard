@@ -15,9 +15,41 @@ export const formatMoney = (amount: string | number, currency: string = "NGN"): 
   return `${symbol}${numeral(amount).format("0,0.00")}`;
 };
 
+/**
+ * Money with the currency written out: "NGN 1,530,000".
+ *
+ * The naira symbol is not used on owner-facing surfaces (owner home spec D12):
+ * it renders as a box in several of the fonts and PDF viewers owners use, and
+ * owners screenshot these figures and send them on.
+ *
+ * `whole` trims a zero kobo rather than rounding to it. Rounding would round
+ * UP: a balance of 1,530,000.55 displayed as "NGN 1,530,001" is money the
+ * owner does not have, it disagrees with the wallet page, and a withdrawal of
+ * the figure on screen would be refused (spec D14).
+ */
+export const formatNgn = (
+  amount: string | number,
+  { whole = false, currency = "NGN" }: { whole?: boolean; currency?: string } = {}
+): string => `${currency} ${numeral(amount).format(whole ? "0,0.[00]" : "0,0.00")}`;
+
 export function areArraysEqual(arr1: any[], arr2: any[]): boolean {
   if (arr1.length !== arr2.length) return false; // Different lengths → not equal
   return arr1.sort().toString() === arr2.sort().toString();
+}
+
+/**
+ * Masks a sensitive identifier (e.g. NIN/BVN) for display, revealing only the
+ * first 2 and last 2 characters. Mirrors the masking already used in the KYC
+ * review panel so PII is never rendered in clear text in the admin UI.
+ */
+export function maskId(value: string | null | undefined): string {
+  if (!value) return "";
+  if (value.length <= 4) return value;
+  return (
+    value.slice(0, 2) +
+    "•".repeat(Math.max(0, value.length - 4)) +
+    value.slice(-2)
+  );
 }
 
 export function formatDate(dateString: string): string {
@@ -47,13 +79,24 @@ export function formatDateToYYYYMMDD(dateString: string): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getDayDifference(date1: string, date2: string): number {
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
-  console.log(Math.abs(Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))))
-  return Math.abs(Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
+export function getDayDifference(date1: Date | string | null | undefined, date2: Date | string | null | undefined): number {
+  // Handle null/undefined inputs
+  if (!date1 || !date2) return 0;
+  
+  try {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    
+    const diffTime = Math.abs(d2.getTime() - d1.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    console.log('Day difference:', diffDays);
+    return diffDays;
+  } catch (error) {
+    console.error('Error calculating day difference:', error);
+    return 0;
+  }
 }
-
 
 export async function downloadScreenAsPDF({ name, element }: { name: string; element: RefObject<HTMLDivElement | null> }) {
   if (!element.current) return;
@@ -89,4 +132,43 @@ export async function downloadScreenAsPDF({ name, element }: { name: string; ele
   } catch (error) {
     console.error("Error generating PDF:", error);
   }
+}
+
+/**
+ * Compare two user ids that reach the client under different types.
+ *
+ * `IUser.id` is declared `number` but the API issues UUID strings, so a bare
+ * `===` between an id off a payload and `user.id` is both a type error and
+ * wrong at runtime. Nullish on either side is never a match — two absent ids
+ * are not the same user.
+ */
+export function isSameId(
+  a: string | number | null | undefined,
+  b: string | number | null | undefined,
+): boolean {
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  return String(a) === String(b);
+}
+
+
+/**
+ * Render a gamification point total for display.
+ *
+ * Points stopped being whole numbers when the mentor override began paying up
+ * the whole mentorship chain: each level's cut is a percentage of the level
+ * below it, so a grand-mentor routinely earns 0.1 of a point. The API sends
+ * these as `Numeric(12,2)`, which reaches the client as a number like `98` or
+ * `0.1` — and occasionally as a string, depending on the serializer.
+ *
+ * Whole values render with no decimal point ("98", not "98.0"); fractional
+ * values keep one place. Thousands are grouped.
+ */
+export function formatPoints(value: string | number | null | undefined): string {
+  const n = typeof value === "string" ? Number(value) : value ?? 0;
+  if (n === null || n === undefined || Number.isNaN(n)) return "0";
+  const rounded = Math.round(n * 10) / 10;
+  return rounded.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  });
 }

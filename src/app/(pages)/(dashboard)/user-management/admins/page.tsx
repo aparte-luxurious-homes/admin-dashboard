@@ -5,7 +5,7 @@ import UserManagementView from "@/src/components/user-management/UserManagementV
 const Admin = () => {
     return (
         <UserManagementView
-            role="ADMIN"
+            role="OPERATIONS_ADMIN,SUPPORT_ADMIN,ANALYST,ADMIN,SUPER_ADMIN"
             title="Admin Management"
             description="Manage and monitor platform administrators"
             basePath="/user-management/admins"

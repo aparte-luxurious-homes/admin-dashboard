@@ -22,9 +22,9 @@ const CustomModal: React.FC<ModalProps> = ({ isOpen, onClose, title, children })
       className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
       onClick={handleBackgroundClick}
     >
-      <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-lg max-w-lg w-full mx-4 p-4 sm:p-6 max-h-[90dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
-        <div className="flex justify-between items-center border-b pb-2 mb-4">
+        <div className="flex justify-between items-center border-b pb-2 mb-4 shrink-0">
           {title && <h2 className="text-lg font-semibold">{title}</h2>}
           <div onClick={onClose} className="cursor-pointer text-gray-700 hover:text-gray-800">
             <AiOutlineClose />
@@ -32,7 +32,7 @@ const CustomModal: React.FC<ModalProps> = ({ isOpen, onClose, title, children })
         </div>
 
         {/* Modal Content */}
-        <div>{children}</div>
+        <div className="overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );

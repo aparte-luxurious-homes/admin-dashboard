@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\oluda.DESKTOP-7B82R6B\\\\Desktop\\\\STAY_OUT\\\\Tower\\\\Arpate\\\\admin-dashboard\\\\src\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(Format-Table -AutoSize)",
+      "Read(//c/Users/oluda.DESKTOP-7B82R6B/Desktop/STAY_OUT/Tower/Arpate/admin-dashboard/src/app/\\(pages\\)/\\(dashboard\\)/network/**)",
+      "Read(//c/Users/oluda.DESKTOP-7B82R6B/Desktop/STAY_OUT/Tower/Arpate/admin-dashboard/src/app/\\(pages\\)/\\(dashboard\\)/user-management/owners/**)",
+      "Read(//c/Users/oluda.DESKTOP-7B82R6B/Desktop/STAY_OUT/Tower/Arpate/admin-dashboard/src/app/\\(pages\\)/\\(dashboard\\)/user-management/guests/**)",
+      "Read(//c/Users/oluda.DESKTOP-7B82R6B/Desktop/STAY_OUT/Tower/Arpate/admin-dashboard/src/app/\\(pages\\)/\\(dashboard\\)/user-management/admins/**)",
+      "Bash(linecharts\")",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\oluda.DESKTOP-7B82R6B\\\\Desktop\\\\STAY_OUT\\\\Tower\\\\Arpate\\\\admin-dashboard\\\\src\\\\components\" | Where-Object { $_.Name -match \"userchart|linechart\" } | Select-Object Name)"
+    ]
+  }
+}

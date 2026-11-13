@@ -3,6 +3,7 @@ import { IPropertyUnit } from "../properties-mgt/types";
 
 
 export enum BookingStatus {
+    APPROVAL_PENDING = 'APPROVAL_PENDING',
     PENDING = 'PENDING',
     PENDING_PAYMENT = 'PENDING_PAYMENT',
     CONFIRMED = 'CONFIRMED',
@@ -47,6 +48,12 @@ export interface IBooking {
     start_date?: string
     endDate: string
     end_date?: string
+    /** How the booking is billed; event-centre hires also carry their times. */
+    billing_unit?: "PER_NIGHT" | "PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"
+    billing_duration?: number
+    event_start_time?: string | null
+    event_end_time?: string | null
+    half_day_window_name?: string | null
     guestsCount: number
     guests_count?: number
     unitCount: number
@@ -57,6 +64,12 @@ export interface IBooking {
     caution_fee?: number
     isCautionRefunded?: boolean
     is_caution_refunded?: boolean
+    cautionRefundNotes?: string
+    caution_refund_notes?: string
+    cautionRefundActionBy?: string
+    caution_refund_action_by?: string
+    checkoutVerifiedAt?: string
+    checkout_verified_at?: string
     status: BookingStatus
     cancellationReason: string
     cancellation_reason?: string
@@ -68,9 +81,68 @@ export interface IBooking {
     updated_at?: string
     user: IUser
     unit: IPropertyUnit
+    paymentMethod?: string
+    payment_method?: string
+    paymentProofUrl?: string
+    payment_proof_url?: string
+    paymentNotes?: string
+    payment_notes?: string
+    // Front-desk guest verification on offline on-behalf bookings
+    guestIdDocumentUrl?: string | null
+    guest_id_document_url?: string | null
+    guestPhotoUrl?: string | null
+    guest_photo_url?: string | null
+    rejectionReason?: string
+    rejection_reason?: string
+    revenueSplit?: RevenueSplit;
+    revenue_split?: RevenueSplit;
+    // Attribution — the caller who actually submitted the booking. Differs
+    // from userId when an agent/admin books on behalf of a guest.
+    bookedBy?: string | number | null
+    booked_by?: string | number | null
+    referrerId?: string | number | null
+    referrer_id?: string | number | null
+    referralCodeUsed?: string | null
+    referral_code_used?: string | null
+    // List-endpoint convenience flags computed server-side against the caller.
+    isMyBooking?: boolean
+    is_my_booking?: boolean
+    isMyReferral?: boolean
+    is_my_referral?: boolean
+    isMyManagement?: boolean
+    is_my_management?: boolean
+    // Where the booking came from (BookingSource on the API), e.g.
+    // "WHATSAPP_BOT". Bot bookings also carry their conversation's id.
+    source?: string | null
+    wa_conversation_id?: string | null
+}
+
+export interface RevenueSplit {
+    splitting_base?: number;
+    owner_amount: number;
+    agent_amount: number;
+    referrer_amount?: number;
+    platform_amount: number;
+    percentages: {
+        owner: number;
+        agent: number;
+        referrer?: number;
+        platform: number;
+    };
+    stages?: {
+        on_confirmation: {
+            owner: number;
+            agent: number;
+            referrer?: number;
+            platform: number;
+        };
+        on_check_in: { owner: number };
+    };
+    has_referrer?: boolean;
+    has_agent?: boolean;
 }
 export interface ICreateBooking {
-    user_id: string | number
+    user_id?: string | number
     unit_id: string | number
     start_date: string
     end_date: string
@@ -79,10 +151,27 @@ export interface ICreateBooking {
     status?: BookingStatus
     total_price: number
     caution_fee?: number
+    // "cash" | "pos" | "bank_transfer" | "online" | "wallet" (agents only:
+    // pay now from the agent's own wallet)
     payment_method?: string
     payment_proof_url?: string
     payment_notes?: string
     mark_as_paid?: boolean
+    send_payment_link?: boolean
+    referral_code?: string
+
+    // Event-centre hires (see EventHirePicker). The server derives the end
+    // time from the hall's terms; only the start / session is sent.
+    billing_unit?: "PER_NIGHT" | "PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"
+    billing_duration?: number
+    event_start_time?: string | null
+    half_day_window_name?: string | null
+
+    // Quick Guest Onboarding
+    guest_first_name?: string
+    guest_last_name?: string
+    guest_email?: string
+    guest_phone?: string
 }
 
 export interface IUpdateBooking {
@@ -92,5 +181,16 @@ export interface IUpdateBooking {
     guests_count: number
     unit_count: number
     status?: BookingStatus
+    total_price?: number
+    payment_method?: string
+    payment_proof_url?: string
+    payment_notes?: string
+    mark_as_paid?: boolean
+    // Event-centre hires (see EventHirePicker). The server derives the end
+    // time from the hall's terms; only the start / session is sent.
+    billing_unit?: "PER_NIGHT" | "PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"
+    billing_duration?: number
+    event_start_time?: string | null
+    half_day_window_name?: string | null
 }
 

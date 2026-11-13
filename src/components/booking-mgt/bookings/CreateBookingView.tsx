@@ -1,609 +1,1956 @@
-'use client'
+"use client";
 
-import { TbCurrencyNaira } from "react-icons/tb";
-import { CalendarIcon, PriceTagIcon, UnitIcon, UsersIcon } from "../../icons";
-import { formatDate, formatDateToYYYYMMDD, formatMoney, getDayDifference } from "@/src/lib/utils";
+import { MESSAGES } from '@/src/lib/messages';
+import { PriceTagIcon, UnitIcon, UsersIcon } from "../../icons";
+import {
+  formatDate,
+  formatDateToYYYYMMDD,
+  formatMoney,
+  getDayDifference,
+} from "@/src/lib/utils";
 import { useFormik } from "formik";
-import Image from 'next/image';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Autoplay } from 'swiper/modules';
-import CustomFilterDropdown from "../../ui/customFilterDropDown";
-import { GetAllProperties, GetSingleProperty } from "@/src/lib/request-handlers/propertyMgt";
-import { GetAllUsers } from "@/src/lib/request-handlers/userMgt";
-import { useEffect, useState, useMemo } from "react";
-import { IProperty, IPropertyUnit, PropertyType } from "../../properties-mgt/types";
+import Image from "next/image";
+import {
+  GetAllProperties,
+  GetSingleProperty,
+} from "@/src/lib/request-handlers/propertyMgt";
+import { GetUnitAvailability } from "@/src/lib/request-handlers/unitMgt";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { IProperty, IPropertyUnit } from "../../properties-mgt/types";
 import { IUser } from "@/src/lib/types";
 import AdjustableFilterDropdown from "../../ui/AdjustableFilterDropdown";
 import { IoLocationOutline } from "react-icons/io5";
 import { IoMdReturnLeft } from "react-icons/io";
 import BookingAvailabilityCalendar from "./BookingAvailabilityCalendar";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
-import { addYears } from "date-fns";
+import { addDays, addYears } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CreateBooking } from "@/src/lib/request-handlers/bookingMgt";
+import {
+  CreateBooking,
+  GuestLookup,
+} from "@/src/lib/request-handlers/bookingMgt";
 import Spinner from "../../ui/Spinner";
 import { useAuth } from "@/src/hooks/useAuth";
-import toast from "react-hot-toast";
 import { UserRole } from "@/src/lib/enums";
+import toast from "react-hot-toast";
 import { useMediaQuery } from "@mui/material";
-import { UploadPaymentProof } from "@/src/lib/request-handlers/bookingMgt";
+import {
+  UploadGuestCredential,
+  UploadPaymentProof,
+} from "@/src/lib/request-handlers/bookingMgt";
+import { getApiErrorMessage } from "@/src/lib/apiError";
 import { HiOutlineCloudUpload } from "react-icons/hi";
 import { MdOutlinePayments } from "react-icons/md";
+import { Icon } from "@iconify/react";
+import EventHirePicker, {
+  EventHire,
+  emptyHire,
+  hireIsComplete,
+} from "./EventHirePicker";
+import { GetBookingQuote } from "@/src/lib/request-handlers/bookingMgt";
+import EmailSuggestion from "@/src/components/shared/EmailSuggestion";
+import { GetMyWallet } from "@/src/lib/request-handlers/financeMgt";
+import { headlineUnitLabel, isVenue } from "../../properties-mgt/venue";
+import { BookingMode } from "../../properties-mgt/types";
+
+/** "10:00–13:00 (3 hours)", "Morning session" or "2 days". */
+function describeHire(hire: EventHire, quote: any): string {
+  if (hire.billing_unit === "PER_DAY") {
+    return `${hire.billing_duration} day${hire.billing_duration === 1 ? "" : "s"}`;
+  }
+  const times =
+    quote?.event_start_time && quote?.event_end_time
+      ? `${quote.event_start_time}–${quote.event_end_time}`
+      : "";
+  if (hire.billing_unit === "PER_HALF_DAY") {
+    return `${hire.half_day_window_name ?? "Session"}${times ? ` (${times})` : ""}`;
+  }
+  return `${times ? `${times} ` : ""}(${hire.billing_duration} hour${hire.billing_duration === 1 ? "" : "s"})`;
+}
+
+// Payment methods the API treats as offline (money collected off-platform).
+const OFFLINE_PAYMENT_METHODS = ["cash", "pos", "bank_transfer"];
 
 export default function CreateBookingView() {
-    const router = useRouter();
-    const { user } = useAuth();
-    const searchParams = useSearchParams();
-    const isMobile = useMediaQuery("(max-width: 768px)");
+  const router = useRouter();
+  const { user } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
-    // State
-    const [userSearchTerm, setUserSearchTerm] = useState<string>('')
-    const [propertySearchTerm, setPropertySearchTerm] = useState<string>('')
-    const [unitSearchTerm, setUnitSearchTerm] = useState<string>('')
-    const [propPage, setPropPage] = useState<number>(1);
-    const propSize = 12;
+  // Agents must use the payment-link flow — they cannot self-attest to
+  // payment or pick offline methods. Backend rejects regardless; we hide the
+  // controls so the UI doesn't offer choices that 403.
+  const isAgent = user?.role === UserRole.AGENT;
+  // Agents can pay from their own wallet instead of sending a link.
+  const { wallet: myWallet, balance: walletBalance, isLoading: walletLoading } =
+    GetMyWallet(isAgent);
 
-    // Queries
-    const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(propPage, propSize, propertySearchTerm);
-    const { data: userList, isLoading: usersLoading } = GetAllUsers(1, 12, userSearchTerm)
-    const { mutate, isPending } = CreateBooking();
-    const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
+  // State
+  const [guestSearchInput, setGuestSearchInput] = useState<string>("");
+  const [guestSearchTerm, setGuestSearchTerm] = useState<string>("");
+  const [propertySearchTerm, setPropertySearchTerm] = useState<string>("");
+  const [unitSearchTerm, setUnitSearchTerm] = useState<string>("");
+  const [propPage, setPropPage] = useState<number>(1);
+  const propSize = 12;
 
-    // Local Data State
-    const [selectionMode, setSelectionMode] = useState<boolean>(true)
-    const [properties, setProperties] = useState<IProperty[]>([])
-    const [users, setUsers] = useState<IUser[]>([])
+  // Duplicate detection state for New Guest form
+  const [newGuestLookupTerm, setNewGuestLookupTerm] = useState<string>("");
+  const [duplicateGuestMatch, setDuplicateGuestMatch] = useState<any | null>(
+    null,
+  );
+  const [duplicateDismissed, setDuplicateDismissed] = useState<boolean>(false);
 
-    // Selection State
-    const [selectedProperty, setSeletedProperty] = useState<IProperty | any | null>(null)
-    const [selectedUnit, setSeletedUnit] = useState<IPropertyUnit | null>(null)
-    const [selectedUser, setSeletedUser] = useState<IUser | null>(null)
+  // Queries — agents and staff book on behalf of guests anywhere, so they need
+  // the full public catalog. Owners only ever book their own properties (the
+  // API refuses anything else), so they keep the scope-to-self view.
+  const isOwner = user?.role === UserRole.OWNER;
+  const { data: propertyList, isLoading: propertiesLoading } = GetAllProperties(
+    propPage,
+    propSize,
+    propertySearchTerm,
+    isOwner ? UserRole.OWNER : undefined,
+    isOwner ? user?.id : undefined,
+    null,
+    !isOwner,
+  );
+  const { data: guestLookupResult, isLoading: guestLookupLoading } =
+    GuestLookup(guestSearchTerm);
+  const { data: newGuestDuplicateResult, isLoading: newGuestLookupLoading } =
+    GuestLookup(newGuestLookupTerm);
+  const { mutate, isPending } = CreateBooking();
+  const { mutate: uploadProof, isPending: isUploading } = UploadPaymentProof();
+  const { mutate: uploadCredential } = UploadGuestCredential();
+  const [credentialUploading, setCredentialUploading] = useState<
+    "ID_DOCUMENT" | "PHOTO" | null
+  >(null);
 
-    // Fetch full property details to get units
-    const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } = GetSingleProperty(selectedProperty?.id);
-    const fullPropertyDetails = singlePropertyData?.data?.data;
+  // Local Data State
+  const [selectionMode, setSelectionMode] = useState<boolean>(true);
+  const [properties, setProperties] = useState<IProperty[]>([]);
 
-    const formik = useFormik({
-        initialValues: {
-            user_id: 0,
-            unit_id: 0,
-            start_date: null,
-            end_date: null,
-            guests_count: 1,
-            unit_count: 0,
-            total_price: 0,
-            payment_method: 'cash',
-            payment_proof_url: '',
-            payment_notes: '',
-            mark_as_paid: false,
-        },
-        onSubmit: async (values) => {
-            // Validation: proof is mandatory for bank transfer if marking as paid
-            if (values.mark_as_paid && values.payment_method === 'bank_transfer' && !values.payment_proof_url) {
-                toast.error('Proof of payment is mandatory for bank transfers');
-                return;
-            }
+  // Selection State
+  const [selectedProperty, setSeletedProperty] = useState<
+    IProperty | any | null
+  >(null);
+  const [selectedUnit, setSeletedUnit] = useState<IPropertyUnit | null>(null);
+  const [selectedUser, setSeletedUser] = useState<IUser | null>(null);
+  const [isNewGuest, setIsNewGuest] = useState<boolean>(false);
 
-            mutate(
-                {
-                    payload: {
-                        ...values,
-                        start_date: formatDateToYYYYMMDD(values.start_date!),
-                        end_date: formatDateToYYYYMMDD(values.end_date!)
-                    },
-                },
-                {
-                    onSuccess: (values) => {
-                        console.log(values)
-                        toast.success('Booking created successfully', {
-                            duration: 6000,
-                            style: {
-                                maxWidth: '500px',
-                                width: 'max-content'
-                            }
-                        });
-                        if (values?.data?.data) {
-                            router.push(PAGE_ROUTES.dashboard.bookingManagement.bookings.details(values?.data?.data?.id))
-                        }
-                    },
-                    onError: () =>
-                        toast.error('Something went wrong', {
-                            duration: 6000,
-                            style: {
-                                maxWidth: '500px',
-                                width: 'max-content'
-                            }
-                        }),
-                }
-            )
-        }
-    })
+  // Fetch full property details to get units
+  const { data: singlePropertyData, isLoading: isLoadingPropertyDetails } =
+    GetSingleProperty(selectedProperty?.id);
+  const fullPropertyDetails = singlePropertyData?.data?.data;
+  // An event-centre hall is booked by day, session or hour at a free time,
+  // and priced by the server from its rate card (EventHirePicker).
+  const isVenueBooking = isVenue(
+    fullPropertyDetails?.property_type ??
+      fullPropertyDetails?.propertyType ??
+      selectedProperty?.property_type ??
+      selectedProperty?.propertyType,
+  );
+  const [hire, setHire] = useState<EventHire>(emptyHire(null));
 
-    const handlePropertySelection = (name: string) => {
-        const filteredProperties = properties?.filter(el => {
-            if (el?.name === name) return el;
-        })
-        const selected = filteredProperties[0];
-        setSeletedProperty(selected);
-        setPropertySearchTerm(name);
-        setSeletedUnit(null);
-        setUnitSearchTerm('');
-        formik.setFieldValue('unit_id', 0);
-    }
+  // Fetch live availability for selected unit (accounts for active bookings occupancy)
+  const { data: liveAvailabilityData, isLoading: isLoadingAvailability } =
+    GetUnitAvailability(
+      selectedProperty?.id || "",
+      selectedUnit?.id || "",
+      undefined,
+      undefined,
+      !!selectedProperty?.id && !!selectedUnit?.id,
+    );
 
-    const handleUnitSelection = (name: string) => {
-        // Use full details to find the unit
-        const unit = fullPropertyDetails?.units?.find((u: IPropertyUnit) => u.name === name);
-        console.log('DEBUG: Selected Unit:', unit);
-        if (unit) {
-            console.log('DEBUG: Unit Availability:', unit.availability);
-            setSeletedUnit(unit);
-            formik.setFieldValue('unit_id', unit.id);
-        }
-    }
+  const formik = useFormik({
+    initialValues: {
+      user_id: 0,
+      unit_id: 0,
+      start_date: null,
+      end_date: null,
+      guests_count: 1,
+      unit_count: 0,
+      total_price: 0,
+      // Agents can only use the online/gateway flow.
+      payment_method: isAgent ? "online" : "cash",
+      payment_proof_url: "",
+      payment_notes: "",
+      mark_as_paid: false,
+      // Default the payment-link dispatch ON for agents — they're booking on
+      // behalf of a guest who can't otherwise discover the checkout URL. Backend
+      // also generates the link regardless; this just controls email + SMS
+      // notification.
+      send_payment_link: isAgent,
+      // Agents only: pay now from the agent's own wallet instead of sending
+      // the guest a payment link (payment_method "wallet").
+      pay_from_wallet: false,
+      referral_code: "",
+      // Onboarding fields
+      guest_first_name: "",
+      guest_last_name: "",
+      guest_email: "",
+      guest_phone: "",
+      // Front-desk guest verification for offline bookings (URLs staged via
+      // POST /bookings/guest-credentials). The API requires a phone number
+      // plus at least one of these for a cash/POS/transfer booking made on a
+      // guest's behalf.
+      guest_id_document_url: "",
+      guest_photo_url: "",
+      agent_custom_fee: (0).toFixed(2),
+    },
+    onSubmit: async (values) => {
+      if (!selectedProperty) {
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_PROPERTY);
+        return;
+      }
 
-    // Effect to inspect full details
-    useEffect(() => {
-        if (fullPropertyDetails) {
-            console.log('DEBUG: Full Property Details:', fullPropertyDetails);
-        }
-    }, [fullPropertyDetails]);
+      if (!selectedUnit) {
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_UNIT);
+        return;
+      }
 
-    // Effect to sync properties list
-    useEffect(() => {
-        const fromItems = (propertyList as any)?.data?.data?.items ?? (propertyList as any)?.data?.items;
-        const fromData = (propertyList as any)?.data?.data?.data?.data ?? [];
-        const next = Array.isArray(fromItems) ? fromItems : (Array.isArray(fromData) ? fromData : []);
-        setProperties(next as IProperty[])
-    }, [propertyList])
+      if (!values.start_date) {
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_CHECK_IN_DATE);
+        return;
+      }
 
-    // Effect to sync users list
-    useEffect(() => {
-        const fromItems = (userList as any)?.data?.data?.items ?? (userList as any)?.data?.items;
-        const fromData = (userList as any)?.data?.data?.data ?? [];
-        const next = Array.isArray(fromItems) ? fromItems : (Array.isArray(fromData) ? fromData : []);
-        setUsers(next as IUser[])
-    }, [userList])
+      if (!values.end_date) {
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_CHECK_OUT_DATE);
+        return;
+      }
 
-    const { values, setFieldValue } = formik;
+      if (!isNewGuest && !selectedUser) {
+        toast.error(MESSAGES.MSG_PLEASE_SELECT_A_GUEST);
+        return;
+      }
 
-    // Effect to calculate price
-    useEffect(() => {
-        const days = getDayDifference(values.start_date as any, values.end_date as any)
+      if (isNewGuest && !values.guest_email) {
+        toast.error(MESSAGES.MSG_GUEST_EMAIL_IS_REQUIRED_FOR_NEW_GUESTS);
+        return;
+      }
 
-        // Robust access to price and caution fee
-        const pricePerNight = Number(selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0);
-        const cautionFee = Number(selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0);
+      if (isNewGuest && !values.guest_first_name) {
+        toast.error(MESSAGES.MSG_GUEST_FIRST_NAME_IS_REQUIRED_FOR_NEW_GUE);
+        return;
+      }
 
-        const firstPrice = days * (values.unit_count || 0) * pricePerNight;
-        const grandPrice = firstPrice + cautionFee;
-        setFieldValue('total_price', grandPrice)
+      if (isNewGuest && !values.guest_last_name) {
+        toast.error(MESSAGES.MSG_GUEST_LAST_NAME_IS_REQUIRED_FOR_NEW_GUES);
+        return;
+      }
 
-    }, [
-        values.unit_count,
-        values.start_date,
-        values.end_date,
-        selectedUnit, // simplified dependency
-        setFieldValue,
-    ])
+      if (isVenueBooking && !hireIsComplete(hire)) {
+        toast.error("Choose how the hall is hired and a free time.");
+        return;
+      }
 
-    // Memoize blocked dates calculation to ensure re-render when unit_count changes
-    const blockedDates = useMemo(() => {
-        if (!selectedUnit?.availability) return [];
+      // Validation: proof is mandatory for bank transfer if marking as paid
+      if (
+        values.mark_as_paid &&
+        values.payment_method === "bank_transfer" &&
+        !values.payment_proof_url
+      ) {
+        toast.error(MESSAGES.MSG_PROOF_OF_PAYMENT_IS_MANDATORY_FOR_BANK_T);
+        return;
+      }
 
-        const requestedUnits = Number(formik.values.unit_count || 1);
-
-        return selectedUnit.availability
-            .filter((el: any) => {
-                const isBlackout = el?.is_blackout ?? el?.isBlackout ?? false;
-                const count = Number(el?.count ?? 0);
-
-                // Block if:
-                // 1. Explicitly blacked out
-                // 2. Remaining count is 0 or less
-                // 3. Remaining count is less than requested units
-                return isBlackout || count <= 0 || count < requestedUnits;
-            })
-            .map((el: any) => ({ date: el?.date }));
-    }, [selectedUnit?.availability, formik.values.unit_count]);
-
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        uploadProof(
-            { payload: formData },
-            {
-                onSuccess: (data: any) => {
-                    const url = data?.data?.data?.url;
-                    if (url) {
-                        formik.setFieldValue('payment_proof_url', url);
-                        toast.success('Payment proof uploaded successfully');
-                    }
-                },
-                onError: (error: any) => {
-                    console.error('Upload Error - Full object:', error);
-                    console.error('Upload Error - Response:', error?.response);
-                    console.error('Upload Error - Response Data:', error?.response?.data);
-
-                    let errorDetail = 'Failed to upload payment proof';
-
-                    try {
-                        if (error?.response?.data?.detail) {
-                            errorDetail = error.response.data.detail;
-                        } else if (error?.response?.data?.message) {
-                            errorDetail = error.response.data.message;
-                        } else if (error?.message) {
-                            errorDetail = error.message;
-                        }
-                    } catch (e) {
-                        console.error('Error parsing error details:', e);
-                    }
-
-                    console.error('Upload Error Detail:', errorDetail);
-                    toast.error(errorDetail);
-                }
-            }
+      // Offline (cash/POS/transfer) and wallet-paid bookings on a guest's
+      // behalf: the desk must have captured who the guest is first. Mirrors
+      // the server rule so the refusal is explained here rather than as a 400.
+      if (offlineCredentialsMissing) {
+        toast.error(
+          !guestPhoneOnFile?.trim()
+            ? "Enter the guest's phone number before creating this booking."
+            : "Capture the guest's ID document or a photo of the guest before creating this booking.",
         );
+        return;
+      }
+
+      if (paysFromWallet && isRequestToBook) {
+        toast.error(
+          "This property takes booking requests. Send a payment link, or pay from your wallet on the booking page once the owner approves.",
+        );
+        return;
+      }
+
+      const { pay_from_wallet: _payFromWallet, ...formValues } = values;
+      const payload = {
+        ...formValues,
+        // An unpaid booking with a payment link is paid ONLINE; recording the
+        // form's default "cash" on it misfiled it as an offline booking.
+        payment_method: effectivePaymentMethod,
+        // Paid now from the agent's wallet: nobody needs a link.
+        send_payment_link: paysFromWallet ? false : values.send_payment_link,
+        // For an existing guest with no phone on file, send the number the
+        // desk confirmed so the API records it on their account.
+        guest_phone: isNewGuest
+          ? values.guest_phone
+          : selectedUser?.phone
+            ? ""
+            : values.guest_phone,
+        start_date: formatDateToYYYYMMDD(values.start_date!),
+        end_date: formatDateToYYYYMMDD(values.end_date!),
+        // Ensure user_id is null if we are creating a new guest
+        user_id: isNewGuest ? null : values.user_id,
+        // Number(), not `+`. `agent_custom_fee` comes off a text input and is
+        // seeded with (0).toFixed(2), so it is a STRING: `280000 + "0.00"`
+        // concatenates to "2800000.00" rather than adding. The server
+        // recomputes the total and treats this field as telemetry, so it no
+        // longer decides what the guest is charged — but sending a fabricated
+        // number is still wrong, and it read as a real overcharge before that.
+        total_price: Number(values.total_price) + Number(values.agent_custom_fee || 0),
+        // Send it as a number too, for the same reason.
+        agent_custom_fee: Number(values.agent_custom_fee || 0),
+        ...(isVenueBooking
+          ? {
+              billing_unit: hire.billing_unit,
+              billing_duration: hire.billing_duration,
+              event_start_time: hire.event_start_time,
+              half_day_window_name: hire.half_day_window_name,
+            }
+          : {}),
+      };
+
+      // Don't send empty referral_code — omit the key entirely
+      if (!payload.referral_code) delete (payload as any).referral_code;
+      // Empty credential URLs / phone write nothing; omit them rather than
+      // send "" (the API would otherwise treat "" as "not provided" anyway).
+      if (!payload.guest_id_document_url) delete (payload as any).guest_id_document_url;
+      if (!payload.guest_photo_url) delete (payload as any).guest_photo_url;
+      if (!payload.guest_phone) delete (payload as any).guest_phone;
+
+      mutate(
+        {
+          payload: payload as any,
+        },
+        {
+          onSuccess: (values) => {
+            const data = values?.data?.data;
+            toast.success(
+              data?.wallet_payment
+                ? `Booking confirmed and paid from your wallet (${formatMoney(data.wallet_payment.amount)})`
+                : MESSAGES.MSG_BOOKING_CREATED_SUCCESSFULLY,
+              {
+                duration: 6000,
+                style: {
+                  maxWidth: "500px",
+                  width: "max-content",
+                },
+              },
+            );
+            if (!data) return;
+            // If a payment link was generated, hand it off to the booking
+            // details page via sessionStorage so the detail view can render
+            // the share/WhatsApp card on first load. Keyed by booking UUID
+            // so it's only shown for *this* booking and clears after first
+            // read (so a refresh doesn't show stale prompts).
+            if (data.payment_link) {
+              const guestEmail = isNewGuest
+                ? formik.values.guest_email || null
+                : selectedUser?.email || null;
+              const guestPhone = isNewGuest
+                ? formik.values.guest_phone || null
+                : selectedUser?.phone || null;
+              const propName = selectedProperty?.name ?? "your booking";
+              const waMessage = encodeURIComponent(
+                `Hi! Your Aparte booking ${data.booking_id} at ${propName} is ready. Pay here: ${data.payment_link}`,
+              );
+              const waNumber = (guestPhone || "").replace(/\D/g, "");
+              try {
+                sessionStorage.setItem(
+                  `aparte:freshPaymentLink:${data.id}`,
+                  JSON.stringify({
+                    url: data.payment_link,
+                    emailSent: !!data.payment_link_email_sent,
+                    smsSent: !!data.payment_link_sms_sent,
+                    bookingId: data.booking_id,
+                    guestEmail,
+                    guestPhone,
+                    whatsappHref: waNumber
+                      ? `https://wa.me/${waNumber}?text=${waMessage}`
+                      : `https://wa.me/?text=${waMessage}`,
+                  }),
+                );
+              } catch {
+                // sessionStorage unavailable (private mode etc.) — falling
+                // through still navigates to the detail page. The agent can
+                // resend the link from there.
+              }
+            }
+            router.push(
+              PAGE_ROUTES.dashboard.bookingManagement.bookings.details(data.id),
+            );
+          },
+          onError: (error: any) => {
+            const detail = error?.response?.data?.detail;
+            const message =
+              (typeof detail === "string" ? detail : detail?.message) ||
+              error?.response?.data?.message ||
+              MESSAGES.MSG_SOMETHING_WENT_WRONG;
+            toast.error(message, {
+              // Wallet refusals carry figures the agent needs to read.
+              duration: paysFromWallet ? 9000 : 6000,
+              style: {
+                maxWidth: "500px",
+                width: "max-content",
+              },
+            });
+          },
+        },
+      );
+    },
+  });
+
+  const handlePropertySelection = (name: string) => {
+    const filteredProperties = properties?.filter((el) => {
+      if (el?.name === name) return el;
+    });
+    const selected = filteredProperties[0];
+    setSeletedProperty(selected);
+    setPropertySearchTerm(name);
+    setSeletedUnit(null);
+    setUnitSearchTerm("");
+    formik.setFieldValue("unit_id", 0);
+  };
+
+  const handleUnitSelection = (name: string) => {
+    // Use full details to find the unit
+    const unit = fullPropertyDetails?.units?.find(
+      (u: IPropertyUnit) => u.name === name,
+    );
+    if (unit) {
+      setSeletedUnit(unit);
+      setHire(emptyHire(unit));
+      formik.setFieldValue("unit_id", unit.id);
+      formik.setFieldValue("unit_count", 1);
+    }
+  };
+
+  // Effect to inspect full details
+  // useEffect(() => {
+  //     if (fullPropertyDetails) {
+  //         console.log('DEBUG: Full Property Details:', fullPropertyDetails);
+  //     }
+  // }, [fullPropertyDetails]);
+
+  // Effect to sync properties list
+  useEffect(() => {
+    const fromItems =
+      (propertyList as any)?.data?.data?.items ??
+      (propertyList as any)?.data?.items;
+    const fromData = (propertyList as any)?.data?.data?.data?.data ?? [];
+    const next = Array.isArray(fromItems)
+      ? fromItems
+      : Array.isArray(fromData)
+        ? fromData
+        : [];
+    setProperties(next as IProperty[]);
+  }, [propertyList]);
+
+  // Derived: guest search results list
+  const guestResults: any[] = guestLookupResult?.data?.data ?? [];
+
+  const handleGuestSelect = useCallback((guest: any) => {
+    setSeletedUser({
+      id: guest.id,
+      email: guest.email,
+      phone: guest.phone,
+      profile: {
+        firstName: guest.first_name,
+        lastName: guest.last_name,
+        first_name: guest.first_name,
+        last_name: guest.last_name,
+      },
+    } as any);
+    formik.setFieldValue("user_id", guest.id);
+    setGuestSearchInput("");
+    setGuestSearchTerm("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSwitchToNewGuest = useCallback(() => {
+    setIsNewGuest(true);
+    const input = guestSearchInput.trim();
+    if (input.includes("@")) {
+      formik.setFieldValue("guest_email", input);
+    } else {
+      formik.setFieldValue("guest_phone", input);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guestSearchInput]);
+
+  // Resolve duplicate detection: when the lookup returns results for the new guest's email/phone
+  useEffect(() => {
+    if (!newGuestLookupTerm) {
+      setDuplicateGuestMatch(null);
+      return;
+    }
+    const results: any[] = newGuestDuplicateResult?.data?.data ?? [];
+    if (results.length > 0) {
+      setDuplicateGuestMatch(results[0]);
+      setDuplicateDismissed(false);
+    } else {
+      setDuplicateGuestMatch(null);
+    }
+  }, [newGuestDuplicateResult, newGuestLookupTerm]);
+
+  // Helper: trigger lookup from new guest email/phone field
+  const handleNewGuestFieldChange = useCallback(
+    (field: "guest_email" | "guest_phone", value: string) => {
+      formik.setFieldValue(field, value);
+      setDuplicateDismissed(false);
+      const trimmed = value.trim();
+      const isEmail = field === "guest_email";
+      const isValidEmail =
+        isEmail && trimmed.includes("@") && trimmed.length >= 5;
+      const isValidPhone = !isEmail && trimmed.replace(/\D/g, "").length >= 7;
+      if (isValidEmail || isValidPhone) {
+        setNewGuestLookupTerm(trimmed);
+      } else {
+        setNewGuestLookupTerm("");
+        setDuplicateGuestMatch(null);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // Handle admin choosing to use the detected duplicate as the booking guest
+  const handleUseDuplicateGuest = useCallback(
+    (guest: any) => {
+      handleGuestSelect(guest);
+      setIsNewGuest(false);
+      setDuplicateGuestMatch(null);
+      setDuplicateDismissed(false);
+      setNewGuestLookupTerm("");
+      formik.setFieldValue("guest_first_name", "");
+      formik.setFieldValue("guest_last_name", "");
+      formik.setFieldValue("guest_email", "");
+      formik.setFieldValue("guest_phone", "");
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [handleGuestSelect],
+  );
+
+  const { values, setFieldValue } = formik;
+
+  // A venue hire holds the event day (or the days of a full-day hire), so the
+  // end date follows the hire rather than a second calendar click.
+  useEffect(() => {
+    if (!isVenueBooking || !values.start_date) return;
+    const days = hire.billing_unit === "PER_DAY" ? hire.billing_duration : 1;
+    const end = addDays(new Date(values.start_date as any), days);
+    if (!values.end_date || formatDateToYYYYMMDD(values.end_date as any) !== formatDateToYYYYMMDD(end as any)) {
+      setFieldValue("end_date", end);
+    }
+  }, [isVenueBooking, values.start_date, values.end_date, hire, setFieldValue]);
+
+  const venueQuotePayload = useMemo(() => {
+    if (!isVenueBooking || !selectedUnit || !values.start_date || !values.end_date) return null;
+    if (!hireIsComplete(hire)) return null;
+    return {
+      unit_id: selectedUnit.id,
+      start_date: formatDateToYYYYMMDD(values.start_date as any),
+      end_date: formatDateToYYYYMMDD(values.end_date as any),
+      guests_count: Number(values.guests_count) || 1,
+      unit_count: Number(values.unit_count) || 1,
+      billing_unit: hire.billing_unit,
+      billing_duration: hire.billing_duration,
+      event_start_time: hire.event_start_time,
+      half_day_window_name: hire.half_day_window_name,
+    };
+  }, [isVenueBooking, selectedUnit, values.start_date, values.end_date, values.guests_count, values.unit_count, hire]);
+  const { data: venueQuoteData, error: venueQuoteError } = GetBookingQuote(venueQuotePayload);
+  const venueQuote = venueQuotePayload ? venueQuoteData?.data?.data : null;
+
+  useEffect(() => {
+    if (!isVenueBooking) return;
+    const total = venueQuote ? Number(venueQuote.total_price) : 0;
+    if (total !== values.total_price) setFieldValue("total_price", total);
+  }, [isVenueBooking, venueQuote, values.total_price, setFieldValue]);
+
+  // Effect to calculate price
+  useEffect(() => {
+    // A venue is priced by the server's quote, above.
+    if (isVenueBooking) return;
+    // Only calculate if we have both dates and a selected unit
+    if (values.start_date && values.end_date && selectedUnit) {
+      const days = getDayDifference(
+        values.start_date as any,
+        values.end_date as any,
+      );
+
+      // Ensure days is a positive number
+      if (days > 0) {
+        // Robust access to price and caution fee
+        const pricePerNight = Number(
+          selectedUnit?.pricePerNight ?? selectedUnit?.price_per_night ?? 0,
+        );
+        const cautionFee = Number(
+          selectedUnit?.cautionFee ?? selectedUnit?.caution_fee ?? 0,
+        );
+
+        const firstPrice =
+          days * Number(values.unit_count || 1) * Number(pricePerNight);
+        const grandPrice = firstPrice + cautionFee;
+
+        // Only update if the price has changed to avoid unnecessary re-renders
+        if (grandPrice !== values.total_price) {
+          setFieldValue("total_price", grandPrice);
+        }
+      }
+    } else {
+      // Reset total price if dates are missing
+      setFieldValue("total_price", 0);
+    }
+  }, [
+    values.start_date,
+    values.end_date,
+    values.unit_count,
+    selectedUnit,
+    setFieldValue,
+    values.total_price, // Add this to compare
+    isVenueBooking,
+  ]);
+
+  // Auto-populate referral code with agent's own code when a guest is selected
+  useEffect(() => {
+    const isAgent = user?.role === UserRole.AGENT;
+    const guestSelected =
+      (values.user_id && Number(values.user_id) > 0) || !!values.guest_email;
+    if (isAgent && guestSelected && !values.referral_code) {
+      const agentCode = user?.profile?.referral_code;
+      if (agentCode) {
+        setFieldValue("referral_code", agentCode.toUpperCase());
+      }
+    }
+  }, [
+    user,
+    values.user_id,
+    values.guest_email,
+    values.referral_code,
+    setFieldValue,
+  ]);
+
+  // Memoize blocked dates from live availability (accounts for active bookings occupancy)
+  const blockedDates = useMemo(() => {
+    const availability = liveAvailabilityData?.data?.data;
+    if (!availability) return [];
+
+    const requestedUnits = Number(formik.values.unit_count || 1);
+
+    return availability
+      .filter((el: any) => {
+        const isBlackout = el?.is_blackout ?? false;
+        // count is remaining capacity after active bookings
+        const remaining = Number(el?.count ?? 0);
+        return isBlackout || remaining < requestedUnits;
+      })
+      .map((el: any) => ({ date: el?.date }));
+  }, [liveAvailabilityData, formik.values.unit_count]);
+
+  // ---- Front-desk guest verification (offline bookings) ----
+  // What the server will record as the payment method: an unpaid booking that
+  // sends a payment link is paid online whatever the form's default says.
+  // An agent paying from their wallet is a "wallet" payment.
+  const paysFromWallet = isAgent && formik.values.pay_from_wallet;
+  const effectivePaymentMethod = paysFromWallet
+    ? "wallet"
+    : !formik.values.mark_as_paid && formik.values.send_payment_link
+      ? "online"
+      : formik.values.payment_method;
+
+  // ---- Agent wallet payment ----
+  // A request-to-book property can't be paid until the owner approves.
+  const isRequestToBook =
+    (fullPropertyDetails?.booking_mode ??
+      fullPropertyDetails?.bookingMode ??
+      selectedProperty?.booking_mode ??
+      selectedProperty?.bookingMode) === BookingMode.REQUEST_TO_BOOK;
+  // What the wallet will be charged: the booking total, with no gateway fee.
+  // An estimate — the server prices the booking (a long-stay discount can make
+  // it lower) and refuses, with nothing created, if the balance falls short.
+  const walletChargeEstimate =
+    Number(formik.values.total_price || 0) +
+    Number(formik.values.agent_custom_fee || 0);
+  const walletLooksShort =
+    walletChargeEstimate > 0 && walletBalance < walletChargeEstimate;
+
+  // Switching to a request-to-book property drops a wallet choice it can't take.
+  useEffect(() => {
+    if (isRequestToBook && formik.values.pay_from_wallet) {
+      formik.setFieldValue("pay_from_wallet", false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRequestToBook, formik.values.pay_from_wallet]);
+  const isOfflineBooking =
+    !isAgent && OFFLINE_PAYMENT_METHODS.includes(effectivePaymentMethod);
+  // A wallet payment identifies the agent, not the guest, so the API holds it
+  // to the same front-desk rule as an offline booking.
+  const needsGuestVerification = isOfflineBooking || paysFromWallet;
+  // The phone the booking will carry: typed for a new guest, or on file (or
+  // typed, if missing) for an existing one.
+  const guestPhoneOnFile = isNewGuest
+    ? formik.values.guest_phone
+    : selectedUser?.phone || formik.values.guest_phone;
+  const hasCredentialImage =
+    !!formik.values.guest_id_document_url || !!formik.values.guest_photo_url;
+  const offlineCredentialsMissing =
+    needsGuestVerification && (!guestPhoneOnFile?.trim() || !hasCredentialImage);
+
+  const handleCredentialUpload =
+    (kind: "ID_DOCUMENT" | "PHOTO") =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      // Reset so the same file can be re-picked after a removal.
+      event.target.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image (JPG, PNG or WEBP).");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Image is too large. Maximum size is 10 MB.");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("kind", kind);
+      formData.append("file", file);
+      setCredentialUploading(kind);
+      uploadCredential(
+        { payload: formData },
+        {
+          onSuccess: (data: any) => {
+            const url = data?.data?.data?.url;
+            if (url) {
+              formik.setFieldValue(
+                kind === "ID_DOCUMENT" ? "guest_id_document_url" : "guest_photo_url",
+                url,
+              );
+              toast.success(
+                kind === "ID_DOCUMENT" ? "ID document captured" : "Guest photo captured",
+              );
+            }
+          },
+          onError: (error: any) => {
+            toast.error(getApiErrorMessage(error, "Failed to upload the image"));
+          },
+          onSettled: () => setCredentialUploading(null),
+        },
+      );
     };
 
-    return (
-        <section className="bg-zinc-50 min-h-screen p-4 md:p-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-semibold text-zinc-900">Create New Booking</h1>
-                    {(selectedProperty || selectedUnit || selectedUser || formik.dirty) && (
-                        <div onClick={() => {
-                            setSeletedProperty(null);
-                            setSeletedUnit(null);
-                            setSeletedUser(null);
-                            formik.resetForm();
-                            setSelectionMode(true);
-                        }} className="flex gap-2 items-center cursor-pointer text-zinc-500 hover:text-zinc-800 transition-colors">
-                            <IoMdReturnLeft />
-                            <span className="text-sm font-medium">Reset Form</span>
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    uploadProof(
+      { payload: formData },
+      {
+        onSuccess: (data: any) => {
+          const url = data?.data?.data?.url;
+          if (url) {
+            formik.setFieldValue("payment_proof_url", url);
+            toast.success(MESSAGES.MSG_PAYMENT_PROOF_UPLOADED_SUCCESSFULLY);
+          }
+        },
+        onError: (error: any) => {
+          console.error("Upload Error - Full object:", error);
+          console.error("Upload Error - Response:", error?.response);
+          console.error("Upload Error - Response Data:", error?.response?.data);
+
+          let errorDetail = "Failed to upload payment proof";
+
+          try {
+            if (error?.response?.data?.detail) {
+              errorDetail = error.response.data.detail;
+            } else if (error?.response?.data?.message) {
+              errorDetail = error.response.data.message;
+            } else if (error?.message) {
+              errorDetail = error.message;
+            }
+          } catch (e) {
+            console.error("Error parsing error details:", e);
+          }
+
+          console.error("Upload Error Detail:", errorDetail);
+          toast.error(errorDetail);
+        },
+      },
+    );
+  };
+
+  // const [units,setUnits] = useState(formik.values.unit_count);
+  const handleUnitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    const max = selectedUnit?.count ?? 1;
+
+    if (val === "") {
+      formik.setFieldValue("unit_count", "");
+      return;
+    }
+    if (Number(val) < 1) {
+      formik.setFieldValue("unit_count", 1);
+    } else if (Number(val) > max) {
+      toast.error(`Only ${max} units available`);
+      formik.setFieldValue("unit_count", max);
+    } else {
+      formik.setFieldValue("unit_count", val);
+    }
+  };
+
+  useEffect(() => {
+      console.log(formik.values.agent_custom_fee);
+  }, [formik.values.agent_custom_fee]);
+
+  return (
+    <section className="bg-zinc-50 min-h-screen p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-semibold text-zinc-900">
+            Create New Booking
+          </h1>
+          {(selectedProperty ||
+            selectedUnit ||
+            selectedUser ||
+            formik.dirty) && (
+            <div
+              onClick={() => {
+                setSeletedProperty(null);
+                setSeletedUnit(null);
+                setSeletedUser(null);
+                formik.resetForm();
+                setSelectionMode(true);
+                setIsNewGuest(false);
+                setDuplicateGuestMatch(null);
+                setDuplicateDismissed(false);
+                setNewGuestLookupTerm("");
+              }}
+              className="flex gap-2 items-center cursor-pointer text-zinc-500 hover:text-zinc-800 transition-colors"
+            >
+              <IoMdReturnLeft />
+              <span className="text-sm font-medium">Reset Form</span>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* LEFT COLUMN: FORM INPUTS */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* 1. Property Details Section */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
+              <h2 className="text-xl font-medium text-zinc-800 mb-6 flex items-center gap-2">
+                <span className="bg-primary/10 text-primary p-1.5 rounded-lg">
+                  <UnitIcon className="w-5 h-5" color="currentColor" />
+                </span>
+                Property & Unit
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-700">
+                    Select Property
+                  </label>
+                  <AdjustableFilterDropdown
+                    placeholder="Search for a property..."
+                    options={
+                      properties
+                        ?.map((prop: any) => prop.name)
+                        .filter(Boolean) ?? []
+                    }
+                    handleSelection={(val) => handlePropertySelection(val)}
+                    searchTerm={propertySearchTerm}
+                    setSearchTerm={setPropertySearchTerm}
+                    isLoading={propertiesLoading}
+                  />
+                  {selectedProperty && (
+                    <div className="mt-4 p-4 bg-zinc-50 rounded-lg border border-zinc-100 flex gap-4 items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                      {selectedProperty.images?.[0] ? (
+                        <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
+                          <Image
+                            src={selectedProperty.images[0]}
+                            alt={selectedProperty.name}
+                            fill
+                            className="object-cover"
+                          />
                         </div>
-                    )}
+                      ) : (
+                        <div className="w-16 h-16 bg-zinc-200 rounded-md flex items-center justify-center text-zinc-400">
+                          <UnitIcon />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-zinc-900 line-clamp-1">
+                          {selectedProperty.name}
+                        </p>
+                        <p className="text-xs text-zinc-500 flex items-center gap-1 mt-1">
+                          <IoLocationOutline />{" "}
+                          {selectedProperty.address ?? "No address"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    {/* LEFT COLUMN: FORM INPUTS */}
-                    <div className="lg:col-span-2 space-y-8">
-
-                        {/* 1. Property Details Section */}
-                        <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
-                            <h2 className="text-xl font-medium text-zinc-800 mb-6 flex items-center gap-2">
-                                <span className="bg-primary/10 text-primary p-1.5 rounded-lg"><UnitIcon className="w-5 h-5" color="currentColor" /></span>
-                                Property & Unit
-                            </h2>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-zinc-700">Select Property</label>
-                                    <AdjustableFilterDropdown
-                                        placeholder="Search for a property..."
-                                        options={properties?.map((prop: any) => prop.name).filter(Boolean) ?? []}
-                                        handleSelection={(val) => handlePropertySelection(val)}
-                                        searchTerm={propertySearchTerm}
-                                        setSearchTerm={setPropertySearchTerm}
-                                        isLoading={propertiesLoading}
-                                    />
-                                    {selectedProperty && (
-                                        <div className="mt-4 p-4 bg-zinc-50 rounded-lg border border-zinc-100 flex gap-4 items-center animate-in fade-in slide-in-from-top-2 duration-300">
-                                            {selectedProperty.images?.[0] ? (
-                                                <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0">
-                                                    <Image src={selectedProperty.images[0]} alt={selectedProperty.name} fill className="object-cover" />
-                                                </div>
-                                            ) : (<div className="w-16 h-16 bg-zinc-200 rounded-md flex items-center justify-center text-zinc-400"><UnitIcon /></div>)}
-                                            <div>
-                                                <p className="font-medium text-zinc-900 line-clamp-1">{selectedProperty.name}</p>
-                                                <p className="text-xs text-zinc-500 flex items-center gap-1 mt-1"><IoLocationOutline /> {selectedProperty.address ?? 'No address'}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-zinc-700">Select Unit</label>
-                                    <AdjustableFilterDropdown
-                                        placeholder="Search for a unit..."
-                                        // Use fullPropertyDetails here
-                                        options={fullPropertyDetails?.units?.map((el: IPropertyUnit) => el?.name).filter(Boolean) ?? []}
-                                        searchTerm={unitSearchTerm}
-                                        setSearchTerm={setUnitSearchTerm}
-                                        handleSelection={(val) => handleUnitSelection(val)}
-                                        isLoading={isLoadingPropertyDetails}
-                                        disabled={!selectedProperty}
-                                    />
-                                    {selectedUnit && (
-                                        <div className="mt-4 p-4 bg-zinc-50 rounded-lg border border-zinc-100 flex gap-4 items-center animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center flex-shrink-0 border border-teal-100">
-                                                <UnitIcon className="w-5 h-5" color="currentColor" />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-zinc-900">{selectedUnit.name}</p>
-                                                <p className="text-xs text-zinc-500 mt-0.5">
-                                                    Max Guests: <span className="font-medium text-zinc-700">{selectedUnit.maxGuests ?? selectedUnit.max_guests ?? '-'}</span> •
-                                                    Price: <span className="font-medium text-primary">{formatMoney(selectedUnit.pricePerNight ?? selectedUnit.price_per_night ?? 0)}/night</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 2. Guest Details Section */}
-                        <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
-                            <h2 className="text-xl font-medium text-zinc-800 mb-6 flex items-center gap-2">
-                                <span className="bg-blue-50 text-blue-600 p-1.5 rounded-lg"><UsersIcon className="w-5 h-5" color="currentColor" /></span>
-                                Guest & Stay
-                            </h2>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-zinc-700">Select Guest</label>
-                                    <AdjustableFilterDropdown
-                                        placeholder="Search by name or email..."
-                                        options={userList?.data?.data?.data?.map((user: any) => user.email).filter(Boolean) ?? []}
-                                        handleSelection={(val) => {
-                                            const selected = userList?.data?.data?.data?.find((user: any) => user.email === val);
-                                            setUserSearchTerm(val);
-                                            setSeletedUser(selected);
-                                            formik.setFieldValue('user_id', selected?.id);
-                                        }}
-                                        searchTerm={userSearchTerm}
-                                        setSearchTerm={setUserSearchTerm}
-                                        isLoading={usersLoading}
-                                    />
-                                    {selectedUser && (
-                                        <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-medium border border-zinc-200">
-                                                {selectedUser.profile?.firstName?.[0] ?? 'G'}{selectedUser.profile?.lastName?.[0] ?? ''}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-zinc-900">{selectedUser.profile?.firstName ?? 'Guest'} {selectedUser.profile?.lastName ?? ''}</p>
-                                                <p className="text-xs text-zinc-500">{selectedUser.email}</p>
-                                            </div>
-                                            <button type="button" onClick={() => router.push(PAGE_ROUTES.dashboard.userManagement.guests.details(selectedUser.id))} className="ml-auto text-xs font-medium text-primary underline hover:text-primary/80">View Profile</button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-zinc-700">Guests</label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    disabled={!selectedUnit}
-                                                    max={selectedUnit?.maxGuests ?? selectedUnit?.max_guests ?? 10}
-                                                    className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
-                                                    value={formik.values.guests_count}
-                                                    onChange={(e) => {
-                                                        const val = Number(e.target.value);
-                                                        const max = selectedUnit?.maxGuests ?? selectedUnit?.max_guests ?? 10;
-                                                        if (val <= max) {
-                                                            formik.setFieldValue('guests_count', val);
-                                                        } else {
-                                                            toast.error(`Max guests for this unit is ${max}`);
-                                                            formik.setFieldValue('guests_count', max);
-                                                        }
-                                                    }}
-                                                />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">People</span>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-zinc-700">Units</label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    disabled={!selectedUnit}
-                                                    max={selectedUnit?.count ?? 1}
-                                                    className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
-                                                    value={formik.values.unit_count}
-                                                    onChange={(e) => formik.setFieldValue('unit_count', Number(e.target.value))}
-                                                />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">Qty</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-zinc-700">Stay Duration</label>
-                                <BookingAvailabilityCalendar
-                                    checkInDate={formik.values.start_date}
-                                    checkOutDate={formik.values.end_date}
-                                    onCheckInDateSelect={(date) => formik.setFieldValue('start_date', date)}
-                                    onCheckOutDateSelect={(date) => formik.setFieldValue('end_date', date)}
-                                    isMobileView={isMobile}
-                                    maxDate={addYears(new Date(), 1)}
-                                    blockedDates={blockedDates}
-                                />
-                                <p className="text-xs text-gray-500 mt-2">
-                                    * Bookings are limited to 1 year in advance.
-                                </p>
-                            </div>
-                        </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-700">
+                    Select Unit
+                  </label>
+                  <AdjustableFilterDropdown
+                    placeholder="Search for a unit..."
+                    // Use fullPropertyDetails here
+                    options={
+                      fullPropertyDetails?.units
+                        ?.map((el: IPropertyUnit) => el?.name)
+                        .filter(Boolean) ?? []
+                    }
+                    searchTerm={unitSearchTerm}
+                    setSearchTerm={setUnitSearchTerm}
+                    handleSelection={(val) => handleUnitSelection(val)}
+                    isLoading={isLoadingPropertyDetails}
+                    disabled={!selectedProperty}
+                  />
+                  {selectedUnit && (
+                    <div className="mt-4 p-4 bg-zinc-50 rounded-lg border border-zinc-100 flex gap-4 items-center animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center flex-shrink-0 border border-teal-100">
+                        <UnitIcon className="w-5 h-5" color="currentColor" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-zinc-900">
+                          {selectedUnit.name}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-0.5">
+                          Max Guests:{" "}
+                          <span className="font-medium text-zinc-700">
+                            {selectedUnit.maxGuests ??
+                              selectedUnit.max_guests ??
+                              "-"}
+                          </span>{" "}
+                          • Price:{" "}
+                          <span className="font-medium text-primary">
+                            {formatMoney(
+                              selectedUnit.pricePerNight ??
+                                selectedUnit.price_per_night ??
+                                0,
+                            )}
+                            {isVenueBooking ? ` / ${headlineUnitLabel(selectedUnit)}` : "/night"}
+                          </span>
+                        </p>
+                      </div>
                     </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                    {/* RIGHT COLUMN: BOOKING SUMMARY (STICKY) */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-xl border border-zinc-200 shadow-lg p-6 sticky top-8">
-                            <h3 className="text-lg font-semibold text-zinc-900 mb-6 border-b border-zinc-100 pb-4">Booking Summary</h3>
+            {/* 2. Guest Details Section */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm">
+              <h2 className="text-xl font-medium text-zinc-800 mb-6 flex items-center gap-2">
+                <span className="bg-blue-50 text-blue-600 p-1.5 rounded-lg">
+                  <UsersIcon className="w-5 h-5" color="currentColor" />
+                </span>
+                Guest & Stay
+              </h2>
 
-                            <div className="space-y-4 mb-8">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-500">Property</span>
-                                    <span className="text-zinc-900 font-medium text-right w-1/2 truncate">{selectedProperty?.name || '-'}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-500">Unit Type</span>
-                                    <span className="text-zinc-900 font-medium">{selectedUnit?.name || '-'}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-500">Dates</span>
-                                    <div className="text-right">
-                                        {formik.values.start_date && formik.values.end_date ? (
-                                            <>
-                                                <span className="block text-zinc-900 font-medium">{formatDate(formik.values.start_date as any)}</span>
-                                                <span className="block text-zinc-400 text-xs">to {formatDate(formik.values.end_date as any)}</span>
-                                            </>
-                                        ) : <span className="text-zinc-400">-</span>}
-                                    </div>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-500">Duration</span>
-                                    <span className="text-zinc-900 font-medium">
-                                        {formik.values.start_date && formik.values.end_date
-                                            ? `${getDayDifference(formik.values.start_date as any, formik.values.end_date as any)} Nights`
-                                            : '-'}
-                                    </span>
-                                </div>
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4 p-1 bg-zinc-100 rounded-lg w-fit">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNewGuest(false);
+                      setDuplicateGuestMatch(null);
+                      setDuplicateDismissed(false);
+                      setNewGuestLookupTerm("");
+                    }}
+                    className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${!isNewGuest ? "bg-white shadow-sm text-primary" : "text-zinc-500 hover:text-zinc-700"}`}
+                  >
+                    Existing Guest
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNewGuest(true);
+                      setDuplicateGuestMatch(null);
+                      setDuplicateDismissed(false);
+                      setNewGuestLookupTerm("");
+                    }}
+                    className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${isNewGuest ? "bg-white shadow-sm text-primary" : "text-zinc-500 hover:text-zinc-700"}`}
+                  >
+                    New Guest Onboarding
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {!isNewGuest ? (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-700">
+                        Find Guest
+                      </label>
+                      {!selectedUser ? (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                            placeholder="Search by name, email or phone..."
+                            value={guestSearchInput}
+                            onChange={(e) => {
+                              setGuestSearchInput(e.target.value);
+                              // Debounce: trigger search after typing pauses
+                              const val = e.target.value.trim();
+                              if (val.length >= 2) {
+                                setGuestSearchTerm(val);
+                              } else {
+                                setGuestSearchTerm("");
+                              }
+                            }}
+                          />
+                          {guestLookupLoading && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <Spinner />
                             </div>
-
-                            {/* Pricing Breakdown */}
-                            <div className="bg-zinc-50 rounded-lg p-4 mb-6 space-y-3">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-600">Rate (x{formik.values.unit_count || 1} units)</span>
-                                    <span className="font-medium text-zinc-900">
-                                        {selectedUnit
-                                            ? formatMoney(Number(selectedUnit.pricePerNight ?? selectedUnit.price_per_night ?? 0) * (formik.values.unit_count || 1))
-                                            : '-'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-600">Caution Fee</span>
-                                    <span className="font-medium text-zinc-900">
-                                        {selectedUnit
-                                            ? formatMoney(Number(selectedUnit.cautionFee ?? selectedUnit.caution_fee ?? 0))
-                                            : '-'}
-                                    </span>
-                                </div>
-                                <div className="border-t border-zinc-200 mt-2 pt-3 flex justify-between items-center">
-                                    <span className="font-semibold text-zinc-900">Total</span>
-                                    <span className="text-xl font-bold text-primary">{formatMoney(formik.values.total_price)}</span>
-                                </div>
-                            </div>
-
-                            {/* Payment Handling Section */}
-                            <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <MdOutlinePayments className="text-primary text-lg" />
-                                    <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">Payment Information</h4>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200 cursor-pointer hover:bg-zinc-100 transition-colors"
-                                        onClick={() => formik.setFieldValue('mark_as_paid', !formik.values.mark_as_paid)}>
-                                        <input
-                                            type="checkbox"
-                                            className="w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
-                                            checked={formik.values.mark_as_paid}
-                                            onChange={() => { }} // Handled by div click
-                                        />
-                                        <span className="text-sm font-medium text-zinc-700">Mark as Paid</span>
-                                    </div>
-
-                                    {formik.values.mark_as_paid && (
-                                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-semibold text-zinc-500 uppercase">Payment Method</label>
-                                                <select
-                                                    className="w-full h-11 px-3 border border-zinc-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                                    value={formik.values.payment_method}
-                                                    onChange={(e) => formik.setFieldValue('payment_method', e.target.value)}
-                                                >
-                                                    <option value="cash">Cash</option>
-                                                    <option value="pos">POS</option>
-                                                    <option value="bank_transfer">Bank Transfer</option>
-                                                    <option value="online">Online / Other</option>
-                                                </select>
-                                            </div>
-
-                                            {(formik.values.payment_method === 'bank_transfer' || formik.values.payment_method === 'pos') && (
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-semibold text-zinc-500 uppercase">
-                                                        Proof of Payment {formik.values.payment_method === 'bank_transfer' && <span className="text-red-500">*</span>}
-                                                    </label>
-                                                    <div className="relative">
-                                                        <input
-                                                            type="file"
-                                                            id="proof-upload"
-                                                            className="hidden"
-                                                            accept="image/*,application/pdf"
-                                                            onChange={handleFileUpload}
-                                                            disabled={isUploading}
-                                                        />
-                                                        <label
-                                                            htmlFor="proof-upload"
-                                                            className={`flex items-center justify-center gap-2 w-full h-11 border-2 border-dashed ${formik.values.payment_proof_url ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-300 text-zinc-500'} rounded-lg cursor-pointer hover:border-primary hover:text-primary transition-all text-sm font-medium`}
-                                                        >
-                                                            {isUploading ? <Spinner /> : (
-                                                                <>
-                                                                    <HiOutlineCloudUpload className="text-lg" />
-                                                                    {formik.values.payment_proof_url ? 'Receipt Uploaded' : 'Upload Receipt'}
-                                                                </>
-                                                            )}
-                                                        </label>
-                                                        {formik.values.payment_proof_url && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => formik.setFieldValue('payment_proof_url', '')}
-                                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm hover:bg-red-600 transition-colors"
-                                                            >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                                </svg>
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-semibold text-zinc-500 uppercase">Payment Notes</label>
-                                                <textarea
-                                                    className="w-full p-3 border border-zinc-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"
-                                                    placeholder="Enter any notes about this payment..."
-                                                    rows={2}
-                                                    value={formik.values.payment_notes}
-                                                    onChange={(e) => formik.setFieldValue('payment_notes', e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => formik.handleSubmit()}
-                                disabled={!formik.isValid || !formik.dirty || isPending || !selectedProperty || !selectedUnit || !selectedUser || !formik.values.start_date || isUploading}
-                                className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all mt-6 flex items-center justify-center gap-2"
-                            >
-                                {isPending ? <Spinner /> : (
-                                    <>
-                                        <span>Confirm Booking</span>
-                                        <PriceTagIcon color="white" />
-                                    </>
-                                )}
-                            </button>
-                            {(!selectedProperty || !selectedUnit || !selectedUser || !formik.values.start_date) && (
-                                <p className="text-xs text-center text-zinc-400 mt-2">Complete all fields to proceed</p>
+                          )}
+                          {/* Results dropdown */}
+                          {guestSearchTerm &&
+                            !guestLookupLoading &&
+                            guestResults.length > 0 && (
+                              <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                {guestResults.map((guest: any) => (
+                                  <button
+                                    key={guest.id}
+                                    type="button"
+                                    onClick={() => handleGuestSelect(guest)}
+                                    className="w-full px-4 py-3 text-left hover:bg-zinc-50 border-b border-zinc-100 last:border-b-0 transition-colors"
+                                  >
+                                    <p className="text-sm font-medium text-zinc-900">
+                                      {[guest.first_name, guest.last_name]
+                                        .filter(Boolean)
+                                        .join(" ") || "Guest"}
+                                    </p>
+                                    <p className="text-xs text-zinc-500">
+                                      {[guest.email, guest.phone]
+                                        .filter(Boolean)
+                                        .join(" \u00b7 ")}
+                                    </p>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          {/* No results */}
+                          {guestSearchTerm &&
+                            !guestLookupLoading &&
+                            guestResults.length === 0 && (
+                              <div className="absolute z-20 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg p-4">
+                                <p className="text-sm text-zinc-500">
+                                  No guests found.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={handleSwitchToNewGuest}
+                                  className="mt-1 text-sm font-medium text-primary hover:text-primary/80 underline"
+                                >
+                                  Create as new guest instead
+                                </button>
+                              </div>
                             )}
                         </div>
+                      ) : (
+                        <div className="flex items-center gap-4 p-3 bg-green-50 border border-green-200 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-zinc-500 font-medium border border-zinc-200">
+                            {selectedUser.profile?.firstName?.[0] ?? "G"}
+                            {selectedUser.profile?.lastName?.[0] ?? ""}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-zinc-900">
+                              {selectedUser.profile?.firstName ?? "Guest"}{" "}
+                              {selectedUser.profile?.lastName ?? ""}
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              {selectedUser.email}
+                            </p>
+                            {selectedUser.phone && (
+                              <p className="text-xs text-zinc-400">
+                                {selectedUser.phone}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSeletedUser(null);
+                              formik.setFieldValue("user_id", 0);
+                              setGuestSearchInput("");
+                              setGuestSearchTerm("");
+                            }}
+                            className="ml-auto text-xs font-medium text-red-500 hover:text-red-600"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <div className="col-span-1 space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase">
+                            First Name
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                            placeholder="e.g. John"
+                            {...formik.getFieldProps("guest_first_name")}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase">
+                            Last Name
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                            placeholder="e.g. Doe"
+                            {...formik.getFieldProps("guest_last_name")}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase">
+                            Email Address{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="email"
+                              className={`w-full h-11 px-4 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-colors ${duplicateGuestMatch && !duplicateDismissed ? "border-amber-400 bg-amber-50" : "border-zinc-300"}`}
+                              placeholder="guest@example.com"
+                              value={formik.values.guest_email}
+                              onChange={(e) =>
+                                handleNewGuestFieldChange(
+                                  "guest_email",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                            {newGuestLookupLoading &&
+                              formik.values.guest_email && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <Spinner />
+                                </div>
+                              )}
+                          </div>
+                          {/* The booking confirmation goes to this address;
+                              catch gnail.com before it bounces. Warn only. */}
+                          <EmailSuggestion
+                            email={formik.values.guest_email}
+                            onApply={(suggested) =>
+                              handleNewGuestFieldChange("guest_email", suggested)
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase">
+                            Phone Number
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="tel"
+                              className={`w-full h-11 px-4 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-colors ${duplicateGuestMatch && !duplicateDismissed ? "border-amber-400 bg-amber-50" : "border-zinc-300"}`}
+                              placeholder="+234..."
+                              value={formik.values.guest_phone}
+                              onChange={(e) =>
+                                handleNewGuestFieldChange(
+                                  "guest_phone",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                            {newGuestLookupLoading &&
+                              formik.values.guest_phone &&
+                              !formik.values.guest_email && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <Spinner />
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Duplicate guest warning banner */}
+                      {duplicateGuestMatch && !duplicateDismissed && (
+                        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 font-bold text-sm border border-amber-200">
+                              !
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-amber-800">
+                                Guest already exists in the system
+                              </p>
+                              <p className="text-xs text-amber-700 mt-0.5">
+                                A guest record matching this email or phone was
+                                found:
+                              </p>
+                              <div className="mt-2 p-2.5 bg-white border border-amber-200 rounded-md">
+                                <p className="text-sm font-medium text-zinc-900">
+                                  {[
+                                    duplicateGuestMatch.first_name,
+                                    duplicateGuestMatch.last_name,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ") || "Guest"}
+                                </p>
+                                <p className="text-xs text-zinc-500 mt-0.5">
+                                  {[
+                                    duplicateGuestMatch.email,
+                                    duplicateGuestMatch.phone,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" \u00b7 ")}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleUseDuplicateGuest(duplicateGuestMatch)
+                              }
+                              className="flex-1 h-9 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 transition-colors"
+                            >
+                              Use Existing Guest Profile
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-zinc-700">
+                          Guests
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="1"
+                            disabled={!selectedUnit}
+                            max={
+                              selectedUnit?.maxGuests ??
+                              selectedUnit?.max_guests ??
+                              10
+                            }
+                            className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
+                            value={formik.values.guests_count}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const max =
+                                selectedUnit?.maxGuests ??
+                                selectedUnit?.max_guests ??
+                                10;
+                              if (Number(val) <= max) {
+                                formik.setFieldValue("guests_count", val);
+                              } else {
+                                toast.error(
+                                  `Max guests for this unit is ${max}`,
+                                );
+                                formik.setFieldValue("guests_count", max);
+                              }
+                            }}
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
+                            People
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-zinc-700">
+                          Units
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            min="1"
+                            disabled={!selectedUnit}
+                            placeholder="0"
+                            max={selectedUnit?.count ?? 1}
+                            className="w-full h-14 pl-4 pr-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:bg-zinc-100 disabled:text-zinc-400"
+                            value={formik.values.unit_count}
+                            onChange={(e) => handleUnitChange(e)}
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
+                            Qty
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-700">
+                  {isVenueBooking ? "Event Date" : "Stay Duration"}
+                  {isLoadingAvailability && selectedUnit && (
+                    <span className="ml-2 text-xs text-zinc-400 font-normal">
+                      Loading availability...
+                    </span>
+                  )}
+                </label>
+                <BookingAvailabilityCalendar
+                  checkInDate={formik.values.start_date}
+                  checkOutDate={formik.values.end_date}
+                  onCheckInDateSelect={(date) =>
+                    formik.setFieldValue("start_date", date)
+                  }
+                  onCheckOutDateSelect={(date) =>
+                    formik.setFieldValue("end_date", date)
+                  }
+                  isMobileView={isMobile}
+                  maxDate={addYears(new Date(), 1)}
+                  blockedDates={blockedDates}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  * Bookings are limited to 1 year in advance.
+                </p>
+                {isVenueBooking && selectedUnit && (
+                  <div className="mt-4 p-4 rounded-xl border border-zinc-200 bg-white">
+                    <EventHirePicker
+                      propertyId={selectedProperty?.id}
+                      unit={selectedUnit}
+                      date={
+                        values.start_date
+                          ? formatDateToYYYYMMDD(values.start_date as any)
+                          : undefined
+                      }
+                      value={hire}
+                      onChange={setHire}
+                    />
+                    {venueQuoteError && (
+                      <p className="text-xs text-red-500 mt-2">
+                        {(venueQuoteError as any)?.response?.data?.detail ??
+                          "That time can't be booked."}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-        </section>
-    )
+          </div>
+
+          {/* RIGHT COLUMN: BOOKING SUMMARY (STICKY) */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl border border-zinc-200 shadow-lg p-6 sticky top-8">
+              <h3 className="text-lg font-semibold text-zinc-900 mb-6 border-b border-zinc-100 pb-4">
+                Booking Summary
+              </h3>
+
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Guest</span>
+                  <span className="text-zinc-900 font-medium text-right w-1/2 truncate">
+                    {isNewGuest
+                      ? formik.values.guest_first_name ||
+                        formik.values.guest_email ||
+                        "New Guest"
+                      : selectedUser?.profile?.firstName
+                        ? `${selectedUser.profile.firstName} ${selectedUser.profile.lastName || ""}`
+                        : selectedUser?.email || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Property</span>
+                  <span className="text-zinc-900 font-medium text-right w-1/2 truncate">
+                    {selectedProperty?.name || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Unit Type</span>
+                  <span className="text-zinc-900 font-medium">
+                    {selectedUnit?.name || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between w-full text-sm">
+                  <span className="text-zinc-500">Agent Custom Fee</span>
+                  <input
+                    className="outline-none border-b w-[30%] text-right"
+                    value={formik.values.agent_custom_fee}
+                    onChange={(e) => formik.setFieldValue("agent_custom_fee",e.target.value)}
+                    type="text"
+                  />
+                  {/* {formik.values?.agent_custom_fee || (5000).toFixed(2)} */}
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Dates</span>
+                  <div className="text-right">
+                    {formik.values.start_date && formik.values.end_date ? (
+                      <>
+                        <span className="block text-zinc-900 font-medium">
+                          {formatDate(formik.values.start_date as any)}
+                        </span>
+                        <span className="block text-zinc-400 text-xs">
+                          to {formatDate(formik.values.end_date as any)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-zinc-400">-</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">Duration</span>
+                  <span className="text-zinc-900 font-medium">
+                    {isVenueBooking
+                      ? hireIsComplete(hire)
+                        ? describeHire(hire, venueQuote)
+                        : "-"
+                      : formik.values.start_date && formik.values.end_date
+                        ? `${getDayDifference(formik.values.start_date as any, formik.values.end_date as any)} Nights`
+                        : "-"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Pricing Breakdown */}
+              <div className="bg-zinc-50 rounded-lg p-4 mb-6 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-600">
+                    Rate (x{formik.values.unit_count || 1} units)
+                  </span>
+                  <span className="font-medium text-zinc-900">
+                    {isVenueBooking
+                      ? venueQuote
+                        ? formatMoney(Number(venueQuote.base_price))
+                        : "-"
+                      : selectedUnit
+                        ? formatMoney(
+                            Number(
+                              selectedUnit.pricePerNight ??
+                                selectedUnit.price_per_night ??
+                                0,
+                            ) * Number(formik.values.unit_count || 1),
+                          )
+                        : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-600">Caution Fee</span>
+                  <span className="font-medium text-zinc-900">
+                    {selectedUnit
+                      ? formatMoney(
+                          Number(
+                            selectedUnit.cautionFee ??
+                              selectedUnit.caution_fee ??
+                              0,
+                          ),
+                        )
+                      : "-"}
+                  </span>
+                </div>
+                <div className="border-t border-zinc-200 mt-2 pt-3 flex justify-between items-center">
+                  <span className="font-semibold text-zinc-900">Total</span>
+                  <span className="text-xl font-bold text-primary">
+                    {formik.values.total_price
+                      ? formatMoney(
+                          formik.values.total_price +
+                            Number(formik.values.agent_custom_fee)
+                        )
+                      : formatMoney(formik.values.total_price)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Referral Code */}
+              <div className="mb-6">
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block mb-1.5">
+                  Referral Code
+                  <span className="ml-1 text-zinc-400 font-normal normal-case">
+                    (optional)
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    className="w-full h-10 px-3 pr-8 border border-zinc-300 rounded-lg text-sm font-mono bg-white
+                               focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all
+                               uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:font-sans"
+                    placeholder="e.g. YOURCODE123"
+                    value={formik.values.referral_code}
+                    maxLength={12}
+                    onChange={(e) =>
+                      formik.setFieldValue(
+                        "referral_code",
+                        e.target.value.toUpperCase().trim(),
+                      )
+                    }
+                  />
+                  {formik.values.referral_code && (
+                    <button
+                      type="button"
+                      onClick={() => formik.setFieldValue("referral_code", "")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                      aria-label="Clear referral code"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-400 mt-1 leading-snug">
+                  Applying this code will attribute this booking to the
+                  referrer.
+                </p>
+              </div>
+
+              {/* Front-desk guest verification — offline and wallet-paid bookings */}
+              {needsGuestVerification && (
+                <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon icon="solar:shield-user-bold" className="text-primary text-lg" />
+                    <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">
+                      Guest Verification
+                    </h4>
+                  </div>
+                  <p className="text-xs text-zinc-500 -mt-2">
+                    Required for cash, POS, bank-transfer and wallet-paid bookings. Confirm the
+                    guest&apos;s phone number and capture their ID document and/or a
+                    photo of the guest (at least one).
+                  </p>
+
+                  {!isNewGuest && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-zinc-500 uppercase">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      {selectedUser?.phone ? (
+                        <div className="w-full h-11 px-4 border border-zinc-200 bg-zinc-50 rounded-lg flex items-center text-sm text-zinc-700">
+                          {selectedUser.phone}
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">
+                            on file
+                          </span>
+                        </div>
+                      ) : (
+                        <input
+                          type="tel"
+                          className="w-full h-11 px-4 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                          placeholder="+234..."
+                          value={formik.values.guest_phone}
+                          onChange={(e) => formik.setFieldValue("guest_phone", e.target.value)}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {isNewGuest && !formik.values.guest_phone?.trim() && (
+                    <p className="text-xs text-amber-600 font-medium">
+                      Enter the guest&apos;s phone number in the guest details above.
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        {
+                          kind: "ID_DOCUMENT" as const,
+                          field: "guest_id_document_url" as const,
+                          label: "ID document",
+                          hint: "Photo of a passport, driver's licence, NIN slip or voter's card",
+                          capture: undefined,
+                          icon: "solar:card-bold",
+                        },
+                        {
+                          kind: "PHOTO" as const,
+                          field: "guest_photo_url" as const,
+                          label: "Guest photo",
+                          hint: "Take a photo of the guest at the desk",
+                          capture: "user" as const,
+                          icon: "solar:camera-bold",
+                        },
+                      ]
+                    ).map(({ kind, field, label, hint, capture, icon }) => {
+                      const url = formik.values[field];
+                      const busy = credentialUploading === kind;
+                      const inputId = `guest-credential-${kind.toLowerCase()}`;
+                      return (
+                        <div key={kind} className="space-y-1.5">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase">
+                            {label}
+                          </label>
+                          <input
+                            type="file"
+                            id={inputId}
+                            className="hidden"
+                            accept="image/*"
+                            capture={capture}
+                            onChange={handleCredentialUpload(kind)}
+                            disabled={busy}
+                          />
+                          {url ? (
+                            <div className="relative">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={url}
+                                alt={label}
+                                className="w-full h-32 object-cover rounded-lg border border-primary/40"
+                              />
+                              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-2 py-1.5 bg-black/50 rounded-b-lg text-[11px] text-white">
+                                <span>Captured</span>
+                                <div className="flex items-center gap-2">
+                                  <label htmlFor={inputId} className="cursor-pointer underline">
+                                    Retake
+                                  </label>
+                                  <button
+                                    type="button"
+                                    className="underline"
+                                    onClick={() => formik.setFieldValue(field, "")}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <label
+                              htmlFor={inputId}
+                              className="flex flex-col items-center justify-center gap-1.5 w-full h-32 border-2 border-dashed border-zinc-300 text-zinc-500 rounded-lg cursor-pointer hover:border-primary hover:text-primary transition-all text-sm font-medium px-3 text-center"
+                            >
+                              {busy ? (
+                                <Spinner />
+                              ) : (
+                                <>
+                                  <Icon icon={icon} className="text-2xl" />
+                                  <span>{capture ? "Take photo" : "Upload image"}</span>
+                                  <span className="text-[10px] font-normal text-zinc-400">
+                                    {hint}
+                                  </span>
+                                </>
+                              )}
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Handling Section */}
+              <div className="border-t border-zinc-100 pt-6 mt-6 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MdOutlinePayments className="text-primary text-lg" />
+                  <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">
+                    Payment Information
+                  </h4>
+                </div>
+
+                <div className="space-y-3">
+                  {!isAgent && (
+                    <div
+                      className="flex items-center gap-3 bg-zinc-50 p-3 rounded-lg border border-zinc-200 cursor-pointer hover:bg-zinc-100 transition-colors"
+                      onClick={() => {
+                        const next = !formik.values.mark_as_paid;
+                        formik.setFieldValue("mark_as_paid", next);
+                        if (next)
+                          formik.setFieldValue("send_payment_link", false);
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
+                        checked={formik.values.mark_as_paid}
+                        onChange={() => {}} // Handled by div click
+                      />
+                      <span className="text-sm font-medium text-zinc-700">
+                        Mark as Paid
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Agents collect one of two ways: send the guest a payment
+                      link, or pay now from their own wallet. They cannot mark
+                      a booking as paid. */}
+                  {isAgent ? (
+                    <div className="space-y-2" role="radiogroup" aria-label="How will this booking be paid?">
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={!formik.values.pay_from_wallet}
+                        onClick={() => formik.setFieldValue("pay_from_wallet", false)}
+                        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                          !formik.values.pay_from_wallet
+                            ? "bg-teal-50 border-teal-300 ring-1 ring-teal-300"
+                            : "bg-zinc-50 border-zinc-200 hover:bg-zinc-100"
+                        }`}
+                      >
+                        <Icon
+                          icon="mdi:email-send-outline"
+                          className={`mt-0.5 text-lg ${!formik.values.pay_from_wallet ? "text-teal-700" : "text-zinc-500"}`}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-zinc-900 block">
+                            Send the guest a payment link
+                          </span>
+                          <span className="text-xs text-zinc-600 block mt-0.5">
+                            We'll email + SMS the guest a checkout URL when you
+                            confirm. You also get a copyable link to share on
+                            WhatsApp.
+                          </span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={!!formik.values.pay_from_wallet}
+                        disabled={isRequestToBook || (!walletLoading && !myWallet)}
+                        onClick={() => formik.setFieldValue("pay_from_wallet", true)}
+                        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          formik.values.pay_from_wallet
+                            ? "bg-teal-50 border-teal-300 ring-1 ring-teal-300"
+                            : "bg-zinc-50 border-zinc-200 hover:bg-zinc-100"
+                        }`}
+                      >
+                        <Icon
+                          icon="solar:wallet-money-bold"
+                          className={`mt-0.5 text-lg ${formik.values.pay_from_wallet ? "text-teal-700" : "text-zinc-500"}`}
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-zinc-900 block">
+                            Pay now from my wallet
+                          </span>
+                          <span className="text-xs text-zinc-600 block mt-0.5">
+                            {walletLoading
+                              ? "Checking your balance..."
+                              : myWallet
+                                ? `Balance ${formatMoney(walletBalance)}. The booking is confirmed straight away, with no processing fee.`
+                                : "You don't have a wallet yet."}
+                          </span>
+                          {isRequestToBook && (
+                            <span className="text-xs text-amber-700 block mt-1">
+                              This property takes booking requests. Pay from
+                              your wallet on the booking page once the owner
+                              approves.
+                            </span>
+                          )}
+                        </div>
+                      </button>
+
+                      {paysFromWallet && walletLooksShort && (
+                        <p className="text-xs text-amber-700 font-medium">
+                          Your balance ({formatMoney(walletBalance)}) looks short
+                          of this booking (about {formatMoney(walletChargeEstimate)}).
+                          Top up your wallet or send a payment link instead.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                        formik.values.mark_as_paid
+                          ? "bg-zinc-50 border-zinc-200 opacity-50 cursor-not-allowed"
+                          : "bg-zinc-50 border-zinc-200 cursor-pointer hover:bg-zinc-100"
+                      }`}
+                      onClick={() => {
+                        if (formik.values.mark_as_paid) return;
+                        formik.setFieldValue(
+                          "send_payment_link",
+                          !formik.values.send_payment_link,
+                        );
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 w-4 h-4 text-primary rounded focus:ring-primary border-zinc-300"
+                        checked={formik.values.send_payment_link}
+                        disabled={formik.values.mark_as_paid}
+                        onChange={() => {}}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-zinc-700 block">
+                          Send payment link to guest
+                        </span>
+                        <span className="text-xs text-zinc-500 block mt-0.5">
+                          Emails and SMSes the guest a checkout URL. You also
+                          get a copyable link to share on WhatsApp.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {formik.values.mark_as_paid && !isAgent && (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-zinc-500 uppercase">
+                          Payment Method
+                        </label>
+                        <select
+                          className="w-full h-11 px-3 border border-zinc-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                          value={formik.values.payment_method}
+                          onChange={(e) =>
+                            formik.setFieldValue(
+                              "payment_method",
+                              e.target.value,
+                            )
+                          }
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="pos">POS</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="online">Online / Other</option>
+                        </select>
+                      </div>
+
+                      {(formik.values.payment_method === "bank_transfer" ||
+                        formik.values.payment_method === "pos") && (
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-zinc-500 uppercase">
+                            Proof of Payment{" "}
+                            {formik.values.payment_method ===
+                              "bank_transfer" && (
+                              <span className="text-red-500">*</span>
+                            )}
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="file"
+                              id="proof-upload"
+                              className="hidden"
+                              accept="image/*,application/pdf"
+                              onChange={handleFileUpload}
+                              disabled={isUploading}
+                            />
+                            <label
+                              htmlFor="proof-upload"
+                              className={`flex items-center justify-center gap-2 w-full h-11 border-2 border-dashed ${formik.values.payment_proof_url ? "border-primary bg-primary/5 text-primary" : "border-zinc-300 text-zinc-500"} rounded-lg cursor-pointer hover:border-primary hover:text-primary transition-all text-sm font-medium`}
+                            >
+                              {isUploading ? (
+                                <Spinner />
+                              ) : (
+                                <>
+                                  <HiOutlineCloudUpload className="text-lg" />
+                                  {formik.values.payment_proof_url
+                                    ? "Receipt Uploaded"
+                                    : "Upload Receipt"}
+                                </>
+                              )}
+                            </label>
+                            {formik.values.payment_proof_url && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  formik.setFieldValue("payment_proof_url", "")
+                                }
+                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm hover:bg-red-600 transition-colors"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-zinc-500 uppercase">
+                          Payment Notes
+                        </label>
+                        <textarea
+                          className="w-full p-3 border border-zinc-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"
+                          placeholder="Enter any notes about this payment..."
+                          rows={2}
+                          value={formik.values.payment_notes}
+                          onChange={(e) =>
+                            formik.setFieldValue(
+                              "payment_notes",
+                              e.target.value,
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={() => formik.handleSubmit()}
+                disabled={
+                  !formik.isValid ||
+                  !formik.dirty ||
+                  isPending ||
+                  !selectedProperty ||
+                  !selectedUnit ||
+                  (!isNewGuest && !selectedUser) ||
+                  (isNewGuest && !formik.values.guest_email) ||
+                  !formik.values.start_date ||
+                  isUploading ||
+                  credentialUploading !== null ||
+                  offlineCredentialsMissing ||
+                  (isNewGuest && !!duplicateGuestMatch && !duplicateDismissed)
+                }
+                className="w-full h-12 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all mt-6 flex items-center justify-center gap-2"
+              >
+                {isPending ? (
+                  <Spinner />
+                ) : (
+                  <>
+                    <span>
+                      {paysFromWallet ? "Confirm & Pay from Wallet" : "Confirm Booking"}
+                    </span>
+                    <PriceTagIcon color="white" />
+                  </>
+                )}
+              </button>
+              {isNewGuest && !!duplicateGuestMatch && !duplicateDismissed ? (
+                <p className="text-xs text-center text-amber-600 mt-2 font-medium">
+                  Resolve the duplicate guest before proceeding
+                </p>
+              ) : offlineCredentialsMissing ? (
+                <p className="text-xs text-center text-amber-600 mt-2 font-medium">
+                  {!guestPhoneOnFile?.trim()
+                    ? "Enter the guest's phone number to proceed"
+                    : "Capture the guest's ID document or photo to proceed"}
+                </p>
+              ) : !selectedProperty ||
+                !selectedUnit ||
+                (!isNewGuest && !selectedUser) ||
+                (isNewGuest && !formik.values.guest_email) ||
+                !formik.values.start_date ? (
+                <p className="text-xs text-center text-zinc-400 mt-2">
+                  Complete all fields to proceed
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }

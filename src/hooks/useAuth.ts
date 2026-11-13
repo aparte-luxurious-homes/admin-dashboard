@@ -6,13 +6,53 @@ import Cookies from "js-cookie";
 import axiosRequest from "@/lib/api";
 import { setUser, clearUser } from "@/lib/slices/authSlice";
 import { useEffect } from "react";
-// import { BASE_API_URL } from "../lib/routes/endpoints";
+import { API_ROUTES } from "../lib/routes/endpoints";
 import { ILoginResponse, IUser, IBaseResponse } from "../lib/types";
 import { useRouter } from "next/navigation";
 import { PAGE_ROUTES } from "../lib/routes/page_routes";
 import { RootState } from "../lib/store";
 import { UserRole } from "../lib/enums";
 
+
+/**
+ * Sign-in reached a GUEST account. Guests can't use the dashboard, but a guest
+ * is often really a host or an agent whose account got the wrong type (a
+ * signup that never asked, a first Google sign-in, an account a booking
+ * created). So this carries the session instead of a dead end: the login page
+ * offers to switch the account (POST /profile/account-type) using `token`,
+ * which is held in memory only; no cookie is ever set for a guest.
+ */
+export class GuestAccountError extends Error {
+  constructor(public readonly token: string, public readonly user: IUser) {
+    super("This is a guest account.");
+    this.name = "GuestAccountError";
+  }
+}
+
+/** Store the session cookie the dashboard reads on every request. */
+export const setAuthCookie = (token: string) => {
+  // Secure cookies only over HTTPS; the shared domain only on aparte.ng.
+  const isProduction = window.location.protocol === "https:";
+  const hostname = window.location.hostname;
+  const domain = hostname.includes("aparte.ng") ? ".aparte.ng" : undefined;
+
+  const cookieOptions: any = {
+    expires: 7,
+    secure: isProduction,
+    sameSite: "Lax" as const,
+    path: "/",
+  };
+  if (domain) cookieOptions.domain = domain;
+
+  Cookies.set("token", token, cookieOptions);
+
+  // Some browsers refuse the shared domain; fall back to this host only.
+  if (!Cookies.get("token") && domain) {
+    const fallbackOptions = { ...cookieOptions };
+    delete fallbackOptions.domain;
+    Cookies.set("token", token, fallbackOptions);
+  }
+};
 
 // 🔹 Fetch User & Sync with Redux
 export const fetchUser = async (): Promise<IUser> => {
@@ -21,6 +61,9 @@ export const fetchUser = async (): Promise<IUser> => {
 
   if (user.role === UserRole.GUEST) {
     Cookies.remove("token");
+    // Zone standing is per-account. Leaving this behind lets the next agent to
+    // log in on this browser inherit a former lead's zone navigation.
+    Cookies.remove("networkRole");
     window.location.href = PAGE_ROUTES.auth.login;
     throw Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
   }
@@ -30,14 +73,12 @@ export const fetchUser = async (): Promise<IUser> => {
 
 export const useAuth = () => {
   const dispatch = useDispatch();
-  const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector((state: RootState) => state.auth.user); 
   const token = Cookies.get("token");
 
   // Debug: Log all cookies
   useEffect(() => {
     const allCookies = document.cookie;
-    console.log('[useAuth] All cookies:', allCookies);
-    console.log('[useAuth] Token from Cookies.get:', token);
   }, [token]);
 
   const { data, isFetching, error } = useQuery({
@@ -53,7 +94,7 @@ export const useAuth = () => {
   // Sync Redux only if data exists and is different from the current user
   useEffect(() => {
     if (data && data.id && data.id !== user?.id) {
-      console.log('[useAuth] Setting user in Redux:', data.email);
+      // console.log('[useAuth] Setting user in Redux:', data.email);
       dispatch(setUser(data));
     }
   }, [data, dispatch, user]);
@@ -67,7 +108,7 @@ export const useAuth = () => {
 
   // Log current auth state
   useEffect(() => {
-    console.log('[useAuth] Current state - User:', user?.email || 'None', 'Token:', !!token, 'Fetching:', isFetching);
+    // console.log('[useAuth] Current state - User:', user?.email || 'None', 'Token:', !!token, 'Fetching:', isFetching);
   }, [user, token, isFetching]);
 
   return { user, isFetching };
@@ -93,86 +134,121 @@ export const useLogin = () => {
         throw new Error("Invalid login response from server");
       }
 
-      // Check for guest role before setting any state
+      // A guest never gets a dashboard session, but may switch the account
+      // type; the login page catches this and offers it.
       if (payload.user.role === UserRole.GUEST) {
-        throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
+        throw new GuestAccountError(payload.authorization.token, payload.user);
       }
 
-      // Only set token if user is not a guest
-      // Use secure cookies only in production (HTTPS)
-      const isProduction = window.location.protocol === 'https:';
+      // An unapproved agent still logs in. AgentAccessGate tells them about
+      // KYC once they are signed in; refusing here read as "wrong password".
 
-      // Extract domain for cookie (for production)
-      const hostname = window.location.hostname;
-      const domain = hostname.includes('aparte.ng') ? '.aparte.ng' : undefined;
-
-      const cookieOptions: any = {
-        expires: 7,
-        secure: isProduction,
-        sameSite: "Lax" as const, // Changed from Strict to Lax for better compatibility
-        path: '/' // Ensure cookie is available across all paths
-      };
-
-      // Only set domain for production (don't set for localhost)
-      if (domain) {
-        cookieOptions.domain = domain;
-      }
-
-      console.log('[useLogin] Setting token cookie with options:', cookieOptions);
-      console.log('[useLogin] Current location:', { hostname, protocol: window.location.protocol });
-
-      // Try setting the cookie
-      Cookies.set("token", payload.authorization.token, cookieOptions);
-
-      // Verify cookie was set
-      const verifyToken = Cookies.get("token");
-      console.log('[useLogin] Token verification after set:', verifyToken ? 'Token set successfully' : 'ERROR: Token not set!');
-      console.log('[useLogin] document.cookie after set:', document.cookie);
-
-      // If token still not set, try without domain
-      if (!verifyToken && domain) {
-        console.warn('[useLogin] Token not set with domain, trying without domain...');
-        const fallbackOptions = { ...cookieOptions };
-        delete fallbackOptions.domain;
-        Cookies.set("token", payload.authorization.token, fallbackOptions);
-        const recheckToken = Cookies.get("token");
-        console.log('[useLogin] Fallback token check:', recheckToken ? 'Success!' : 'Still failed');
-      }
-
+      setAuthCookie(payload.authorization.token);
       return payload.user;
     },
     onSuccess: async (user) => {
-      console.log('[useLogin] Login successful, setting user:', user.email);
+      // console.log('[useLogin] Login successful, setting user:', user.email);
 
       // Verify token is still there before proceeding
       const tokenCheck = Cookies.get("token");
-      console.log('[useLogin] Token check before state update:', tokenCheck ? 'Token exists' : 'ERROR: Token missing!');
+      // console.log('[useLogin] Token check before state update:', tokenCheck ? 'Token exists' : 'ERROR: Token missing!');
 
       // Update state before navigation
       dispatch(setUser(user));
       queryClient.setQueryData(["authUser"], user);
 
-      console.log('[useLogin] State updated, waiting for persistence...');
+      // console.log('[useLogin] State updated, waiting for persistence...');
 
       // Small delay to ensure state is persisted
       await new Promise(resolve => setTimeout(resolve, 200));
 
       // Final token verification before navigation
       const finalTokenCheck = Cookies.get("token");
-      console.log('[useLogin] Final token check before navigation:', finalTokenCheck ? 'Token exists' : 'ERROR: Token missing!');
-      console.log('[useLogin] All cookies before navigation:', document.cookie);
+      // console.log('[useLogin] Final token check before navigation:', finalTokenCheck ? 'Token exists' : 'ERROR: Token missing!');
+      // console.log('[useLogin] All cookies before navigation:', document.cookie);
 
-      console.log('[useLogin] Navigating to dashboard...');
+      // console.log('[useLogin] Navigating to dashboard...');
 
       // Use replace instead of push to prevent back navigation to login
       router.replace(PAGE_ROUTES.dashboard.base);
     },
     onError: (error: any) => {
       // Remove token if there's an error
-      console.log('[useLogin] Login error, removing token');
+      // console.log('[useLogin] Login error, removing token');
       Cookies.remove("token");
-      console.error('[useLogin] Login failed:', error);
+    // Zone standing is per-account. Leaving this behind lets the next agent to
+    // log in on this browser inherit a former lead's zone navigation.
+    Cookies.remove("networkRole");
+      // console.error('[useLogin] Login failed:', error);
     }
+  });
+};
+
+/** What POST /auth/phone/request-otp answers with. */
+export interface PhoneOtpRequestResult {
+  phone: string | null;
+  phoneMasked: string | null;
+  resendAfterSeconds: number;
+}
+
+// 🔹 Phone-OTP request: send (or resend) the SMS code for a sign-in challenge.
+// With `phone`, the challenge also sets or changes the number on the account
+// first; that is how someone with no number on file, or a wrong one, gets in.
+export const useRequestPhoneOtp = () => {
+  return useMutation({
+    mutationFn: async ({ challenge, phone }: { challenge: string; phone?: string }): Promise<PhoneOtpRequestResult> => {
+      const response = await axiosRequest.post(API_ROUTES.auth.requestPhoneOtp, {
+        challenge,
+        ...(phone ? { phone } : {}),
+      });
+      const data = response.data?.data ?? response.data ?? {};
+      return {
+        phone: data.phone ?? null,
+        phoneMasked: data.phoneMasked ?? data.phone_masked ?? null,
+        resendAfterSeconds: Number(data.resendAfterSeconds ?? data.resend_after_seconds ?? 60) || 0,
+      };
+    },
+  });
+};
+
+// 🔹 Phone-OTP verify (completes login, mirrors useLogin's onSuccess)
+export const useVerifyPhoneOtp = () => {
+  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: async ({ challenge, otp }: { challenge: string; otp: string }) => {
+      const response = await axiosRequest.post<IBaseResponse<ILoginResponse> | ILoginResponse>(
+        API_ROUTES.auth.verifyPhoneOtp,
+        { challenge, otp }
+      );
+
+      const raw = response.data as any;
+      const payload: ILoginResponse = raw?.data?.user ? raw.data : raw;
+
+      if (!payload?.user || !payload?.authorization) {
+        throw new Error("Invalid verify response from server");
+      }
+
+      if (payload.user.role === UserRole.GUEST) {
+        throw new GuestAccountError(payload.authorization.token, payload.user);
+      }
+
+      setAuthCookie(payload.authorization.token);
+      return payload.user;
+    },
+    onSuccess: async (user) => {
+      dispatch(setUser(user));
+      queryClient.setQueryData(["authUser"], user);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      router.replace(PAGE_ROUTES.dashboard.base);
+    },
+    onError: () => {
+      // Don't remove the cookie here — the user just hasn't completed verification
+      // yet. They may retry the OTP. The login mutation already cleared any stale
+      // token before this flow began.
+    },
   });
 };
 
@@ -185,6 +261,9 @@ export const useLogout = () => {
     mutationFn: async () => {
       await axiosRequest.post("/auth/logout");
       Cookies.remove("token");
+    // Zone standing is per-account. Leaving this behind lets the next agent to
+    // log in on this browser inherit a former lead's zone navigation.
+    Cookies.remove("networkRole");
     },
     onSuccess: () => {
       dispatch(clearUser());

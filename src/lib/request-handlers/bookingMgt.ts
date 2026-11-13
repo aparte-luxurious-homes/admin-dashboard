@@ -1,196 +1,550 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axiosRequest from "../api";
 import { API_ROUTES } from "../routes/endpoints";
-import { ICreateBooking, IUpdateBooking } from "@/src/components/booking-mgt/types";
+import { FinanceRequestKeys } from "./financeMgt";
+import {
+  ICreateBooking,
+  IUpdateBooking,
+} from "@/src/components/booking-mgt/types";
 
 enum BookingRequestKeys {
-    getAllBookings = "getAllBookings",
-    getBookingDetails = "getBookingDetails",
-    updateBookingDetails = "updateBookingDetails",
-    createBooking = "createBooking",
-    deleteBooking = "deleteBooking",
-    retryBookingPayment = "retryBookingPayment",
-    uploadPaymentProof = "uploadPaymentProof",
+  getAllBookings = "getAllBookings",
+  getBookingDetails = "getBookingDetails",
+  updateBookingDetails = "updateBookingDetails",
+  createBooking = "createBooking",
+  deleteBooking = "deleteBooking",
+  retryBookingPayment = "retryBookingPayment",
+  uploadPaymentProof = "uploadPaymentProof",
+  approvalPendingCount = "approvalPendingCount",
+}
+
+export function GetApprovalPendingCount() {
+  return useQuery({
+    queryKey: [BookingRequestKeys.approvalPendingCount],
+    queryFn: () =>
+      axiosRequest.get(
+        `${API_ROUTES.bookings.base}?status=APPROVAL_PENDING&page=1&size=1`,
+      ),
+    select: (resp: any): number => {
+      const total = resp?.data?.data?.total ?? resp?.data?.total ?? 0;
+      return typeof total === "number" ? total : Number(total) || 0;
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * The server's price for a prospective booking. Event-centre hires are priced
+ * only here — by the hall's rate card and the slot chosen — so the screen
+ * shows the figure the booking will actually charge.
+ */
+export function GetBookingQuote(payload: Record<string, unknown> | null) {
+  return useQuery({
+    queryKey: ["bookingQuote", payload],
+    queryFn: () => axiosRequest.post(API_ROUTES.bookings.quote, payload),
+    enabled: !!payload,
+    retry: false,
+    staleTime: 15 * 1000,
+  });
+}
+
+/**
+ * Stage a front-desk guest credential (ID document photo or guest photo) for
+ * an offline booking before it is created. `kind` is ID_DOCUMENT or PHOTO.
+ * Returns `{ data: { url, kind } }`; the URL goes into the POST /bookings
+ * payload as guest_id_document_url / guest_photo_url.
+ */
+export function UploadGuestCredential() {
+  return useMutation({
+    mutationFn: ({ payload }: { payload: FormData }) =>
+      axiosRequest.post(API_ROUTES.bookings.guestCredentials, payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+        transformRequest: (data, headers) => {
+          if (headers) {
+            delete headers["Content-Type"];
+          }
+          return data;
+        },
+      }),
+  });
+}
+
+/**
+ * Capture a guest credential and attach it to an existing booking: stage the
+ * image, then PUT its URL onto the booking. Paying for someone else's booking
+ * from a wallet needs one (the wallet identifies the agent, not the guest).
+ */
+export function AttachGuestCredential() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      bookingId,
+      kind,
+      file,
+    }: {
+      bookingId: string | number;
+      kind: "ID_DOCUMENT" | "PHOTO";
+      file: File;
+    }) => {
+      const formData = new FormData();
+      formData.append("kind", kind);
+      formData.append("file", file);
+      const staged = await axiosRequest.post(API_ROUTES.bookings.guestCredentials, formData, {
+        transformRequest: (data, headers) => {
+          if (headers) {
+            delete headers["Content-Type"];
+          }
+          return data;
+        },
+      });
+      const url = staged?.data?.data?.url;
+      if (!url) throw new Error("The image was not stored. Try again.");
+      return axiosRequest.put(API_ROUTES.bookings.details(String(bookingId)), {
+        [kind === "ID_DOCUMENT" ? "guest_id_document_url" : "guest_photo_url"]: url,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+    },
+  });
 }
 
 export function UploadPaymentProof() {
-    return useMutation({
-        mutationFn: ({ payload }: { payload: FormData }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.base}/upload-payment-proof`, payload, {
-                headers: {
-                    // This will be overridden by transformRequest
-                    "Content-Type": "multipart/form-data"
-                },
-                transformRequest: (data, headers) => {
-                    // Delete the Content-Type header so the browser can set it with the correct boundary
-                    if (headers) {
-                        delete headers['Content-Type'];
-                    }
-                    return data;
-                },
-            }),
-    });
+  return useMutation({
+    mutationFn: ({ payload }: { payload: FormData }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.base}/upload-payment-proof`,
+        payload,
+        {
+          headers: {
+            // This will be overridden by transformRequest
+            "Content-Type": "multipart/form-data",
+          },
+          transformRequest: (data, headers) => {
+            // Delete the Content-Type header so the browser can set it with the correct boundary
+            if (headers) {
+              delete headers["Content-Type"];
+            }
+            return data;
+          },
+        },
+      ),
+  });
+}
+
+export function GuestLookup(search?: string) {
+  // Uses the /bookings/guests/directory endpoint — broader scope than the
+  // referrer-restricted /bookings/guest-lookup. Returns {id, first_name,
+  // email, phone} only so agents can book on behalf of any guest, not just
+  // their own referrals. Response shape nests {meta, data} inside `data`.
+  return useQuery({
+    queryKey: ["guestDirectory", search],
+    queryFn: () =>
+      axiosRequest.get(
+        `${API_ROUTES.bookings.guestsDirectory}?search=${encodeURIComponent(search!)}&size=10`,
+      ),
+    enabled: !!search && search.length >= 2,
+    select: (resp: any) => {
+      // Normalize to the shape CreateBookingView expects: { data: { data: Guest[] } }
+      const inner = resp?.data?.data;
+      const guests = Array.isArray(inner?.data)
+        ? inner.data
+        : Array.isArray(inner)
+          ? inner
+          : [];
+      return { data: { data: guests } };
+    },
+  });
 }
 
 export function GetAllBookings(
-    page = 1,
-    limit = 10,
-    searchQuery = '',
-    unitId?: string | number,
-    propertyId?: string | number,
-    status?: string,
-    startDateFrom?: string,
-    startDateTo?: string
+  page = 1,
+  limit = 10,
+  searchQuery = "",
+  unitId?: string | number,
+  propertyId?: string | number,
+  status?: string,
+  startDateFrom?: string,
+  startDateTo?: string,
+  sortBy?: string,
 ) {
-    const queryParams = new URLSearchParams({
-        page: String(page),
-        size: String(limit),
-        search: searchQuery,
-    });
+  const queryParams = new URLSearchParams({
+    page: String(page),
+    size: String(limit),
+    search: searchQuery,
+  });
 
-    if (unitId !== undefined) {
-        queryParams.append('unit_id', String(unitId));
-    }
+  if (sortBy) {
+    queryParams.append("sort_by", sortBy);
+  }
 
-    if (propertyId !== undefined) {
-        queryParams.append('property_id', String(propertyId));
-    }
+  if (unitId !== undefined) {
+    queryParams.append("unit_id", String(unitId));
+  }
 
-    if (status) {
-        queryParams.append('status', status);
-    }
+  if (propertyId !== undefined) {
+    queryParams.append("property_id", String(propertyId));
+  }
 
-    if (startDateFrom) {
-        queryParams.append('start_date_from', startDateFrom);
-    }
+  if (status) {
+    queryParams.append("status", status);
+  }
 
-    if (startDateTo) {
-        queryParams.append('start_date_to', startDateTo);
-    }
+  if (startDateFrom) {
+    queryParams.append("start_date_from", startDateFrom);
+  }
 
-    return useQuery({
-        queryKey: [BookingRequestKeys.getAllBookings, page, limit, searchQuery, unitId, propertyId, status, startDateFrom, startDateTo],
-        queryFn: () => axiosRequest.get(`${API_ROUTES.bookings.base}?${queryParams.toString()}`),
-        refetchOnWindowFocus: true,
-    });
+  if (startDateTo) {
+    queryParams.append("start_date_to", startDateTo);
+  }
+
+  return useQuery({
+    queryKey: [
+      BookingRequestKeys.getAllBookings,
+      page,
+      limit,
+      searchQuery,
+      unitId,
+      propertyId,
+      status,
+      startDateFrom,
+      startDateTo,
+      // Part of the key: without it, changing the sort shows the previous
+      // ordering from cache until the refetch lands.
+      sortBy,
+    ],
+    queryFn: () =>
+      axiosRequest.get(`${API_ROUTES.bookings.base}?${queryParams.toString()}`),
+    refetchOnWindowFocus: true,
+  });
 }
 
 export function GetBookingDetails(bookingId: string) {
-    return useQuery({
-        queryKey: [BookingRequestKeys.getBookingDetails, bookingId],
-        queryFn: () => axiosRequest.get(
-            `${API_ROUTES.bookings.details(bookingId)}`,
-        ),
-        refetchOnWindowFocus: true,
-    });
+  return useQuery({
+    queryKey: [BookingRequestKeys.getBookingDetails, bookingId],
+    queryFn: () =>
+      axiosRequest.get(`${API_ROUTES.bookings.details(bookingId)}`),
+    refetchOnWindowFocus: true,
+  });
 }
 
 export function CreateBooking() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ payload }: { payload: ICreateBooking }) =>
-            axiosRequest.post(API_ROUTES.bookings.base, payload),
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ payload }: { payload: ICreateBooking }) =>
+      axiosRequest.post(API_ROUTES.bookings.base, payload),
 
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-        },
-    });
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      // A booking paid from the agent's wallet changed their balance.
+      queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.myWallet] });
+    },
+  });
 }
 
 export function UpdateBookingDetails() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ bookingId, payload }: { bookingId: string | number, payload: IUpdateBooking }) =>
-            axiosRequest.put(API_ROUTES.bookings.details(String(bookingId)), payload),
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      payload,
+    }: {
+      bookingId: string | number;
+      payload: IUpdateBooking;
+    }) =>
+      axiosRequest.put(API_ROUTES.bookings.details(String(bookingId)), payload),
 
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.updateBookingDetails] });
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-        },
-    });
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.updateBookingDetails],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+    },
+  });
 }
 
 export function DeleteBooking() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ bookingId, cancellationReason }: { bookingId: string | number, cancellationReason?: string }) =>
-            axiosRequest.delete(API_ROUTES.bookings.details(String(bookingId)), {
-                data: { cancellation_reason: cancellationReason || 'Deleted by admin' }
-            }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      cancellationReason,
+    }: {
+      bookingId: string | number;
+      cancellationReason?: string;
+    }) =>
+      axiosRequest.delete(API_ROUTES.bookings.details(String(bookingId)), {
+        data: { cancellation_reason: cancellationReason || "Deleted by admin" },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+    },
+  });
 }
 
 export function RetryBookingPayment() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/retry-payment`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/retry-payment`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
+}
+
+// Admin remediation: attach a gateway-side payment reference (copied from
+// Paystack/Monnify/Flutterwave dashboard) to a stuck booking and finalize it.
+// Use when RetryBookingPayment can't resolve because the booking is stuck on
+// an abandoned alternate payment-link reference. Backend gates this to
+// {SUPER_ADMIN, ADMIN, OPERATIONS_ADMIN}.
+export function ReconcileBookingPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      provider,
+      payment_reference,
+    }: {
+      bookingId: string | number;
+      provider: "PAYSTACK" | "MONNIFY" | "FLUTTERWAVE";
+      payment_reference: string;
+    }) =>
+      axiosRequest.post(API_ROUTES.bookings.reconcilePayment(bookingId), {
+        provider,
+        payment_reference,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
+}
+
+export function ResendPaymentLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // `notify=false` returns a fresh checkout URL without emailing or
+    // SMSing the guest — used by the "Pay on Behalf" flow where the
+    // agent is handling payment themselves.
+    mutationFn: ({
+      bookingId,
+      notify = true,
+    }: {
+      bookingId: string | number;
+      notify?: boolean;
+    }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/payment-link/resend?notify=${notify ? "true" : "false"}`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
+}
+
+/**
+ * Agent pays a PENDING booking from their own wallet. Charges the booking
+ * total with no gateway fee, confirms it, and retires any payment link the
+ * guest was sent so they can't pay twice.
+ */
+export function PayBookingWithWallet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/pay-with-wallet`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+      queryClient.invalidateQueries({ queryKey: [FinanceRequestKeys.myWallet] });
+    },
+  });
 }
 
 export function CheckInBooking() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/check-in`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    // `force` skips the unverified-guest safeguard. The API restricts it to
+    // ADMIN / SUPER_ADMIN / OPERATIONS_ADMIN and audit-logs every use against
+    // the caller, so the UI must only offer it to those roles — see
+    // BookingActionBar, which surfaces it solely after a 409 GUEST_UNVERIFIED.
+    mutationFn: ({
+      bookingId,
+      force,
+    }: {
+      bookingId: string | number;
+      force?: boolean;
+    }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/check-in${force ? "?force=true" : ""}`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
 }
 
 export function CheckOutBooking() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/check-out`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/check-out`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
 }
 
 export function RefundCautionFee() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      payload,
+    }: {
+      bookingId: string | number;
+      payload: { should_refund: boolean; notes?: string };
+    }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`,
+        payload,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
 }
 
 export function RequestCancellation() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ bookingId, cancellationReason }: { bookingId: string | number, cancellationReason: string }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/request-cancellation`, { cancellation_reason: cancellationReason }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      cancellationReason,
+    }: {
+      bookingId: string | number;
+      cancellationReason: string;
+    }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/request-cancellation`,
+        { cancellation_reason: cancellationReason },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
 }
 
 export function ApproveCancellation() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ bookingId }: { bookingId: string | number }) =>
-            axiosRequest.post(`${API_ROUTES.bookings.details(String(bookingId))}/approve-cancellation`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getAllBookings] });
-            queryClient.invalidateQueries({ queryKey: [BookingRequestKeys.getBookingDetails] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+      axiosRequest.post(
+        `${API_ROUTES.bookings.details(String(bookingId))}/approve-cancellation`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
+}
+
+export function ApproveBookingRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId }: { bookingId: string | number }) =>
+      axiosRequest.post(API_ROUTES.bookings.approveRequest(String(bookingId))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
+}
+
+export function RejectBookingRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      reason,
+    }: {
+      bookingId: string | number;
+      reason?: string;
+    }) =>
+      axiosRequest.post(API_ROUTES.bookings.rejectRequest(String(bookingId)), {
+        reason,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getAllBookings],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [BookingRequestKeys.getBookingDetails],
+      });
+    },
+  });
 }

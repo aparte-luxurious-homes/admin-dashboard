@@ -1,0 +1,56 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import axiosRequest from "@/src/lib/api";
+import { API_ROUTES } from "@/src/lib/routes/endpoints";
+import { IReferralInfo, IAgentReferralStats, IReferralItem, IReferralRelationship, IBaseResponse, IAdminPaginatedResponse } from "@/src/lib/types";
+
+// 🔹 Fetch My Referral Code & Link (Agent/Owner/Admin)
+export const useMyReferralInfo = () => {
+    return useQuery({
+        queryKey: ["my-referral-info"],
+        queryFn: async () => {
+            const response = await axiosRequest.get<IBaseResponse<IReferralInfo>>(API_ROUTES.referrals.myCode);
+            return response.data.data;
+        },
+    });
+};
+
+// 🔹 Fetch Agent Referral Stats (Agent)
+export const useAgentReferralStats = () => {
+    return useQuery({
+        queryKey: ["agent-referral-stats"],
+        queryFn: async () => {
+            const response = await axiosRequest.get<IBaseResponse<IAgentReferralStats>>(API_ROUTES.referrals.stats);
+            return response.data.data;
+        },
+    });
+};
+
+// 🔹 List My Referrals (Agent)
+export const useMyReferrals = (params?: { page?: number; size?: number }) => {
+    return useQuery({
+        queryKey: ["my-referrals", params],
+        queryFn: async () => {
+            const response = await axiosRequest.get<IBaseResponse<IAdminPaginatedResponse<IReferralItem>>>(API_ROUTES.referrals.list, { params });
+            return response.data.data;
+        },
+    });
+};
+
+// 🔹 View All Referral Relationships (Admin)
+// `enabled` lets the caller skip this query for non-admins (the endpoint is
+// require_admin on the backend; firing it as AGENT just produces a noisy 403).
+export const useAdminReferralRelationships = (
+    params?: { page?: number; size?: number },
+    options?: { enabled?: boolean },
+) => {
+    return useQuery({
+        queryKey: ["admin-referral-relationships", params],
+        queryFn: async () => {
+            const response = await axiosRequest.get<IBaseResponse<IAdminPaginatedResponse<IReferralRelationship>>>(API_ROUTES.admin.referrals.base, { params });
+            return response.data.data;
+        },
+        enabled: options?.enabled ?? true,
+    });
+};

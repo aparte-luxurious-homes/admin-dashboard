@@ -9,7 +9,7 @@ export default function BookingManagementLayout({
     children: React.ReactNode;
 }) {
     return (
-        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER]}>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.AGENT, UserRole.OWNER, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN]}>
             {children}
         </ProtectedRoute>
     );

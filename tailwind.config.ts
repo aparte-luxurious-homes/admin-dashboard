@@ -1,6 +1,9 @@
 import type { Config } from "tailwindcss";
 
 export default {
+  // Hover styles apply only where hovering is real. Without this, tapping an
+  // element on a phone leaves its hover state stuck on.
+  future: { hoverOnlyWhenSupported: true },
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
@@ -12,11 +15,16 @@ export default {
       },
       animation: {
         fadeIn: 'fadeIn 0.3s ease-in-out',
+        slideUp: 'slideUp 0.25s ease-out',
       },
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
         },
       },
     },

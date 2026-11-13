@@ -21,7 +21,7 @@ export default function MultipleChoice({ options, selected = [], onChange }: Mul
       ? selected.filter(item => item !== option) // Remove
       : [...selected, option]; // Add
 
-    console.log("Updated Selection:", newSelection); // Debugging
+    // console.log("Updated Selection:", newSelection); // Debugging
     onChange(newSelection); // Ensure Formik gets the correct update
     return newSelection;
     // });

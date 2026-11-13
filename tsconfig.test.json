@@ -1,0 +1,17 @@
+{
+  // Compiles the pure-function unit tests under src/**/__tests__ to .test-dist
+  // for Node's built-in runner (`npm run test:unit`). The app's tsconfig is
+  // noEmit + bundler resolution, which Node cannot execute, so this one emits
+  // CommonJS. It is not part of `next build` or `tsc --noEmit -p tsconfig.json`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "rootDir": ".",
+    "outDir": ".test-dist"
+  },
+  "include": ["src/**/__tests__/**/*.test.ts"]
+}

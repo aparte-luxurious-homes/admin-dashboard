@@ -29,14 +29,14 @@ export default function Loader({ message = "Loading..." }: LoaderProps) {
             width={170}
             priority
           />
-          <div className="absolute -bottom-1 right-0.5">
+          {/* <div className="absolute -bottom-1 right-0.5">
             <Image
               src="/svg/admin_text.svg"
               alt="admin"
               height={30}
               width={30}
             />
-          </div>
+          </div> */}
         </div>
         <p className="text-white text-lg mt-4">{message}</p>
       </div>

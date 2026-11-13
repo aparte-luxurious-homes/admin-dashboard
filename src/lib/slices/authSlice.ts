@@ -1,13 +1,15 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { IUser, IUserProfile, IWallet } from "../types";
-import { KycStatus, UserRole } from "../enums";
+import { IUser } from "../types";
+import { AgentNetworkRole } from "../enums";
 
 interface AuthState {
   user: IUser | null;
+  agentNetworkRole: AgentNetworkRole | null;
 }
 
 export const initialState: AuthState = {
-  user: null
+  user: null,
+  agentNetworkRole: null,
 };
 
 const authSlice = createSlice({
@@ -19,9 +21,13 @@ const authSlice = createSlice({
     },
     clearUser: (state) => {
       state.user = null;
+      state.agentNetworkRole = null;
+    },
+    setAgentNetworkRole: (state, action: PayloadAction<AgentNetworkRole | null>) => {
+      state.agentNetworkRole = action.payload;
     },
   },
 });
 
-export const { setUser, clearUser } = authSlice.actions;
+export const { setUser, clearUser, setAgentNetworkRole } = authSlice.actions;
 export default authSlice.reducer;

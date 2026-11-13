@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.worktrees/
+
+# unit tests (npm run test:unit) compile here
+/.test-dist/

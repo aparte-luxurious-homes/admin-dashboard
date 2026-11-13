@@ -23,17 +23,42 @@ export const PAGE_ROUTES = {
                 base: '/user-management/admins',
                 details: (id: number) => `/user-management/admins/${id}`,
             },
+            kycQueue: {
+                base: '/user-management/kyc-queue',
+            },
+            emailDelivery: {
+                base: '/user-management/email-delivery',
+            },
         },
         bookingManagement: {
             bookingDisputes: {
                 base: '/booking-management/booking-disputes',
-                details: (id: number) => `/booking-management/booking-disputes/${id}`,
+                details: (id: string | number) => `/booking-management/booking-disputes/${id}`,
             },
             bookings: {
                 base: '/booking-management/bookings',
                 create: '/booking-management/bookings/create',
                 details: (id: string) => `/booking-management/bookings/${id}`,
             },
+            bookingRequests: {
+                base: '/booking-management/requests',
+            },
+            stayExtensions: {
+                base: '/booking-management/stay-extensions',
+            }
+        },
+        reviews: {
+            base: '/reviews',
+            details: (id: string | number) => `/reviews/${id}`,
+        },
+        // The host's own public page (aparte.ng/@handle) — editor, share kit, performance.
+        myLink: {
+            base: '/my-link',
+        },
+        referrals: {
+            base: '/referrals',
+            agentStats: '/referrals/stats',
+            list: '/referrals/list',
         },
         propertyManagement: {
             allProperties: {
@@ -51,31 +76,40 @@ export const PAGE_ROUTES = {
                     bookings: (propertyId: number | string, unitId: number | string) => `/property-management/all-properties/${propertyId}/units/${unitId}/bookings`,
                 },
             },
-            assignAgents: {
-                base: '/property-management/assign-agents',
-                details: (id: number | string) => `/property-management/assign-agents/${id}`,
-            },
             manageVerifications: {
                 base: '/property-management/manage-verifications',
-                details: (verificationId: number | string) => `/property-management/manage-verifications/${verificationId}`,
+            },
+            teamRequests: {
+                base: '/property-management/team-requests',
+                details: (id: string) => `/property-management/team-requests/${id}`,
+            },
+            myVerifications: {
+                base: '/property-management/my-verifications',
             },
         },
         transactions: {
+            all: {
+                base: '/transactions/all',
+                details: (id: number | string) => `/transactions/all/${id}`,
+            },
             payments: {
                 base: '/transactions/payments',
-                details: (id: number) => `/transactions/payments/${id}`,
+                details: (id: number | string) => `/transactions/payments/${id}`,
+            },
+            flexiblePayments: {
+                base: '/transactions/flexible-payments',
             },
             refunds: {
                 base: '/transactions/refunds',
-                details: (id: number) => `/transactions/refunds/${id}`,
+                details: (id: number | string) => `/transactions/refunds/${id}`,
             },
             withdrawals: {
                 base: '/transactions/withdrawals',
-                details: (id: number) => `/transactions/withdrawals/${id}`,
+                details: (id: number | string) => `/transactions/withdrawals/${id}`,
             },
             bookingWithdrawals: {
                 base: '/transactions/booking-withdrawals',
-                details: (id: number) => `/transactions/booking-withdrawals/${id}`,
+                details: (id: number | string) => `/transactions/booking-withdrawals/${id}`,
             },
         },
         notifications: {
@@ -84,14 +118,107 @@ export const PAGE_ROUTES = {
             },
             manageNotifications: {
                 base: '/notifications/manage-notifications',
-                details: (id: number) => `/notifications/manage-notifications/${id}`,
+                details: (id: number | string) => `/notifications/manage-notifications/${id}`,
             },
         },
         settings: {
             base: '/settings',
+            kyc: '/settings/kyc',
+            // Where a "view profile" link points when the target IS the caller —
+            // they edit their own record here rather than reading a scoped copy.
+            personalInfo: '/settings/personal-info',
         },
         rolesPermissions: {
             base: '/roles-permissions',
-        }
+        },
+        reports: {
+            base: '/reports',
+            agentPerformance: '/reports/agent-performance',
+            statements: '/reports/statements',
+            network: '/reports/network',
+            targets: '/reports/targets',
+        },
+        wallet: {
+            base: '/wallet',
+        },
+        whatsapp: {
+            base: '/whatsapp',
+            inbox: '/whatsapp/inbox',
+            conversation: (id: string) => `/whatsapp/inbox/${id}`,
+            analytics: '/whatsapp/analytics',
+        },
+        walletAdjustments: {
+            base: '/wallet-adjustments',
+        },
+        blog: {
+            base: '/blog',
+            create: '/blog/new',
+            edit: (id: string) => `/blog/${id}`,
+            categories: '/blog/categories',
+        },
+        icalManagement: {
+            feeds: '/ical-management/feeds',
+            conflicts: '/ical-management/conflicts',
+        },
+        // Team lead workspace: Silver / Gold agents with mentees.
+        team: {
+            base: '/team',
+            members: '/team/members',
+            properties: '/team/properties',
+            propertyDetails: (id: string) => `/team/properties/${id}`,
+            bookings: '/team/bookings',
+            bookingDetails: (id: string) => `/team/bookings/${id}`,
+            transactions: '/team/transactions',
+            reviews: '/team/reviews',
+            referrals: '/team/referrals',
+            requests: '/team/requests',
+        },
+        network: {
+            base: '/network',
+            events: {
+                base: '/network/events',
+                details: (id: string) => `/network/events/${id}`,
+            },
+            history: {
+                base: '/network/history',
+            },
+            // Zone leads only — the roster of agents inside their zone tree.
+            zoneMembers: {
+                base: '/network/zone-members',
+                details: (id: string) => `/network/zone-members/${id}`,
+            },
+            mentorship: {
+                base: '/network/mentorship',
+                details: (id: string) => `/network/mentorship/${id}`,
+            },
+            // Admin: agents who lost their mentor and need a new one.
+            needsMentor: '/network/needs-mentor',
+            // Agent: deep dive on own mentees, and same-tier summary.
+            myTeam: '/network/my-team',
+            myTargets: '/network/my-targets',
+            agents: {
+                base: '/network/agents',
+                details: (id: string) => `/network/agents/${id}`,
+                events: (id: string) => `/network/agents/${id}/events`,
+                adjust: (id: string) => `/network/agents/${id}/adjust`,
+            },
+            configs: {
+                actions: {
+                    base: '/network/configs/actions',
+                },
+                tiers: {
+                    base: '/network/configs/tiers',
+                },
+            },
+            zones: {
+                base: '/network/zones',
+                create: '/network/zones/create',
+                details: (id: string) => `/network/zones/${id}`,
+            },
+            zoneAssignments: {
+                base: '/network/zone-assignments',
+                details: (id: string) => `/network/zone-assignments/${id}`,
+            },
+        },
     }
 }

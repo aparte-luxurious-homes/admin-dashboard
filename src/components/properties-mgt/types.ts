@@ -1,5 +1,6 @@
 import { IUser } from "@/src/lib/types"
 import { IBooking } from "../booking-mgt/types"
+import type { IInstalmentConfig, IInviteFriendsConfig } from "@/src/lib/types/flexPayments"
 
 
 export type VerificationBageProps = {
@@ -32,73 +33,119 @@ export enum PropertyType {
     VILLA = 'VILLA',
     APARTMENT = 'APARTMENT',
     HOTEL = 'HOTEL',
+    EVENT_CENTRE = 'EVENT_CENTRE',
     OTHERS = 'OTHERS',
 }
 
+export enum BookingMode {
+    INSTANT = 'INSTANT',
+    REQUEST_TO_BOOK = 'REQUEST_TO_BOOK',
+}
+
+export enum DiscountType {
+    PERCENTAGE = 'PERCENTAGE',
+    FIXED = 'FIXED',
+}
+
+export interface IDiscountTier {
+    min_nights: number;
+    value: number | string;
+}
+
+export interface IDiscountPolicy {
+    is_active: boolean;
+    discount_type: DiscountType;
+    tiers: IDiscountTier[];
+}
+
+export enum AmenityScope {
+    STAY = 'STAY',
+    VENUE = 'VENUE',
+    ALL = 'ALL',
+}
+
 export interface IAmenity {
-    id: number
+    id: string
     name: string
+    /** Which listings may offer it: a venue sees VENUE + ALL, a stay STAY + ALL. */
+    applies_to?: AmenityScope | string
     createdAt?: string
     updatedAt?: string
 }
 
 
 
+export interface IHalfDayWindow {
+    name: string
+    start: string
+    end: string
+}
+
 export interface IPropertyVerification {
-    id: number
-    propertyId: number
-    property_id?: number
-    agentId: number
-    agent_id?: number
+    id: string
+    propertyId: string
+    property_id?: string
+    agentId: string
+    agent_id?: string
     status: PropertyVerificationStatus
     feedback: string
+    evidence_urls?: string[]
     verificationDate?: string
     verification_date?: string
     createdAt: string
     created_at?: string
     agent: IUser
     property: IProperty
+    /** Set when the previous VERIFIED decision was overturned and the
+        agent's reward was debited. Drives the "Reward reversed" pill in
+        the sticky decision bar. */
+    rewardReversedAt?: string | null
+    reward_reversed_at?: string | null
+    rewardTxId?: string | null
+    reward_tx_id?: string | null
 }
 
 export interface IAmenityAssignment {
-    id: number
-    amenityId: number
-    assignableId: number
+    id: string
+    amenityId: string
+    assignableId: string
     assignableType: AssignableType
     createdAt: string
     amenity: IAmenity
 }
 
 export interface IAssignAmenity {
-    amenity_ids: number[]
+    amenity_ids: string[]
 }
 
 export interface IPropertyReview {
-    id: number
-    unitId: number
-    userId: number
+    id: string
+    unitId: string
+    userId: string
     rating: number
     review?: string
+    comment?: string
+    photo_urls?: string[]
     createdAt: string
 }
 
 export interface IPropertyMedia {
-    id: number
+    id: string
     mediaUrl?: string
     media_url?: string
     mediaType: MediaType
     media_type?: MediaType
     isFeatured?: boolean
     is_featured?: boolean
-    assignableId: number
+    assignableId: string
     assignableType: AssignableType
     uploadedAt: string
 }
 
 export interface IPropertyUnit {
-    id: number
-    propertyId: number
-    property_id?: number
+    id: string
+    propertyId: string
+    property_id?: string
     name: string
     description?: string
     pricePerNight: string
@@ -118,6 +165,50 @@ export interface IPropertyUnit {
     kitchen_count?: number
     bathroomCount: number
     bathroom_count?: number
+    seatingCapacity?: number
+    seating_capacity?: number
+    standingCapacity?: number
+    standing_capacity?: number
+    carParkSpaces?: number
+    car_park_spaces?: number
+    powerSupplyProvision?: string
+    power_supply_provision?: string
+    additionalFees?: Array<{
+        fee_name: string
+        fee_amount: number
+        is_mandatory: boolean
+    }>
+    additional_fees?: Array<{
+        fee_name: string
+        fee_amount: number
+        is_mandatory: boolean
+    }>
+    eventPricePerDay?: string
+    event_price_per_day?: string
+    eventPricePerHour?: string
+    event_price_per_hour?: string
+    eventPricePerHalfDay?: string
+    event_price_per_half_day?: string
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null
+    closing_time?: string | null
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null
+    /** Read-only: the hire types a guest can actually book, and the one a
+        card quotes ("PER_DAY" | "PER_HALF_DAY" | "PER_HOUR"). */
+    offered_billing_units?: string[]
+    headline_billing_unit?: string | null
+    /** This unit's OWN override. null/absent = inherits the property's. */
+    long_stay_discount_policy?: IDiscountPolicy | null
+    extension_discount_policy?: IDiscountPolicy | null
+    /** What will actually price this unit — override, else the property's.
+        Read-only; send the raw fields above when writing. */
+    effective_long_stay_discount_policy?: IDiscountPolicy | null
+    effective_extension_discount_policy?: IDiscountPolicy | null
     isVerified: boolean
     is_verified?: boolean
     createdAt: string
@@ -133,31 +224,72 @@ export interface IPropertyUnit {
 }
 
 
+/** Why a row is on a network-scoped agent's list (Silver, Gold, Area Manager,
+    Regional Lead). Set by the API only for those agents: null on their own
+    rows, absent for everyone else. See api-v1 services/properties/source.py. */
+export type PropertySourceType =
+    | "REFERRAL"
+    | "VERIFICATION"
+    | "MENTEE"
+    | "ZONE"
+    | "ZONE_AGENT"
+    | "NETWORK"
+
+export interface IPropertySource {
+    type: PropertySourceType
+    /** The person (or, for ZONE, the zone) the row came through. */
+    via: { id: string; name: string | null } | null
+}
+
 export interface IProperty {
     [x: string]: any
-    id: number
-    ownerId: number
-    owner_id?: number
-    assignedAgent?: number
-    assigned_agent?: number
+    id: string
+    ownerId: string
+    owner_id?: string
+    source?: IPropertySource | null
+    bookingMode?: BookingMode
+    booking_mode?: BookingMode
+    assignedAgent?: string
+    assigned_agent?: string
+    zone_id?: string
     name: string
     description?: string
     address: string
     propertyType: PropertyType
     property_type?: PropertyType
     city: string
+    // Local Government Area (Google's administrative_area_level_2). Optional
+    // because older payloads and the public listing wizard omit it — the API
+    // resolves it from coordinates when absent.
+    lga?: string
     state: string
     country: string
     latitude?: number
     longitude?: number
-    kycId?: number
-    kyc_id?: number
+    kycId?: string
+    kyc_id?: string
     isVerified: boolean
     is_verified?: boolean
     isPetAllowed: boolean
     is_pet_allowed?: boolean
+    isPartyAllowed: boolean
+    is_party_allowed?: boolean
+    rules?: string
     isFeatured: boolean
     is_featured?: boolean
+    
+    // Discount Policies
+    long_stay_discount_policy?: IDiscountPolicy
+    extension_discount_policy?: IDiscountPolicy
+    proposed_long_stay_discount_policy?: IDiscountPolicy
+    proposed_extension_discount_policy?: IDiscountPolicy
+
+    // Flexible payment options (null/absent = not offered)
+    instalment_payment?: IInstalmentConfig | null
+    invite_friends_payment?: IInviteFriendsConfig | null
+    /** Owner has authorised the property's agent to change the two above. */
+    agent_can_configure_payments?: boolean
+    
     createdAt: string
     created_at?: string
     updatedAt: string
@@ -168,26 +300,100 @@ export interface IProperty {
     verifications: IPropertyVerification[]
     media: IPropertyMedia[]
     amenities: IAmenity[]
+    documents: IPropertyDocument[]
+    eventTypes?: any[]
+    event_types?: any[]
+}
+
+export enum DocumentType {
+    // INTERNATIONAL_PASSPORT = 'INTERNATIONAL_PASSPORT',
+    // DRIVERS_LICENSE = 'DRIVERS_LICENSE',
+    UTILITY_BILL = 'UTILITY_BILL',
+    POWER_BILL = 'POWER_BILL',
+    TENANCY_AGREEMENT = 'TENANCY_AGREEMENT',
+    TITLE_DEED = 'TITLE_DEED',
+    CERTIFICATE_OF_OCCUPANCY = 'CERTIFICATE_OF_OCCUPANCY',
+    EVENT_PERMIT = 'EVENT_PERMIT',
+    INSURANCE_CERTIFICATE = 'INSURANCE_CERTIFICATE',
+    OTHER_SUPPORTING_DOCUMENT = 'OTHER_SUPPORTING_DOCUMENT',
+}
+
+export const STANDARD_PROPERTY_DOCUMENTS: DocumentType[] = [
+    DocumentType.UTILITY_BILL,
+    DocumentType.POWER_BILL,
+    DocumentType.TENANCY_AGREEMENT,
+    DocumentType.TITLE_DEED,
+    DocumentType.CERTIFICATE_OF_OCCUPANCY,
+];
+
+export const EVENT_CENTRE_DOCUMENTS: DocumentType[] = [
+    ...STANDARD_PROPERTY_DOCUMENTS,
+    DocumentType.EVENT_PERMIT,
+    DocumentType.INSURANCE_CERTIFICATE,
+    DocumentType.OTHER_SUPPORTING_DOCUMENT,
+];
+
+export function getDocumentTypesForProperty(propertyType?: PropertyType | string | null): DocumentType[] {
+    if (propertyType === PropertyType.EVENT_CENTRE || propertyType === 'EVENT_CENTRE') {
+        return EVENT_CENTRE_DOCUMENTS;
+    }
+    return STANDARD_PROPERTY_DOCUMENTS;
+}
+
+export interface IPropertyDocument {
+    id: string
+    property_id: string
+    document_type: DocumentType
+    document_url: string
+    status: PropertyVerificationStatus
+    rejection_reason?: string
+    created_at: string
+    updated_at: string
+}
+
+export interface IPropertyDocumentCreate {
+    document_type: DocumentType
+    document_url: string
 }
 
 export interface IUpdatePropertyVerification {
     status: PropertyVerificationStatus,
     feedback: string,
+    skip_kyc_check?: boolean,
+    skip_document_check?: boolean,
+    evidence_urls?: string[],
 }
 
 export interface ICreateProperty {
     name: string
     description: string
     address: string
+    street_number?: string
+    street_name?: string
+    postal_code?: string
+    landmark?: string
+    google_place_id: string
+    geocode_raw?: Record<string, unknown>
     property_type: PropertyType
     city: string
+    lga?: string
     state: string
     country: string
     latitude: number
     longitude: number
-    amenities: number[]
-    // kyc_id: number
+    amenities: string[]
     is_pet_allowed: boolean
+    is_party_allowed: boolean
+    rules?: string
+    owner_id?: string
+    owner_email?: string
+    owner_name?: string
+    owner_phone?: string
+    zone_id?: string
+    booking_mode?: BookingMode
+    event_types?: string[]
+    long_stay_discount_policy?: IDiscountPolicy | null
+    extension_discount_policy?: IDiscountPolicy | null
 }
 
 export interface IAssignProperty {
@@ -198,17 +404,34 @@ export interface IUpdateProperty {
     name: string,
     description: string,
     address: string,
+    street_number?: string,
+    street_name?: string,
+    postal_code?: string,
+    landmark?: string,
+    google_place_id?: string,
+    geocode_raw?: Record<string, unknown>,
     property_type: PropertyType,
     city: string,
+    lga?: string,
     state: string,
     country: string,
     latitude: number,
     longitude: number,
-    // kyc_id?: number,
-    ownerId: number,
-    amenities?: number[],
+    // kyc_id?: string,
+    ownerId: string,
+    amenities?: string[],
     // assignedAgent?: IUser,
-    is_pet_allowed: boolean
+    is_pet_allowed: boolean,
+    is_party_allowed: boolean,
+    rules?: string,
+    owner_email?: string,
+    owner_name?: string,
+    owner_phone?: string,
+    zone_id?: string,
+    booking_mode?: BookingMode,
+    event_types?: string[],
+    long_stay_discount_policy?: IDiscountPolicy | null,
+    extension_discount_policy?: IDiscountPolicy | null
 }
 
 export interface IUpdatePropertyUnit {
@@ -223,7 +446,31 @@ export interface IUpdatePropertyUnit {
     living_room_count?: number,
     kitchen_count?: number,
     bathroom_count?: number,
-    amenities?: number[],
+    amenities?: string[],
+    seating_capacity?: number,
+    standing_capacity?: number,
+    car_park_spaces?: number,
+    power_supply_provision?: string,
+    event_price_per_day?: string | null,
+    event_price_per_hour?: string | null,
+    event_price_per_half_day?: string | null,
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null,
+    closing_time?: string | null,
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null,
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null,
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null,
+    additional_fees?: Array<{
+        fee_name: string,
+        fee_amount: number,
+        is_mandatory: boolean
+    }>,
+    /** null clears the override so the unit inherits the property's policy. */
+    long_stay_discount_policy?: IDiscountPolicy | null,
+    extension_discount_policy?: IDiscountPolicy | null,
 }
 
 export interface ICreatePropertyUnit {
@@ -236,8 +483,33 @@ export interface ICreatePropertyUnit {
     bedroom_count: number,
     living_room_count: number,
     kitchen_count: number,
-    bathroom_count: number
-    amenities: number[]
+    bathroom_count: number,
+    caution_fee: string,
+    amenities: string[],
+    seating_capacity?: number,
+    standing_capacity?: number,
+    car_park_spaces?: number,
+    power_supply_provision?: string,
+    event_price_per_day?: string | null,
+    event_price_per_hour?: string | null,
+    event_price_per_half_day?: string | null,
+    /** Event-centre hire hours ("HH:MM", Lagos time). */
+    opening_time?: string | null,
+    closing_time?: string | null,
+    /** Named half-day sessions a half-day hire books one of. */
+    half_day_windows?: IHalfDayWindow[] | null,
+    /** Turnaround kept free between two events on the same day. */
+    event_buffer_minutes?: number | null,
+    /** False: any booking takes the whole day. */
+    allows_multiple_bookings_per_day?: boolean | null,
+    additional_fees?: Array<{
+        fee_name: string,
+        fee_amount: number,
+        is_mandatory: boolean
+    }>,
+    /** Omit to inherit the property's policy. */
+    long_stay_discount_policy?: IDiscountPolicy | null,
+    extension_discount_policy?: IDiscountPolicy | null,
 }
 
 export interface IUploadPropertyMedia {
@@ -247,10 +519,19 @@ export interface IUploadPropertyMedia {
 }
 
 export interface IAvailability {
-    id: string | number
-    unit_id: string | number
+    id: string
+    unit_id: string
     date: string
+    /**
+     * How many units are still FREE on this date — capacity minus live
+     * bookings. Read-only: sending it back does nothing. Use `capacity` to
+     * change what the date holds.
+     */
     count: number
+    /** How many units the date holds in total. This is what a host edits. */
+    capacity?: number
+    /** True when the host has deliberately limited this date below the unit's size. */
+    has_capacity_override?: boolean
     is_blackout: boolean
     pricing?: number | null
     created_at?: string
@@ -259,7 +540,17 @@ export interface IAvailability {
 
 export interface ICreateAvailability {
     date: string
-    count: number
+    /**
+     * The date's total capacity. Omit to leave whatever is already set; send
+     * null to clear the limit and fall back to the unit's own count.
+     *
+     * Note there is no `count` here on purpose. The API returns the remaining
+     * figure under that name, and this screen used to read it and post it
+     * straight back — writing "1 still free" as "only 1 exists" and capping the
+     * date permanently. The API now ignores `count` on write; this type stops
+     * us sending it at all.
+     */
+    capacity?: number | null
     is_blackout: boolean
     pricing?: number
 }

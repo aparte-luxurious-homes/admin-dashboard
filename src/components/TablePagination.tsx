@@ -32,34 +32,41 @@ export default function TablePagination({
     };
 
     return (
-        <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
+        <div className="flex items-center justify-between gap-2">
+            {/* "Showing X to Y of Z" — hidden on mobile */}
+            <div className="text-sm text-gray-700 hidden sm:block">
                 Showing <span className="font-medium">{safeTotal === 0 ? 0 : Math.min((safeCurrentPage - firstPage) * safeItemsPerPage + 1, safeTotal)}</span> to{" "}
                 <span className="font-medium">{safeTotal === 0 ? 0 : Math.min(safeCurrentPage * safeItemsPerPage, safeTotal)}</span> of{" "}
                 <span className="font-medium">{safeTotal}</span> results
             </div>
-            
+
+            {/* Mobile: compact "Page X of Y" */}
+            <div className="text-xs text-gray-500 sm:hidden">
+                Page {safeCurrentPage} of {lastPage}
+            </div>
+
             <div className="flex items-center gap-1">
                 <button
-                    className={`px-3 py-1.5 rounded-lg border border-gray-300 flex items-center gap-1 text-sm ${
-                        safeCurrentPage === firstPage 
-                            ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400' 
+                    className={`min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 px-2 sm:px-3 py-1.5 rounded-lg border border-gray-300 flex items-center justify-center gap-1 text-sm ${
+                        safeCurrentPage === firstPage
+                            ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400'
                             : 'cursor-pointer bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                     onClick={() => safeCurrentPage > firstPage && setPage(safeCurrentPage - 1)}
                     disabled={safeCurrentPage === firstPage}
                 >
                     <ArrowIcon className="w-3.5 h-3.5" color="currentColor" />
-                    <span>Previous</span>
+                    <span className="hidden sm:inline">Previous</span>
                 </button>
 
-                <div className="flex items-center gap-1">
+                {/* Page numbers — hidden on mobile */}
+                <div className="hidden sm:flex items-center gap-1">
                     {generatePages().map((page, index) => (
                         <button
                             key={index}
                             className={`min-w-[2.5rem] h-9 rounded-lg text-sm font-medium ${
-                                page === "..." 
-                                    ? "text-gray-400 cursor-default" 
+                                page === "..."
+                                    ? "text-gray-400 cursor-default"
                                     : safeCurrentPage === page
                                         ? "bg-primary text-white"
                                         : "text-gray-700 hover:bg-gray-100 cursor-pointer"
@@ -73,15 +80,15 @@ export default function TablePagination({
                 </div>
 
                 <button
-                    className={`px-3 py-1.5 rounded-lg border border-gray-300 flex items-center gap-1 text-sm ${
-                        safeCurrentPage === lastPage 
-                            ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400' 
+                    className={`min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 px-2 sm:px-3 py-1.5 rounded-lg border border-gray-300 flex items-center justify-center gap-1 text-sm ${
+                        safeCurrentPage === lastPage
+                            ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400'
                             : 'cursor-pointer bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                     onClick={() => safeCurrentPage < lastPage && setPage(safeCurrentPage + 1)}
                     disabled={safeCurrentPage === lastPage}
                 >
-                    <span>Next</span>
+                    <span className="hidden sm:inline">Next</span>
                     <ArrowIcon className="w-3.5 h-3.5 rotate-180" color="currentColor" />
                 </button>
             </div>

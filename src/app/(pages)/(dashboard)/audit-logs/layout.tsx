@@ -9,7 +9,7 @@ export default function AuditLogsLayout({
     children: React.ReactNode;
 }) {
     return (
-        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN]}>
             {children}
         </ProtectedRoute>
     );

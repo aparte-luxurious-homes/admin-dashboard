@@ -1,6 +1,7 @@
 "use client";
 
 import TransactionListView from "@/src/components/transactions/TransactionListView";
+import RunSettlementSweepButton from "@/src/components/finance-mgt/RunSettlementSweepButton";
 import { API_ROUTES } from "@/src/lib/routes/endpoints";
 
 const Withdrawals = () => {
@@ -13,6 +14,7 @@ const Withdrawals = () => {
       filters={{
         tx_type: "WITHDRAWAL"
       }}
+      headerActions={(reload) => <RunSettlementSweepButton onDone={reload} />}
     />
   );
 };

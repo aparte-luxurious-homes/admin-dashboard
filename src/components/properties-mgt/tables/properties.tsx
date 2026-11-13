@@ -1,6 +1,8 @@
 'use client'
 
+import { MESSAGES } from '@/src/lib/messages';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTableState } from "@/src/hooks/useTableState";
 import { ArrowIcon, DotsIcon, FilterIcon, PrinterIcon, SearchIcon, TrashIcon } from "../../icons";
 import { useRouter } from "next/navigation";
 import { IProperty, PropertyType } from "../types";
@@ -19,13 +21,32 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { UserRole } from "@/src/lib/enums";
 import { useDispatch } from "react-redux";
 import { showAlert } from "@/src/lib/slices/alertDialogSlice";
+import { getApiErrorMessage, isConflict } from "@/src/lib/apiError";
 import { toast } from "react-hot-toast";
+import { useIsMobile } from "@/src/hooks/useIsMobile";
+import PropertyCard from "../PropertyCard";
+import PropertySourceBadge from "../PropertySourceBadge";
+import PullToRefresh from "../../mobile/PullToRefresh";
+import { isVenue, listingPriceLabel } from "../venue";
+
+type StatusFilter = 'all' | 'verified' | 'unverified';
 
 export default function PropertiesTable() {
     const { user } = useAuth();
-    const [page, setPage] = useState<number>(1);
-    const [searchTerm, setSearchTerm] = useState<string>("");
-    const { data: properties, isLoading } = GetAllProperties(page, 10, searchTerm, user?.role || UserRole.GUEST, user?.id);
+    // URL-backed state: filters survive navigating into a property and back,
+    // the search box is debounced (it used to fire a request per keystroke)
+    // and every change but the page resets to page 1.
+    const table = useTableState({
+        filterKeys: ["status"],
+        defaultSort: "recent",
+    });
+    const { page, setPage, search: searchTerm, debouncedSearch, sort, setSort } = table;
+    const statusFilter = (table.filters.status || 'all') as StatusFilter;
+    const isVerifiedParam = statusFilter === 'all' ? null : statusFilter === 'verified';
+    const { data: properties, isLoading, refetch: refetchProperties } = GetAllProperties(
+        page, 10, debouncedSearch, user?.role || UserRole.GUEST, user?.id,
+        isVerifiedParam, false, sort || 'recent',
+    );
     const [propertyList, setPropertyList] = useState<IProperty[]>([]);
     const router = useRouter();
 
@@ -34,6 +55,62 @@ export default function PropertiesTable() {
     const modalRef = useRef(null);
     const dispatch = useDispatch();
     const { mutate: deleteProperty } = DeleteProperty();
+    const isMobile = useIsMobile();
+
+    /**
+     * Delete a property, handling the API's refusal to remove one that still
+     * has live bookings.
+     *
+     * That refusal is a 409 naming the bookings in the way. Both delete
+     * entry points on this screen used to answer it with a flat "Failed to
+     * delete property" — the one piece of information the admin needed was
+     * in the response and got dropped, and the `force` override the handler
+     * already supports was unreachable from the UI. This mirrors the unit
+     * delete flow in EditPropertyView so the two behave the same way.
+     *
+     * Declared above the menu that uses it: referencing it from a later
+     * closure would work, but keeping definition before use avoids the
+     * temporal-dead-zone trap entirely.
+     */
+    const handleDeleteProperty = (property: IProperty) => {
+        const runDelete = (force?: boolean) =>
+            deleteProperty(
+                { propertyId: property.id, force },
+                {
+                    onSuccess: () => toast.success(MESSAGES.MSG_PROPERTY_DELETED_SUCCESSFULLY),
+                    onError: (error: unknown) => {
+                        const detail = getApiErrorMessage(error, MESSAGES.MSG_FAILED_TO_DELETE_PROPERTY);
+                        if (!force && isConflict(error)) {
+                            dispatch(
+                                showAlert({
+                                    title: "This property still has bookings",
+                                    description:
+                                        `${detail}\n\n` +
+                                        `Deleting anyway removes the property but does NOT ` +
+                                        `cancel or refund those bookings. The guests keep them, ` +
+                                        `and you will need to resolve each one separately.`,
+                                    confirmText: "Delete anyway",
+                                    cancelText: "Cancel",
+                                    onConfirm: () => runDelete(true),
+                                }),
+                            );
+                            return;
+                        }
+                        toast.error(detail, { duration: 8000, style: { maxWidth: "520px" } });
+                    },
+                },
+            );
+
+        dispatch(
+            showAlert({
+                title: "Delete Property?",
+                description: `Are you sure you want to delete ${property?.name || 'this property'}? This action cannot be undone.`,
+                confirmText: "Delete",
+                cancelText: "Cancel",
+                onConfirm: () => runDelete(),
+            })
+        );
+    };
 
     const detailButtons = [
         {
@@ -60,24 +137,7 @@ export default function PropertiesTable() {
             label: "Delete",
             Icon: <LuTrash2 className="text-red-500" />,
             onClick: () => {
-                const property = propertyList[selectedRow!];
-                dispatch(
-                    showAlert({
-                        title: "Delete Property?",
-                        description: `Are you sure you want to delete ${property?.name || 'this property'}? This action cannot be undone.`,
-                        confirmText: "Delete",
-                        cancelText: "Cancel",
-                        onConfirm: () => {
-                            deleteProperty(
-                                { propertyId: property.id },
-                                {
-                                    onSuccess: () => toast.success('Property deleted successfully'),
-                                    onError: () => toast.error('Failed to delete property')
-                                }
-                            );
-                        },
-                    })
-                );
+                handleDeleteProperty(propertyList[selectedRow!]);
                 setSelectedRow(null);
             },
         }
@@ -106,18 +166,17 @@ export default function PropertiesTable() {
         setPropertyList(properties?.data?.data?.data?.data ?? []);
     }, [properties])
 
-    useEffect(() => {
-        setPage(1)
-    }, [searchTerm])
+    // The page reset that used to live here is now central to useTableState,
+    // so it cannot be forgotten when a new filter is added.
 
     return (
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                <div className="p-6 border-b border-gray-200">
-                    <div className="flex justify-between items-center gap-4 flex-wrap mb-4">
+                <div className="p-4 sm:p-6 border-b border-gray-200">
+                    <div className="flex justify-between items-center gap-3 sm:gap-4 flex-wrap mb-4">
                         <div>
-                            <h1 className="text-xl font-semibold text-gray-900">Property Listings</h1>
-                            <p className="text-sm text-gray-500 mt-1">Manage all properties and their verification status</p>
+                            <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Property Listings</h1>
+                            <p className="text-xs sm:text-sm text-gray-500 mt-1">Manage all properties and their verification status</p>
                         </div>
                         <Link
                             href={`${PAGE_ROUTES.dashboard.propertyManagement.allProperties.create}`}
@@ -127,21 +186,55 @@ export default function PropertiesTable() {
                             <span>New Property</span>
                         </Link>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <div className="flex-1 max-w-md relative">
                             <input
                                 type="text"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => table.setSearch(e.target.value)}
                                 className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                placeholder="Search properties..."
+                                placeholder="Search by name, city, state or address…"
                             />
                             <SearchIcon className="absolute top-[50%] -translate-y-1/2 left-3 w-5" color="#9CA3AF" />
                         </div>
-                        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700">
-                            <FilterIcon className="w-4 h-4" color="#6B7280" />
-                            <span>Filter</span>
-                        </button>
+                        <div className="relative">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => table.setFilter("status", e.target.value === 'all' ? '' : e.target.value)}
+                                className="w-full sm:w-auto px-4 py-2 pr-8 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-700 appearance-none cursor-pointer bg-white"
+                            >
+                                <option value="all">All Status</option>
+                                <option value="verified">Verified</option>
+                                <option value="unverified">Unverified</option>
+                            </select>
+                            <FilterIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" color="#6B7280" />
+                        </div>
+
+                        {/* Sort — server-side, so it orders the whole
+                            portfolio rather than the ten rows on this page. */}
+                        <div className="relative">
+                            <select
+                                value={sort}
+                                onChange={(e) => setSort(e.target.value)}
+                                className="w-full sm:w-auto px-4 py-2 pr-8 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-700 appearance-none cursor-pointer bg-white"
+                                aria-label="Sort properties"
+                            >
+                                <option value="recent">Newest listed</option>
+                                <option value="recently_verified">Recently verified</option>
+                                <option value="price_asc">Price: low to high</option>
+                                <option value="price_desc">Price: high to low</option>
+                            </select>
+                            <FilterIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" color="#6B7280" />
+                        </div>
+
+                        {table.hasActiveFilters && (
+                            <button
+                                onClick={table.clearFilters}
+                                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors whitespace-nowrap"
+                            >
+                                Clear filters
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -150,6 +243,19 @@ export default function PropertiesTable() {
                         <Loader />
                     </div>
                 ) : propertyList && propertyList.length > 0 ? (
+                    isMobile ? (
+                        <PullToRefresh onRefresh={() => { refetchProperties(); }}>
+                        <div className="space-y-3 p-4">
+                            {propertyList.map((property, index) => (
+                                <PropertyCard
+                                    key={index}
+                                    property={property}
+                                    onDelete={handleDeleteProperty}
+                                />
+                            ))}
+                        </div>
+                        </PullToRefresh>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
@@ -172,8 +278,13 @@ export default function PropertiesTable() {
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
                                         onClick={() => router.push(PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(property?.id))}
                                     >
-                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 max-w-xs truncate">
-                                            {property?.name ?? '--/--'}
+                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 max-w-xs">
+                                            <div className="truncate">{property?.name ?? '--/--'}</div>
+                                            {property?.source && (
+                                                <div className="mt-1">
+                                                    <PropertySourceBadge source={property.source} />
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">
                                             {property?.property_type ?? '--/--'}
@@ -194,7 +305,9 @@ export default function PropertiesTable() {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
-                                            {property?.units && property.units.length > 0 ? (() => {
+                                            {property?.units && property.units.length > 0 && isVenue(property?.property_type ?? property?.propertyType)
+                                                ? listingPriceLabel(property.units, true)
+                                                : property?.units && property.units.length > 0 ? (() => {
                                                 const prices = property.units.map((u: any) => parseFloat(String(u.price_per_night || u.pricePerNight || 0)));
                                                 const minPrice = Math.min(...prices);
                                                 const maxPrice = Math.max(...prices);
@@ -224,6 +337,7 @@ export default function PropertiesTable() {
                             </tbody>
                         </table>
                     </div>
+                    )
                 ) : propertyList && propertyList.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">

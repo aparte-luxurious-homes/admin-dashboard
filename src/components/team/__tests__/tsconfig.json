@@ -1,0 +1,19 @@
+{
+  // Compiles this folder's tests (and what they import) to CommonJS so Node's
+  // built-in test runner can execute them — the repo has no test runner
+  // installed and nothing may be npm-installed to add one. Driven by run.mjs,
+  // which points --outDir at a temp folder; the outDir here only stops a bare
+  // `tsc -p` from emitting next to the sources.
+  "extends": "../../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "outDir": "./.dist",
+    "rootDir": "../../../..",
+    "plugins": []
+  },
+  "include": ["./*.test.ts"]
+}

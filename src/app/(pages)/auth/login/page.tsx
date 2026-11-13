@@ -1,11 +1,11 @@
 'use client'
 
-import { useLogin } from "@/src/hooks/useAuth";
+import { GuestAccountError, useLogin } from "@/src/hooks/useAuth";
 import { useState, useEffect } from "react";
 import Button from "@/src/components/button";
 import InputGroup from "../../../../components/formcomponent/InputGroup";
 import Image from "next/image";
-import AparteeText from "../../../../../public/svg/logo_text_white.svg";
+import Link from "next/link";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from "react-hot-toast";
 import Cookies from "js-cookie";
@@ -19,6 +19,40 @@ import Loader from "@/src/components/loader";
 import { UserRole } from "@/src/lib/enums";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import useValidator from "@/src/hooks/useValidator";
+import PhoneOtpModal, {
+  parsePhoneVerificationDetail,
+  type PhoneVerificationChallenge,
+} from "@/src/components/auth/PhoneOtpModal";
+import GuestAccountSwitch from "@/src/components/auth/GuestAccountSwitch";
+import type { IUser } from "@/src/lib/types";
+
+/** `?reason=` value the API client sets when a session is ended by the phone gate. */
+const PHONE_REAUTH_REASON = "phone_verification";
+
+/** Where an account still waiting on its email code goes to enter it. */
+const landingLoginUrl = (): string => {
+  const base =
+    process.env.NEXT_PUBLIC_LANDING_PAGE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://aparte.ng";
+  return `${base.replace(/\/$/, "")}/login`;
+};
+
+/** The `detail` object of an API error, when the API sent one (not a string). */
+const errorDetail = (error: any): Record<string, any> | null => {
+  const detail = error?.response?.data?.detail;
+  return detail && typeof detail === "object" ? detail : null;
+};
+
+/** Whichever human message the API put on the error: detail string, detail.message or message. */
+const apiErrorMessage = (error: any): string | null => {
+  const data = error?.response?.data;
+  const candidate =
+    (typeof data?.detail === "string" && data.detail) ||
+    data?.detail?.message ||
+    data?.message;
+  return typeof candidate === "string" && candidate ? candidate : null;
+};
 
 export default function Login() {
   const { mutate: loginMutation, isPending } = useLogin();
@@ -27,10 +61,17 @@ export default function Login() {
   const [validator, triggerValidation] = useValidator();
   const [passwordType, setPasswordType] = useState<string>("password");
   const [isTokenAuthenticating, setIsTokenAuthenticating] = useState(false);
+  const [phoneChallenge, setPhoneChallenge] = useState<PhoneVerificationChallenge | null>(null);
+  // A sign-in that reached a GUEST account: offer the account-type switch
+  // instead of refusing. Memory only; no cookie is set for a guest.
+  const [guestSession, setGuestSession] = useState<{ token: string; user: IUser } | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
+  // Sent here by the API client after the phone gate ended a session (or by
+  // the token hand-off below): say why, so it doesn't read as a random logout.
+  const showPhoneReauthNotice = searchParams.get("reason") === PHONE_REAUTH_REASON;
   const togglePassword = () => {
     if (passwordType === "password") {
       setPasswordType("text");
@@ -69,12 +110,19 @@ export default function Login() {
         .then(async (response) => {
           const user = response.data.data;
 
-          // Check for guest role
+          // A guest arriving from aparte.ng (e.g. "List your Aparte") gets
+          // the account-type switch, not a refusal. Drop the cookie that was
+          // set for the /profile call and the token from the URL.
           if (user.role === UserRole.GUEST) {
-            throw new Error("Access Denied: This admin platform is restricted to authorized personnel only. If you believe this is an error, please contact support.");
+            Cookies.remove("token");
+            setGuestSession({ token, user });
+            setIsTokenAuthenticating(false);
+            router.replace(PAGE_ROUTES.auth.login);
+            return;
           }
 
-          // Update Redux store
+          // Update Redux store. An unapproved agent is handled by
+          // AgentAccessGate once the dashboard loads, not here.
           dispatch(setUser(user));
           // Update React Query cache
           queryClient.setQueryData(["authUser"], user);
@@ -90,7 +138,19 @@ export default function Login() {
           Cookies.remove("token");
           console.error('Token validation failed:', error);
 
-          const errorMessage = error?.response?.data?.message ||
+          // The phone gate refused the handed-off session: this account has to
+          // sign in here and confirm its number. Show the same notice the API
+          // client shows for a gated session, and drop the token from the URL.
+          if (
+            error?.response?.status === 401 &&
+            errorDetail(error)?.code === "PHONE_VERIFICATION_REQUIRED"
+          ) {
+            setIsTokenAuthenticating(false);
+            router.replace(`${PAGE_ROUTES.auth.login}?reason=${PHONE_REAUTH_REASON}`);
+            return;
+          }
+
+          const errorMessage = apiErrorMessage(error) ||
             (error.message?.includes('Access Denied') ? error.message : 'Authentication failed. Please login with your credentials.');
 
           toast.error(errorMessage, {
@@ -112,7 +172,53 @@ export default function Login() {
         { email, password },
         {
           onError: (error: any) => {
-            const errorMessage = error?.response?.data?.message ||
+            if (error instanceof GuestAccountError) {
+              setGuestSession({ token: error.token, user: error.user });
+              return;
+            }
+            const detail = errorDetail(error);
+
+            // Phone verification gate: the API refuses with 401 and a
+            // challenge, which the modal uses to send, re-target and verify
+            // the SMS code. It covers an account with no number on file too,
+            // so don't require detail.phone here.
+            const challenge = parsePhoneVerificationDetail(detail);
+            if (challenge) {
+              setPhoneChallenge(challenge);
+              return;
+            }
+
+            // The email address was never confirmed. The API has just emailed
+            // a fresh code, but there's no screen for it here: it's entered at
+            // sign-in on aparte.ng.
+            if (detail?.code === "EMAIL_VERIFICATION_REQUIRED") {
+              const href = landingLoginUrl();
+              toast(
+                (t) => (
+                  <div className="text-sm text-gray-800">
+                    <p>{detail.message || "Verify your email address to continue."}</p>
+                    <p className="mt-1">
+                      Enter the code from that email when you sign in on aparte.ng.
+                    </p>
+                    <a
+                      href={href}
+                      onClick={() => toast.dismiss(t.id)}
+                      className="mt-2 inline-block font-semibold text-[#124452] underline"
+                    >
+                      Go to aparte.ng to verify
+                    </a>
+                  </div>
+                ),
+                {
+                  icon: "📧",
+                  duration: 12000,
+                  style: { maxWidth: '500px' },
+                },
+              );
+              return;
+            }
+
+            const errorMessage = apiErrorMessage(error) ||
               (error.message?.includes('Access Denied') ? error.message : 'Login failed. Please check your credentials.');
 
             toast.error(errorMessage, {
@@ -132,6 +238,18 @@ export default function Login() {
 
   if (isTokenAuthenticating) {
     return <Loader message="Authenticating..." />;
+  }
+
+  if (guestSession) {
+    return (
+      <div className="min-h-screen w-full flex justify-center items-center px-4 py-8">
+        <GuestAccountSwitch
+          token={guestSession.token}
+          user={guestSession.user}
+          onCancel={() => setGuestSession(null)}
+        />
+      </div>
+    );
   }
 
   return (
@@ -182,6 +300,17 @@ export default function Login() {
           shadow-[4px_4px_10px_rgba(255,255,255,0.5)] transition-all duration-300"
           onSubmit={handleSubmit}
         >
+          {showPhoneReauthNotice && (
+            <div
+              role="status"
+              className="flex items-start gap-3 p-3 bg-[#f4fbfb] border border-[#cfe9eb] rounded-lg"
+            >
+              <Icon icon="mdi:shield-lock-outline" className="w-5 h-5 text-[#028090] mt-0.5 shrink-0" />
+              <p className="text-sm text-gray-700">
+                For your security, sign in again and confirm your phone number.
+              </p>
+            </div>
+          )}
           <div>
             <InputGroup
               label="Email"
@@ -192,21 +321,30 @@ export default function Login() {
             />
             {validator.message("email", email, "required|email")}
           </div>
-          <div>
+          <div className="relative">
             <InputGroup
               label="Password"
               required
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value.replace(/\s/g, ''))}
               inputType={passwordType}
               inputName="password"
+              inputClassName="pr-10"
             />
-            <div className="w-[26px] relative top-[-32px] ml-auto">
+            <button
+              type="button"
+              className="absolute right-3 top-10 flex h-9 w-9 items-center justify-center rounded-full text-[#101928] hover:text-[#124452]"
+              onClick={togglePassword}
+              aria-label={passwordType === "password" ? "Show password" : "Hide password"}
+            >
               {passwordType === "password" ? (
-                <Icon icon="mdi:eye-outline" className="text-black" onClick={togglePassword} />
+                <Icon icon="mdi:eye-outline" />
               ) : (
-                <Icon icon="f7:eye-slash" className="text-black" onClick={togglePassword} />
+                <Icon icon="f7:eye-slash" />
               )}
-            </div>
+            </button>
+            <Link href={PAGE_ROUTES.auth.passwordReset} className="text-xs text-[#124452] hover:underline mt-2 inline-block">
+              Forgot Password?
+            </Link>
             {validator.message("password", password, "required|min:6")}
           </div>
           <div className="mt-2 flex justify-center">
@@ -223,6 +361,13 @@ export default function Login() {
           </div>
         </form>
       </main>
+
+      <PhoneOtpModal
+        isOpen={!!phoneChallenge}
+        challenge={phoneChallenge}
+        onClose={() => setPhoneChallenge(null)}
+        onGuestAccount={setGuestSession}
+      />
     </div>
   );
 }

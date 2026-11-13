@@ -1,14 +1,172 @@
-import { KycStatus, UserRole } from "./enums";
+import { KycStatus, UserRole, DisputeCategory, DisputeStatus, DisputeOutcome, ExtensionStatus } from "./enums";
+
+export interface IReview {
+  id: string;
+  booking_id: string;
+  property_id: string;
+  user_id: string;
+  rating: number;
+  comment: string;
+  is_flagged: boolean;
+  is_removed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IReviewSummary {
+  average_rating: number;
+  total_reviews: number;
+}
+
+export interface IDisputeEvidence {
+  id: string;
+  media_url: string;
+  media_type: string;
+  uploaded_by: string;
+  created_at: string;
+}
+
+export interface IDisputeLog {
+  id: string;
+  action: string;
+  performer_id: string;
+  previous_status: DisputeStatus | null;
+  new_status: DisputeStatus;
+  comment: string | null;
+  created_at: string;
+}
+
+export interface IDispute {
+  id: string;
+  dispute_id: string;
+  booking_id: string;
+  raised_by: string;
+  raised_by_role?: UserRole;
+  category: DisputeCategory;
+  description: string;
+  status: DisputeStatus;
+  outcome: DisputeOutcome | null;
+  admin_notes: string | null;
+  guest_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
+  owner_name?: string;
+  owner_email?: string;
+  owner_phone?: string;
+  evidence: IDisputeEvidence[];
+  logs: IDisputeLog[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IReferralInfo {
+  code: string;
+  link: string;
+}
+
+export interface AgentBookingReportItem {
+  booking_id: string;
+  property_name: string;
+  unit_name: string;
+  owner_name: string;
+  guest_name: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  nights: number;
+  guests: number;
+  status: string;
+  payment_method?: string;
+  gross_amount: number;
+  caution_fee: number;
+  agent_fee: number;
+  caution_refunded: string;
+}
+
+export interface AgentPropertyBreakdown {
+  property_name: string;
+  owner_name: string;
+  total_bookings: number;
+  nights_booked: number;
+  gross_revenue: number;
+  agent_commissions_earned: number;
+}
+
+export interface AgentFinancialSummary {
+  agent_id: string;
+  agent_name: string;
+  agent_email: string;
+  year: number;
+  month: number;
+  properties_count: number;
+  total_bookings: number;
+  nights_booked: number;
+  total_gross_amount: number;
+  total_caution_fees: number;
+  total_agent_fees: number;
+  excluded_non_ngn_count: number;
+  per_property_breakdown: AgentPropertyBreakdown[];
+  bookings: AgentBookingReportItem[];
+}
+
+export interface AgentAdHocReportSummary {
+  requested_by: string;
+  report_type: string;
+  date_range: string;
+  total_bookings: number;
+  nights_booked: number;
+  total_gross_amount: number;
+  total_caution_fees: number;
+  total_agent_fees: number;
+  excluded_non_ngn_count: number;
+  bookings: AgentBookingReportItem[];
+}
+
+export interface IAgentReferralStats {
+  total_referrals: number;
+  active_referrals: number;
+  total_bookings: number;
+}
+
+export interface IReferralItem {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface IReferralRelationship {
+  referred_user_id: string;
+  referred_user_name: string;
+  referrer_id: string;
+  referrer_name: string;
+  referral_code_used: string;
+  created_at: string;
+}
+
 
 // Auth and Axios related interfaces
 
-export interface IResponse<T> {
-  total_count: number;
+export interface IPaginatedResponse<T> {
   status: 'success' | 'error';
   code: string;
   message: string;
-  count?: number;
-  data: T;
+  data: {
+    data: T;
+    meta: {
+      total: number;
+      [key: string]: any;
+    }
+  }
+}
+
+export interface IAdminPaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
 }
 
 export interface IBaseResponse<T> {
@@ -57,6 +215,9 @@ export interface IUserProfile {
   average_rating?: string;
   kycStatus: KycStatus;
   kyc_status?: KycStatus;
+  kycProvider?: string | null;
+  kyc_provider?: string | null;
+  referral_code?: string | null;
   createdAt: string;
   created_at?: string;
   updatedAt?: string;
@@ -84,9 +245,36 @@ export interface IUser {
   role: UserRole;
   verificationToken?: string;
   verification_token?: string;
+  referralCode?: string | null;
+  referralLink?: string | null;
+  // The /admin/users list response flattens KYC to top-level (no `profile` key).
+  // The detail response nests under `profile`. Both fields optional so the
+  // type works for either shape.
+  kycStatus?: KycStatus;
+  kyc_status?: KycStatus;
+  /** Explicit agent onboarding status when provided by the API. */
+  agentApprovalStatus?: string;
+  agent_approval_status?: string;
   profile: IUserProfile;
   kyc?: [],
+  kycDocuments?: any[],
   wallets?: IWallet[],
+  isProfileComplete?: boolean;
+  is_profile_complete?: boolean;
+  missingProfileFields?: string[];
+  missing_profile_fields?: string[];
+  /** Whether our emails reach this address: "OK" | "BOUNCING" | "UNDELIVERABLE". */
+  email_status?: "OK" | "BOUNCING" | "UNDELIVERABLE";
+  emailStatus?: "OK" | "BOUNCING" | "UNDELIVERABLE";
+  email_bounced_at?: string | null;
+  emailBouncedAt?: string | null;
+  email_bounce_reason?: string | null;
+  emailBounceReason?: string | null;
+  email_suggestion?: string | null;
+  emailSuggestion?: string | null;
+  /** An address the user asked to move to and has not confirmed with the emailed code yet. */
+  pending_email?: string | null;
+  pendingEmail?: string | null;
 }
 
 export interface IAuthorization {
@@ -95,7 +283,190 @@ export interface IAuthorization {
   type: string;
 }
 
+export interface IStayExtension {
+  id: string;
+  extension_id: string;
+  booking_id: string;
+  requested_by: string;
+  original_end_date: string;
+  new_end_date: string;
+  extra_nights: number;
+  price_per_night: number;
+  extension_amount: number;
+  status: ExtensionStatus;
+  payment_method: string;
+  created_at: string;
+  updated_at: string;
+  owner_decision_by?: string;
+  owner_decision_at?: string;
+  rejection_reason?: string;
+  /**
+   * True when this extension was recorded through the older
+   * `/bookings/{id}/extend` path, which stores a child Booking rather than a
+   * BookingExtension. The API lists these alongside real extensions so they
+   * stay visible, but the approve / reject / cancel endpoints do not operate
+   * on them — never offer those actions for a legacy row.
+   */
+  is_legacy?: boolean;
+}
+
 export interface ILoginResponse {
   user: IUser;
   authorization: IAuthorization;
+}
+
+export interface IIcalFeed {
+  id: string;
+  unit_id: string | number;
+  direction: 'INBOUND' | 'OUTBOUND';
+  url: string;
+  label: string;
+  token?: string;
+  last_polled_at?: string;
+  last_status: 'OK' | 'ERROR' | 'BROKEN' | 'PENDING';
+  error_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IIcalConflict {
+  id: string;
+  unit_id: string | number;
+  aparte_booking_id: string | number;
+  external_uid: string;
+  status: 'UNRESOLVED' | 'RESOLVED';
+  resolved_at?: string;
+  resolved_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IExternalBookingGroup {
+  external_uid: string;
+  external_summary: string;
+  dates: string[];
+}
+
+export interface StatementHistoryItem {
+  id: string;
+  owner_id: string;
+  year: number;
+  month: number;
+  status: string;
+  delivered_at?: string;
+  error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PropertyBreakdown {
+  property_name: string;
+  total_bookings: number;
+  nights_booked: number;
+  gross_revenue: number;
+  platform_fees_deducted: number;
+  agent_commissions_deducted: number;
+  referrer_payouts_deducted: number;
+  refunds_issued: number;
+  net_wallet_credit: number;
+}
+
+export interface BookingReportItem {
+  booking_id: string;
+  property_name: string;
+  unit_name: string;
+  guest_name: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  nights: number;
+  guests: number;
+  status: string;
+  payment_method?: string;
+  gross_amount: number;
+  platform_fee: number;
+  caution_fee: number;
+  agent_fee: number;
+  referrer_payout: number;
+  base_rent: number;
+  owner_earnings: number;
+  caution_refunded: string;
+}
+
+export interface MonthlyStatementData {
+  owner_id: string;
+  owner_name: string;
+  owner_email: string;
+  year: number;
+  month: number;
+  properties_count: number;
+  total_bookings: number;
+  nights_booked: number;
+  total_gross_amount: number;
+  total_platform_fees: number;
+  total_caution_fees: number;
+  total_agent_fees: number;
+  total_referrer_payouts: number;
+  total_refunds_issued: number;
+  total_base_rent: number;
+  total_owner_earnings: number;
+  excluded_non_ngn_count: number;
+  per_property_breakdown: PropertyBreakdown[];
+  bookings: BookingReportItem[];
+}
+
+
+// ---------------------------------------------------------------------------
+// Aparte Link — the host's public page (aparte.ng/@handle)
+// ---------------------------------------------------------------------------
+
+/** The host-editable part of catalog_config. PATCH merges: send only what
+ * changed; null clears a key. `cover_image` is server-owned (upload endpoint). */
+export interface CatalogConfig {
+  headline?: string | null;
+  bio?: string | null;
+  whatsapp_number?: string | null;
+  show_whatsapp_button?: boolean | null;
+  featured_property_ids?: string[] | null;
+  welcome_message?: string | null;
+  og_description_override?: string | null;
+}
+
+export interface CatalogShareKit {
+  handle: string | null;
+  is_catalog_published: boolean;
+  /** The handle may be changed exactly once. False means it is now fixed. */
+  can_change_handle: boolean;
+  handle_changed_at: string | null;
+  catalog_url: string | null;
+  referral_code: string | null;
+  catalog_config: CatalogConfig & { cover_image?: string | null };
+  cover_image: string | null;
+  featured_property_ids: string[];
+  property_count: number;
+  share_templates?: Record<string, string>;
+  qr_url: string | null;
+}
+
+export interface CatalogAnalytics {
+  window: string;
+  views: { catalog_page: number; unique: number; by_source: Record<string, number> };
+  bookings: { total_attributed: number; confirmed: number; gross_value: string };
+  earnings: { as_listing_agent: string; as_referrer: string; total: string; note?: string };
+  signups_attributed: number;
+}
+
+/** One row of GET /links/catalogs/me/properties. */
+export interface HostLinkProperty {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  hero_image: string | null;
+  is_verified: boolean;
+  is_link_published: boolean;
+  slug: string | null;
+  /** verified AND published — the one boolean a status chip keys on. */
+  on_page: boolean;
 }

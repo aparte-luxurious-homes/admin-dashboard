@@ -9,7 +9,7 @@ export default function UserManagementLayout({
     children: React.ReactNode;
 }) {
     return (
-        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN, UserRole.SUPPORT_ADMIN]}>
             {children}
         </ProtectedRoute>
     );

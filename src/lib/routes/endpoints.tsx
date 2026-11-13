@@ -7,6 +7,8 @@ export const API_ROUTES = {
         passwordReset: '/auth/password/reset',
         resendOtp: '/auth/otp/resend',
         logout: '/auth/logout',
+        requestPhoneOtp: '/auth/phone/request-otp',
+        verifyPhoneOtp: '/auth/phone/verify',
     },
     admin: {
         kyc: {
@@ -15,8 +17,11 @@ export const API_ROUTES = {
         },
         properties: {
             assign: (id: string | number) => `/admin/properties/${id}/assign`,
+            reassignOwner: (id: string | number) => `/admin/properties/${id}/reassign-owner`,
             verificationStatus: (id: string | number) => `/admin/properties/${id}/verify`,
             feature: (id: string | number) => `/admin/properties/${id}/feature`,
+            verificationHistory: (propertyId: string | number, verificationId: string | number) =>
+                `/admin/properties/${propertyId}/verifications/${verificationId}/history`,
         },
         bookings: {
             base: '/bookings',
@@ -27,8 +32,45 @@ export const API_ROUTES = {
         },
         users: {
             base: '/admin/users',
+            onboard: '/admin/users/onboard',
             userById: (id: string | number) => `/admin/users/${id}`,
-            userByUuid: (id: string | number) => `/admin/users/${id}`
+            userByUuid: (id: string | number) => `/admin/users/${id}`,
+            updateKyc: (id: string | number) => `/admin/users/${id}/kyc`,
+            kycHistory: (id: string | number) => `/admin/users/${id}/kyc/history`,
+            uploadKycOnBehalf: (id: string | number) => `/admin/users/${id}/kyc/documents`,
+            roles: '/admin/users/roles',
+            /** Re-send transactional emails that failed in the last 7 days. */
+            resendFailedEmails: (id: string | number) => `/admin/users/${id}/email-health/resend`,
+            /** Correct a bouncing address (perm users.fix_email). Resends failed emails itself. */
+            fixEmail: (id: string | number) => `/admin/users/${id}/email`,
+        },
+        kycQueue: '/admin/kyc/queue',
+        /** Bounced / undeliverable addresses (perm users.view_email_health). */
+        emailHealth: {
+            base: '/admin/email-health',
+            summary: '/admin/email-health/summary',
+        },
+        integrations: {
+            configs: '/admin/integrations/configs',
+            configByKey: (key: string) => `/admin/integrations/configs/${key}`,
+        },
+        reviews: {
+            base: '/admin/reviews',
+            flag: (reviewId: string | number) => `/admin/reviews/${reviewId}/flag`,
+            unflag: (reviewId: string | number) => `/admin/reviews/${reviewId}/unflag`,
+            restore: (reviewId: string | number) => `/admin/reviews/${reviewId}/restore`,
+            remove: (reviewId: string | number) => `/admin/reviews/${reviewId}`,
+        },
+        disputes: {
+            base: '/admin/disputes',
+            details: (id: string | number) => `/admin/disputes/${id}`,
+            status: (disputeId: string | number) => `/admin/disputes/${disputeId}/status`,
+            requestEvidence: (disputeId: string | number) => `/admin/disputes/${disputeId}/request-evidence`,
+            resolve: (disputeId: string | number) => `/admin/disputes/${disputeId}/resolve`,
+            reopen: (disputeId: string | number) => `/admin/disputes/${disputeId}/reopen`,
+        },
+        referrals: {
+            base: '/admin/referrals',
         }
     },
     profile: {
@@ -37,6 +79,13 @@ export const API_ROUTES = {
         updatePassword: '/profile/password',
         kycStatus: '/profile/kyc-status',
         verifyGovId: '/profile/verify-gov-id',
+        kycDocuments: '/profile/kyc/documents',
+        // A GUEST account switching itself to OWNER or AGENT (login screen).
+        accountType: '/profile/account-type',
+        // Self-service email change: POST sends a code to the new address,
+        // DELETE cancels the pending change, confirm switches it.
+        emailChange: '/profile/email/change',
+        emailConfirm: '/profile/email/confirm',
         kyc: {
             upload: '/kyc/upload',
             details: (docId: string | number) => `/kyc/${docId}/details`,
@@ -49,37 +98,105 @@ export const API_ROUTES = {
             amenities: (propertyId: string | number) => `/properties/${propertyId}/amenities`,
             media: (propertyId: string | number) => `/properties/${propertyId}/media`,
             verify: (id: string | number) => `/properties/${id}/verify`,
+            verificationMedia: (id: string | number) => `/properties/${id}/verifications/media`,
             units: {
                 base: (propertyId: string | number) => `/properties/${propertyId}/units`,
                 details: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}`,
                 amenities: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/amenities`,
                 media: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/media`,
                 availability: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/availability`,
+                // An event-centre hall's free times on one date (?date=YYYY-MM-DD).
+                eventSlots: (propertyId: string | number, unitId: string | number) => `/properties/${propertyId}/units/${unitId}/event-slots`,
+                deleteMedia: (propertyId: string | number, unitId: string | number, mediaId: string | number) => `/properties/${propertyId}/units/${unitId}/media/${mediaId}`,
             },
-            // verifications: {
-            //     base: (propertyId: number) => `/properties/${propertyId}/verifications`,
-            //     details: (propertyId: number, verificationId: number) => `/properties/${propertyId}/verifications/${verificationId}`
-            // }
+            deleteMedia: (propertyId: string | number, mediaId: string | number) => `/properties/${propertyId}/media/${mediaId}`,
+            documents: (propertyId: string | number) => `/properties/${propertyId}/documents`,
+            verifyDocument: (propertyId: string | number, documentId: string | number) => `/properties/${propertyId}/documents/${documentId}`,
+            bookingMode: (propertyId: string | number) => `/properties/${propertyId}/booking-mode`,
+            // The API exposes approve and reject as separate operations. There
+            // has never been a combined "review-proposal" address, so the
+            // previous single entry here 404'd on every use.
+            approveDiscounts: (propertyId: string | number) => `/properties/${propertyId}/approve-discounts`,
+            rejectDiscounts: (propertyId: string | number) => `/properties/${propertyId}/reject-discounts`,
         },
         amenities: {
             base: '/amenities',
         },
+        eventTypes: {
+            base: '/event-types',
+        },
     },
     verifications: {
         base: '/verifications',
-        details: (verificationId: string | number) => `/verifications/${verificationId}`
+        details: (verificationId: string | number) => `/verifications/${verificationId}`,
+        myQueue: '/properties/verifications/my-queue',
+        ownerResubmit: (propertyId: string | number) =>
+            `/properties/${propertyId}/verifications/resubmit`,
     },
     bookings: {
         base: '/bookings',
+        // Admin breakdown of who earns what from the listing and referral pools.
+        commissionSplit: (id: string) => `/bookings/${id}/commission-split`,
+        upcoming: '/bookings/upcoming',
+        // Server price for a prospective booking; venues are priced only here.
+        quote: '/bookings/quote',
+        guestLookup: '/bookings/guest-lookup',
+        guestsDirectory: '/bookings/guests/directory',
+        guestCredentials: '/bookings/guest-credentials',
         details: (id: string) => `/bookings/${id}`,
         status: (id: string | number) => `/bookings/${id}/status`,
         pdf: (id: string | number) => `/bookings/${id}/pdf`,
+        approveRequest: (id: string | number) => `/bookings/${id}/approve-request`,
+        rejectRequest: (id: string | number) => `/bookings/${id}/reject-request`,
+        reconcilePayment: (id: string | number) => `/bookings/${id}/reconcile-payment`,
+        extensions: {
+            base: (bookingId: string | number) => `/bookings/${bookingId}/extensions`,
+            // The backend route is `/bookings/{id}/extension-quote`, NOT a
+            // sub-path of /extensions. Written as the latter, this matched
+            // `/bookings/{id}/extensions/{extension_id}` with the literal
+            // "quote" as the id, so the price preview never loaded — the
+            // landing page has always used the correct path, which is why
+            // the typo survived here.
+            quote: (bookingId: string | number) => `/bookings/${bookingId}/extension-quote`,
+            listAll: '/bookings/extensions/all',
+            details: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}`,
+            approve: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/approve`,
+            reject: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/reject`,
+            cancel: (bookingId: string | number, id: string | number) => `/bookings/${bookingId}/extensions/${id}/cancel`,
+        }
     },
     wallet: {
         base: '/wallets',
+        // The bank account an agent transfers to, to fund their wallet. One
+        // source for the wallet page and the dashboard card.
+        offlineFunding: '/wallets/offline-funding',
         details: (id: string) => `/wallets/${id}`,
+        update: (id: string) => `/wallets/${id}`,
         withdraw: (id: string) => `/wallets/${id}/withdraw`,
-        validateWithdrawal: (id: string | number) => `/wallets/${id}/validate-withdrawal`,
+        approveWithdrawal: (id: string | number) => `/wallets/${id}/approve-withdrawal`,
+        rejectWithdrawal: (id: string | number) => `/wallets/${id}/reject-withdrawal`,
+        reverseWithdrawal: (id: string | number) => `/wallets/${id}/reverse-withdrawal`,
+        // Re-send a payout that failed on OUR side (expired gateway key, provider
+        // outage) and was already refunded — so the customer never re-withdraws.
+        retryWithdrawal: (id: string | number) => `/wallets/${id}/retry-withdrawal`,
+        authorizeDisbursement: (id: string | number) => `/wallets/${id}/authorize-disbursement`,
+        resendDisbursementOtp: (id: string | number) => `/wallets/${id}/resend-disbursement-otp`,
+        // Per-row manual override. Since withdrawals became PENDING-until-settled,
+        // the only automatic paths to SUCCESSFUL are the disbursement webhook and
+        // the reconciliation cron; when either is down, this is how an operator
+        // resolves a stuck payout instead of guessing.
+        refreshWithdrawalStatus: (walletId: string | number, transactionId: string | number) =>
+            `/wallets/${walletId}/withdrawals/${transactionId}/refresh-status`,
+        pendingWithdrawals: '/wallets/pending-withdrawals',
+        // Manual adjustments. Every one needs a reason plus a reference number or
+        // a receipt; operations and support adjustments wait for an admin.
+        adjustmentReceipts: '/wallets/adjustment-receipts',
+        adjustmentRequests: '/wallets/adjustment-requests',
+        approveAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/approve`,
+        rejectAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/reject`,
+        cancelAdjustment: (id: string) => `/wallets/adjustment-requests/${id}/cancel`,
+        // Bulk sweep, admin-runnable as well as cron-runnable.
+        reconcileDisbursementsJob: '/jobs/reconcile-stuck-disbursements',
         transactions: {
             base: (walletId: string) => `/wallets/${walletId}/transactions`,
             details: (walletId: string, transactionId: string) => `/wallets/${walletId}/transactions/${transactionId}`,
@@ -96,31 +213,294 @@ export const API_ROUTES = {
         details: (paymentId: string) => `/wallets/payments/${paymentId}`,
         validate: (paymentId: string) => `/wallets/payments/${paymentId}/validate`,
     },
+    utils: {
+        /** Typo suggestion + MX check for an address. Auth optional. */
+        emailCheck: '/utils/email-check',
+    },
     statistic: {
-        base: '/stats'
+        base: '/stats',
+        gatewayBalances: '/stats/gateway-balances',
+        walletTotals: '/stats/wallet-totals',
+        pendingBookings: '/stats/pending-bookings',
+        adminQueues: '/stats/admin/queues',
+        adminAgentPerformance: '/stats/admin/agent-performance',
+        adminTopTeams: '/stats/admin/top-teams',
     },
     transactions: {
         base: '/wallets/transactions',
-        details: (transactionId: string) => `/wallets/transactions/${transactionId}`
+        details: (transactionId: string) => `/wallets/transactions/${transactionId}`,
+        approveRefund: (transactionId: string) => `/wallets/transactions/${transactionId}/approve-refund`
+    },
+    network: {
+        agents: {
+            tier: (id: string | number) => `/admin/network/agents/${id}/tier`,
+            adjust: (id: string | number) => `/admin/network/agents/${id}/adjust`,
+        },
+        remit: `/jobs/evaluate-agent-tiers`,
+        mentorships: {
+            base: `/admin/network/mentorship`,
+            details: (id: string) => `/admin/network/mentorship/${id}`,
+            candidates: `/admin/network/mentorship/candidates`,
+            mentors: `/admin/network/mentorship/mentors`,
+            // Bronze / Silver agents with no mentor, with suggested mentors.
+            unassigned: `/admin/network/mentorship/unassigned`,
+            // End a link and give its mentee a new mentor in one step.
+            reassign: (id: string) => `/admin/network/mentorship/${id}/reassign`,
+        },
+        // Gold, then Silver with their Gold mentor, then Bronze with both
+        // mentors.
+        report: `/admin/network/report`,
+        // The same report as a CSV or PDF in cloud storage; answers with its
+        // download_url, like every other staff export.
+        reportDownload: `/admin/network/report/download`,
+        // Monthly team targets: every team head's target vs achieved, set one
+        // (this month or from next month), its history, and a whole team.
+        targets: {
+            base: `/admin/network/targets`,
+            set: (agentId: string) => `/admin/network/targets/${agentId}`,
+            history: (agentId: string) => `/admin/network/targets/${agentId}/history`,
+            tree: (agentId: string) => `/admin/network/targets/${agentId}/tree`,
+        },
+        events: {
+            base: `/admin/network/events`,
+            details: (id: string) => `/admin/network/events/${id}`,
+            update: (id: string) => `/admin/network/events/${id}/status`,
+        },
+        configs: {
+            actions: {
+                base: `/admin/network/configs/actions`,
+                update: (actionType: string) => `/admin/network/configs/actions/${actionType}`,
+            },
+            tiers: {
+                base: `/admin/network/configs/tiers`,
+            },
+            zones: {
+                base: `/admin/network/configs/zones`,
+                details: (id: string) => `/admin/network/configs/zones/${id}`,
+                assignments: {
+                    base: `/admin/network/configs/zones/assignments`,
+                    details: (id: string) => `/admin/network/configs/zones/assignments/${id}`,
+                },
+            },
+        },
+        zonePayoutJob: `/jobs/evaluate-zone-payouts`,
+        me: `/network/me`,
+        zoneMe: `/network/zone/me`,
+        myZoneAssignments: `/network/zone-assignments`,
+        myZoneAssignmentDetails: (id: string) => `/network/zone-assignments/${id}`,
+        history: `/network/history`,
+        // One event out of the caller's own feed, scoped by the same
+        // VisibilityScope. Lets an agent follow a row's related_event_id;
+        // the admin single-event route is not reachable for them.
+        historyDetails: (id: string) => `/network/history/${id}`,
+        // The agents the caller may filter their network views by — self,
+        // their mentees, and (Area Manager / Regional Lead) every agent holding
+        // a property in their zone tree. Distinct from `network.agents` above,
+        // which is the admin tier/adjust pair.
+        myNetworkAgents: `/network/agents`,
+        // Read-only profile of one agent in the caller's scope. Narrower than
+        // the admin user detail on purpose: agents do not hold users.read, so
+        // no NIN/BVN, KYC state, wallet or payout data is returned.
+        myNetworkAgentProfile: (id: string) => `/network/agents/${id}`,
+        myMentorship: `/network/mentorship`,
+        myMentorshipDetails: (id: string) => `/network/mentorship/${id}`,
+        mentorshipCandidates: `/network/mentorship/candidates`,
+        // A mentor's create is a REQUEST: it lands PENDING and is settled by the
+        // mentee's immediate zone lead or an admin. It does not become active
+        // on submit.
+        createMentorshipInvite: `/network/mentorship/invite`,
+        // Settle a PENDING request. Approve → ACTIVE; reject DELETES the row
+        // and notifies both parties naming the decider.
+        approveMentorship: (id: string) => `/network/mentorship/${id}/approve`,
+        rejectMentorship: (id: string) => `/network/mentorship/${id}/reject`,
+        // Area Manager / Regional Lead pairing two agents inside their own zone
+        // tree — created ACTIVE, no approval step, since the lead is already
+        // the approver.
+        assignMentorship: `/network/mentorship/assign`,
+        // Deep dive on the caller's direct mentees, and the name-and-count
+        // summary of agents on the caller's tier.
+        myTeam: `/network/team`,
+        peers: `/network/peers`,
+        // The caller's target share, achieved and %, plus their team's.
+        myTargets: `/network/targets/me`,
+    },
+    // Team lead workspace (Silver / Gold agents with mentees). Read-only;
+    // every change is a request an admin approves.
+    team: {
+        me: `/team/me`,
+        members: `/team/members`,
+        properties: `/team/properties`,
+        propertyDetails: (id: string) => `/team/properties/${id}`,
+        bookings: `/team/bookings`,
+        bookingDetails: (id: string) => `/team/bookings/${id}`,
+        transactions: `/team/transactions`,
+        reviews: `/team/reviews`,
+        referrals: `/team/referrals`,
+        requests: `/team/requests`,
+        mediaRequest: `/team/requests/media`,
+        requestDetails: (id: string) => `/team/requests/${id}`,
+    },
+    teamRequests: {
+        base: `/admin/team-requests`,
+        details: (id: string) => `/admin/team-requests/${id}`,
+        approve: (id: string) => `/admin/team-requests/${id}/approve`,
+        reject: (id: string) => `/admin/team-requests/${id}/reject`,
+    },
+    platform: {
+        // Readable by any authenticated user — every client needs to know
+        // whether to render the Network navigation at all.
+        features: '/platform/features',
+        // SUPER_ADMIN only; adds who last moved the switch.
+        adminFeatures: '/admin/platform/features',
+        networkFeature: '/admin/platform/features/network',
+        phoneVerificationFeature: '/admin/platform/features/phone-verification',
+        // The WhatsApp booking bot's public number. Any authenticated role.
+        whatsapp: '/platform/whatsapp',
+    },
+    // Aparte on WhatsApp: ops inbox and funnel (whatsapp.view_inbox /
+    // whatsapp.reply / whatsapp.view_analytics on the API).
+    whatsapp: {
+        conversations: '/admin/whatsapp/conversations',
+        conversation: (id: string) => `/admin/whatsapp/conversations/${id}`,
+        takeover: (id: string) => `/admin/whatsapp/conversations/${id}/takeover`,
+        release: (id: string) => `/admin/whatsapp/conversations/${id}/release`,
+        resolve: (id: string) => `/admin/whatsapp/conversations/${id}/resolve`,
+        reply: (id: string) => `/admin/whatsapp/conversations/${id}/reply`,
+        funnel: '/admin/whatsapp/funnel',
     },
     permissions: {
         base: '/permissions',
         details: (permissionId: string) => `/permissions/${permissionId}`,
+        assignableRoles: '/permissions/roles',
         rolePermissions: (role: string) => `/permissions/roles/${role}`,
         assignToRole: (role: string, permissionId: string) => `/permissions/roles/${role}/assign/${permissionId}`,
         removeFromRole: (role: string, permissionId: string) => `/permissions/roles/${role}/remove/${permissionId}`,
         seed: '/permissions/seed',
     },
+    reviews: {
+        base: '/reviews',
+        propertyReviews: (propertyId: string | number) => `/properties/${propertyId}/reviews`,
+        propertySummary: (propertyId: string | number) => `/properties/${propertyId}/reviews/summary`,
+    },
+    disputes: {
+        base: '/disputes',
+        myDisputes: '/disputes/my',
+        details: (id: string | number) => `/disputes/${id}`,
+        evidence: (disputeId: string | number) => `/disputes/${disputeId}/evidence`,
+        deleteEvidence: (disputeId: string | number, evidenceId: string | number) => `/disputes/${disputeId}/evidence/${evidenceId}`,
+    },
+    referrals: {
+        myCode: '/referrals/my-code',
+        stats: '/referrals/stats',
+        list: '/referrals/list',
+    },
+    reports: {
+        statements: {
+            base: (ownerId: string) => `/reports/owners/${ownerId}/statements`,
+            download: (ownerId: string, year: string | number, month: string | number) => `/reports/owners/${ownerId}/statements/${year}/${month}/download`,
+            details: (ownerId: string, year: string | number, month: string | number) => `/reports/owners/${ownerId}/statements/${year}/${month}`,
+        },
+        bookings: {
+            export: '/reports/bookings/export',
+        }
+    },
+    agents: {
+        statements: {
+            base: (agentId: string) => `/reports/agents/${agentId}/statements`,
+            download: (agentId: string, year: string | number, month: string | number) => `/reports/agents/${agentId}/statements/${year}/${month}/download`,
+        },
+        bookings: {
+            export: '/reports/agents/bookings/export',
+        }
+    },
+    // Aparte Link — the owner/agent's public catalog page at aparte.ng/@handle
+    links: {
+        myCatalog: '/links/catalogs/me',
+        // Per-property publication. A property needs BOTH is_verified AND
+        // is_link_published to appear on a catalog, and the latter defaults to
+        // false — so without this call a verified listing is invisible there.
+        propertyLink: (propertyId: string) => `/links/properties/${propertyId}`,
+        propertyShareKit: (propertyId: string) => `/links/properties/${propertyId}/share-kit`,
+        myCatalogAnalytics: (window: string) => `/links/catalogs/me/analytics?window=${window}`,
+        // Banner image for the page: POST multipart `file`, DELETE to remove.
+        myCatalogCover: '/links/catalogs/me/cover',
+        // Every listing the caller owns/manages with its link state — the
+        // page editor's table and featured picker.
+        myProperties: '/links/catalogs/me/properties',
+        // Returns PNG bytes, not JSON — fetch it as a blob.
+        catalogQr: (userId: string, size = 512) =>
+            `/links/qr?target=catalog&id=${userId}&size=${size}`,
+    },
+    ical: {
+        units: {
+            outbound: (unitId: string | number) => `/ical/units/${unitId}/outbound`,
+            outboundRotate: (unitId: string | number) => `/ical/units/${unitId}/outbound/rotate`,
+            feeds: (unitId: string | number) => `/ical/units/${unitId}/feeds`,
+            feedAction: (unitId: string | number, feedId: string | number) => `/ical/units/${unitId}/feeds/${feedId}`,
+            syncFeed: (unitId: string | number, feedId: string | number) => `/ical/units/${unitId}/feeds/${feedId}/sync`,
+            externalBookings: (unitId: string | number) => `/ical/units/${unitId}/external-bookings`,
+        },
+        admin: {
+            feeds: '/ical/admin/feeds',
+            forcePoll: (feedId: string | number) => `/ical/admin/feeds/${feedId}/force-poll`,
+            disable: (feedId: string | number) => `/ical/admin/feeds/${feedId}/disable`,
+            enable: (feedId: string | number) => `/ical/admin/feeds/${feedId}/enable`,
+            conflicts: '/ical/admin/conflicts',
+            resolveConflict: '/ical/admin/conflicts/resolve',
+        }
+    },
+    // Blog management (api-v1 services/blog). Super/Admin publish; operations
+    // and support admins write drafts. The public blog lives on the website.
+    blog: {
+        posts: '/admin/blog/posts',
+        post: (id: string) => `/admin/blog/posts/${id}`,
+        publish: (id: string) => `/admin/blog/posts/${id}/publish`,
+        unpublish: (id: string) => `/admin/blog/posts/${id}/unpublish`,
+        featured: (id: string) => `/admin/blog/posts/${id}/featured`,
+        restore: (id: string) => `/admin/blog/posts/${id}/restore`,
+        images: '/admin/blog/images',
+        categories: '/admin/blog/categories',
+        category: (id: string) => `/admin/blog/categories/${id}`,
+    },
+    // Owner home (docs/owner-home-spec.md). Owner-scoped: the API always
+    // answers for the caller and never takes an owner id.
+    ownerHome: {
+        summary: '/owner/home/summary',
+        calendar: (from: string, to: string, propertyId?: string) =>
+            `/owner/calendar?from=${from}&to=${to}` +
+            (propertyId ? `&property_id=${propertyId}` : ''),
+        blocks: '/owner/calendar/blocks',
+        block: (blockGroupId: string) => `/owner/calendar/blocks/${blockGroupId}`,
+        actions: '/owner/actions',
+        agents: (windowDays = 90) => `/owner/agents/performance?window_days=${windowDays}`,
+    },
 };
 
 
-const rawUrl = process.env.NEXT_PUBLIC_BASE_API_URL ||
+// Read the general var FIRST. This chain was commented out and pinned to
+// NEXT_PUBLIC_BASE_STAGING_API_URL alone, which cloudbuild.yaml never sets —
+// it passes only NEXT_PUBLIC_BASE_API_URL. So on the Cloud Run build this was
+// `undefined`, axios fell back to a relative baseURL, `/profile` resolved
+// against the dashboard's own origin and returned the HTML 404 page, and the
+// login screen reported "Authentication failed. Please login with your
+// credentials." — which reads as a rejected password, not a missing env var.
+// Vercel-built and Cloud-Run-built dashboards therefore behaved differently
+// from identical source.
+//
+// These are inlined by Next at build time, so the chain resolves at compile
+// time, not runtime.
+export const BASE_API_URL = (
+    process.env.NEXT_PUBLIC_BASE_API_URL ||
     process.env.NEXT_PUBLIC_BASE_STAGING_API_URL ||
     process.env.NEXT_PUBLIC_BASE_LOCAL_API_URL ||
-    "";
+    ""
+).trim().replace(/\/+$/, "");
 
-export const BASE_API_URL = rawUrl.trim().replace(/\/+$/, "");
-
-if (typeof window !== 'undefined') {
-    console.log('[Endpoints] Initialized BASE_API_URL:', BASE_API_URL);
+if (typeof window !== 'undefined' && !BASE_API_URL) {
+    // Loud, because the silent version of this cost a release. Without a base
+    // URL every request targets this origin and fails as an auth error.
+    console.error(
+        '[Endpoints] No API base URL configured. Set NEXT_PUBLIC_BASE_API_URL ' +
+        'at build time — every API call will otherwise resolve against this origin.'
+    );
 }

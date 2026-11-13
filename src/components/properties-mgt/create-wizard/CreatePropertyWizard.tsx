@@ -1,0 +1,1101 @@
+"use client";
+
+import { MESSAGES } from "@/src/lib/messages";
+import { useEffect, useRef, useState } from "react";
+import { useFormik } from "formik";
+import { useRouter } from "next/navigation";
+import { Icon } from "@iconify/react";
+import { FaArrowLeftLong } from "react-icons/fa6";
+import Link from "next/link";
+import toast from "react-hot-toast";
+import { useJsApiLoader } from "@react-google-maps/api";
+import { useAuth } from "@/src/hooks/useAuth";
+import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
+import { fixedAmenities } from "@/src/data/amenities";
+import {
+  GetAmenities,
+  GetEventTypes,
+  CreateProperty,
+  UploadPropertyMedia,
+  UploadPropertyDocument,
+} from "@/src/lib/request-handlers/propertyMgt";
+import {
+  CreatePropertyUnit,
+  UploadPropertyUnitMedia,
+} from "@/src/lib/request-handlers/unitMgt";
+import { isVideoFile } from "@/src/lib/mediaFiles";
+import Spinner from "@/components/ui/Spinner";
+import CustomModal from "@/components/ui/CustomModal";
+import { CreateAmenityForm } from "../all-properties/CreatePropertyView";
+import ProgressBar from "./ProgressBar";
+import StepPropertyDetails from "./StepPropertyDetails";
+import StepUnits from "./StepUnits";
+import StepMediaDocs from "./StepMediaDocs";
+import UnitDrawer from "./UnitDrawer";
+import IncompleteProfileDialog from "@/src/components/shared/IncompleteProfileDialog";
+import { UserRole } from "@/src/lib/enums";
+import {
+  readWizardDraft,
+  writeWizardDraft,
+  clearWizardDraft,
+} from "./wizardDraft";
+import {
+  readWizardMediaDraft,
+  writeWizardMediaDraft,
+  clearWizardMediaDraft,
+} from "./wizardMediaDraft";
+import {
+  IAmenity,
+  ICreateProperty,
+  DocumentType,
+  MediaType,
+  PropertyType,
+} from "../types";
+import {
+  WizardStep,
+  PropertyFormValues,
+  UnitFormValues,
+  CategorizedMedia,
+  PropertyMediaCategory,
+} from "./types";
+import { getApiErrorMessage } from "@/src/lib/apiError";
+import { validatePropertyName } from "./nameValidator";
+import Modal from "../../modal/Modal";
+import StepDiscounts from "./StepDiscounts";
+import { FLEX_PAYMENTS_API_CONNECTED } from "@/src/lib/flexPayments";
+import {
+  emptyHallForm,
+  hallFormFromUnit,
+  hallPayload,
+  isVenue,
+  validateHall,
+} from "../venue";
+
+const libraries: any = ["places"];
+
+export default function CreatePropertyWizard() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  // Restore from localStorage on first mount so the agent doesn't lose
+  // progress if they were bounced to /settings/personal-info to complete
+  // their profile (or otherwise navigated away). Non-file wizard state lives
+  // here; selected files are restored separately from IndexedDB (see the
+  // media-hydration effect below and wizardMediaDraft.ts).
+  const [draft, setDraft] = useState(() => readWizardDraft());
+  const draftRestoredRef = useRef(false);
+
+  // Step state
+  const [currentStep, setCurrentStep] = useState<WizardStep>(
+    draft?.currentStep ?? WizardStep.PROPERTY_DETAILS,
+  );
+  const [highestStep, setHighestStep] = useState<WizardStep>(
+    draft?.highestStep ?? WizardStep.PROPERTY_DETAILS,
+  );
+
+  // Unit state. A draft saved before halls had rates and hours carries none
+  // of those fields; fill them from what the old draft did store (its day,
+  // half-day and hourly prices) rather than leave the drawer half-empty.
+  const [units, setUnits] = useState<UnitFormValues[]>(() =>
+    (draft?.units ?? []).map((u: any): UnitFormValues =>
+      "offers_full_day" in u
+        ? u
+        : {
+            ...u,
+            ...emptyHallForm(),
+            ...hallFormFromUnit({
+              ...u,
+              event_price_per_day: (u as any).event_price_per_day ?? u.price_per_night,
+            }),
+          },
+    ),
+  );
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
+
+  // Amenity state
+  const [showAmenityForm, setShowAmenityForm] = useState(false);
+
+  //Discontinue State
+  const [showDiscontinueModal, setShowDiscontinueModal] = useState(false);
+
+  // PROFILE_INCOMPLETE dialog state — surfaced when the backend rejects
+  // POST /properties because the operator's profile lacks host-required fields.
+  const [incompleteFields, setIncompleteFields] = useState<string[] | null>(
+    null,
+  );
+
+  // Media state — files grouped by PropertyMediaCategory. Each non-empty
+  // category is uploaded in its own POST so the server can persist the tag.
+  // These file buckets are persisted to IndexedDB (see wizardMediaDraft.ts) so
+  // selected media survives a page refresh; they're only wiped when the listing
+  // is discontinued or successfully created.
+  const [propertyMedia, setPropertyMedia] = useState<CategorizedMedia>({});
+  const [unitMediaByCategory, setUnitMediaByCategory] = useState<
+    Record<string, CategorizedMedia>
+  >({});
+  const [docFiles, setDocFiles] = useState<
+    { file: File; type: DocumentType }[]
+  >([]);
+  // Gate media persistence until the initial IndexedDB read finishes, so the
+  // empty startup state doesn't clobber a previously-saved draft.
+  const [mediaHydrated, setMediaHydrated] = useState(false);
+
+  // Amenities and Event Types. A venue picks from the venue list (stage,
+  // sound system, chairs...), a stay from the stay list.
+  const listingIsVenue = isVenue(draft?.values?.property_type);
+  const [amenityScope, setAmenityScope] = useState<"VENUE" | "STAY">(
+    listingIsVenue ? "VENUE" : "STAY",
+  );
+  const { data: fetchedAmenities } = GetAmenities(amenityScope);
+  const { data: fetchedEventTypes } = GetEventTypes();
+  const [availableAmenities, setAvailableAmenities] =
+    useState<IAmenity[]>(fixedAmenities);
+  const [availableEventTypes, setAvailableEventTypes] = useState<
+    { id: string; name: string }[]
+  >([]);
+
+  useEffect(() => {
+    setAvailableAmenities(
+      fetchedAmenities?.data?.data ?? (amenityScope === "VENUE" ? [] : fixedAmenities),
+    );
+  }, [fetchedAmenities, amenityScope]);
+
+  useEffect(() => {
+    if (fetchedEventTypes?.data?.data) {
+      setAvailableEventTypes(fetchedEventTypes.data.data);
+    }
+  }, [fetchedEventTypes]);
+
+  // API mutations
+  const { mutateAsync: createProperty, isPending: isCreatingProperty } =
+    CreateProperty();
+  const { mutateAsync: uploadMedia } = UploadPropertyMedia();
+  const { mutateAsync: uploadDoc } = UploadPropertyDocument();
+  const { mutateAsync: createUnits } = CreatePropertyUnit();
+  const { mutateAsync: uploadUnitMedia } = UploadPropertyUnitMedia();
+  // Covers property create + nested unit/media uploads. isCreatingProperty
+  // alone flips false before unit photos finish — on mobile that lets the
+  // user leave (or Safari suspend the tab) mid-upload.
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isCreating = isCreatingProperty || isSubmitting;
+
+  // Google Maps
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries,
+  });
+
+  if (loadError) {
+    console.error("Google Maps load error:", loadError);
+  }
+
+  // Amenity ID resolver
+  const sortAmenities = (
+    amenities: IAmenity[] = [],
+    selectedNames: string[] = [],
+  ): string[] => {
+    const sorted: string[] = [];
+    const safeAmenities = Array.isArray(amenities) ? amenities : [];
+    const safeNames = Array.isArray(selectedNames) ? selectedNames : [];
+    const amenityNames = safeAmenities.map((a) => a.name);
+    for (const name of safeNames) {
+      const pos = amenityNames.indexOf(name);
+      if (pos !== -1) {
+        sorted.push(safeAmenities[pos].id);
+      }
+    }
+    return sorted;
+  };
+
+  // Formik — initialValues is read once at mount, so we merge in any
+  // restored draft here. Subsequent edits flow through formik state and
+  // are persisted via the useEffect below.
+  const formik = useFormik<PropertyFormValues>({
+    initialValues: (draft?.values
+      ? {
+          ...draft.values,
+          // legacy numeric sentinel -> "" (see ownerId type change)
+          ownerId:
+            typeof draft.values.ownerId === "number"
+              ? ""
+              : (draft.values.ownerId ?? ""),
+          // A draft saved BEFORE the discounts step existed carries no policy
+          // objects, and spreading it leaves them undefined — the defaults
+          // below only apply when there is no draft at all. Ticking "Enable
+          // Policy" on one of those then crashed the step.
+          long_stay_discount_policy: draft.values.long_stay_discount_policy ?? null,
+          extension_discount_policy: draft.values.extension_discount_policy ?? null,
+          // Drafts saved before payment options existed carry none of these.
+          instalment_payment: draft.values.instalment_payment ?? null,
+          invite_friends_payment: draft.values.invite_friends_payment ?? null,
+          agent_can_configure_payments: draft.values.agent_can_configure_payments ?? false,
+        }
+      : undefined) ?? {
+      name: "",
+      address: "",
+      street_number: "",
+      street_name: "",
+      postal_code: "",
+      landmark: "",
+      google_place_id: "",
+      geocode_raw: null,
+      pin_confirmed: false,
+      property_type: "",
+      country: "Nigeria",
+      state: "Lagos",
+      city: "Ikeja",
+      lga: "",
+      description: "",
+      latitude: null,
+      longitude: null,
+      ownerId: "",
+      owner_name: "",
+      owner_email: "",
+      owner_phoneNumber: "",
+      is_pet_allowed: false,
+      is_party_allowed: false,
+      rules: "",
+      // null, not an inactive stub: null is what "no policy" means to the API,
+      // and DiscountPolicyEditor normalises it for display.
+      long_stay_discount_policy: null,
+      extension_discount_policy: null,
+      instalment_payment: null,
+      invite_friends_payment: null,
+      agent_can_configure_payments: false,
+      amenities: [],
+      amenityIds: [],
+      event_types: [],
+    },
+    enableReinitialize: true,
+    onSubmit: (values) => {
+      handleCreateProperty(values);
+    },
+  });
+
+  // Follow the property type: switching between a venue and a stay changes
+  // which amenities may be offered, and a selection from the other list would
+  // be refused by the API.
+  useEffect(() => {
+    const next = isVenue(formik.values.property_type) ? "VENUE" : "STAY";
+    if (next !== amenityScope) setAmenityScope(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formik.values.property_type]);
+
+  useEffect(() => {
+    const allowed = new Set((fetchedAmenities?.data?.data ?? []).map((a: IAmenity) => a.name));
+    if (!allowed.size) return;
+    const kept = (formik.values.amenities ?? []).filter((n) => allowed.has(n));
+    if (kept.length !== (formik.values.amenities ?? []).length) {
+      formik.setFieldValue("amenities", kept);
+    }
+    setUnits((prev) => {
+      let changed = false;
+      const next = prev.map((u) => {
+        const keep = (u.amenityNames ?? []).filter((n) => allowed.has(n));
+        if (keep.length === (u.amenityNames ?? []).length) return u;
+        changed = true;
+        return { ...u, amenityNames: keep };
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedAmenities]);
+
+  // Persist the JSON-serialisable parts of wizard state to localStorage
+  // on every meaningful change. File state (media/docs) is persisted
+  // separately to IndexedDB — see the media effects below and wizardMediaDraft.ts.
+  const [isDiscontinuing, setIsDiscontinuing] = useState(false);
+  useEffect(() => {
+    if (isDiscontinuing) return;
+
+    writeWizardDraft({
+      values: formik.values,
+      units,
+      currentStep,
+      highestStep,
+    });
+  }, [formik.values, units, currentStep, highestStep, isDiscontinuing]);
+
+  // Restore file-based media (property gallery, per-unit media, docs) from
+  // IndexedDB once on mount. Files can't live in the JSON draft, so they get
+  // their own store — this is what makes selections survive a page refresh.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const mediaDraft = await readWizardMediaDraft();
+      if (cancelled) return;
+      if (mediaDraft) {
+        if (mediaDraft.propertyMedia)
+          setPropertyMedia(mediaDraft.propertyMedia);
+        if (mediaDraft.unitMediaByCategory)
+          setUnitMediaByCategory(mediaDraft.unitMediaByCategory);
+        if (mediaDraft.docFiles) setDocFiles(mediaDraft.docFiles);
+      }
+      setMediaHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist the file buckets on every change, once hydration is done. Skipped
+  // while discontinuing so we don't re-save a draft we're about to clear.
+  useEffect(() => {
+    if (isDiscontinuing) return;
+    if (!mediaHydrated) return;
+    writeWizardMediaDraft({ propertyMedia, unitMediaByCategory, docFiles });
+  }, [
+    propertyMedia,
+    unitMediaByCategory,
+    docFiles,
+    mediaHydrated,
+    isDiscontinuing,
+  ]);
+
+  // Once per mount, if we actually restored something, surface a toast so
+  // the user knows their previous work is back. Skipped when the draft
+  // looks empty (just defaults) to avoid noise on first-ever visits.
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    if (!draft) return;
+    const hasMeaningfulDraft =
+      !!draft.values?.name?.trim() ||
+      !!draft.values?.address?.trim() ||
+      (draft.units?.length ?? 0) > 0 ||
+      draft.currentStep !== WizardStep.PROPERTY_DETAILS;
+    if (hasMeaningfulDraft) {
+      toast.success(MESSAGES.MSG_WELCOME_BACK_WE_RESTORED_YOUR_PROPERTY_D, {
+        duration: 4500,
+      });
+      setShowDiscontinueModal(true);
+    }
+  }, [draft]);
+
+  const handleDiscontinueListing = () => {
+    setIsDiscontinuing(true);
+
+    formik.resetForm();
+
+    clearWizardDraft();
+    // Discontinuing is the only path (besides a successful create) that wipes
+    // the persisted media — drop the IndexedDB file draft and local buckets.
+    clearWizardMediaDraft();
+    setPropertyMedia({});
+    setUnitMediaByCategory({});
+    setDocFiles([]);
+
+    setDraft(null);
+    setShowDiscontinueModal(false);
+
+    setTimeout(() => {
+      router.push("/property-management/all-properties");
+    }, 200);
+  };
+
+  const handleCloseShowDiscontinueModal = () => setShowDiscontinueModal(false);
+  const handleOpenShowDiscontinueModal = () => setShowDiscontinueModal(true);
+
+  // Step validation
+  const validateStep = (step: WizardStep): boolean => {
+    switch (step) {
+      case WizardStep.PROPERTY_DETAILS: {
+        const {
+          name,
+          address,
+          property_type,
+          city,
+          state,
+          country,
+          google_place_id,
+          latitude,
+          longitude,
+          pin_confirmed,
+        } = formik.values;
+
+        const nameError = validatePropertyName(name);
+        if (nameError) {
+          toast.error(nameError);
+          return false;
+        }
+        if (!address.trim()) {
+          toast.error(MESSAGES.MSG_ADDRESS_IS_REQUIRED);
+          return false;
+        }
+        if (!google_place_id) {
+          toast.error(MESSAGES.MSG_PLEASE_SELECT_THE_ADDRESS_FROM_THE_SUGGE);
+          return false;
+        }
+        if (latitude == null || longitude == null) {
+          toast.error(MESSAGES.MSG_COORDINATES_MISSING_U2014_PICK_THE_ADDRE);
+          return false;
+        }
+        if (!pin_confirmed) {
+          toast.error(MESSAGES.MSG_PLEASE_CONFIRM_THE_MAP_PIN_MATCHES_THE_A);
+          return false;
+        }
+        if (!property_type) {
+          toast.error(MESSAGES.MSG_PROPERTY_TYPE_IS_REQUIRED);
+          return false;
+        }
+        if (!country.trim()) {
+          toast.error(MESSAGES.MSG_COUNTRY_IS_REQUIRED);
+          return false;
+        }
+        if (!state.trim()) {
+          toast.error(MESSAGES.MSG_STATE_IS_REQUIRED);
+          return false;
+        }
+        if (!city.trim()) {
+          toast.error(MESSAGES.MSG_CITY_IS_REQUIRED);
+          return false;
+        }
+
+        // A new owner needs a phone: the backend's UserCreate validator
+        // requires one for role=OWNER. That rejection used to surface only
+        // at final submit, four steps later, as "Cannot create owner: Phone
+        // number is required when registering as an owner" — by which point
+        // the field that caused it was long off screen. Validate it where it
+        // is typed.
+        const { owner_email, owner_phoneNumber, ownerId } = formik.values;
+        if (!ownerId && owner_email.trim() && !owner_phoneNumber.trim()) {
+          toast.error(
+            "Add the new owner's phone number — it's required to create their account.",
+          );
+          return false;
+        }
+        return true;
+      }
+      case WizardStep.UNITS: {
+        // Halls are optional, but one that can't be booked as set up must be
+        // fixed here, not discovered when the API refuses it at the end.
+        if (isVenue(formik.values.property_type)) {
+          for (const u of units) {
+            const problem = validateHall(u);
+            if (problem) {
+              toast.error(`${u.name || "A hall"}: ${problem}`);
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+      case WizardStep.MEDIA_DOCS: {
+        // Only enforced when the user explicitly tries to create (see
+        // handleCreateProperty). Returning true here keeps step navigation
+        // from toasting about empty media the moment this step is entered.
+        return true;
+      }
+      case WizardStep.DISCOUNTS:
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  // Navigation
+  const goToStep = (step: WizardStep) => {
+    setCurrentStep(step);
+    if (step > highestStep) {
+      setHighestStep(step);
+    }
+  };
+
+  const handleNext = () => {
+    if (!validateStep(currentStep)) return;
+    const next = (currentStep + 1) as WizardStep;
+    if (next <= WizardStep.MEDIA_DOCS) {
+      goToStep(next);
+    }
+  };
+
+  const handleBack = () => {
+    const prev = (currentStep - 1) as WizardStep;
+    if (prev >= WizardStep.PROPERTY_DETAILS) {
+      setCurrentStep(prev);
+    }
+  };
+
+  // Unit handlers
+  const handleAddUnit = () => {
+    setEditingUnitIndex(null);
+    setDrawerOpen(true);
+  };
+
+  const handleEditUnit = (index: number) => {
+    setEditingUnitIndex(index);
+    setDrawerOpen(true);
+  };
+
+  const handleDeleteUnit = (index: number) => {
+    const unit = units[index];
+    setUnits((prev) => prev.filter((_, i) => i !== index));
+    // Clean up media for deleted unit
+    setUnitMediaByCategory((prev) => {
+      const next = { ...prev };
+      delete next[unit._key];
+      return next;
+    });
+  };
+
+  const handleSaveUnit = (unit: UnitFormValues) => {
+    if (editingUnitIndex !== null) {
+      setUnits((prev) =>
+        prev.map((u, i) => (i === editingUnitIndex ? unit : u)),
+      );
+    } else {
+      setUnits((prev) => [...prev, unit]);
+    }
+    setDrawerOpen(false);
+  };
+
+  // Submit
+  const handleCreateProperty = async (values: PropertyFormValues) => {
+    const anyPropertyMedia = Object.values(propertyMedia).some(
+      (files) => (files?.length ?? 0) > 0,
+    );
+
+    if (!anyPropertyMedia) {
+      toast.error(MESSAGES.MSG_PLEASE_UPLOAD_PHOTOS_FOR_AT_LEAST_ONE_PR);
+      return;
+    }
+
+    const sortedAmenities = sortAmenities(availableAmenities, values.amenities);
+    const venue = isVenue(values.property_type);
+
+    if (venue) {
+      for (const u of units) {
+        const problem = validateHall(u);
+        if (problem) {
+          toast.error(`${u.name || "A hall"}: ${problem}`);
+          return;
+        }
+      }
+    }
+
+    if (
+      values.latitude == null ||
+      values.longitude == null ||
+      !values.google_place_id
+    ) {
+      toast.error(MESSAGES.MSG_ADDRESS_DETAILS_ARE_INCOMPLETE_GO_BACK_T);
+      return;
+    }
+
+    // Owner assignment is only collected for admins and agents (see
+    // showOwnerSection in StepPropertyDetails). Submitting it blank makes the
+    // backend fall back to the caller as owner, which silently self-attributes
+    // a listing an agent meant to file for someone else — and strips the agent
+    // off it in the process. Better to stop here than to manufacture a row that
+    // needs a two-step admin repair.
+    const ownerSectionShown =
+      user?.role === UserRole.ADMIN ||
+      user?.role === UserRole.SUPER_ADMIN ||
+      user?.role === UserRole.AGENT;
+    if (ownerSectionShown && !values.ownerId && !values.owner_email) {
+      toast.error(
+        "Select an existing owner, or enter the new owner's details, before creating this listing.",
+      );
+      return;
+    }
+
+    const propertyPayload: ICreateProperty = {
+      name: values.name,
+      description: values.description,
+      address: values.address,
+      street_number: values.street_number || undefined,
+      street_name: values.street_name || undefined,
+      postal_code: values.postal_code || undefined,
+      landmark: values.landmark || undefined,
+      google_place_id: values.google_place_id || "",
+      city: values.city,
+      // Omitted rather than sent empty: the API resolves the LGA from
+      // coordinates when it is absent, but an empty string would overwrite
+      // a good value on the update path.
+      ...(values.lga ? { lga: values.lga } : {}),
+      state: values.state,
+      country: values.country,
+      latitude: values.latitude || 0,
+      longitude: values.longitude || 0,
+      property_type: values.property_type as PropertyType,
+      amenities: sortedAmenities,
+      // Neither question is asked of a venue; its rules say what is allowed.
+      is_pet_allowed: venue ? false : values.is_pet_allowed,
+      is_party_allowed: venue ? false : values.is_party_allowed,
+      rules: values.rules || undefined,
+      ...(values.ownerId
+        ? { owner_id: String(values.ownerId) }
+        : {
+            ...(values.owner_email && { owner_email: values.owner_email }),
+            ...(values.owner_name && { owner_name: values.owner_name }),
+            ...(values.owner_phoneNumber && {
+              owner_phone: values.owner_phoneNumber,
+            }),
+          }),
+      long_stay_discount_policy: values.long_stay_discount_policy,
+      extension_discount_policy: values.extension_discount_policy,
+      // Held back until the payments API exists, so nothing is sent that no
+      // one reads (see FLEX_PAYMENTS_API_CONNECTED).
+      ...(FLEX_PAYMENTS_API_CONNECTED
+        ? {
+            instalment_payment: values.instalment_payment,
+            invite_friends_payment: values.invite_friends_payment,
+            agent_can_configure_payments: values.agent_can_configure_payments,
+          }
+        : {}),
+    };
+
+    if (
+      values.property_type === PropertyType.EVENT_CENTRE &&
+      values.event_types?.length > 0
+    ) {
+      propertyPayload.event_types = availableEventTypes
+        .filter((et) => values.event_types.includes(et.name))
+        .map((et) => String(et.id));
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await createProperty({ payload: propertyPayload });
+      const propertyId = response?.data?.data?.id;
+      console.log("=== PROPERTY ID ===", propertyId);
+      if (!propertyId) {
+        toast.error(MESSAGES.MSG_PROPERTY_CREATED_BUT_FAILED_TO_GET_ID);
+        return;
+      }
+
+      // Snapshot media before clearing drafts — uploads still need these Files.
+      const propertyMediaSnapshot = propertyMedia;
+      const unitMediaSnapshot = unitMediaByCategory;
+      const docFilesSnapshot = docFiles;
+      const unitsSnapshot = units;
+
+      clearWizardDraft();
+      clearWizardMediaDraft();
+
+      const mediaErrors: string[] = [];
+
+      // Property gallery — one request per non-empty category.
+      const propertyMediaEntries = Object.entries(propertyMediaSnapshot).filter(
+        ([, files]) => (files?.length ?? 0) > 0,
+      ) as [PropertyMediaCategory, File[]][];
+
+      await Promise.all(
+        propertyMediaEntries.flatMap(([category, files]) => {
+          const imageFiles = files.filter((f) => !isVideoFile(f));
+          const videoFiles = files.filter(isVideoFile);
+          const uploadCategoryBatch = async (
+            batch: File[],
+            mediaType: string,
+          ) => {
+            if (batch.length === 0) return;
+            const formData = new FormData();
+            batch.forEach((file) => formData.append("media_file", file));
+            formData.append("media_type", mediaType);
+            formData.append(
+              "is_featured",
+              category === PropertyMediaCategory.EXTERIOR_FRONT
+                ? "true"
+                : "false",
+            );
+            formData.append("category", category);
+            try {
+              await uploadMedia({ propertyId, payload: formData });
+            } catch (error) {
+              mediaErrors.push(
+                getApiErrorMessage(error, `Media upload failed for ${category}`),
+              );
+            }
+          };
+          return [
+            uploadCategoryBatch(imageFiles, MediaType.IMAGE),
+            uploadCategoryBatch(videoFiles, MediaType.VIDEO),
+          ];
+        }),
+      );
+
+      // Ownership documents
+      await Promise.all(
+        docFilesSnapshot.map(async ({ file, type }) => {
+          const docFormData = new FormData();
+          docFormData.append("document_file", file);
+          docFormData.append("document_type", type);
+          try {
+            await uploadDoc({ propertyId, payload: docFormData });
+          } catch (error) {
+            // The API refuses a document whose bytes do not match its declared
+            // type, and one over the size cap, and it names which file and
+            // why. A bare "Document upload failed" leaves the owner with no
+            // idea whether to re-export the file, shrink it, or pick another —
+            // and this is the ownership-papers step, where getting stuck is
+            // expensive. The media branch above already keeps its reason.
+            mediaErrors.push(
+              getApiErrorMessage(
+                error,
+                `${MESSAGES.MSG_DOCUMENT_UPLOAD_FAILED} (${file.name})`,
+              ),
+            );
+          }
+        }),
+      );
+
+      // Units + per-unit media (awaited so mobile tabs don't suspend mid-upload)
+      if (unitsSnapshot.length > 0) {
+        const isVenueListing = venue;
+        const unitPayloads = unitsSnapshot.map((u) => ({
+          name: u.name,
+          description: u.description,
+          price_per_night: u.price_per_night,
+          caution_fee: u.caution_fee,
+          max_guests: u.max_guests,
+          count: u.count,
+          is_whole_property: u.is_whole_property,
+          bedroom_count: u.bedroom_count,
+          living_room_count: u.living_room_count,
+          kitchen_count: u.kitchen_count,
+          bathroom_count: u.bathroom_count,
+          amenities: sortAmenities(availableAmenities, u.amenityNames),
+          // A half-filled fee row is a mistake, not a charge — and the API
+          // rejects a blank name outright, which would fail the whole unit.
+          additional_fees: (u.additional_fees ?? []).filter((f) =>
+            f.fee_name.trim(),
+          ),
+          // Venue-only: capacity, facilities, and the rate card and hours the
+          // hall is hired by. hallPayload clears any rate the agent unticked
+          // and sets the headline price the API also derives.
+          ...(isVenueListing
+            ? {
+                seating_capacity: u.seating_capacity,
+                standing_capacity: u.standing_capacity,
+                car_park_spaces: u.car_park_spaces,
+                power_supply_provision: u.power_supply_provision || undefined,
+                max_guests: Math.max(u.seating_capacity || 0, u.standing_capacity || 0, 1),
+                ...hallPayload(u),
+              }
+            : {}),
+          // Spread rather than always sent: a unit with no override must omit
+          // these so the API leaves the column NULL and the unit inherits the
+          // property's policy. Sending an explicit null would work too, but
+          // omitting keeps create and PATCH-style updates reading the same.
+          ...(u.long_stay_discount_policy
+            ? { long_stay_discount_policy: u.long_stay_discount_policy }
+            : {}),
+          ...(u.extension_discount_policy && !isVenueListing
+            ? { extension_discount_policy: u.extension_discount_policy }
+            : {}),
+        }));
+
+        try {
+          const unitResponse = await createUnits({
+            propertyId: String(propertyId),
+            payload: unitPayloads,
+          });
+          const raw = unitResponse?.data?.data;
+          const createdUnits: any[] = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.units)
+              ? raw.units
+              : [];
+
+          const unitUploadTasks: Promise<void>[] = [];
+          unitsSnapshot.forEach((localUnit, index) => {
+            if (localUnit.is_whole_property) return;
+            const bucket = unitMediaSnapshot[localUnit._key] ?? {};
+            const hasFiles = Object.values(bucket).some(
+              (files) => (files?.length ?? 0) > 0,
+            );
+            if (!hasFiles) return;
+
+            const createdUnit =
+              createdUnits[index] ??
+              createdUnits.find(
+                (u) =>
+                  String(u?.name || "").trim().toLowerCase() ===
+                  localUnit.name.trim().toLowerCase(),
+              );
+
+            if (!createdUnit?.id) {
+              mediaErrors.push(
+                `Could not attach photos for unit "${localUnit.name}" — unit id missing from server response`,
+              );
+              return;
+            }
+
+            (
+              Object.entries(bucket) as [PropertyMediaCategory, File[]][]
+            ).forEach(([category, files]) => {
+              if (!files || files.length === 0) return;
+              const imageFiles = files.filter((f) => !isVideoFile(f));
+              const videoFiles = files.filter(isVideoFile);
+              const uploadCategoryBatch = async (
+                batch: File[],
+                mediaType: string,
+              ) => {
+                if (batch.length === 0) return;
+                const formData = new FormData();
+                batch.forEach((file) => formData.append("media_file", file));
+                formData.append("media_type", mediaType);
+                formData.append("is_featured", "false");
+                formData.append("category", category);
+                try {
+                  await uploadUnitMedia({
+                    propertyId,
+                    unitId: createdUnit.id,
+                    payload: formData,
+                  });
+                } catch {
+                  mediaErrors.push(
+                    `Failed to upload ${category} for unit: ${localUnit.name}`,
+                  );
+                }
+              };
+              unitUploadTasks.push(
+                uploadCategoryBatch(imageFiles, MediaType.IMAGE),
+              );
+              unitUploadTasks.push(
+                uploadCategoryBatch(videoFiles, MediaType.VIDEO),
+              );
+            });
+          });
+          await Promise.all(unitUploadTasks);
+        } catch {
+          toast.error(MESSAGES.MSG_FAILED_TO_CREATE_UNITS, {
+            duration: 6000,
+            style: { maxWidth: "500px", width: "max-content" },
+          });
+        } 
+      }
+
+      if (mediaErrors.length > 0) {
+        toast.error(
+          `Property created, but ${mediaErrors.length} upload(s) failed. Open the listing and re-add the missing photos.`,
+          { duration: 8000, style: { maxWidth: "500px", width: "max-content" } },
+        );
+      } else {
+        toast.success(MESSAGES.MSG_PROPERTY_CREATED_SUCCESSFULLY);
+      }
+
+      router.push(
+        PAGE_ROUTES.dashboard.propertyManagement.allProperties.details(
+          propertyId,
+        ),
+      );
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      if (
+        error?.response?.status === 403 &&
+        typeof detail === "object" &&
+        detail?.code === "PROFILE_INCOMPLETE"
+      ) {
+        setIncompleteFields(detail.missing_fields ?? []);
+        return;
+      }
+      const message =
+        (typeof detail === "string" ? detail : detail?.message) ||
+        error?.response?.data?.message ||
+        MESSAGES.MSG_SOMETHING_WENT_WRONG;
+      toast.error(message, {
+        duration: 6000,
+        style: { maxWidth: "500px", width: "max-content" },
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="relative m-3 sm:m-5 pb-28 sm:pb-20">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 mb-2">
+            <Link
+              href={PAGE_ROUTES.dashboard.propertyManagement.allProperties.base}
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 transition-all"
+            >
+              <FaArrowLeftLong className="text-[10px]" /> Back to Properties
+            </Link>
+          </div>
+          <h2 className="text-lg sm:text-2xl font-bold text-zinc-900 tracking-tight">
+            {isVenue(formik.values.property_type) ? "List New Event Centre" : "List New Property"}
+          </h2>
+          <p className="text-sm font-medium text-zinc-500">
+            Step {currentStep + 1} of {Object.keys(WizardStep).length / 2}
+          </p>
+        </div>
+        <div className="p-2.5 bg-primary/10 rounded-xl">
+          <Icon
+            icon="solar:home-add-bold-duotone"
+            className="text-2xl text-primary"
+          />
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-10">
+        <ProgressBar
+          currentStep={currentStep}
+          highestStep={highestStep}
+          isVenue={isVenue(formik.values.property_type)}
+          onStepClick={(step) => {
+            if (step <= highestStep) {
+              setCurrentStep(step);
+            }
+          }}
+        />
+      </div>
+
+      {/* Amenity Modal */}
+      {showAmenityForm && (
+        <CustomModal
+          title="Create Amenity"
+          onClose={() => setShowAmenityForm(false)}
+          isOpen={showAmenityForm}
+        >
+          <CreateAmenityForm
+            show={setShowAmenityForm}
+            defaultScope={amenityScope}
+          />
+        </CustomModal>
+      )}
+
+      {/* Unit Drawer */}
+      <UnitDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSave={handleSaveUnit}
+        editingUnit={editingUnitIndex !== null ? units[editingUnitIndex] : null}
+        availableAmenities={availableAmenities}
+        showAmenityForm={() => setShowAmenityForm(true)}
+        userRole={user?.role}
+        propertyName={formik.values.name}
+        propertyType={formik.values.property_type}
+      />
+
+      {/* Step Content — onSubmit is intentional no-op. Create is type="button"
+          so Enter / browser autofill cannot submit while media is empty and
+          toast on mount or mid-wizard. */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+        }}
+      >
+        {currentStep === WizardStep.PROPERTY_DETAILS && (
+          <StepPropertyDetails
+            formik={formik}
+            availableAmenities={availableAmenities}
+            availableEventTypes={availableEventTypes}
+            userRole={user?.role}
+            isLoaded={isLoaded}
+          />
+        )}
+
+        {currentStep === WizardStep.UNITS && (
+          <StepUnits
+            units={units}
+            onAddUnit={handleAddUnit}
+            onEditUnit={handleEditUnit}
+            onDeleteUnit={handleDeleteUnit}
+            onDiscontinueListing={handleOpenShowDiscontinueModal}
+            isVenue={isVenue(formik.values.property_type)}
+          />
+        )}
+
+        {currentStep === WizardStep.MEDIA_DOCS && (
+          <StepMediaDocs
+            propertyMedia={propertyMedia}
+            setPropertyMedia={setPropertyMedia}
+            docFiles={docFiles}
+            setDocFiles={setDocFiles}
+            units={units}
+            unitMediaByCategory={unitMediaByCategory}
+            setUnitMediaByCategory={setUnitMediaByCategory}
+            onDiscontinueListing={handleOpenShowDiscontinueModal}
+            propertyType={formik.values.property_type}
+          />
+        )}
+
+        {currentStep === WizardStep.DISCOUNTS && (
+          <StepDiscounts formik={formik} />
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between md:relative md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:border-0 md:px-0 md:py-0 md:max-w-3xl md:mx-auto md:mt-10">
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={currentStep === WizardStep.PROPERTY_DETAILS}
+            className="h-11 px-6 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-xl hover:bg-zinc-50 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Icon icon="solar:arrow-left-bold" className="text-base" />
+            Back
+          </button>
+
+          {currentStep === WizardStep.MEDIA_DOCS ? (
+            <button
+              type="button"
+              disabled={isCreating}
+              onClick={() => formik.handleSubmit()}
+              className="h-11 px-8 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isCreating ? (
+                <Spinner width="20" height="20" color="#fff" />
+              ) : (
+                <>
+                  <Icon icon="solar:check-read-bold" className="text-base" />
+                  Create Property
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleNext}
+              className="h-11 px-8 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2"
+            >
+              Next
+              <Icon icon="solar:arrow-right-bold" className="text-base" />
+            </button>
+          )}
+        </div>
+      </form>
+
+      <IncompleteProfileDialog
+        open={incompleteFields !== null}
+        missingFields={incompleteFields ?? []}
+        onClose={() => setIncompleteFields(null)}
+      />
+
+      <Modal
+        isOpen={showDiscontinueModal}
+        onClose={handleCloseShowDiscontinueModal}
+        title=""
+        content={
+          <div className="space-y-6">
+            <p className="text-center font-bold text-gray-700">
+              Do you want to discontinue this listing?
+            </p>
+
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={handleDiscontinueListing}
+                className="rounded-lg bg-red-600 px-6 py-2 text-white"
+              >
+                Yes
+              </button>
+
+              <button
+                onClick={handleCloseShowDiscontinueModal}
+                className="rounded-lg border px-6 py-2"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        }
+      />
+    </div>
+  );
+}

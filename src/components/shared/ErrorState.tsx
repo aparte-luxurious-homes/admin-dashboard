@@ -1,3 +1,4 @@
+import { MESSAGES } from '@/src/lib/messages';
 import { Icon } from "@iconify/react";
 
 interface ErrorStateProps {
@@ -7,7 +8,7 @@ interface ErrorStateProps {
 }
 
 export default function ErrorState({ 
-  title = "Something went wrong", 
+  title = MESSAGES.MSG_SOMETHING_WENT_WRONG, 
   message = "We encountered an error loading this data. Please try again.",
   onRetry
 }: ErrorStateProps) {

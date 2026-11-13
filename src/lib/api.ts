@@ -17,6 +17,9 @@ const axiosRequest = axios.create({
 // 🔹 Forceful normalization and token attachment
 axiosRequest.interceptors.request.use((config) => {
   // 1. Ensure baseURL always has the correct prefix
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
   if (config.baseURL && !config.baseURL.includes("/api/v")) {
     const base = config.baseURL.replace(/\/+$/, "");
     config.baseURL = base.endsWith("/api") ? `${base}/v1` : `${base}/api/v1`;
@@ -25,17 +28,21 @@ axiosRequest.interceptors.request.use((config) => {
   // 2. Ensure baseURL has NO trailing slash for consistent combination
   config.baseURL = config.baseURL?.replace(/\/+$/, "");
 
-  // 3. Ensure url has NO leading slash to prevent Axios's path replacement behavior
-  if (config.url?.startsWith("/")) {
-    config.url = config.url.substring(1);
+  // Ensure url always has a leading slash so Axios appends it correctly to baseURL
+  if (config.url && !config.url.startsWith("/")) {
+    config.url = `/${config.url}`;
   }
 
   if (process.env.NEXT_PUBLIC_NODE_ENV !== 'production') {
-    console.log(`[Axios] Final Request URL: ${config.baseURL}/${config.url}`);
+    console.log(`[Axios] Final Request URL: ${config.baseURL}${config.url}`);
   }
 
+  // A request that names its own token keeps it. The guest-account switch at
+  // login calls the API with the token it was just handed, before any cookie
+  // is set; overwriting it with a leftover cookie would act on whichever
+  // account last signed in on this browser.
   const token = Cookies.get("token");
-  if (token) {
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   // Strip empty query params like role=& is_verified=
@@ -64,10 +71,48 @@ axiosRequest.interceptors.request.use((config) => {
 // Flag to prevent multiple simultaneous redirects
 let isRedirecting = false;
 
-// 🔹 Handle token expiration (401 errors)
+// Endpoints whose 401 means "wrong credential for this route", not "your
+// session expired". They are authenticated by something other than the user's
+// JWT, so a 401 here must surface to the caller instead of ending the session.
+// The platform feature switches re-check the caller's own password and answer
+// 401 when it is wrong; that must reach the confirmation dialog, not sign a
+// super admin out mid-change.
+const NON_SESSION_AUTH_PATHS = ['/jobs/', '/admin/platform/features/'];
+
+// 🔹 Handle token expiration (401 errors) + PROFILE_INCOMPLETE (403) redirects
 axiosRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // PROFILE_INCOMPLETE — last-resort handler. Most call sites (property
+    // create, booking-on-behalf) render an inline dialog, so the user
+    // already has context. This interceptor only fires for stray fetches
+    // that aren't wrapped by a page-level handler.
+    if (error.response?.status === 403) {
+      const detail = error.response?.data?.detail;
+      const code = typeof detail === "object" ? detail?.code : undefined;
+      if (code === "PROFILE_INCOMPLETE") {
+        const currentPath =
+          typeof window !== "undefined" ? window.location.pathname : "";
+        if (!currentPath.startsWith("/settings/personal-info")) {
+          try {
+            const { default: toast } = await import("react-hot-toast");
+            toast.error(
+              detail?.message || "Please complete your profile to continue.",
+              { duration: 5000 }
+            );
+          } catch {
+            // toast import failed (very rare) — fall through to redirect
+          }
+          if (typeof window !== "undefined") {
+            setTimeout(() => {
+              window.location.href = "/settings/personal-info?from=incomplete";
+            }, 600);
+          }
+        }
+        return Promise.reject(error);
+      }
+    }
+
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       const requestUrl: string = error.config?.url || '';
@@ -80,6 +125,32 @@ axiosRequest.interceptors.response.use(
       // Avoid redirect loop on login route and don't logout for non-auth endpoints
       const onLoginRoute = currentPath.includes('/auth/login') || requestUrl.includes('/auth/login');
 
+      // A 401 from these endpoints is NOT a session failure. They authenticate
+      // with a credential other than the user's JWT (the /jobs/* routes take a
+      // shared bearer token meant for Cloud Scheduler), so rejecting the
+      // session token is the expected answer, not proof it expired. Without
+      // this, one admin click on "Run remittance" cleared the cookie, wiped
+      // Redux and bounced the user to login.
+      const isNonSessionAuthEndpoint = NON_SESSION_AUTH_PATHS.some((p) =>
+        requestUrl.includes(p)
+      );
+
+      if (isNonSessionAuthEndpoint) {
+        console.log(
+          '[Axios Interceptor] 401 from a non-session endpoint — surfacing to the caller, not logging out:',
+          requestUrl
+        );
+        return Promise.reject(error);
+      }
+
+      // The phone gate: this account must confirm its phone number by SMS
+      // before it can use the platform (the switch was turned on while it was
+      // signed in). It is a deliberate forced logout, so the login page is told
+      // why and shows a notice instead of looking like an expired session.
+      const detail = error.response?.data?.detail;
+      const phoneGate =
+        detail && typeof detail === 'object' && detail.code === 'PHONE_VERIFICATION_REQUIRED';
+
       if (!onLoginRoute && !isRedirecting) {
         console.log('[Axios Interceptor] Token expired, clearing auth state and redirecting to login');
 
@@ -88,6 +159,7 @@ axiosRequest.interceptors.response.use(
 
         // Clear token cookie
         Cookies.remove('token');
+        Cookies.remove('networkRole');
 
         // Clear Redux state and React Query cache
         try {
@@ -120,7 +192,9 @@ axiosRequest.interceptors.response.use(
 
         // Redirect to login
         console.log('[Axios Interceptor] Redirecting to login page');
-        window.location.href = PAGE_ROUTES.auth.login;
+        window.location.href = phoneGate
+          ? `${PAGE_ROUTES.auth.login}?reason=phone_verification`
+          : PAGE_ROUTES.auth.login;
       } else if (onLoginRoute) {
         console.warn('[Axios Interceptor] 401 received while on login route or performing login - ignoring.');
       } else {
