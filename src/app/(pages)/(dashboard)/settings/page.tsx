@@ -30,8 +30,9 @@ const SettingsPage = () => {
       icon: <MdPayments size={32} />,
     },
     // Platform-wide switches. Conditionally rendered rather than CSS-hidden,
-    // so they are absent from the DOM entirely for anyone but a super admin —
-    // the API enforces the same restriction, this only keeps the cards out of sight.
+    // so they are absent from the DOM for anyone who may not use them; the API
+    // enforces the same rules, this only keeps the cards out of sight.
+    // Network events: SUPER_ADMIN only.
     ...(user?.role === UserRole.SUPER_ADMIN
       ? [
           {
@@ -40,6 +41,11 @@ const SettingsPage = () => {
             route: "/settings/network-events",
             icon: <IoGitNetworkOutline size={32} />,
           },
+        ]
+      : []),
+    // Phone verification: SUPER_ADMIN and ADMIN (decided 2026-11-13).
+    ...(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN
+      ? [
           {
             title: "Phone verification",
             description: "Require owners, agents and guests to confirm their phone by SMS",

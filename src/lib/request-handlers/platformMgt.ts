@@ -76,7 +76,7 @@ export function useNetworkEnabled(): { networkEnabled: boolean; isLoading: boole
     return { networkEnabled: data?.networkEnabled !== false, isLoading };
 }
 
-/** The switch plus its provenance, from GET /admin/platform/features. SUPER_ADMIN only. */
+/** The switch plus its provenance, from GET /admin/platform/features. SUPER_ADMIN and ADMIN. */
 export function GetNetworkFeatureState(enabled = true) {
     return useQuery({
         queryKey: [PlatformRequestKeys.networkFeature],
@@ -121,7 +121,7 @@ export function UpdateNetworkFeature() {
 
 /**
  * The phone-verification switch plus its provenance, from
- * GET /admin/platform/features. SUPER_ADMIN only.
+ * GET /admin/platform/features. SUPER_ADMIN and ADMIN.
  *
  * Unlike the network switch this one defaults to OFF when the field is
  * missing: an API that predates the gate is not enforcing it.
