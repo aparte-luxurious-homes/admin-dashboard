@@ -138,8 +138,20 @@ export const PAGE_ROUTES = {
         wallet: {
             base: '/wallet',
         },
+        whatsapp: {
+            base: '/whatsapp',
+            inbox: '/whatsapp/inbox',
+            conversation: (id: string) => `/whatsapp/inbox/${id}`,
+            analytics: '/whatsapp/analytics',
+        },
         walletAdjustments: {
             base: '/wallet-adjustments',
+        },
+        blog: {
+            base: '/blog',
+            create: '/blog/new',
+            edit: (id: string) => `/blog/${id}`,
+            categories: '/blog/categories',
         },
         icalManagement: {
             feeds: '/ical-management/feeds',

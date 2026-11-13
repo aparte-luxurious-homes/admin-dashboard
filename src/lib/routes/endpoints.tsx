@@ -8,7 +8,6 @@ export const API_ROUTES = {
         resendOtp: '/auth/otp/resend',
         logout: '/auth/logout',
         requestPhoneOtp: '/auth/phone/request-otp',
-        requestPhoneOtpViaEmail: '/auth/phone/request-otp-via-email',
         verifyPhoneOtp: '/auth/phone/verify',
     },
     admin: {
@@ -249,8 +248,11 @@ export const API_ROUTES = {
             reassign: (id: string) => `/admin/network/mentorship/${id}/reassign`,
         },
         // Gold, then Silver with their Gold mentor, then Bronze with both
-        // mentors. `format=csv|pdf` downloads it.
+        // mentors.
         report: `/admin/network/report`,
+        // The same report as a CSV or PDF in cloud storage; answers with its
+        // download_url, like every other staff export.
+        reportDownload: `/admin/network/report/download`,
         // Monthly team targets: every team head's target vs achieved, set one
         // (this month or from next month), its history, and a whole team.
         targets: {
@@ -351,6 +353,20 @@ export const API_ROUTES = {
         // SUPER_ADMIN only; adds who last moved the switch.
         adminFeatures: '/admin/platform/features',
         networkFeature: '/admin/platform/features/network',
+        phoneVerificationFeature: '/admin/platform/features/phone-verification',
+        // The WhatsApp booking bot's public number. Any authenticated role.
+        whatsapp: '/platform/whatsapp',
+    },
+    // Aparte on WhatsApp: ops inbox and funnel (whatsapp.view_inbox /
+    // whatsapp.reply / whatsapp.view_analytics on the API).
+    whatsapp: {
+        conversations: '/admin/whatsapp/conversations',
+        conversation: (id: string) => `/admin/whatsapp/conversations/${id}`,
+        takeover: (id: string) => `/admin/whatsapp/conversations/${id}/takeover`,
+        release: (id: string) => `/admin/whatsapp/conversations/${id}/release`,
+        resolve: (id: string) => `/admin/whatsapp/conversations/${id}/resolve`,
+        reply: (id: string) => `/admin/whatsapp/conversations/${id}/reply`,
+        funnel: '/admin/whatsapp/funnel',
     },
     permissions: {
         base: '/permissions',
@@ -432,6 +448,19 @@ export const API_ROUTES = {
             conflicts: '/ical/admin/conflicts',
             resolveConflict: '/ical/admin/conflicts/resolve',
         }
+    },
+    // Blog management (api-v1 services/blog). Super/Admin publish; operations
+    // and support admins write drafts. The public blog lives on the website.
+    blog: {
+        posts: '/admin/blog/posts',
+        post: (id: string) => `/admin/blog/posts/${id}`,
+        publish: (id: string) => `/admin/blog/posts/${id}/publish`,
+        unpublish: (id: string) => `/admin/blog/posts/${id}/unpublish`,
+        featured: (id: string) => `/admin/blog/posts/${id}/featured`,
+        restore: (id: string) => `/admin/blog/posts/${id}/restore`,
+        images: '/admin/blog/images',
+        categories: '/admin/blog/categories',
+        category: (id: string) => `/admin/blog/categories/${id}`,
     },
     // Owner home (docs/owner-home-spec.md). Owner-scoped: the API always
     // answers for the caller and never takes an owner id.

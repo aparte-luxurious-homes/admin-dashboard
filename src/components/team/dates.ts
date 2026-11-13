@@ -36,6 +36,9 @@ export const lagosToday = (at: Date = new Date()): string => calendarDateIn(REPO
 /** First day of the WAT month `at` falls in. */
 export const lagosMonthStart = (at: Date = new Date()): string => `${lagosToday(at).slice(0, 8)}01`;
 
+/** `YYYY-MM` of the WAT month `at` falls in. */
+export const lagosMonth = (at: Date = new Date()): string => lagosToday(at).slice(0, 7);
+
 /** The network report's default range: month to date, in WAT. */
 export function defaultReportRange(at: Date = new Date()): { start_date: string; end_date: string } {
     return { start_date: lagosMonthStart(at), end_date: lagosToday(at) };

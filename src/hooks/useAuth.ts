@@ -184,25 +184,29 @@ export const useLogin = () => {
   });
 };
 
-// 🔹 Phone-OTP request (resend SMS)
+/** What POST /auth/phone/request-otp answers with. */
+export interface PhoneOtpRequestResult {
+  phone: string | null;
+  phoneMasked: string | null;
+  resendAfterSeconds: number;
+}
+
+// 🔹 Phone-OTP request: send (or resend) the SMS code for a sign-in challenge.
+// With `phone`, the challenge also sets or changes the number on the account
+// first; that is how someone with no number on file, or a wrong one, gets in.
 export const useRequestPhoneOtp = () => {
   return useMutation({
-    mutationFn: async ({ phone }: { phone: string }) => {
-      const response = await axiosRequest.post(API_ROUTES.auth.requestPhoneOtp, { phone });
-      return response.data;
-    },
-  });
-};
-
-// 🔹 Phone-OTP request via email (DND fallback)
-export const useRequestPhoneOtpViaEmail = () => {
-  return useMutation({
-    mutationFn: async ({ phone }: { phone: string }) => {
-      const response = await axiosRequest.post(
-        API_ROUTES.auth.requestPhoneOtpViaEmail,
-        { phone }
-      );
-      return response.data;
+    mutationFn: async ({ challenge, phone }: { challenge: string; phone?: string }): Promise<PhoneOtpRequestResult> => {
+      const response = await axiosRequest.post(API_ROUTES.auth.requestPhoneOtp, {
+        challenge,
+        ...(phone ? { phone } : {}),
+      });
+      const data = response.data?.data ?? response.data ?? {};
+      return {
+        phone: data.phone ?? null,
+        phoneMasked: data.phoneMasked ?? data.phone_masked ?? null,
+        resendAfterSeconds: Number(data.resendAfterSeconds ?? data.resend_after_seconds ?? 60) || 0,
+      };
     },
   });
 };
@@ -214,10 +218,10 @@ export const useVerifyPhoneOtp = () => {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: async ({ phone, otp }: { phone: string; otp: string }) => {
+    mutationFn: async ({ challenge, otp }: { challenge: string; otp: string }) => {
       const response = await axiosRequest.post<IBaseResponse<ILoginResponse> | ILoginResponse>(
         API_ROUTES.auth.verifyPhoneOtp,
-        { phone, otp }
+        { challenge, otp }
       );
 
       const raw = response.data as any;

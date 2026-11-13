@@ -74,7 +74,10 @@ let isRedirecting = false;
 // Endpoints whose 401 means "wrong credential for this route", not "your
 // session expired". They are authenticated by something other than the user's
 // JWT, so a 401 here must surface to the caller instead of ending the session.
-const NON_SESSION_AUTH_PATHS = ['/jobs/'];
+// The platform feature switches re-check the caller's own password and answer
+// 401 when it is wrong; that must reach the confirmation dialog, not sign a
+// super admin out mid-change.
+const NON_SESSION_AUTH_PATHS = ['/jobs/', '/admin/platform/features/'];
 
 // 🔹 Handle token expiration (401 errors) + PROFILE_INCOMPLETE (403) redirects
 axiosRequest.interceptors.response.use(
@@ -140,6 +143,14 @@ axiosRequest.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      // The phone gate: this account must confirm its phone number by SMS
+      // before it can use the platform (the switch was turned on while it was
+      // signed in). It is a deliberate forced logout, so the login page is told
+      // why and shows a notice instead of looking like an expired session.
+      const detail = error.response?.data?.detail;
+      const phoneGate =
+        detail && typeof detail === 'object' && detail.code === 'PHONE_VERIFICATION_REQUIRED';
+
       if (!onLoginRoute && !isRedirecting) {
         console.log('[Axios Interceptor] Token expired, clearing auth state and redirecting to login');
 
@@ -181,7 +192,9 @@ axiosRequest.interceptors.response.use(
 
         // Redirect to login
         console.log('[Axios Interceptor] Redirecting to login page');
-        window.location.href = PAGE_ROUTES.auth.login;
+        window.location.href = phoneGate
+          ? `${PAGE_ROUTES.auth.login}?reason=phone_verification`
+          : PAGE_ROUTES.auth.login;
       } else if (onLoginRoute) {
         console.warn('[Axios Interceptor] 401 received while on login route or performing login - ignoring.');
       } else {

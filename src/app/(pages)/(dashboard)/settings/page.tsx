@@ -3,7 +3,7 @@
 import SettingCard from "@/src/components/settings-card/settingscard";
 import Grid from "@mui/material/Grid2";
 import { useAuth } from "@/src/hooks/useAuth";
-import { MdOutlineAccountCircle, MdSecurity, MdPayments } from "react-icons/md";
+import { MdOutlineAccountCircle, MdSecurity, MdPayments, MdOutlinePhonelinkLock } from "react-icons/md";
 import { IoGitNetworkOutline } from "react-icons/io5";
 import { UserRole } from "@/src/lib/enums";
 
@@ -29,16 +29,30 @@ const SettingsPage = () => {
       route: "/settings/payments-payouts",
       icon: <MdPayments size={32} />,
     },
-    // Platform-wide kill switch. Conditionally rendered rather than CSS-hidden,
-    // so it is absent from the DOM entirely for anyone but a super admin — the
-    // API enforces the same restriction, this only keeps the card out of sight.
+    // Platform-wide switches. Conditionally rendered rather than CSS-hidden,
+    // so they are absent from the DOM for anyone who may not use them; the API
+    // enforces the same rules, this only keeps the cards out of sight.
+    // Network events: SUPER_ADMIN only.
     ...(user?.role === UserRole.SUPER_ADMIN
-      ? [{
-          title: "Network events",
-          description: "Enable or disable the Agent Network platform-wide",
-          route: "/settings/network-events",
-          icon: <IoGitNetworkOutline size={32} />,
-        }]
+      ? [
+          {
+            title: "Network events",
+            description: "Enable or disable the Agent Network platform-wide",
+            route: "/settings/network-events",
+            icon: <IoGitNetworkOutline size={32} />,
+          },
+        ]
+      : []),
+    // Phone verification: SUPER_ADMIN and ADMIN (decided 2026-11-13).
+    ...(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN
+      ? [
+          {
+            title: "Phone verification",
+            description: "Require owners, agents and guests to confirm their phone by SMS",
+            route: "/settings/phone-verification",
+            icon: <MdOutlinePhonelinkLock size={32} />,
+          },
+        ]
       : []),
   ];
 
