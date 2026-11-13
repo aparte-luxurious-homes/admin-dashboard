@@ -35,9 +35,11 @@ const DISABLE_EFFECTS = [
 export default function PhoneVerificationSettingsPage() {
     const router = useRouter();
     const { user, isFetching } = useAuth();
-    const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+    // SUPER_ADMIN and ADMIN manage this switch (the API allows both, with a
+    // password); the network switch stays super-admin only.
+    const canManage = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN;
 
-    const { data: state, isLoading } = GetPhoneVerificationFeatureState(isSuperAdmin);
+    const { data: state, isLoading } = GetPhoneVerificationFeatureState(canManage);
     const updateFeature = UpdatePhoneVerificationFeature();
 
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -47,17 +49,17 @@ export default function PhoneVerificationSettingsPage() {
     const [acknowledged, setAcknowledged] = useState(false);
 
     // Direct URL access — the card is hidden for everyone else, but the route
-    // still has to refuse. The API refuses too; this is only so a non-super-admin
+    // still has to refuse. The API refuses too; this is only so anyone else
     // gets a redirect instead of a page that renders and then errors.
     useEffect(() => {
-        if (!isFetching && user && !isSuperAdmin) {
-            toast.error(MESSAGES.MSG_ONLY_A_SUPER_ADMIN_CAN_CHANGE_PLATFORM_F);
+        if (!isFetching && user && !canManage) {
+            toast.error(MESSAGES.MSG_ONLY_ADMINS_CAN_CHANGE_PHONE_VERIFICATION);
             router.replace("/settings");
         }
-    }, [isFetching, user, isSuperAdmin, router]);
+    }, [isFetching, user, canManage, router]);
 
     if (isFetching || !user) return <Loader message="Loading settings..." />;
-    if (!isSuperAdmin) return null;
+    if (!canManage) return null;
 
     const enabled = state?.phone_verification_enforced === true;
     // The switch's target position: the opposite of where it sits now.

@@ -123,6 +123,7 @@ export const MESSAGES = {
   MSG_PLEASE_SELECT_A_GUEST: "Please select a guest",
   MSG_PLEASE_SELECT_THE_ADDRESS_FROM_THE_SUGGE: "Please select an address from the suggestions.",
   MSG_ONLY_A_SUPER_ADMIN_CAN_CHANGE_PLATFORM_F: "Only a super admin can change platform features",
+  MSG_ONLY_ADMINS_CAN_CHANGE_PHONE_VERIFICATION: "Only an admin or super admin can change phone verification",
   MSG_COULD_NOT_BUILD_A_RANDOM_SELECTION: "We couldn't make a random selection right now.",
   MSG_STATE_IS_REQUIRED: "State is required",
   MSG_PLEASE_SELECT_A_CHECK_IN_DATE: "Please select a check-in date",
