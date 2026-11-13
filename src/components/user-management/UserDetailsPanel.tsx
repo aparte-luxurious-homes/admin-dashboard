@@ -7,6 +7,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { canFixEmailFor, canViewEmailHealth } from "@/src/lib/request-handlers/emailHealthMgt";
 import FixEmailDialog from "./email-health/FixEmailDialog";
 import { formatBounceDate } from "./email-health/EmailHealthChip";
+import PhoneVerificationChip from "./PhoneVerificationChip";
 
 interface UserDetailsPanelProps {
   user: UserDetail;
@@ -19,6 +20,21 @@ function Field({ label, value }: { label: string; value: string | null }) {
     <div className="space-y-1">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</p>
       <p className="text-sm font-medium text-gray-900">{value || "--/--"}</p>
+    </div>
+  );
+}
+
+/** The phone number, with whether it was confirmed by SMS. */
+function PhoneField({ user }: { user: UserDetail }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone Number</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-medium text-gray-900">{user.phone || "--/--"}</p>
+        {user.phone && (
+          <PhoneVerificationChip verified={user.phoneVerified} verifiedAt={user.phoneVerifiedAt} />
+        )}
+      </div>
     </div>
   );
 }
@@ -134,7 +150,7 @@ const UserDetailsPanel: React.FC<UserDetailsPanelProps> = ({ user, onUpdated }) 
             <EmailField user={user} onUpdated={onUpdated} />
           </div>
           <div className="sm:col-span-2">
-            <Field label="Phone Number" value={user.phone} />
+            <PhoneField user={user} />
           </div>
           <Field label="Address" value={p.address} />
           <Field label="City" value={p.city} />

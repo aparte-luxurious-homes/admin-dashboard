@@ -9,6 +9,7 @@ import Button from "@/src/components/button";
 import { useAuth } from "@/src/hooks/useAuth";
 import { canViewEmailHealth } from "@/src/lib/request-handlers/emailHealthMgt";
 import EmailHealthChip from "./email-health/EmailHealthChip";
+import PhoneVerificationChip from "./PhoneVerificationChip";
 
 interface UserProfileHeaderProps {
   user: UserDetail;
@@ -116,6 +117,12 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
                 bouncedAt={user.emailBouncedAt}
                 reason={user.emailBounceReason}
                 suggestion={user.emailSuggestion}
+              />
+            )}
+            {user.phone && (
+              <PhoneVerificationChip
+                verified={user.phoneVerified}
+                verifiedAt={user.phoneVerifiedAt}
               />
             )}
           </div>

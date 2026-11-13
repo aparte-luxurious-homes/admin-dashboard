@@ -23,6 +23,15 @@ import EmailHealthChip, { formatBounceDate } from "@/src/components/user-managem
 import { normalizeEmailStatus } from "@/src/components/user-management/user-detail.types";
 import { CancelEmailChange } from "@/src/lib/request-handlers/emailChangeMgt";
 import { emailChangeError } from "@/src/lib/email-change";
+import { GetPlatformFeatures } from "@/src/lib/request-handlers/platformMgt";
+
+/** Digits only, so "+2348031234567" and "0803 123 4567" compare by number, not formatting. */
+const phoneDigits = (phone: string | null | undefined): string => {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (digits.startsWith("234")) return digits.slice(3);
+  if (digits.startsWith("0")) return digits.slice(1);
+  return digits;
+};
 
 // KYC verification is self-serve for AGENT/OWNER/GUEST. Admin roles' identity
 // is vetted during onboarding, so we don't render the upload widget for them.
@@ -106,6 +115,7 @@ const PersonalInfoPage = () => {
   }, []);
 
   const [isEditing, setIsEditing] = useState(false);
+  const { data: platformFeatures } = GetPlatformFeatures();
   const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
   const cancelEmailChange = CancelEmailChange();
 
@@ -149,6 +159,9 @@ const PersonalInfoPage = () => {
 
   const handleEditProfile = () => {
     setIsEditing(true);
+    // Read before the save: refreshUser() replaces `user` afterwards.
+    const phoneChanged =
+      phoneDigits(form.phone) !== "" && phoneDigits(form.phone) !== phoneDigits(user?.phone);
     const formData = new FormData();
     // Skip email (changed only through the verified flow; PUT /profile
     // refuses a different address) and empty fields so the partial
@@ -170,6 +183,17 @@ const PersonalInfoPage = () => {
           duration: 3000,
           style: { maxWidth: "500px", width: "max-content" },
         });
+        // A new number has to be confirmed by SMS, which happens at sign-in
+        // while the phone gate is on. Staff are never gated, so they aren't told.
+        const gated =
+          showKyc && platformFeatures?.phoneVerificationEnforced === true;
+        if (phoneChanged && res?.data?.data?.phoneVerified === false && gated) {
+          toast("We'll ask you to confirm your new number by SMS the next time you sign in.", {
+            icon: "📱",
+            duration: 6000,
+            style: { maxWidth: "500px" },
+          });
+        }
         // So the form (and missingProfileFields) reflect what the server
         // just persisted.
         await refreshUser();
