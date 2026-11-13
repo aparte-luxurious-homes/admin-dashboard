@@ -96,6 +96,9 @@ export const PAGE_ROUTES = {
                 base: '/transactions/payments',
                 details: (id: number | string) => `/transactions/payments/${id}`,
             },
+            flexiblePayments: {
+                base: '/transactions/flexible-payments',
+            },
             refunds: {
                 base: '/transactions/refunds',
                 details: (id: number | string) => `/transactions/refunds/${id}`,

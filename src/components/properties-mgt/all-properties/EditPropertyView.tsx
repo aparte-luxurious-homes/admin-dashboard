@@ -62,6 +62,7 @@ import UnitDrawer from "../create-wizard/UnitDrawer";
 import { UnitFormValues, createEmptyUnit } from "../create-wizard/types";
 import UnitCard from "../create-wizard/UnitCard";
 import StepDiscounts from "../create-wizard/StepDiscounts";
+import { FLEX_PAYMENTS_API_CONNECTED } from "@/src/lib/flexPayments";
 import axios from "axios";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import usePlacesAutocomplete, {
@@ -548,6 +549,10 @@ Deleting anyway removes the unit but does NOT ` +
         (propertyData as any)?.long_stay_discount_policy ?? null,
       extension_discount_policy:
         (propertyData as any)?.extension_discount_policy ?? null,
+      instalment_payment: (propertyData as any)?.instalment_payment ?? null,
+      invite_friends_payment: (propertyData as any)?.invite_friends_payment ?? null,
+      agent_can_configure_payments:
+        (propertyData as any)?.agent_can_configure_payments ?? false,
     },
     onSubmit: (values: any) => {
       // Every selected name, attached stay amenities on a venue included.
@@ -581,6 +586,14 @@ Deleting anyway removes the unit but does NOT ` +
         google_place_id: values.google_place_id || undefined,
         long_stay_discount_policy: values.long_stay_discount_policy,
         extension_discount_policy: values.extension_discount_policy,
+        // Held back until the payments API exists (see FLEX_PAYMENTS_API_CONNECTED).
+        ...(FLEX_PAYMENTS_API_CONNECTED
+          ? {
+              instalment_payment: values.instalment_payment,
+              invite_friends_payment: values.invite_friends_payment,
+              agent_can_configure_payments: values.agent_can_configure_payments,
+            }
+          : {}),
       };
 
       if (values.type === PropertyType.EVENT_CENTRE && values.event_types?.length > 0) {
@@ -1476,7 +1489,7 @@ Deleting anyway removes the unit but does NOT ` +
                             </div>
                         </div>
                     </div>
-          {/* Discounts Management Section */}
+          {/* Payments & Discounts Management Section */}
           <div className="bg-white border border-zinc-100 rounded-2xl p-0 shadow-sm mt-4">
             <StepDiscounts formik={formik} />
           </div>

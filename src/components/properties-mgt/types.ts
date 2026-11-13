@@ -1,5 +1,6 @@
 import { IUser } from "@/src/lib/types"
 import { IBooking } from "../booking-mgt/types"
+import type { IInstalmentConfig, IInviteFriendsConfig } from "@/src/lib/types/flexPayments"
 
 
 export type VerificationBageProps = {
@@ -282,6 +283,12 @@ export interface IProperty {
     extension_discount_policy?: IDiscountPolicy
     proposed_long_stay_discount_policy?: IDiscountPolicy
     proposed_extension_discount_policy?: IDiscountPolicy
+
+    // Flexible payment options (null/absent = not offered)
+    instalment_payment?: IInstalmentConfig | null
+    invite_friends_payment?: IInviteFriendsConfig | null
+    /** Owner has authorised the property's agent to change the two above. */
+    agent_can_configure_payments?: boolean
     
     createdAt: string
     created_at?: string

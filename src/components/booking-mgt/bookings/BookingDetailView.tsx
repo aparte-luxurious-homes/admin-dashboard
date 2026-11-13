@@ -24,6 +24,7 @@ import BookingPropertyCard from "./BookingPropertyCard";
 import BookingGuestCard from "./BookingGuestCard";
 import BookingDatesCard from "./BookingDatesCard";
 import BookingPaymentCard from "./BookingPaymentCard";
+import FlexPaymentCard from "@/src/components/flex-payments/FlexPaymentCard";
 import BookingRevenueSplit from "./BookingRevenueSplit";
 import { CommissionSplitCard } from "@/src/components/team/AdminNetworkViews";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -224,6 +225,7 @@ export default function BookingDetailView({ bookingId }: { bookingId: string }) 
                   <BookingDatesCard booking={booking} />
                   <BookingGuestCard booking={booking} />
                   <BookingPaymentCard booking={booking} />
+                  <FlexPaymentCard plan={booking.paymentPlan} />
 
                   {/* Referral & on-behalf attribution */}
                   {(() => {
