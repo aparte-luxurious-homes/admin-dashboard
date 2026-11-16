@@ -74,7 +74,8 @@ describe("validateInstalmentConfig", () => {
         assert.deepEqual(validateInstalmentConfig({ ...ok, balance_deadline_days_before_checkin: 0 }), {});
     });
     it("rejects out-of-range, fractional and NaN percentages", () => {
-        for (const bad of [0, 9, 91, 100, 55.5, NaN]) {
+        // 19 is under the 20% floor the API enforces.
+        for (const bad of [0, 9, 19, 91, 100, 55.5, NaN]) {
             assert.ok(validateInstalmentConfig({ ...ok, initial_percentage: bad }).initial_percentage, String(bad));
         }
     });

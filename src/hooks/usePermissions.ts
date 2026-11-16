@@ -35,6 +35,15 @@ export const usePermissions = () => {
         UserRole.SUPER_ADMIN,
         UserRole.ADMIN,
     ].includes(role as UserRole);
+    // Flexible payments monitoring: mirrors the API's payment_plans.view /
+    // .manage grants (services/permissions/service.py). SUPPORT_ADMIN is not
+    // in it, and owners and agents read a plan on the booking but never act on
+    // a guest's invitations.
+    const canManagePaymentPlans = [
+        UserRole.SUPER_ADMIN,
+        UserRole.ADMIN,
+        UserRole.OPERATIONS_ADMIN,
+    ].includes(role as UserRole);
     const isAgent = role === UserRole.AGENT;
     const isOwner = role === UserRole.OWNER;
     const isStaff = isAdmin || isAgent || isOwner;
@@ -124,6 +133,7 @@ export const usePermissions = () => {
         canVerifyProperty,
 
         canManageBookings,
+        canManagePaymentPlans,
         canCancelBooking,
         canManageFinances,
         canFlagReview,

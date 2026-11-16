@@ -118,7 +118,7 @@ function ContributorRow({
  * separately on purpose: a partly funded booking can be confirmed yet unpaid.
  */
 export default function FlexPaymentCard({ plan }: { plan: IPaymentPlan | null }) {
-    const { canManageBookings } = usePermissions();
+    const { canManagePaymentPlans } = usePermissions();
     const { mutate: resend, isPending: resending } = ResendContributorInvitation();
 
     if (!plan) return null;
@@ -189,7 +189,7 @@ export default function FlexPaymentCard({ plan }: { plan: IPaymentPlan | null })
                             <ContributorRow
                                 key={c.id}
                                 contributor={c}
-                                canResend={canManageBookings}
+                                canResend={canManagePaymentPlans}
                                 resending={resending}
                                 onResend={() =>
                                     resend(

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Icon } from "@iconify/react";
 import toast from "react-hot-toast";
 import { useDebouncedValue } from "@/src/hooks/useDebouncedValue";
-import { FLEX_KIND_LABEL, FLEX_STATUS_LABEL, isOpenPayment, koboToNaira, plansToCsv } from "@/src/lib/flexPayments";
+import { FLEX_KIND_LABEL, FLEX_STATUS_LABEL, isOpenPayment, koboToNaira } from "@/src/lib/flexPayments";
+import { flexPaymentsApi } from "@/src/lib/flexPaymentsApi";
 import { GetFlexPayments } from "@/src/lib/request-handlers/flexPaymentsMgt";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import { FlexPaymentKind, FlexPaymentStatus } from "@/src/lib/types/flexPayments";
@@ -55,15 +56,30 @@ export default function FlexPaymentsView() {
     const total = query.data?.total ?? 0;
     const filtered = status !== "ALL" || kind !== "ALL" || expiringSoon || !!debouncedSearch;
 
-    const exportCsv = () => {
-        const blob = new Blob([plansToCsv(rows)], { type: "text/csv;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `flexible-payments-page-${page}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success(`Exported ${rows.length} rows`);
+    // Every plan matching the current filters, built by the API (not just
+    // the page on screen).
+    const [exporting, setExporting] = useState(false);
+    const exportCsv = async () => {
+        setExporting(true);
+        try {
+            const blob = await flexPaymentsApi.exportPlans({
+                status,
+                kind,
+                attention: expiringSoon ? "EXPIRING_SOON" : "NONE",
+                search: debouncedSearch || undefined,
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "flexible-payments.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success("Report downloaded");
+        } catch {
+            toast.error("Could not export the report. Please try again.");
+        } finally {
+            setExporting(false);
+        }
     };
 
     return (
@@ -75,7 +91,7 @@ export default function FlexPaymentsView() {
                     <button
                         type="button"
                         onClick={exportCsv}
-                        disabled={rows.length === 0}
+                        disabled={rows.length === 0 || exporting}
                         title="Exports the rows on this page"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
                     >

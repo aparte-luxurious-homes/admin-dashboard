@@ -16,16 +16,19 @@ import {
 } from "./types/flexPayments";
 
 /**
- * Flip to true once the payments API exists. While false, listing config is
- * kept in the form (and the wizard draft) but NOT sent to the API, the admin
- * "Flexible payments" nav entry is hidden, and the config UI says so — so no
- * one believes a setting was saved when nothing received it.
+ * The payments API (api-v1 services/payment_plans) is connected. Set back to
+ * false to stop sending listing config and hide the "Flexible payments" page.
  */
-export const FLEX_PAYMENTS_API_CONNECTED = false;
+export const FLEX_PAYMENTS_API_CONNECTED = true;
 
-/* ---- Platform limits (PROVISIONAL — see OQ-5; confirm with Product) ------ */
+/* ---- Platform limits: the API enforces the same (services/payment_plans/money.py) ---- */
 export const INITIAL_PERCENT_PRESETS = [50, 60, 70] as const;
-export const INITIAL_PERCENT_MIN = 10;
+/**
+ * Not a preference: confirming a booking pays out 20% of the rent (owner 10%
+ * plus the commission pool), so a smaller first payment would have Aparte
+ * paying out money it has not collected. The API refuses less.
+ */
+export const INITIAL_PERCENT_MIN = 20;
 export const INITIAL_PERCENT_MAX = 90;
 export const MAX_DEADLINE_DAYS_BEFORE_CHECKIN = 30;
 export const CONTRIBUTORS_MIN_ALLOWED = 2;
