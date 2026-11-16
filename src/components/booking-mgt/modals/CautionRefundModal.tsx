@@ -1,20 +1,37 @@
 import { useState } from 'react';
 import Modal from '../../modal/Modal';
 
+export type CautionRefundRecipient = 'GUEST' | 'AGENT' | 'OWNER';
+
+export const CAUTION_REFUND_RECIPIENTS: { value: CautionRefundRecipient; label: string }[] = [
+    { value: 'GUEST', label: 'Guest' },
+    { value: 'AGENT', label: 'Agent' },
+    { value: 'OWNER', label: 'Owner' },
+];
+
+export function cautionRefundRecipientLabel(value?: string | null): string {
+    const match = CAUTION_REFUND_RECIPIENTS.find((r) => r.value === String(value || '').toUpperCase());
+    return match ? match.label : '';
+}
+
 interface CautionRefundModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (shouldRefund: boolean, notes: string) => void;
+    // `recipient` is null when the caution fee is withheld: nobody is refunded.
+    onConfirm: (shouldRefund: boolean, notes: string, recipient: CautionRefundRecipient | null) => void;
     isPending?: boolean;
 }
 
 export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: CautionRefundModalProps) {
     const [shouldRefund, setShouldRefund] = useState(true);
     const [notes, setNotes] = useState('');
+    // No default: the admin must name who is paid before money moves.
+    const [recipient, setRecipient] = useState<CautionRefundRecipient | ''>('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onConfirm(shouldRefund, notes);
+        if (shouldRefund && !recipient) return;
+        onConfirm(shouldRefund, notes, shouldRefund ? (recipient as CautionRefundRecipient) : null);
     };
 
     const content = (
@@ -47,6 +64,30 @@ export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: Ca
                     </label>
                 </div>
 
+                {shouldRefund && (
+                    <div>
+                        <label htmlFor="refund-recipient" className="block text-sm font-medium text-gray-700 mb-1">
+                            Refund Recipient <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="refund-recipient"
+                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-3 border bg-white"
+                            value={recipient}
+                            onChange={(e) => setRecipient(e.target.value as CautionRefundRecipient | '')}
+                            required
+                        >
+                            <option value="" disabled>
+                                Select who receives the refund
+                            </option>
+                            {CAUTION_REFUND_RECIPIENTS.map((r) => (
+                                <option key={r.value} value={r.value}>
+                                    {r.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
                 <div>
                     <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
                         Notes / Condition Report <span className="text-red-500">*</span>
@@ -77,7 +118,7 @@ export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: Ca
                             ? 'bg-green-600 hover:bg-green-700'
                             : 'bg-red-600 hover:bg-red-700'
                             }`}
-                        disabled={isPending || (!shouldRefund && !notes.trim())}
+                        disabled={isPending || (shouldRefund ? !recipient : !notes.trim())}
                     >
                         {isPending ? 'Processing...' : shouldRefund ? 'Confirm Verification' : 'Confirm Withholding'}
                     </button>

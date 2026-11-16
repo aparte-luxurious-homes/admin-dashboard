@@ -9,7 +9,7 @@ import { BookingStatus } from "../types";
 import { NormalizedBooking } from "./utils";
 import Modal from "../../modal/Modal";
 import DeleteBookingDialog from "../dialogs/DeleteBookingDialog";
-import { CautionRefundModal } from "../modals/CautionRefundModal";
+import { CautionRefundModal, cautionRefundRecipientLabel } from "../modals/CautionRefundModal";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import {
   CheckInBooking,
@@ -518,16 +518,22 @@ export default function BookingActionBar({
         isOpen={showRefundModal}
         onClose={() => setShowRefundModal(false)}
         isPending={isRefunding}
-        onConfirm={(shouldRefund, notes) => {
+        onConfirm={(shouldRefund, notes, recipient) => {
           refundCaution(
             {
               bookingId: booking.id,
-              payload: { should_refund: shouldRefund, notes },
+              payload: {
+                should_refund: shouldRefund,
+                notes,
+                ...(recipient ? { refund_recipient: recipient } : {}),
+              },
             },
             {
               onSuccess: () => {
                 toast.success(
-                  shouldRefund ? "Refund approved" : "Caution fee withheld",
+                  shouldRefund
+                    ? `Refund approved for the ${cautionRefundRecipientLabel(recipient).toLowerCase() || "guest"}`
+                    : "Caution fee withheld",
                 );
                 setShowRefundModal(false);
               },

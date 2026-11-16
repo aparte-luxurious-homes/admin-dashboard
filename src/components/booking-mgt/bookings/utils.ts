@@ -40,6 +40,8 @@ export interface NormalizedBooking {
   isCautionRefunded: boolean;
   cautionRefundNotes: string;
   cautionRefundActionBy: string;
+  /** GUEST | AGENT | OWNER, or "" when the API has not recorded one. */
+  cautionRefundRecipient: string;
   checkoutVerifiedAt: string;
   status: BookingStatus;
   cancellationReason: string;
@@ -157,6 +159,7 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     isCautionRefunded: raw.isCautionRefunded ?? r.is_caution_refunded ?? false,
     cautionRefundNotes: raw.cautionRefundNotes || r.caution_refund_notes || "",
     cautionRefundActionBy: raw.cautionRefundActionBy || r.caution_refund_action_by || "",
+    cautionRefundRecipient: raw.cautionRefundRecipient || r.caution_refund_recipient || "",
     checkoutVerifiedAt: raw.checkoutVerifiedAt || r.checkout_verified_at || "",
     status: raw.status,
     cancellationReason: raw.cancellationReason || r.cancellation_reason || "",

@@ -68,6 +68,8 @@ export interface IBooking {
     caution_refund_notes?: string
     cautionRefundActionBy?: string
     caution_refund_action_by?: string
+    cautionRefundRecipient?: string
+    caution_refund_recipient?: string
     checkoutVerifiedAt?: string
     checkout_verified_at?: string
     status: BookingStatus
