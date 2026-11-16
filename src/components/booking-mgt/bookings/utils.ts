@@ -1,4 +1,4 @@
-import { IBooking, BookingStatus } from "../types";
+import { IBooking, BookingStatus, CautionRefundOptions } from "../types";
 import type { IPaymentPlan } from "@/src/lib/types/flexPayments";
 import { getDayDifference } from "@/src/lib/utils";
 import { isVenue } from "../../properties-mgt/venue";
@@ -42,6 +42,8 @@ export interface NormalizedBooking {
   cautionRefundActionBy: string;
   /** GUEST | AGENT | OWNER, or "" when the API has not recorded one. */
   cautionRefundRecipient: string;
+  /** Staff only (null for everyone else): who each recipient choice would pay. */
+  cautionRefundOptions: CautionRefundOptions | null;
   checkoutVerifiedAt: string;
   status: BookingStatus;
   cancellationReason: string;
@@ -160,6 +162,7 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     cautionRefundNotes: raw.cautionRefundNotes || r.caution_refund_notes || "",
     cautionRefundActionBy: raw.cautionRefundActionBy || r.caution_refund_action_by || "",
     cautionRefundRecipient: raw.cautionRefundRecipient || r.caution_refund_recipient || "",
+    cautionRefundOptions: raw.cautionRefundOptions ?? r.caution_refund_options ?? null,
     checkoutVerifiedAt: raw.checkoutVerifiedAt || r.checkout_verified_at || "",
     status: raw.status,
     cancellationReason: raw.cancellationReason || r.cancellation_reason || "",

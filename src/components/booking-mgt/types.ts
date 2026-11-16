@@ -32,6 +32,34 @@ export interface IAvailability {
 }
 
 
+/** Who a caution refund recipient choice would pay. */
+export interface CautionRefundPerson {
+    id: string
+    name: string
+    email?: string | null
+    role?: string
+}
+
+/**
+ * GET /bookings/{id} `caution_refund_options` (staff only). A recipient that
+ * is null cannot be chosen: the API refuses it (e.g. no agent paid for or
+ * made the booking).
+ */
+export interface CautionRefundOptions {
+    /**
+     * Whose Aparte wallet paid this booking (the guest's own, or an agent's),
+     * or null when it was paid another way (gateway, offline).
+     */
+    paid_from_wallet: CautionRefundPerson | null
+    /** Paid off-platform: choosing a recipient records it, no wallet is credited. */
+    is_offline: boolean
+    recipients: {
+        GUEST: CautionRefundPerson | null
+        AGENT: CautionRefundPerson | null
+        OWNER: CautionRefundPerson | null
+    }
+}
+
 export interface IBooking {
     id: string | number
     bookingId: string
@@ -70,6 +98,9 @@ export interface IBooking {
     caution_refund_action_by?: string
     cautionRefundRecipient?: string
     caution_refund_recipient?: string
+    /** Staff only: who each refund recipient would pay (see CautionRefundOptions). */
+    cautionRefundOptions?: CautionRefundOptions | null
+    caution_refund_options?: CautionRefundOptions | null
     checkoutVerifiedAt?: string
     checkout_verified_at?: string
     status: BookingStatus

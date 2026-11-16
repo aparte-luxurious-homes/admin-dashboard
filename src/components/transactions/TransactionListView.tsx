@@ -21,6 +21,7 @@ import { RejectWithdrawalModal } from "@/src/components/finance-mgt/modals/Rejec
 import { ReverseWithdrawalModal } from "@/src/components/finance-mgt/modals/ReverseWithdrawalModal";
 import { RetryWithdrawalModal, isRetryableWithdrawal } from "@/src/components/finance-mgt/modals/RetryWithdrawalModal";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import { cautionRefundRecipientLabel } from "@/src/components/booking-mgt/modals/CautionRefundModal";
 
 interface Transaction {
     id: string;
@@ -42,6 +43,8 @@ interface Transaction {
     };
     customer_email?: string;
     customerEmail?: string;
+    /** Caution refunds: GUEST / AGENT / OWNER, as the admin chose. Null otherwise. */
+    refund_recipient?: string | null;
 }
 
 interface TransactionSummary {
@@ -77,9 +80,14 @@ interface TransactionListViewProps {
      * would not reach it.
      */
     headerActions?: (reload: () => void) => ReactNode;
+    /**
+     * Show who each refund went to (caution refunds record GUEST / AGENT /
+     * OWNER; other refunds show "--"). Used by the Refund History page.
+     */
+    showRefundRecipient?: boolean;
 }
 
-const TransactionListView = ({ title, description, basePath, apiUrl, filters, resolveRowHref, headerActions }: TransactionListViewProps) => {
+const TransactionListView = ({ title, description, basePath, apiUrl, filters, resolveRowHref, headerActions, showRefundRecipient }: TransactionListViewProps) => {
     const getRowHref = (tx: Transaction) =>
         resolveRowHref ? resolveRowHref(tx) : `${basePath}/${tx.id}`;
     const router = useRouter();
@@ -126,16 +134,21 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
     const downloadCSV = (data: Transaction[]) => {
         if (!data.length) return;
         const headers = ["ID", "User ID", "Email", "Type", "Action", "Amount", "Status", "Date"];
-        const csvContent = data.map(tx => [
-            tx.id,
-            tx.user_id,
-            tx.user?.email || tx.customer_email || tx.customerEmail || "",
-            tx.transaction_type,
-            tx.action,
-            `${tx.currency} ${tx.amount}`,
-            tx.status,
-            tx.created_at
-        ].map(value => `"${value}"`).join(","));
+        if (showRefundRecipient) headers.splice(3, 0, "Refund Recipient");
+        const csvContent = data.map(tx => {
+            const row = [
+                tx.id,
+                tx.user_id,
+                tx.user?.email || tx.customer_email || tx.customerEmail || "",
+                tx.transaction_type,
+                tx.action,
+                `${tx.currency} ${tx.amount}`,
+                tx.status,
+                tx.created_at
+            ];
+            if (showRefundRecipient) row.splice(3, 0, cautionRefundRecipientLabel(tx.refund_recipient));
+            return row.map(value => `"${value}"`).join(",");
+        });
         const csvString = [headers.join(","), ...csvContent].join("\n");
         const blob = new Blob([csvString], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
@@ -153,14 +166,19 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
         const doc = new jsPDF();
         doc.text(`${title} Report`, 10, 10);
         const headers = ["ID", "Email", "Type", "Amount", "Status", "Date"];
-        const rows = data.map(tx => [
-            String(tx.id).substring(0, 8),
-            tx.user?.email || tx.customer_email || tx.customerEmail || "--",
-            tx.transaction_type || "--",
-            `${tx.currency} ${Number(tx.amount).toLocaleString()}`,
-            tx.status || "--",
-            tx.created_at ? new Date(tx.created_at).toLocaleDateString() : "--"
-        ]);
+        if (showRefundRecipient) headers.splice(2, 0, "Recipient");
+        const rows = data.map(tx => {
+            const row = [
+                String(tx.id).substring(0, 8),
+                tx.user?.email || tx.customer_email || tx.customerEmail || "--",
+                tx.transaction_type || "--",
+                `${tx.currency} ${Number(tx.amount).toLocaleString()}`,
+                tx.status || "--",
+                tx.created_at ? new Date(tx.created_at).toLocaleDateString() : "--"
+            ];
+            if (showRefundRecipient) row.splice(2, 0, cautionRefundRecipientLabel(tx.refund_recipient) || "--");
+            return row;
+        });
         autoTable(doc, {
             head: [headers],
             body: rows,
@@ -555,6 +573,7 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
                                 <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     <th className="px-6 py-4">Transaction ID</th>
                                     <th className="px-6 py-4">Customer Email</th>
+                                    {showRefundRecipient && <th className="px-6 py-4">Refund Recipient</th>}
                                     <th className="px-6 py-4">Type / Action</th>
                                     <th className="px-6 py-4">Amount</th>
                                     <th className="px-6 py-4 text-center">Status</th>
@@ -578,6 +597,17 @@ const TransactionListView = ({ title, description, basePath, apiUrl, filters, re
                                                 <span className="text-[10px] text-gray-500 font-mono uppercase">UID: {tx.user_id}</span>
                                             </div>
                                         </td>
+                                        {showRefundRecipient && (
+                                            <td className="px-6 py-4 text-sm text-gray-700">
+                                                {cautionRefundRecipientLabel(tx.refund_recipient) ? (
+                                                    <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-indigo-50 text-indigo-700">
+                                                        {cautionRefundRecipientLabel(tx.refund_recipient)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">--</span>
+                                                )}
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4 text-sm">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium text-gray-900">{tx.transaction_type}</span>

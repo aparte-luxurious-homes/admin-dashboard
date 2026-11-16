@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from '../../modal/Modal';
+import type { CautionRefundOptions } from '../types';
 
 export type CautionRefundRecipient = 'GUEST' | 'AGENT' | 'OWNER';
 
@@ -20,9 +21,15 @@ interface CautionRefundModalProps {
     // `recipient` is null when the caution fee is withheld: nobody is refunded.
     onConfirm: (shouldRefund: boolean, notes: string, recipient: CautionRefundRecipient | null) => void;
     isPending?: boolean;
+    /**
+     * From the booking detail (staff only). Says who each choice would pay and
+     * whether an agent paid from their wallet. When absent (an older API), every
+     * choice stays open and the API has the final say.
+     */
+    options?: CautionRefundOptions | null;
 }
 
-export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: CautionRefundModalProps) {
+export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending, options }: CautionRefundModalProps) {
     const [shouldRefund, setShouldRefund] = useState(true);
     const [notes, setNotes] = useState('');
     // No default: the admin must name who is paid before money moves.
@@ -33,6 +40,14 @@ export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: Ca
         if (shouldRefund && !recipient) return;
         onConfirm(shouldRefund, notes, shouldRefund ? (recipient as CautionRefundRecipient) : null);
     };
+
+    // undefined: the API sent no options, so we cannot tell; null: nobody to pay.
+    const personFor = (value: CautionRefundRecipient) =>
+        options ? options.recipients?.[value] ?? null : undefined;
+    const selectedPerson = recipient ? personFor(recipient) : undefined;
+    // Paid from a wallet, and the deposit would go to someone else: warn.
+    const walletPayer = options?.paid_from_wallet ?? null;
+    const warnNotThePayer = !!walletPayer && !!selectedPerson && selectedPerson.id !== walletPayer.id;
 
     const content = (
         <form onSubmit={handleSubmit} className="text-left">
@@ -79,12 +94,38 @@ export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: Ca
                             <option value="" disabled>
                                 Select who receives the refund
                             </option>
-                            {CAUTION_REFUND_RECIPIENTS.map((r) => (
-                                <option key={r.value} value={r.value}>
-                                    {r.label}
-                                </option>
-                            ))}
+                            {CAUTION_REFUND_RECIPIENTS.map((r) => {
+                                const unavailable = personFor(r.value) === null;
+                                return (
+                                    <option key={r.value} value={r.value} disabled={unavailable}>
+                                        {r.label}
+                                        {unavailable ? ' (none on this booking)' : ''}
+                                    </option>
+                                );
+                            })}
                         </select>
+                        {selectedPerson && (
+                            <p className="mt-1 text-xs text-gray-500">
+                                Refund goes to <span className="font-medium text-gray-700">{selectedPerson.name}</span>
+                                {selectedPerson.email ? ` (${selectedPerson.email})` : ''}
+                                {options?.is_offline
+                                    ? '. This booking was paid offline, so no wallet is credited; this records who you returned it to.'
+                                    : "'s wallet."}
+                            </p>
+                        )}
+                        {warnNotThePayer && walletPayer && selectedPerson && (
+                            <div
+                                role="alert"
+                                className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+                            >
+                                This booking was paid for from{' '}
+                                <span className="font-semibold">{walletPayer.name}</span>
+                                {walletPayer.role ? ` (${walletPayer.role.toLowerCase()})` : ''}
+                                {"'s"} wallet. This refund will go to{' '}
+                                <span className="font-semibold">{selectedPerson.name}</span>, not to
+                                the person who paid.
+                            </div>
+                        )}
                     </div>
                 )}
 

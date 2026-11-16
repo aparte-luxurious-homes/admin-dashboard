@@ -518,6 +518,7 @@ export default function BookingActionBar({
         isOpen={showRefundModal}
         onClose={() => setShowRefundModal(false)}
         isPending={isRefunding}
+        options={booking.cautionRefundOptions}
         onConfirm={(shouldRefund, notes, recipient) => {
           refundCaution(
             {
@@ -538,8 +539,11 @@ export default function BookingActionBar({
                 setShowRefundModal(false);
               },
               onError: (err: any) => {
+                // detail is a string, or {code, message} (e.g. no agent on
+                // the booking to refund).
+                const detail = err?.response?.data?.detail;
                 toast.error(
-                  err?.response?.data?.detail ||
+                  (typeof detail === "string" ? detail : detail?.message) ||
                     "Failed to process caution fee",
                 );
               },

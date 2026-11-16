@@ -17,6 +17,7 @@ import { ReverseWithdrawalModal } from "@/src/components/finance-mgt/modals/Reve
 import { RetryWithdrawalModal, isRetryableWithdrawal } from "@/src/components/finance-mgt/modals/RetryWithdrawalModal";
 import { Button } from "@/src/components/ui/button";
 import { usePermissions } from "@/src/hooks/usePermissions";
+import { cautionRefundRecipientLabel } from "@/src/components/booking-mgt/modals/CautionRefundModal";
 
 interface Transaction {
     id: string;
@@ -32,6 +33,8 @@ interface Transaction {
     description: string;
     status: string;
     refund_proof: string;
+    /** Caution refunds: GUEST / AGENT / OWNER, as the admin chose. */
+    refund_recipient?: string | null;
     created_at: string;
     updated_at: string;
     user?: {
@@ -454,10 +457,16 @@ const TransactionDetailView = ({ title, backLink, backLinkName }: TransactionDet
                         </div>
 
                         {/* ── Additional Details (conditional) ── */}
-                        {(data.description || data.comment || data.refund_proof) && (
+                        {(data.description || data.comment || data.refund_proof || data.refund_recipient) && (
                             <div className="mb-6">
                                 <SectionHeader icon="solar:notes-bold-duotone" title="Notes & Attachments" />
                                 <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 space-y-4">
+                                    {cautionRefundRecipientLabel(data.refund_recipient) && (
+                                        <Field
+                                            label="Refund Recipient"
+                                            value={cautionRefundRecipientLabel(data.refund_recipient)}
+                                        />
+                                    )}
                                     {data.description && (
                                         <Field label="Description" value={data.description} />
                                     )}

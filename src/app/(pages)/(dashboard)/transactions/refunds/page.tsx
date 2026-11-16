@@ -13,6 +13,7 @@ const Refunds = () => {
       filters={{
         tx_type: "REFUND"
       }}
+      showRefundRecipient
     />
   );
 };
