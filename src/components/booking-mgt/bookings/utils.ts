@@ -1,4 +1,5 @@
-import { IBooking, BookingStatus } from "../types";
+import { IBooking, BookingStatus, CautionRefundOptions } from "../types";
+import type { IPaymentPlan } from "@/src/lib/types/flexPayments";
 import { getDayDifference } from "@/src/lib/utils";
 import { isVenue } from "../../properties-mgt/venue";
 
@@ -39,6 +40,10 @@ export interface NormalizedBooking {
   isCautionRefunded: boolean;
   cautionRefundNotes: string;
   cautionRefundActionBy: string;
+  /** GUEST | AGENT | OWNER, or "" when the API has not recorded one. */
+  cautionRefundRecipient: string;
+  /** Staff only (null for everyone else): who each recipient choice would pay. */
+  cautionRefundOptions: CautionRefundOptions | null;
   checkoutVerifiedAt: string;
   status: BookingStatus;
   cancellationReason: string;
@@ -90,6 +95,8 @@ export interface NormalizedBooking {
   hireLabel: string;
   subtotal: number;
   property: IBooking["unit"]["property"];
+  /** Instalment / invite-friends plan, when the booking was made that way. */
+  paymentPlan: IPaymentPlan | null;
 }
 
 /** Map raw API booking (mixed naming) into a clean camelCase object */
@@ -154,6 +161,8 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     isCautionRefunded: raw.isCautionRefunded ?? r.is_caution_refunded ?? false,
     cautionRefundNotes: raw.cautionRefundNotes || r.caution_refund_notes || "",
     cautionRefundActionBy: raw.cautionRefundActionBy || r.caution_refund_action_by || "",
+    cautionRefundRecipient: raw.cautionRefundRecipient || r.caution_refund_recipient || "",
+    cautionRefundOptions: raw.cautionRefundOptions ?? r.caution_refund_options ?? null,
     checkoutVerifiedAt: raw.checkoutVerifiedAt || r.checkout_verified_at || "",
     status: raw.status,
     cancellationReason: raw.cancellationReason || r.cancellation_reason || "",
@@ -164,6 +173,8 @@ export function normalizeBooking(raw: IBooking): NormalizedBooking {
     paymentMethod: raw.paymentMethod || r.payment_method || "",
     paymentProofUrl: raw.paymentProofUrl || r.payment_proof_url || "",
     paymentNotes: raw.paymentNotes || r.payment_notes || "",
+    // Expected in the dashboard's camelCase shape; absent for pay-in-full bookings.
+    paymentPlan: (r.paymentPlan ?? r.payment_plan ?? null) as IPaymentPlan | null,
     guestIdDocumentUrl: raw.guestIdDocumentUrl || r.guest_id_document_url || "",
     guestPhotoUrl: raw.guestPhotoUrl || r.guest_photo_url || "",
     referralCodeUsed: r.referral_code_used || "",

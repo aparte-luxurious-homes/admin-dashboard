@@ -1,21 +1,53 @@
 import { useState } from 'react';
 import Modal from '../../modal/Modal';
+import type { CautionRefundOptions } from '../types';
+
+export type CautionRefundRecipient = 'GUEST' | 'AGENT' | 'OWNER';
+
+export const CAUTION_REFUND_RECIPIENTS: { value: CautionRefundRecipient; label: string }[] = [
+    { value: 'GUEST', label: 'Guest' },
+    { value: 'AGENT', label: 'Agent' },
+    { value: 'OWNER', label: 'Owner' },
+];
+
+export function cautionRefundRecipientLabel(value?: string | null): string {
+    const match = CAUTION_REFUND_RECIPIENTS.find((r) => r.value === String(value || '').toUpperCase());
+    return match ? match.label : '';
+}
 
 interface CautionRefundModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (shouldRefund: boolean, notes: string) => void;
+    // `recipient` is null when the caution fee is withheld: nobody is refunded.
+    onConfirm: (shouldRefund: boolean, notes: string, recipient: CautionRefundRecipient | null) => void;
     isPending?: boolean;
+    /**
+     * From the booking detail (staff only). Says who each choice would pay and
+     * whether an agent paid from their wallet. When absent (an older API), every
+     * choice stays open and the API has the final say.
+     */
+    options?: CautionRefundOptions | null;
 }
 
-export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: CautionRefundModalProps) {
+export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending, options }: CautionRefundModalProps) {
     const [shouldRefund, setShouldRefund] = useState(true);
     const [notes, setNotes] = useState('');
+    // No default: the admin must name who is paid before money moves.
+    const [recipient, setRecipient] = useState<CautionRefundRecipient | ''>('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onConfirm(shouldRefund, notes);
+        if (shouldRefund && !recipient) return;
+        onConfirm(shouldRefund, notes, shouldRefund ? (recipient as CautionRefundRecipient) : null);
     };
+
+    // undefined: the API sent no options, so we cannot tell; null: nobody to pay.
+    const personFor = (value: CautionRefundRecipient) =>
+        options ? options.recipients?.[value] ?? null : undefined;
+    const selectedPerson = recipient ? personFor(recipient) : undefined;
+    // Paid from a wallet, and the deposit would go to someone else: warn.
+    const walletPayer = options?.paid_from_wallet ?? null;
+    const warnNotThePayer = !!walletPayer && !!selectedPerson && selectedPerson.id !== walletPayer.id;
 
     const content = (
         <form onSubmit={handleSubmit} className="text-left">
@@ -47,6 +79,56 @@ export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: Ca
                     </label>
                 </div>
 
+                {shouldRefund && (
+                    <div>
+                        <label htmlFor="refund-recipient" className="block text-sm font-medium text-gray-700 mb-1">
+                            Refund Recipient <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="refund-recipient"
+                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-3 border bg-white"
+                            value={recipient}
+                            onChange={(e) => setRecipient(e.target.value as CautionRefundRecipient | '')}
+                            required
+                        >
+                            <option value="" disabled>
+                                Select who receives the refund
+                            </option>
+                            {CAUTION_REFUND_RECIPIENTS.map((r) => {
+                                const unavailable = personFor(r.value) === null;
+                                return (
+                                    <option key={r.value} value={r.value} disabled={unavailable}>
+                                        {r.label}
+                                        {unavailable ? ' (none on this booking)' : ''}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                        {selectedPerson && (
+                            <p className="mt-1 text-xs text-gray-500">
+                                Refund goes to <span className="font-medium text-gray-700">{selectedPerson.name}</span>
+                                {selectedPerson.email ? ` (${selectedPerson.email})` : ''}
+                                {options?.is_offline
+                                    ? '. This booking was paid offline, so no wallet is credited; this records who you returned it to.'
+                                    : "'s wallet."}
+                            </p>
+                        )}
+                        {warnNotThePayer && walletPayer && selectedPerson && (
+                            <div
+                                role="alert"
+                                className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+                            >
+                                This booking was paid for from{' '}
+                                <span className="font-semibold">{walletPayer.name}</span>
+                                {walletPayer.role ? ` (${walletPayer.role.toLowerCase()})` : ''}
+                                {"'s"} wallet. This refund will go to{' '}
+                                <span className="font-semibold">{selectedPerson.name}</span>, not to
+                                the person who paid.
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div>
                     <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
                         Notes / Condition Report <span className="text-red-500">*</span>
@@ -77,7 +159,7 @@ export function CautionRefundModal({ isOpen, onClose, onConfirm, isPending }: Ca
                             ? 'bg-green-600 hover:bg-green-700'
                             : 'bg-red-600 hover:bg-red-700'
                             }`}
-                        disabled={isPending || (!shouldRefund && !notes.trim())}
+                        disabled={isPending || (shouldRefund ? !recipient : !notes.trim())}
                     >
                         {isPending ? 'Processing...' : shouldRefund ? 'Confirm Verification' : 'Confirm Withholding'}
                     </button>

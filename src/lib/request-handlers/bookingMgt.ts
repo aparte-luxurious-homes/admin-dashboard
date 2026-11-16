@@ -449,7 +449,12 @@ export function RefundCautionFee() {
       payload,
     }: {
       bookingId: string | number;
-      payload: { should_refund: boolean; notes?: string };
+      payload: {
+        should_refund: boolean;
+        notes?: string;
+        // Who is paid the refund. Omitted when the fee is withheld.
+        refund_recipient?: "GUEST" | "AGENT" | "OWNER";
+      };
     }) =>
       axiosRequest.post(
         `${API_ROUTES.bookings.details(String(bookingId))}/refund-caution`,

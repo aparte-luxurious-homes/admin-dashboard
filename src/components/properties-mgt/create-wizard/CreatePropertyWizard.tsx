@@ -62,6 +62,7 @@ import { getApiErrorMessage } from "@/src/lib/apiError";
 import { validatePropertyName } from "./nameValidator";
 import Modal from "../../modal/Modal";
 import StepDiscounts from "./StepDiscounts";
+import { FLEX_PAYMENTS_API_CONNECTED } from "@/src/lib/flexPayments";
 import {
   emptyHallForm,
   hallFormFromUnit,
@@ -226,6 +227,10 @@ export default function CreatePropertyWizard() {
           // Policy" on one of those then crashed the step.
           long_stay_discount_policy: draft.values.long_stay_discount_policy ?? null,
           extension_discount_policy: draft.values.extension_discount_policy ?? null,
+          // Drafts saved before payment options existed carry none of these.
+          instalment_payment: draft.values.instalment_payment ?? null,
+          invite_friends_payment: draft.values.invite_friends_payment ?? null,
+          agent_can_configure_payments: draft.values.agent_can_configure_payments ?? false,
         }
       : undefined) ?? {
       name: "",
@@ -256,6 +261,9 @@ export default function CreatePropertyWizard() {
       // and DiscountPolicyEditor normalises it for display.
       long_stay_discount_policy: null,
       extension_discount_policy: null,
+      instalment_payment: null,
+      invite_friends_payment: null,
+      agent_can_configure_payments: false,
       amenities: [],
       amenityIds: [],
       event_types: [],
@@ -628,6 +636,15 @@ export default function CreatePropertyWizard() {
           }),
       long_stay_discount_policy: values.long_stay_discount_policy,
       extension_discount_policy: values.extension_discount_policy,
+      // Held back until the payments API exists, so nothing is sent that no
+      // one reads (see FLEX_PAYMENTS_API_CONNECTED).
+      ...(FLEX_PAYMENTS_API_CONNECTED
+        ? {
+            instalment_payment: values.instalment_payment,
+            invite_friends_payment: values.invite_friends_payment,
+            agent_can_configure_payments: values.agent_can_configure_payments,
+          }
+        : {}),
     };
 
     if (
@@ -848,7 +865,7 @@ export default function CreatePropertyWizard() {
             duration: 6000,
             style: { maxWidth: "500px", width: "max-content" },
           });
-        }
+        } 
       }
 
       if (mediaErrors.length > 0) {

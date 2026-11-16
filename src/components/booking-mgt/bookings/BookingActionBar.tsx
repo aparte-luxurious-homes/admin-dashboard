@@ -9,7 +9,7 @@ import { BookingStatus } from "../types";
 import { NormalizedBooking } from "./utils";
 import Modal from "../../modal/Modal";
 import DeleteBookingDialog from "../dialogs/DeleteBookingDialog";
-import { CautionRefundModal } from "../modals/CautionRefundModal";
+import { CautionRefundModal, cautionRefundRecipientLabel } from "../modals/CautionRefundModal";
 import { PAGE_ROUTES } from "@/src/lib/routes/page_routes";
 import {
   CheckInBooking,
@@ -518,22 +518,32 @@ export default function BookingActionBar({
         isOpen={showRefundModal}
         onClose={() => setShowRefundModal(false)}
         isPending={isRefunding}
-        onConfirm={(shouldRefund, notes) => {
+        options={booking.cautionRefundOptions}
+        onConfirm={(shouldRefund, notes, recipient) => {
           refundCaution(
             {
               bookingId: booking.id,
-              payload: { should_refund: shouldRefund, notes },
+              payload: {
+                should_refund: shouldRefund,
+                notes,
+                ...(recipient ? { refund_recipient: recipient } : {}),
+              },
             },
             {
               onSuccess: () => {
                 toast.success(
-                  shouldRefund ? "Refund approved" : "Caution fee withheld",
+                  shouldRefund
+                    ? `Refund approved for the ${cautionRefundRecipientLabel(recipient).toLowerCase() || "guest"}`
+                    : "Caution fee withheld",
                 );
                 setShowRefundModal(false);
               },
               onError: (err: any) => {
+                // detail is a string, or {code, message} (e.g. no agent on
+                // the booking to refund).
+                const detail = err?.response?.data?.detail;
                 toast.error(
-                  err?.response?.data?.detail ||
+                  (typeof detail === "string" ? detail : detail?.message) ||
                     "Failed to process caution fee",
                 );
               },
