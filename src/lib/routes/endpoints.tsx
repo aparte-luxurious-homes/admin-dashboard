@@ -11,6 +11,14 @@ export const API_ROUTES = {
         verifyPhoneOtp: '/auth/phone/verify',
     },
     admin: {
+        // Flexible payments monitoring (api-v1 services/payment_plans).
+        paymentPlans: {
+            base: '/admin/payment-plans',
+            export: '/admin/payment-plans/export',
+            details: (planId: string) => `/admin/payment-plans/${planId}`,
+            resend: (planId: string, contributorId: string) =>
+                `/admin/payment-plans/${planId}/contributors/${contributorId}/resend`,
+        },
         kyc: {
             base: '/admin/kyc',
             update: (docId: string | number) => `/admin/kyc/${docId}`,
