@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { BellIcon, BookingIcon, FinancialsIcon, PropertiesIcon, TilesIcon, UsersIcon, SettingsIcon, RateIcon, PriceTagIcon } from "../../components/icons";
 import { PAGE_ROUTES } from "./page_routes";
 import { UserRole } from "../enums";
+import { FLEX_PAYMENTS_API_CONNECTED } from "../flexPayments";
 import { WHATSAPP_ANALYTICS_ROLES, WHATSAPP_INBOX_ROLES } from "../whatsappRoles";
 import { siteUrl } from "../siteUrl";
 
@@ -415,6 +416,15 @@ export const NAV_LINKS: ILink[] = [
                 link: PAGE_ROUTES.dashboard.transactions.bookingWithdrawals.base,
                 allow: [UserRole.ADMIN],
             },
+            // Hidden until the payments API is connected: the page has nothing to show before then.
+            ...(FLEX_PAYMENTS_API_CONNECTED
+                ? [{
+                    name: 'Flexible payments',
+                    pathName: 'flexible-payments',
+                    link: PAGE_ROUTES.dashboard.transactions.flexiblePayments.base,
+                    allow: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OPERATIONS_ADMIN],
+                }]
+                : []),
             {
                 name: 'Refunds',
                 pathName: 'refunds',
