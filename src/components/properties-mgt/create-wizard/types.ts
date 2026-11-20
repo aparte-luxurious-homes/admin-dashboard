@@ -1,4 +1,5 @@
 import { PropertyType, IDiscountPolicy } from '../types';
+import type { IInstalmentConfig, IInviteFriendsConfig } from '@/src/lib/types/flexPayments';
 import { HallForm, emptyHallForm } from '../venue';
 
 export enum WizardStep {
@@ -153,7 +154,7 @@ export type CategorizedMedia = Partial<Record<PropertyMediaCategory, File[]>>;
 export const WIZARD_STEPS = [
     { key: WizardStep.PROPERTY_DETAILS, label: 'Property Details', icon: 'solar:home-2-bold-duotone' },
     { key: WizardStep.UNITS, label: 'Units', icon: 'solar:widget-3-bold-duotone' },
-    { key: WizardStep.DISCOUNTS, label: 'Discounts', icon: 'solar:tag-price-bold-duotone' },
+    { key: WizardStep.DISCOUNTS, label: 'Payments & Discounts', icon: 'solar:tag-price-bold-duotone' },
     { key: WizardStep.MEDIA_DOCS, label: 'Media & Docs', icon: 'solar:camera-bold-duotone' },
 ] as const;
 
@@ -239,6 +240,11 @@ export type PropertyFormValues = {
     // DiscountPolicyEditor writes when a policy is switched off.
     long_stay_discount_policy: IDiscountPolicy | null;
     extension_discount_policy: IDiscountPolicy | null;
+    // Flexible payment options. null = never configured; an object with
+    // enabled:false keeps the owner's numbers if they switch it back on.
+    instalment_payment: IInstalmentConfig | null;
+    invite_friends_payment: IInviteFriendsConfig | null;
+    agent_can_configure_payments: boolean;
     amenities: string[];
     amenityIds: string[];
     event_types: string[];

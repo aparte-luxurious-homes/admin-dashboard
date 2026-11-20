@@ -1,6 +1,7 @@
 import { Icon } from "@iconify/react";
 import { BookingStatus } from "../types";
 import { NormalizedBooking } from "./utils";
+import { cautionRefundRecipientLabel } from "../modals/CautionRefundModal";
 
 interface BookingStatusBannerProps {
   booking: NormalizedBooking;
@@ -8,6 +9,7 @@ interface BookingStatusBannerProps {
 
 export default function BookingStatusBanner({ booking }: BookingStatusBannerProps) {
   const banners: React.ReactNode[] = [];
+  const recipientLabel = cautionRefundRecipientLabel(booking.cautionRefundRecipient);
 
   // Approval pending notice
   if (booking.status === BookingStatus.APPROVAL_PENDING) {
@@ -48,7 +50,7 @@ export default function BookingStatusBanner({ booking }: BookingStatusBannerProp
         <div className="flex items-start gap-2">
           <Icon icon="solar:info-circle-bold-duotone" className="text-amber-500 text-lg shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700">
-            Caution deposit will be refunded to the guest after check-out, subject to property inspection.
+            Caution deposit will be refunded after check-out, subject to property inspection. The refund recipient is chosen when checkout is verified.
           </p>
         </div>
       </div>,
@@ -59,7 +61,10 @@ export default function BookingStatusBanner({ booking }: BookingStatusBannerProp
         <div className="flex items-start gap-2">
           <Icon icon="solar:check-read-circle-bold-duotone" className="text-green-500 text-lg shrink-0 mt-0.5" />
           <div className="text-xs text-green-700">
-            <p>Caution deposit has been successfully refunded to the guest.</p>
+            <p>
+              Caution deposit has been successfully refunded
+              {recipientLabel ? <> to the <span className="font-semibold">{recipientLabel.toLowerCase()}</span></> : null}.
+            </p>
             {booking.cautionRefundNotes && (
               <p className="mt-1 italic text-green-600">Note: {booking.cautionRefundNotes}</p>
             )}
