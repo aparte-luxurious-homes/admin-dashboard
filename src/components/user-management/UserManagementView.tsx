@@ -1,6 +1,6 @@
 "use client";
 
-import { MESSAGES } from '@/src/lib/messages';
+import { MESSAGES } from "@/src/lib/messages";
 import UserEditForm from "./UserEditForm";
 
 import { Skeleton } from "@/src/components/ui/skeleton";
@@ -115,8 +115,7 @@ const UserManagementView = ({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
-
-  console.log("data", data);
+  const [statusFilter, setStatusFilter] = useState("All");
 
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [modalPosition, setModalPosition] = useState<{
@@ -160,6 +159,7 @@ const UserManagementView = ({
   const { mutate: updateUser, isPending: updating } = UpdateUser();
   const { mutate: deleteUser, isPending: deleting } = DeleteUser();
   const { data: rolesData } = GetAssignableRoles();
+
   const assignableRoles: string[] = useMemo(() => {
     return rolesData?.data?.data?.assignable_roles ?? [];
   }, [rolesData]);
@@ -387,7 +387,9 @@ const UserManagementView = ({
                         { userId: user.id },
                         {
                           onSuccess: () => {
-                            toast.success(MESSAGES.MSG_USER_DELETED_SUCCESSFULLY);
+                            toast.success(
+                              MESSAGES.MSG_USER_DELETED_SUCCESSFULLY,
+                            );
                             fetchUsers();
                           },
                           onError: (err: any) => {
@@ -409,6 +411,15 @@ const UserManagementView = ({
       : []),
   ];
 
+  const filteredData = () => {
+    if (statusFilter === "All") {
+      return data;
+    } else if (statusFilter === "Active") {
+      return data.filter((user) => user.isVerified === true);
+    } else {
+      return data.filter((user) => user.isVerified === false);
+    }
+  };
   return (
     <>
       <div className="p-3 sm:p-4 md:p-6 w-full max-w-[1600px] mx-auto">
@@ -480,7 +491,16 @@ const UserManagementView = ({
               </div>
               <button className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1.5 text-xs sm:text-sm text-gray-700 font-medium">
                 <FilterIcon className="w-4 h-4" color="#6B7280" />
-                <span>Filter</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  {["All", "Active", "Inactive"].map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
               </button>
               <div className="hidden sm:block ml-auto bg-white px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 shadow-sm">
                 Total Users: <span className="text-primary">{rowCount}</span>
@@ -500,7 +520,7 @@ const UserManagementView = ({
                 <Skeleton className="h-8 sm:h-10 w-full" />
                 <Skeleton className="h-8 sm:h-10 w-full" />
               </div>
-            ) : data.length > 0 ? (
+            ) : filteredData().length > 0 ? (
               <table className="w-full text-left border-collapse min-w-[600px] sm:min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr className="text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -515,7 +535,7 @@ const UserManagementView = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {data.map((user, index) => (
+                  {filteredData().map((user, index) => (
                     <tr
                       key={user.id}
                       className="hover:bg-gray-50 cursor-pointer transition-colors text-xs sm:text-sm"
